@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag } from "lucide-react";
 import { format } from "date-fns";
 import type { Organization, Transaction, Category, InsertTransaction } from "@shared/schema";
 
@@ -45,6 +45,9 @@ interface TransactionsProps {
 export default function Transactions({ currentOrganization, userId }: TransactionsProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
   const [bulkSuggestions, setBulkSuggestions] = useState<Map<number, CategorySuggestion>>(new Map());
@@ -166,6 +169,37 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
   });
 
+  const createCategoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!newCategoryName.trim()) {
+        throw new Error("Category name is required");
+      }
+      return await apiRequest('POST', '/api/categories', {
+        organizationId: currentOrganization.id,
+        name: newCategoryName.trim(),
+        type: newCategoryType,
+        createdBy: userId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      toast({
+        title: "Category created",
+        description: `${newCategoryName} has been added successfully.`,
+      });
+      setIsCategoryDialogOpen(false);
+      setNewCategoryName("");
+      setNewCategoryType("expense");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create category. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const sendCategorizationFeedback = async (
     historyId: number,
     userDecision: 'accepted' | 'rejected' | 'modified',
@@ -269,14 +303,66 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             {currentOrganization.name}
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-transaction">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Transaction
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+        <div className="flex items-center gap-2">
+          <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-manage-categories">
+                <Tag className="h-4 w-4 mr-2" />
+                Manage Categories
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Category</DialogTitle>
+                <DialogDescription>
+                  Add a new income or expense category for your organization
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category-name">Category Name</Label>
+                  <Input
+                    id="category-name"
+                    placeholder="e.g., Office Supplies, Marketing"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    data-testid="input-category-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category-type">Type</Label>
+                  <Select
+                    value={newCategoryType}
+                    onValueChange={(value: "income" | "expense") => setNewCategoryType(value)}
+                  >
+                    <SelectTrigger id="category-type" data-testid="select-category-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="income">Income</SelectItem>
+                      <SelectItem value="expense">Expense</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={() => createCategoryMutation.mutate()}
+                  disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
+                  className="w-full"
+                  data-testid="button-create-category-submit"
+                >
+                  {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-transaction">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Transaction
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add Transaction</DialogTitle>
               <DialogDescription>
@@ -482,6 +568,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search */}
