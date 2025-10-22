@@ -109,22 +109,35 @@ export default function Budgets() {
     },
   });
 
-  const budgetForm = useForm<z.infer<typeof insertBudgetSchema>>({
-    resolver: zodResolver(insertBudgetSchema.extend({
-      startDate: z.date(),
-      endDate: z.date(),
-    })),
+  // Form schema with Date objects for easier handling
+  const budgetFormSchema = z.object({
+    organizationId: z.number(),
+    name: z.string().min(1, "Budget name is required"),
+    period: z.enum(["monthly", "quarterly", "yearly"]),
+    startDate: z.date(),
+    endDate: z.date(),
+    createdBy: z.string().optional(),
+  });
+
+  const budgetForm = useForm<z.infer<typeof budgetFormSchema>>({
+    resolver: zodResolver(budgetFormSchema),
     defaultValues: {
       organizationId,
       name: "",
-      period: "monthly",
+      period: "monthly" as const,
       startDate: new Date(),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
     },
   });
 
-  const itemForm = useForm<z.infer<typeof insertBudgetItemSchema>>({
-    resolver: zodResolver(insertBudgetItemSchema),
+  const itemFormSchema = z.object({
+    budgetId: z.number(),
+    categoryId: z.number().min(1, "Category is required"),
+    amount: z.string().min(1, "Amount is required"),
+  });
+
+  const itemForm = useForm<z.infer<typeof itemFormSchema>>({
+    resolver: zodResolver(itemFormSchema),
     defaultValues: {
       budgetId: selectedBudgetId || 0,
       categoryId: 0,
@@ -132,13 +145,15 @@ export default function Budgets() {
     },
   });
 
-  const onCreateBudget = (data: z.infer<typeof insertBudgetSchema>) => {
-    createBudgetMutation.mutate(data);
+  const onCreateBudget = (data: z.infer<typeof budgetFormSchema>) => {
+    // insertBudgetSchema uses z.coerce.date() so it can accept Date objects
+    createBudgetMutation.mutate(data as any);
   };
 
-  const onAddItem = (data: z.infer<typeof insertBudgetItemSchema>) => {
+  const onAddItem = (data: z.infer<typeof itemFormSchema>) => {
     if (!selectedBudgetId) return;
-    addItemMutation.mutate({ ...data, budgetId: selectedBudgetId });
+    // insertBudgetItemSchema already includes budgetId, categoryId, and amount
+    addItemMutation.mutate(data as any);
   };
 
   const selectedBudget = budgets.find(b => b.id === selectedBudgetId);
