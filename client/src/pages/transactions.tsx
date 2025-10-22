@@ -176,15 +176,22 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (!newCategoryName.trim()) {
         throw new Error("Category name is required");
       }
-      return await apiRequest('POST', '/api/categories', {
+      const response = await apiRequest('POST', '/api/categories', {
         organizationId: currentOrganization.id,
         name: newCategoryName.trim(),
         type: newCategoryType,
         createdBy: userId,
       });
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (newCategory: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      
+      // Auto-select the newly created category if we're in the transaction dialog
+      if (isDialogOpen) {
+        setFormData({ ...formData, categoryId: newCategory.id });
+      }
+      
       toast({
         title: "Category created",
         description: `${newCategoryName} has been added successfully.`,
@@ -574,7 +581,22 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="category">Category {!aiSuggestion && "(Optional)"}</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="category">Category {!aiSuggestion && "(Optional)"}</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNewCategoryType(formData.type || 'expense');
+                      setIsCategoryDialogOpen(true);
+                    }}
+                    data-testid="button-add-category-inline"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    New Category
+                  </Button>
+                </div>
                 <Select
                   value={formData.categoryId?.toString() || "none"}
                   onValueChange={(value) => setFormData({ ...formData, categoryId: value === "none" ? undefined : parseInt(value) })}
@@ -584,7 +606,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No category</SelectItem>
-                    {categories?.map((cat) => (
+                    {categories?.filter(c => c.type === formData.type).map((cat) => (
                       <SelectItem key={cat.id} value={cat.id.toString()}>
                         {cat.name}
                       </SelectItem>
