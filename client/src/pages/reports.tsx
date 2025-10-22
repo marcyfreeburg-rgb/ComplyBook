@@ -15,9 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import type { Organization } from "@shared/schema";
+import type { Organization, Transaction, Category } from "@shared/schema";
 
 interface ReportsProps {
   currentOrganization: Organization;
@@ -36,11 +36,24 @@ export default function Reports({ currentOrganization }: ReportsProps) {
   const [reportType, setReportType] = useState<'profit-loss' | 'balance-sheet' | 'transactions'>('profit-loss');
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
 
   const { data: profitLoss, isLoading, error } = useQuery<ProfitLossData>({
     queryKey: [`/api/reports/profit-loss/${currentOrganization.id}?startDate=${startDate}&endDate=${endDate}`],
     retry: false,
     enabled: reportType === 'profit-loss',
+  });
+
+  const { data: transactions, isLoading: transactionsLoading } = useQuery<Transaction[]>({
+    queryKey: [`/api/reports/transactions/${currentOrganization.id}?startDate=${startDate}&endDate=${endDate}`],
+    retry: false,
+    enabled: reportType === 'transactions',
+  });
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: [`/api/categories/${currentOrganization.id}`],
+    enabled: reportType === 'transactions',
   });
 
   useEffect(() => {
@@ -107,7 +120,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                 <SelectContent>
                   <SelectItem value="profit-loss">Profit & Loss Statement</SelectItem>
                   <SelectItem value="balance-sheet">Balance Sheet (Coming Soon)</SelectItem>
-                  <SelectItem value="transactions">Transaction History (Coming Soon)</SelectItem>
+                  <SelectItem value="transactions">Transaction History</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -280,8 +293,125 @@ export default function Reports({ currentOrganization }: ReportsProps) {
         </>
       )}
 
+      {/* Transaction History Report */}
+      {reportType === 'transactions' && (
+        <>
+          {transactionsLoading ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Loading transactions...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : transactions && transactions.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-2xl">Transaction History</CardTitle>
+                    <CardDescription className="mt-2">
+                      {format(new Date(startDate), 'MMM dd, yyyy')} - {format(new Date(endDate), 'MMM dd, yyyy')}
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" disabled>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-3 mt-4">
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="w-40" data-testid="select-filter-type">
+                      <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="income">Income Only</SelectItem>
+                      <SelectItem value="expense">Expense Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="w-48" data-testid="select-filter-category">
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {transactions
+                    .filter((t) => filterType === 'all' || t.type === filterType)
+                    .filter((t) => filterCategory === 'all' || (t.categoryId && t.categoryId.toString() === filterCategory))
+                    .map((transaction) => {
+                      const category = categories?.find((c) => c.id === transaction.categoryId);
+                      return (
+                        <div
+                          key={transaction.id}
+                          className="flex items-center justify-between p-3 rounded-md bg-muted/50"
+                          data-testid={`transaction-history-${transaction.id}`}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className={`h-8 w-8 rounded-md flex items-center justify-center ${
+                              transaction.type === 'income' ? 'bg-chart-2/10' : 'bg-chart-3/10'
+                            }`}>
+                              {transaction.type === 'income' ? (
+                                <ArrowUpRight className="h-4 w-4 text-chart-2" />
+                              ) : (
+                                <ArrowDownRight className="h-4 w-4 text-chart-3" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground">
+                                {transaction.description}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                                </p>
+                                {category && (
+                                  <>
+                                    <span className="text-xs text-muted-foreground">•</span>
+                                    <p className="text-xs text-muted-foreground">{category.name}</p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className={`text-base font-mono font-medium ${
+                            transaction.type === 'income' ? 'text-chart-2' : 'text-chart-3'
+                          }`}>
+                            {transaction.type === 'income' ? '+' : '-'}
+                            ${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground">No transactions for this period</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
       {/* Coming Soon Messages */}
-      {reportType !== 'profit-loss' && (
+      {reportType === 'balance-sheet' && (
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
