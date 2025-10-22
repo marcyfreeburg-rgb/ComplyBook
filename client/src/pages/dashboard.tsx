@@ -4,9 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
-import type { Organization, Transaction } from "@shared/schema";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target } from "lucide-react";
+import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { useLocation } from "wouter";
+import type { Organization, Transaction, Budget } from "@shared/schema";
 
 interface DashboardProps {
   currentOrganization: Organization;
@@ -22,10 +25,36 @@ interface DashboardStats {
 
 export default function Dashboard({ currentOrganization }: DashboardProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const { data: stats, isLoading, error } = useQuery<DashboardStats>({
     queryKey: [`/api/dashboard/${currentOrganization.id}`],
     retry: false,
+  });
+
+  const { data: budgets = [] } = useQuery<Budget[]>({
+    queryKey: ["/api/budgets", currentOrganization.id],
+  });
+
+  // Find active budget for current month
+  const now = new Date();
+  const activeBudget = budgets.find(budget => 
+    isWithinInterval(now, {
+      start: new Date(budget.startDate),
+      end: new Date(budget.endDate),
+    })
+  );
+
+  const { data: budgetVsActual = [] } = useQuery<Array<{
+    categoryId: number;
+    categoryName: string;
+    budgeted: string;
+    actual: string;
+    difference: string;
+    percentUsed: number;
+  }>>({
+    queryKey: ["/api/budgets", activeBudget?.id, "vs-actual"],
+    enabled: !!activeBudget,
   });
 
   useEffect(() => {
@@ -215,6 +244,97 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Budget Performance */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+          <div>
+            <CardTitle>Budget Performance</CardTitle>
+            {activeBudget && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {activeBudget.name} • {format(new Date(activeBudget.startDate), 'MMM dd')} - {format(new Date(activeBudget.endDate), 'MMM dd, yyyy')}
+              </p>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setLocation('/budgets')} data-testid="button-view-budgets">
+            <Target className="h-4 w-4 mr-2" />
+            Manage Budgets
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!activeBudget ? (
+            <div className="text-center py-8">
+              <Target className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground mb-1">No active budget for this period</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Create a budget to track your spending goals
+              </p>
+              <Button variant="outline" onClick={() => setLocation('/budgets')} data-testid="button-create-budget">
+                Create Budget
+              </Button>
+            </div>
+          ) : budgetVsActual.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground mb-1">Budget has no categories yet</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Add categories to your budget to start tracking
+              </p>
+              <Button variant="outline" onClick={() => setLocation('/budgets')} data-testid="button-add-categories">
+                Add Categories
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {budgetVsActual.slice(0, 5).map((item) => {
+                const isOverBudget = item.percentUsed > 100;
+                const isNearLimit = item.percentUsed > 80 && item.percentUsed <= 100;
+                return (
+                  <div key={item.categoryId} className="space-y-2" data-testid={`budget-category-${item.categoryId}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{item.categoryName}</span>
+                      <span className="text-sm text-muted-foreground font-mono">
+                        ${parseFloat(item.actual).toFixed(2)} / ${parseFloat(item.budgeted).toFixed(2)}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={Math.min(item.percentUsed, 100)} 
+                      className={isOverBudget ? 'bg-red-200' : isNearLimit ? 'bg-yellow-200' : ''} 
+                    />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={
+                        isOverBudget ? 'text-red-600 font-semibold' : 
+                        isNearLimit ? 'text-yellow-600 font-semibold' : 
+                        'text-muted-foreground'
+                      }>
+                        {item.percentUsed}% used
+                      </span>
+                      {parseFloat(item.difference) < 0 ? (
+                        <span className="text-red-600 font-semibold">
+                          ${Math.abs(parseFloat(item.difference)).toFixed(2)} over
+                        </span>
+                      ) : (
+                        <span className="text-chart-2">
+                          ${parseFloat(item.difference).toFixed(2)} remaining
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {budgetVsActual.length > 5 && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full mt-2" 
+                  onClick={() => setLocation('/budgets')}
+                  data-testid="button-view-all-budgets"
+                >
+                  View all {budgetVsActual.length} categories
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
