@@ -24,9 +24,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import type { Organization, Transaction, Category, InsertTransaction } from "@shared/schema";
+
+interface CategorySuggestion {
+  categoryId: number;
+  categoryName: string;
+  confidence: number;
+  reasoning: string;
+}
 
 interface TransactionsProps {
   currentOrganization: Organization;
@@ -37,6 +45,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
   const [formData, setFormData] = useState<Partial<InsertTransaction>>({
     organizationId: currentOrganization.id,
     type: 'expense',
@@ -83,6 +92,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         description: "Your transaction has been added successfully.",
       });
       setIsDialogOpen(false);
+      setAiSuggestion(null);
       setFormData({
         organizationId: currentOrganization.id,
         type: 'expense',
@@ -109,6 +119,45 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       toast({
         title: "Error",
         description: "Failed to create transaction. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const suggestCategoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!formData.description || !formData.amount || !formData.type) {
+        throw new Error("Please fill in description, amount, and type first");
+      }
+      const response = await apiRequest('POST', `/api/ai/suggest-category/${currentOrganization.id}`, {
+        description: formData.description,
+        amount: formData.amount,
+        type: formData.type,
+      });
+      return response as CategorySuggestion;
+    },
+    onSuccess: (suggestion) => {
+      setAiSuggestion(suggestion);
+      toast({
+        title: "AI Suggestion Ready",
+        description: `Suggested: ${suggestion.categoryName} (${suggestion.confidence}% confidence)`,
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "AI Suggestion Failed",
+        description: error.message || "Could not suggest a category. Please select manually.",
         variant: "destructive",
       });
     },
@@ -217,14 +266,97 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   id="description"
                   placeholder="What is this transaction for?"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, description: e.target.value });
+                    setAiSuggestion(null);
+                  }}
                   data-testid="input-transaction-description"
                   required
                 />
               </div>
 
+              {/* AI Suggest Category Button */}
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => suggestCategoryMutation.mutate()}
+                  disabled={suggestCategoryMutation.isPending || !formData.description || !formData.amount}
+                  className="w-full"
+                  data-testid="button-ai-suggest-category"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {suggestCategoryMutation.isPending ? "Analyzing..." : "AI Suggest Category"}
+                </Button>
+              </div>
+
+              {/* AI Suggestion Display */}
+              {aiSuggestion && (
+                <div className="p-4 bg-muted/50 rounded-md space-y-3" data-testid="ai-suggestion-card">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">AI Suggestion</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {aiSuggestion.confidence}% confidence
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground mb-1">
+                        {aiSuggestion.categoryName}
+                      </p>
+                      <p className="text-xs text-muted-foreground italic">
+                        {aiSuggestion.reasoning}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setAiSuggestion(null)}
+                      className="h-6 w-6 flex-shrink-0"
+                      data-testid="button-dismiss-suggestion"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        setFormData({ ...formData, categoryId: aiSuggestion.categoryId });
+                        setAiSuggestion(null);
+                        toast({
+                          title: "Category Applied",
+                          description: `Set to: ${aiSuggestion.categoryName}`,
+                        });
+                      }}
+                      className="flex-1"
+                      data-testid="button-accept-suggestion"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Apply
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAiSuggestion(null)}
+                      className="flex-1"
+                      data-testid="button-reject-suggestion"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Ignore
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="category">Category (Optional)</Label>
+                <Label htmlFor="category">Category {!aiSuggestion && "(Optional)"}</Label>
                 <Select
                   value={formData.categoryId?.toString() || "none"}
                   onValueChange={(value) => setFormData({ ...formData, categoryId: value === "none" ? undefined : parseInt(value) })}
