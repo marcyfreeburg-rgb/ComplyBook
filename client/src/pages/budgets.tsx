@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, TrendingUp, Trash2 } from "lucide-react";
+import { Plus, TrendingUp, Trash2, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
@@ -160,11 +161,17 @@ export default function Budgets() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Budgets</h1>
           <p className="text-muted-foreground">Plan and track your spending against budgets</p>
         </div>
+        <Link href="/">
+          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
         <Dialog open={isCreateBudgetOpen} onOpenChange={setIsCreateBudgetOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-budget">

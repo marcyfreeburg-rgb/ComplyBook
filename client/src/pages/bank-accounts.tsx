@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -184,6 +185,12 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
             {currentOrganization.name}
           </p>
         </div>
+        <Link href="/">
+          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
         <div className="flex gap-2">
           <Button
             onClick={() => syncTransactions.mutate()}

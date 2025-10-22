@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2 } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction } from "@shared/schema";
 
 interface CategorySuggestion {
@@ -355,6 +356,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             {currentOrganization.name}
           </p>
         </div>
+        <Link href="/">
+          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
         <div className="flex items-center gap-2">
           <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
             <DialogTrigger asChild>

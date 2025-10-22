@@ -26,8 +26,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Gift } from "lucide-react";
+import { Plus, Gift, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "wouter";
 import type { Organization, Grant, InsertGrant } from "@shared/schema";
 
 interface GrantsProps {
@@ -162,6 +163,12 @@ export default function Grants({ currentOrganization }: GrantsProps) {
             {currentOrganization.name}
           </p>
         </div>
+        <Link href="/">
+          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-grant">
