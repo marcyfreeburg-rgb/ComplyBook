@@ -47,6 +47,43 @@ function checkAiRateLimit(userId: string, organizationId: number): boolean {
   return true;
 }
 
+// Permission checking helper
+function hasPermission(
+  role: string,
+  permissions: string | null,
+  requiredAction: 'view' | 'edit_transactions' | 'make_reports'
+): boolean {
+  // Owners and admins have all permissions
+  if (role === 'owner' || role === 'admin') {
+    return true;
+  }
+
+  // If no specific permissions set, deny by default
+  if (!permissions) {
+    return requiredAction === 'view';
+  }
+
+  // Check permission level against required action
+  switch (requiredAction) {
+    case 'view':
+      // All permission levels can view
+      return true;
+    
+    case 'edit_transactions':
+      // Only edit_transactions or full_access can edit transactions
+      return permissions === 'edit_transactions' || permissions === 'full_access';
+    
+    case 'make_reports':
+      // Can make reports with make_reports, view_make_reports, or full_access
+      return permissions === 'make_reports' || 
+             permissions === 'view_make_reports' || 
+             permissions === 'full_access';
+    
+    default:
+      return false;
+  }
+}
+
 // Cached Balance Sheet query (5 minute TTL)
 const getBalanceSheetCached = memoize(
   async (organizationId: number, asOfDate: Date) => {
@@ -400,10 +437,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const data = insertTransactionSchema.parse(req.body);
       
-      // Check user has access to this organization
+      // Check user has access and permission to edit transactions
       const userRole = await storage.getUserRole(userId, data.organizationId);
-      if (!userRole || userRole.role === 'viewer') {
-        return res.status(403).json({ message: "Access denied" });
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit transactions" });
       }
 
       const transaction = await storage.createTransaction(data);
@@ -427,10 +468,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transaction not found" });
       }
 
-      // Check user has access to this organization
+      // Check user has access and permission to edit transactions
       const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
-      if (!userRole || userRole.role === 'viewer') {
-        return res.status(403).json({ message: "Access denied" });
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit transactions" });
       }
 
       const updatedTransaction = await storage.updateTransaction(transactionId, updates);
@@ -453,10 +498,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transaction not found" });
       }
 
-      // Check user has access to this organization
+      // Check user has access and permission to edit transactions
       const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
-      if (!userRole || userRole.role === 'viewer') {
-        return res.status(403).json({ message: "Access denied" });
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit transactions" });
       }
 
       await storage.deleteTransaction(transactionId);
@@ -904,10 +953,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = new Date(req.query.startDate as string);
       const endDate = new Date(req.query.endDate as string);
       
-      // Check user has access to this organization
+      // Check user has access and permission to make reports
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to generate reports" });
       }
 
       const report = await storage.getProfitLossReport(organizationId, startDate, endDate);
@@ -924,10 +977,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organizationId = parseInt(req.params.organizationId);
       const asOfDate = new Date(req.query.asOfDate as string);
       
-      // Check user has access to this organization
+      // Check user has access and permission to make reports
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to generate reports" });
       }
 
       // Use cached version for better performance
@@ -946,10 +1003,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = new Date(req.query.startDate as string);
       const endDate = new Date(req.query.endDate as string);
       
-      // Check user has access to this organization
+      // Check user has access and permission to make reports
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to generate reports" });
       }
 
       const transactions = await storage.getTransactionsByDateRange(organizationId, startDate, endDate);
