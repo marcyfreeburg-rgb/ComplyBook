@@ -20,12 +20,22 @@ import Budgets from "@/pages/budgets";
 import BankAccounts from "@/pages/bank-accounts";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
+import AcceptInvitation from "@/pages/accept-invitation";
 import type { Organization } from "@shared/schema";
 
 function AuthenticatedApp() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
   const [currentOrgId, setCurrentOrgId] = useState<number | null>(null);
+
+  // Check for pending invitation after authentication
+  useEffect(() => {
+    const pendingToken = localStorage.getItem('pendingInvitationToken');
+    if (pendingToken && !location.startsWith('/invite/')) {
+      localStorage.removeItem('pendingInvitationToken');
+      setLocation(`/invite/${pendingToken}`);
+    }
+  }, [location, setLocation]);
 
   // Fetch user's organizations
   const { data: organizations } = useQuery<Organization[]>({
@@ -160,9 +170,15 @@ function AuthenticatedApp() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return <Landing />;
+  }
+
+  // Allow invitation page for both authenticated and non-authenticated users
+  if (location.startsWith('/invite/')) {
+    return <AcceptInvitation />;
   }
 
   if (!isAuthenticated) {

@@ -1,6 +1,7 @@
 // Referenced from javascript_log_in_with_replit blueprint
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { plaidClient } from "./plaid";
@@ -111,8 +112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only owners and admins can invite users" });
       }
 
-      // Generate unique invitation token
-      const token = `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate secure unique invitation token
+      const token = crypto.randomUUID();
       
       // Set expiration to 7 days from now
       const expiresAt = new Date();
