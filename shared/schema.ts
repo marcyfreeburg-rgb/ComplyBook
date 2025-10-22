@@ -20,6 +20,14 @@ import { z } from "zod";
 
 export const organizationTypeEnum = pgEnum('organization_type', ['nonprofit', 'forprofit']);
 export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant', 'viewer']);
+export const permissionLevelEnum = pgEnum('permission_level', [
+  'view_only',           // Can only view data
+  'make_reports',        // Can view and generate reports
+  'edit_transactions',   // Can view and edit transactions only
+  'view_make_reports',   // Can view and make reports only
+  'full_access'          // Can view, edit transactions, and make reports
+]);
+export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'expired', 'cancelled']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expense']);
 export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'asset', 'liability', 'equity']);
 export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
@@ -86,6 +94,7 @@ export const userOrganizationRoles = pgTable("user_organization_roles", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   role: userRoleEnum("role").notNull(),
+  permissions: permissionLevelEnum("permissions"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -96,6 +105,35 @@ export const insertUserOrganizationRoleSchema = createInsertSchema(userOrganizat
 
 export type InsertUserOrganizationRole = z.infer<typeof insertUserOrganizationRoleSchema>;
 export type UserOrganizationRole = typeof userOrganizationRoles.$inferSelect;
+
+// ============================================
+// INVITATIONS
+// ============================================
+
+export const invitations = pgTable("invitations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  email: varchar("email", { length: 255 }).notNull(),
+  invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  role: userRoleEnum("role").notNull(),
+  permissions: permissionLevelEnum("permissions").notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  status: invitationStatusEnum("status").notNull().default('pending'),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  acceptedAt: timestamp("accepted_at"),
+});
+
+export const insertInvitationSchema = createInsertSchema(invitations).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+}).extend({
+  expiresAt: z.coerce.date(),
+});
+
+export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
+export type Invitation = typeof invitations.$inferSelect;
 
 // ============================================
 // CHART OF ACCOUNTS / CATEGORIES

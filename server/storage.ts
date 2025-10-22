@@ -11,6 +11,7 @@ import {
   plaidItems,
   plaidAccounts,
   categorizationHistory,
+  invitations,
   type User,
   type UpsertUser,
   type Organization,
@@ -33,6 +34,8 @@ import {
   type InsertPlaidAccount,
   type CategorizationHistory,
   type InsertCategorizationHistory,
+  type Invitation,
+  type InsertInvitation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -131,6 +134,26 @@ export interface IStorage {
   recordCategorizationSuggestion(history: InsertCategorizationHistory): Promise<CategorizationHistory>;
   updateCategorizationDecision(id: number, userDecision: 'accepted' | 'rejected' | 'modified', finalCategoryId?: number): Promise<void>;
   getCategorizationHistory(organizationId: number, limit?: number): Promise<CategorizationHistory[]>;
+
+  // Invitation operations
+  createInvitation(invitation: InsertInvitation): Promise<Invitation>;
+  getInvitationByToken(token: string): Promise<Invitation | undefined>;
+  getInvitations(organizationId: number): Promise<Array<Invitation & { inviterName: string }>>;
+  updateInvitationStatus(id: number, status: 'accepted' | 'expired' | 'cancelled'): Promise<void>;
+  deleteInvitation(id: number): Promise<void>;
+  
+  // Team member operations
+  getTeamMembers(organizationId: number): Promise<Array<{
+    userId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+    permissions: string | null;
+    createdAt: Date;
+  }>>;
+  updateUserPermissions(userId: string, organizationId: number, permissions: string): Promise<void>;
+  removeTeamMember(userId: string, organizationId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -890,6 +913,106 @@ export class DatabaseStorage implements IStorage {
       .where(eq(categorizationHistory.organizationId, organizationId))
       .orderBy(desc(categorizationHistory.createdAt))
       .limit(limit);
+  }
+
+  // Invitation operations
+  async createInvitation(invitationData: InsertInvitation): Promise<Invitation> {
+    const [invitation] = await db
+      .insert(invitations)
+      .values(invitationData)
+      .returning();
+    return invitation;
+  }
+
+  async getInvitationByToken(token: string): Promise<Invitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.token, token));
+    return invitation;
+  }
+
+  async getInvitations(organizationId: number): Promise<Array<Invitation & { inviterName: string }>> {
+    const results = await db
+      .select({
+        invitation: invitations,
+        inviterFirstName: users.firstName,
+        inviterLastName: users.lastName,
+      })
+      .from(invitations)
+      .innerJoin(users, eq(invitations.invitedBy, users.id))
+      .where(eq(invitations.organizationId, organizationId))
+      .orderBy(desc(invitations.createdAt));
+
+    return results.map(r => ({
+      ...r.invitation,
+      inviterName: `${r.inviterFirstName || ''} ${r.inviterLastName || ''}`.trim() || 'Unknown',
+    }));
+  }
+
+  async updateInvitationStatus(id: number, status: 'accepted' | 'expired' | 'cancelled'): Promise<void> {
+    await db
+      .update(invitations)
+      .set({
+        status,
+        acceptedAt: status === 'accepted' ? new Date() : null,
+      })
+      .where(eq(invitations.id, id));
+  }
+
+  async deleteInvitation(id: number): Promise<void> {
+    await db.delete(invitations).where(eq(invitations.id, id));
+  }
+
+  // Team member operations
+  async getTeamMembers(organizationId: number): Promise<Array<{
+    userId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+    permissions: string | null;
+    createdAt: Date;
+  }>> {
+    const results = await db
+      .select({
+        userId: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: userOrganizationRoles.role,
+        permissions: userOrganizationRoles.permissions,
+        createdAt: userOrganizationRoles.createdAt,
+      })
+      .from(userOrganizationRoles)
+      .innerJoin(users, eq(userOrganizationRoles.userId, users.id))
+      .where(eq(userOrganizationRoles.organizationId, organizationId))
+      .orderBy(desc(userOrganizationRoles.createdAt));
+
+    return results;
+  }
+
+  async updateUserPermissions(userId: string, organizationId: number, permissions: string): Promise<void> {
+    await db
+      .update(userOrganizationRoles)
+      .set({ permissions: permissions as any })
+      .where(
+        and(
+          eq(userOrganizationRoles.userId, userId),
+          eq(userOrganizationRoles.organizationId, organizationId)
+        )
+      );
+  }
+
+  async removeTeamMember(userId: string, organizationId: number): Promise<void> {
+    await db
+      .delete(userOrganizationRoles)
+      .where(
+        and(
+          eq(userOrganizationRoles.userId, userId),
+          eq(userOrganizationRoles.organizationId, organizationId)
+        )
+      );
   }
 }
 
