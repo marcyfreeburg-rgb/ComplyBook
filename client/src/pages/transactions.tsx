@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import type { Organization, Transaction, Category, InsertTransaction } from "@shared/schema";
 
@@ -45,6 +45,8 @@ interface TransactionsProps {
 export default function Transactions({ currentOrganization, userId }: TransactionsProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
@@ -215,6 +217,48 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       console.error("Failed to send categorization feedback:", error);
     }
   };
+
+  const editTransactionMutation = useMutation({
+    mutationFn: async (data: { id: number; updates: Partial<InsertTransaction> }) => {
+      return await apiRequest('PATCH', `/api/transactions/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      toast({
+        title: "Transaction updated",
+        description: "The transaction has been updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+      setEditingTransaction(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update transaction.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (transactionId: number) => {
+      return await apiRequest('DELETE', `/api/transactions/${transactionId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      toast({
+        title: "Transaction deleted",
+        description: "The transaction has been removed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete transaction.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const bulkCategorizeMutation = useMutation({
     mutationFn: async (transactionsToProcess: Transaction[]) => {
@@ -722,10 +766,10 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         </Card>
       )}
 
-      {/* Transactions List */}
+      {/* Check Register */}
       <Card>
         <CardHeader>
-          <CardTitle>All Transactions</CardTitle>
+          <CardTitle>Transaction Register</CardTitle>
           <CardDescription>
             {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''} found
           </CardDescription>
@@ -744,44 +788,214 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-4 rounded-md bg-muted/30 hover-elevate"
-                  data-testid={`transaction-item-${transaction.id}`}
-                >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className={`h-10 w-10 rounded-md flex items-center justify-center flex-shrink-0 ${
-                      transaction.type === 'income' ? 'bg-chart-2/10' : 'bg-chart-3/10'
-                    }`}>
-                      {transaction.type === 'income' ? (
-                        <ArrowUpRight className="h-5 w-5 text-chart-2" />
-                      ) : (
-                        <ArrowDownRight className="h-5 w-5 text-chart-3" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {transaction.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(transaction.date), 'MMM dd, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`text-lg font-mono font-medium flex-shrink-0 ${
-                    transaction.type === 'income' ? 'text-chart-2' : 'text-chart-3'
-                  }`}>
-                    {transaction.type === 'income' ? '+' : '-'}
-                    ${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((transaction) => {
+                    const category = categories.find(c => c.id === transaction.categoryId);
+                    return (
+                      <tr 
+                        key={transaction.id} 
+                        className="border-b hover-elevate"
+                        data-testid={`transaction-row-${transaction.id}`}
+                      >
+                        <td className="py-3 px-4 text-sm">
+                          {format(new Date(transaction.date), 'MM/dd/yyyy')}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium">
+                          {transaction.description}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {category ? (
+                            <Badge variant="outline" className="text-xs">
+                              {category.name}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Uncategorized</span>
+                          )}
+                        </td>
+                        <td className={`py-3 px-4 text-sm font-mono text-right ${
+                          transaction.type === 'income' ? 'text-chart-2' : 'text-chart-3'
+                        }`}>
+                          {transaction.type === 'income' ? '+' : '-'}
+                          ${parseFloat(transaction.amount).toLocaleString('en-US', { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                          })}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingTransaction(transaction);
+                                setIsEditDialogOpen(true);
+                              }}
+                              data-testid={`button-edit-transaction-${transaction.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this transaction?')) {
+                                  deleteTransactionMutation.mutate(transaction.id);
+                                }
+                              }}
+                              data-testid={`button-delete-transaction-${transaction.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Transaction Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Transaction</DialogTitle>
+            <DialogDescription>
+              Update the details of this transaction
+            </DialogDescription>
+          </DialogHeader>
+          {editingTransaction && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+                editTransactionMutation.mutate({
+                  id: editingTransaction.id,
+                  updates: {
+                    date: formData.get('date') as string,
+                    description: formData.get('description') as string,
+                    amount: formData.get('amount') as string,
+                    type: formData.get('type') as 'income' | 'expense',
+                    categoryId: formData.get('categoryId') ? parseInt(formData.get('categoryId') as string) : undefined,
+                  },
+                });
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <label htmlFor="edit-date" className="text-sm font-medium">
+                  Date
+                </label>
+                <Input
+                  id="edit-date"
+                  name="date"
+                  type="date"
+                  defaultValue={editingTransaction.date}
+                  required
+                  data-testid="input-edit-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-description" className="text-sm font-medium">
+                  Description
+                </label>
+                <Input
+                  id="edit-description"
+                  name="description"
+                  defaultValue={editingTransaction.description}
+                  required
+                  data-testid="input-edit-description"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-type" className="text-sm font-medium">
+                  Type
+                </label>
+                <select
+                  id="edit-type"
+                  name="type"
+                  defaultValue={editingTransaction.type}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-edit-type"
+                >
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-amount" className="text-sm font-medium">
+                  Amount
+                </label>
+                <Input
+                  id="edit-amount"
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  defaultValue={editingTransaction.amount}
+                  required
+                  data-testid="input-edit-amount"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="edit-category" className="text-sm font-medium">
+                  Category
+                </label>
+                <select
+                  id="edit-category"
+                  name="categoryId"
+                  defaultValue={editingTransaction.categoryId?.toString() || ''}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="select-edit-category"
+                >
+                  <option value="">No category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name} ({category.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingTransaction(null);
+                  }}
+                  className="flex-1"
+                  data-testid="button-cancel-edit"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={editTransactionMutation.isPending}
+                  data-testid="button-save-edit"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
