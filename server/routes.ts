@@ -17,6 +17,29 @@ import {
   type InsertGrant,
 } from "@shared/schema";
 
+// Simple in-memory rate limiter for AI endpoints
+const aiRequestLimiter = new Map<string, { count: number; resetAt: number }>();
+const AI_RATE_LIMIT = 10; // requests per minute
+const AI_RATE_WINDOW = 60 * 1000; // 1 minute in milliseconds
+
+function checkAiRateLimit(userId: string, organizationId: number): boolean {
+  const key = `${userId}:${organizationId}`;
+  const now = Date.now();
+  const userLimit = aiRequestLimiter.get(key);
+
+  if (!userLimit || now > userLimit.resetAt) {
+    aiRequestLimiter.set(key, { count: 1, resetAt: now + AI_RATE_WINDOW });
+    return true;
+  }
+
+  if (userLimit.count >= AI_RATE_LIMIT) {
+    return false;
+  }
+
+  userLimit.count++;
+  return true;
+}
+
 // Cached Balance Sheet query (5 minute TTL)
 const getBalanceSheetCached = memoize(
   async (organizationId: number, asOfDate: Date) => {
@@ -212,6 +235,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
+      // Check rate limit
+      if (!checkAiRateLimit(userId, organizationId)) {
+        return res.status(429).json({ message: "Too many AI requests. Please try again in a minute." });
+      }
+
       // Validate inputs
       if (!description || !amount || !type) {
         return res.status(400).json({ message: "Missing required fields: description, amount, type" });
@@ -221,10 +249,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Type must be 'income' or 'expense'" });
       }
 
+      // Validate amount is a valid number
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount < 0) {
+        return res.status(400).json({ message: "Amount must be a valid positive number" });
+      }
+
       const suggestion = await suggestCategory(
         organizationId,
         description,
-        parseFloat(amount),
+        parsedAmount,
         type
       );
 
@@ -251,13 +285,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
+      // Check rate limit (bulk counts as 1 request regardless of batch size)
+      if (!checkAiRateLimit(userId, organizationId)) {
+        return res.status(429).json({ message: "Too many AI requests. Please try again in a minute." });
+      }
+
       if (!Array.isArray(transactions) || transactions.length === 0) {
         return res.status(400).json({ message: "Transactions array is required" });
       }
 
-      // Limit bulk requests to avoid long processing times
+      // Limit bulk requests to avoid long processing times and abuse
       if (transactions.length > 50) {
         return res.status(400).json({ message: "Maximum 50 transactions allowed per bulk request" });
+      }
+
+      // Validate each transaction has required fields and valid amounts
+      for (const tx of transactions) {
+        if (!tx.description || !tx.amount || !tx.type) {
+          return res.status(400).json({ message: "Each transaction must have description, amount, and type" });
+        }
+        const parsedAmount = parseFloat(tx.amount);
+        if (isNaN(parsedAmount) || parsedAmount < 0) {
+          return res.status(400).json({ message: "All amounts must be valid positive numbers" });
+        }
       }
 
       const suggestions = await suggestCategoryBulk(organizationId, transactions);

@@ -134,7 +134,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         amount: formData.amount,
         type: formData.type,
       });
-      return response as CategorySuggestion;
+      return await response.json() as CategorySuggestion;
     },
     onSuccess: (suggestion) => {
       setAiSuggestion(suggestion);
@@ -327,11 +327,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                       variant="default"
                       size="sm"
                       onClick={() => {
-                        setFormData({ ...formData, categoryId: aiSuggestion.categoryId });
+                        const categoryId = aiSuggestion.categoryId;
+                        const categoryName = aiSuggestion.categoryName;
+                        setFormData({ ...formData, categoryId });
                         setAiSuggestion(null);
                         toast({
                           title: "Category Applied",
-                          description: `Set to: ${aiSuggestion.categoryName}`,
+                          description: `Set to: ${categoryName}`,
                         });
                       }}
                       className="flex-1"
