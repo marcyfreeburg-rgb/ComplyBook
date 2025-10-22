@@ -6,6 +6,8 @@ import {
   categories,
   transactions,
   grants,
+  budgets,
+  budgetItems,
   plaidItems,
   plaidAccounts,
   categorizationHistory,
@@ -21,6 +23,10 @@ import {
   type InsertTransaction,
   type Grant,
   type InsertGrant,
+  type Budget,
+  type InsertBudget,
+  type BudgetItem,
+  type InsertBudgetItem,
   type PlaidItem,
   type InsertPlaidItem,
   type PlaidAccount,
@@ -65,6 +71,25 @@ export interface IStorage {
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
   createGrant(grant: InsertGrant): Promise<Grant>;
+
+  // Budget operations
+  getBudgets(organizationId: number): Promise<Budget[]>;
+  getBudget(id: number): Promise<Budget | undefined>;
+  createBudget(budget: InsertBudget): Promise<Budget>;
+  updateBudget(id: number, updates: Partial<InsertBudget>): Promise<Budget>;
+  deleteBudget(id: number): Promise<void>;
+  getBudgetItems(budgetId: number): Promise<Array<BudgetItem & { categoryName: string }>>;
+  createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem>;
+  updateBudgetItem(id: number, updates: Partial<InsertBudgetItem>): Promise<BudgetItem>;
+  deleteBudgetItem(id: number): Promise<void>;
+  getBudgetVsActual(budgetId: number): Promise<Array<{
+    categoryId: number;
+    categoryName: string;
+    budgeted: string;
+    actual: string;
+    difference: string;
+    percentUsed: number;
+  }>>;
 
   // Dashboard/Report operations
   getDashboardStats(organizationId: number): Promise<{
@@ -333,6 +358,133 @@ export class DatabaseStorage implements IStorage {
       .values(grantData)
       .returning();
     return grant;
+  }
+
+  // Budget operations
+  async getBudgets(organizationId: number): Promise<Budget[]> {
+    return await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.organizationId, organizationId))
+      .orderBy(desc(budgets.createdAt));
+  }
+
+  async getBudget(id: number): Promise<Budget | undefined> {
+    const [budget] = await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.id, id));
+    return budget;
+  }
+
+  async createBudget(budgetData: InsertBudget): Promise<Budget> {
+    const [budget] = await db
+      .insert(budgets)
+      .values(budgetData)
+      .returning();
+    return budget;
+  }
+
+  async updateBudget(id: number, updates: Partial<InsertBudget>): Promise<Budget> {
+    const [budget] = await db
+      .update(budgets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(budgets.id, id))
+      .returning();
+    return budget;
+  }
+
+  async deleteBudget(id: number): Promise<void> {
+    await db.delete(budgets).where(eq(budgets.id, id));
+  }
+
+  async getBudgetItems(budgetId: number): Promise<Array<BudgetItem & { categoryName: string }>> {
+    const results = await db
+      .select({
+        item: budgetItems,
+        categoryName: categories.name,
+      })
+      .from(budgetItems)
+      .innerJoin(categories, eq(budgetItems.categoryId, categories.id))
+      .where(eq(budgetItems.budgetId, budgetId));
+
+    return results.map(r => ({
+      ...r.item,
+      categoryName: r.categoryName,
+    }));
+  }
+
+  async createBudgetItem(itemData: InsertBudgetItem): Promise<BudgetItem> {
+    const [item] = await db
+      .insert(budgetItems)
+      .values(itemData)
+      .returning();
+    return item;
+  }
+
+  async updateBudgetItem(id: number, updates: Partial<InsertBudgetItem>): Promise<BudgetItem> {
+    const [item] = await db
+      .update(budgetItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(budgetItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deleteBudgetItem(id: number): Promise<void> {
+    await db.delete(budgetItems).where(eq(budgetItems.id, id));
+  }
+
+  async getBudgetVsActual(budgetId: number): Promise<Array<{
+    categoryId: number;
+    categoryName: string;
+    budgeted: string;
+    actual: string;
+    difference: string;
+    percentUsed: number;
+  }>> {
+    // Get the budget with its period
+    const budget = await this.getBudget(budgetId);
+    if (!budget) {
+      return [];
+    }
+
+    // Get budget items
+    const items = await this.getBudgetItems(budgetId);
+
+    // Get actual spending for each category during the budget period
+    const results = [];
+    for (const item of items) {
+      const [actualResult] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.categoryId, item.categoryId),
+            eq(transactions.type, 'expense'),
+            gte(transactions.date, budget.startDate),
+            lte(transactions.date, budget.endDate)
+          )
+        );
+
+      const budgeted = parseFloat(item.amount);
+      const actual = parseFloat(actualResult?.total || '0');
+      const difference = budgeted - actual;
+      const percentUsed = budgeted > 0 ? (actual / budgeted) * 100 : 0;
+
+      results.push({
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+        budgeted: item.amount,
+        actual: actualResult?.total || '0',
+        difference: difference.toFixed(2),
+        percentUsed: Math.round(percentUsed),
+      });
+    }
+
+    return results;
   }
 
   // Dashboard/Report operations
