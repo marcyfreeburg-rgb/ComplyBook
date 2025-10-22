@@ -11,10 +11,14 @@ import {
   insertCategorySchema,
   insertTransactionSchema,
   insertGrantSchema,
+  insertBudgetSchema,
+  insertBudgetItemSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertTransaction,
   type InsertGrant,
+  type InsertBudget,
+  type InsertBudgetItem,
 } from "@shared/schema";
 
 // Simple in-memory rate limiter for AI endpoints
@@ -461,6 +465,200 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating grant:", error);
       res.status(400).json({ message: "Failed to create grant" });
+    }
+  });
+
+  // Budget routes
+  app.get('/api/budgets/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const budgets = await storage.getBudgets(organizationId);
+      res.json(budgets);
+    } catch (error) {
+      console.error("Error fetching budgets:", error);
+      res.status(500).json({ message: "Failed to fetch budgets" });
+    }
+  });
+
+  app.get('/api/budgets/:budgetId/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const items = await storage.getBudgetItems(budgetId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching budget items:", error);
+      res.status(500).json({ message: "Failed to fetch budget items" });
+    }
+  });
+
+  app.get('/api/budgets/:budgetId/vs-actual', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const comparison = await storage.getBudgetVsActual(budgetId);
+      res.json(comparison);
+    } catch (error) {
+      console.error("Error fetching budget vs actual:", error);
+      res.status(500).json({ message: "Failed to fetch budget vs actual" });
+    }
+  });
+
+  app.post('/api/budgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertBudgetSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
+        return res.status(403).json({ message: "Access denied - only owners, admins, and accountants can manage budgets" });
+      }
+
+      const budget = await storage.createBudget(data);
+      res.status(201).json(budget);
+    } catch (error) {
+      console.error("Error creating budget:", error);
+      res.status(400).json({ message: "Failed to create budget" });
+    }
+  });
+
+  app.patch('/api/budgets/:budgetId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
+        return res.status(403).json({ message: "Access denied - only owners, admins, and accountants can manage budgets" });
+      }
+
+      const updated = await storage.updateBudget(budgetId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating budget:", error);
+      res.status(400).json({ message: "Failed to update budget" });
+    }
+  });
+
+  app.delete('/api/budgets/:budgetId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - only owners and admins can delete budgets" });
+      }
+
+      await storage.deleteBudget(budgetId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting budget:", error);
+      res.status(500).json({ message: "Failed to delete budget" });
+    }
+  });
+
+  app.post('/api/budgets/:budgetId/items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      const data = insertBudgetItemSchema.parse({ ...req.body, budgetId });
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
+        return res.status(403).json({ message: "Access denied - only owners, admins, and accountants can manage budget items" });
+      }
+
+      const item = await storage.createBudgetItem(data);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating budget item:", error);
+      res.status(400).json({ message: "Failed to create budget item" });
+    }
+  });
+
+  app.patch('/api/budget-items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.itemId);
+      
+      const [item] = await storage.getBudgetItems(req.body.budgetId);
+      if (!item) {
+        return res.status(404).json({ message: "Budget item not found" });
+      }
+
+      const budget = await storage.getBudget(item.budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
+        return res.status(403).json({ message: "Access denied - only owners, admins, and accountants can manage budget items" });
+      }
+
+      const updated = await storage.updateBudgetItem(itemId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating budget item:", error);
+      res.status(400).json({ message: "Failed to update budget item" });
+    }
+  });
+
+  app.delete('/api/budget-items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.itemId);
+      
+      await storage.deleteBudgetItem(itemId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting budget item:", error);
+      res.status(500).json({ message: "Failed to delete budget item" });
     }
   });
 
