@@ -801,7 +801,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </thead>
                 <tbody>
                   {filteredTransactions.map((transaction) => {
-                    const category = categories.find(c => c.id === transaction.categoryId);
+                    const category = categories?.find(c => c.id === transaction.categoryId);
                     return (
                       <tr 
                         key={transaction.id} 
@@ -963,7 +963,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   data-testid="select-edit-category"
                 >
                   <option value="">No category</option>
-                  {categories.map((category) => (
+                  {categories?.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name} ({category.type})
                     </option>
