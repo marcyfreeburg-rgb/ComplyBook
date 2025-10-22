@@ -139,7 +139,7 @@ export interface IStorage {
   createInvitation(invitation: InsertInvitation): Promise<Invitation>;
   getInvitationByToken(token: string): Promise<Invitation | undefined>;
   getInvitations(organizationId: number): Promise<Array<Invitation & { inviterName: string }>>;
-  updateInvitationStatus(id: number, status: 'accepted' | 'expired' | 'cancelled'): Promise<void>;
+  updateInvitationStatus(id: number, status: 'accepted' | 'expired' | 'cancelled' | 'declined'): Promise<void>;
   deleteInvitation(id: number): Promise<void>;
   
   // Team member operations
@@ -950,7 +950,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async updateInvitationStatus(id: number, status: 'accepted' | 'expired' | 'cancelled'): Promise<void> {
+  async updateInvitationStatus(id: number, status: 'accepted' | 'expired' | 'cancelled' | 'declined'): Promise<void> {
     await db
       .update(invitations)
       .set({

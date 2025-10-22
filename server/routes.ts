@@ -195,7 +195,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/invitations/:token/accept', isAuthenticated, async (req: any, res) => {
+  app.get('/api/invitations/accept/:token', async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      const invitation = await storage.getInvitationByToken(token);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+
+      if (invitation.status !== 'pending') {
+        return res.status(400).json({ message: "Invitation is no longer valid" });
+      }
+
+      if (new Date() > new Date(invitation.expiresAt)) {
+        return res.status(400).json({ message: "Invitation has expired" });
+      }
+
+      // Get organization details
+      const organization = await storage.getOrganization(invitation.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Get inviter details
+      const inviter = await storage.getUser(invitation.invitedBy);
+      
+      res.json({
+        id: invitation.id,
+        email: invitation.email,
+        organizationId: invitation.organizationId,
+        organizationName: organization.name,
+        role: invitation.role,
+        permissions: invitation.permissions,
+        inviterName: inviter ? `${inviter.firstName || ''} ${inviter.lastName || ''}`.trim() || inviter.email : 'Unknown',
+        status: invitation.status,
+        expiresAt: invitation.expiresAt,
+      });
+    } catch (error) {
+      console.error("Error fetching invitation details:", error);
+      res.status(500).json({ message: "Failed to fetch invitation details" });
+    }
+  });
+
+  app.post('/api/invitations/accept/:token', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const token = req.params.token;
@@ -236,6 +279,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error accepting invitation:", error);
       res.status(500).json({ message: "Failed to accept invitation" });
+    }
+  });
+
+  app.post('/api/invitations/decline/:token', isAuthenticated, async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      const invitation = await storage.getInvitationByToken(token);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+
+      if (invitation.status !== 'pending') {
+        return res.status(400).json({ message: "Invitation is no longer valid" });
+      }
+
+      // Mark invitation as declined
+      await storage.updateInvitationStatus(invitation.id, 'declined');
+
+      res.json({ message: "Invitation declined successfully" });
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      res.status(500).json({ message: "Failed to decline invitation" });
     }
   });
 

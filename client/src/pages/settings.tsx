@@ -46,6 +46,7 @@ interface Invitation {
   permissions: string;
   status: string;
   inviterName: string;
+  token: string;
   createdAt: Date;
   expiresAt: Date;
 }
@@ -593,39 +594,72 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              {invitations.map((invitation) => (
-                <div
-                  key={invitation.id}
-                  className="flex items-center justify-between p-4 rounded-md bg-muted/50"
-                  data-testid={`invitation-${invitation.id}`}
-                >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{invitation.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs text-muted-foreground">
-                        Invited by {invitation.inviterName}
-                      </p>
-                      <span className="text-muted-foreground">•</span>
-                      <Badge variant="outline" className="text-xs">
-                        {invitation.permissions.replace(/_/g, ' ')}
-                      </Badge>
-                      <span className="text-muted-foreground">•</span>
-                      <Badge variant={invitation.status === 'pending' ? 'default' : 'secondary'} className="text-xs">
-                        {invitation.status}
-                      </Badge>
+              {invitations.map((invitation) => {
+                const inviteLink = `${window.location.origin}/invite/${invitation.token}`;
+                const isLinkCopied = copiedLink === invitation.token;
+                
+                return (
+                  <div
+                    key={invitation.id}
+                    className="flex items-center justify-between p-4 rounded-md bg-muted/50"
+                    data-testid={`invitation-${invitation.id}`}
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{invitation.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          Invited by {invitation.inviterName}
+                        </p>
+                        <span className="text-muted-foreground">•</span>
+                        <Badge variant="outline" className="text-xs">
+                          {invitation.permissions.replace(/_/g, ' ')}
+                        </Badge>
+                        <span className="text-muted-foreground">•</span>
+                        <Badge variant={invitation.status === 'pending' ? 'default' : 'secondary'} className="text-xs">
+                          {invitation.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(inviteLink);
+                          setCopiedLink(invitation.token);
+                          toast({
+                            title: "Link copied",
+                            description: "Invitation link copied to clipboard",
+                          });
+                          setTimeout(() => setCopiedLink(null), 2000);
+                        }}
+                        data-testid={`button-copy-invitation-link-${invitation.id}`}
+                      >
+                        {isLinkCopied ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy Link
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteInvitationMutation.mutate(invitation.id)}
+                        disabled={deleteInvitationMutation.isPending}
+                        data-testid={`button-cancel-invitation-${invitation.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteInvitationMutation.mutate(invitation.id)}
-                    disabled={deleteInvitationMutation.isPending}
-                    data-testid={`button-cancel-invitation-${invitation.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

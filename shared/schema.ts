@@ -27,7 +27,7 @@ export const permissionLevelEnum = pgEnum('permission_level', [
   'view_make_reports',   // Can view and make reports only
   'full_access'          // Can view, edit transactions, and make reports
 ]);
-export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'expired', 'cancelled']);
+export const invitationStatusEnum = pgEnum('invitation_status', ['pending', 'accepted', 'expired', 'cancelled', 'declined']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expense']);
 export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'asset', 'liability', 'equity']);
 export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
