@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Download, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { FileText, Download, ArrowUpRight, ArrowDownRight, FileSpreadsheet } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import type { Organization, Transaction, Category } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
 
 interface ReportsProps {
   currentOrganization: Organization;
@@ -47,6 +48,377 @@ export default function Reports({ currentOrganization }: ReportsProps) {
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+
+  // CSV Export Functions
+  const exportProfitLossCSV = () => {
+    if (!profitLoss) return;
+    
+    const rows = [
+      ['Profit & Loss Statement'],
+      [`${currentOrganization.name}`],
+      [`Period: ${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}`],
+      [''],
+      ['Income'],
+      ['Category', 'Amount'],
+      ...profitLoss.incomeByCategory.map(item => [item.categoryName || 'Uncategorized', item.amount]),
+      ['Total Income', profitLoss.totalIncome],
+      [''],
+      ['Expenses'],
+      ['Category', 'Amount'],
+      ...profitLoss.expensesByCategory.map(item => [item.categoryName || 'Uncategorized', item.amount]),
+      ['Total Expenses', profitLoss.totalExpenses],
+      [''],
+      ['Net Income', profitLoss.netIncome]
+    ];
+    
+    const csv = rows.map(row => row.join(',')).join('\n');
+    downloadCSV(csv, `profit-loss-${startDate}-to-${endDate}.csv`);
+  };
+
+  const exportBalanceSheetCSV = () => {
+    if (!balanceSheet) return;
+    
+    const rows = [
+      ['Balance Sheet'],
+      [`${currentOrganization.name}`],
+      [`As of ${format(new Date(endDate), 'MMM dd, yyyy')}`],
+      [''],
+      ['Assets'],
+      ['Category', 'Amount'],
+      ...balanceSheet.assetsByCategory.map(item => [item.categoryName, item.amount]),
+      ['Total Assets', balanceSheet.totalAssets],
+      [''],
+      ['Liabilities'],
+      ['Category', 'Amount'],
+      ...balanceSheet.liabilitiesByCategory.map(item => [item.categoryName, item.amount]),
+      ['Total Liabilities', balanceSheet.totalLiabilities],
+      [''],
+      ['Equity'],
+      ['Category', 'Amount'],
+      ...balanceSheet.equityByCategory.map(item => [item.categoryName, item.amount]),
+      ['Total Equity', balanceSheet.totalEquity]
+    ];
+    
+    const csv = rows.map(row => row.join(',')).join('\n');
+    downloadCSV(csv, `balance-sheet-${endDate}.csv`);
+  };
+
+  const exportTransactionsCSV = () => {
+    if (!transactions || transactions.length === 0) return;
+    
+    const filteredTrans = transactions.filter(t => {
+      const typeMatch = filterType === 'all' || t.type === filterType;
+      const catMatch = filterCategory === 'all' || t.categoryId?.toString() === filterCategory;
+      return typeMatch && catMatch;
+    });
+
+    const rows = [
+      ['Transaction History'],
+      [`${currentOrganization.name}`],
+      [`Period: ${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}`],
+      [''],
+      ['Date', 'Description', 'Type', 'Category', 'Amount'],
+      ...filteredTrans.map(t => {
+        const category = categories?.find(c => c.id === t.categoryId);
+        return [
+          format(new Date(t.date), 'MM/dd/yyyy'),
+          t.description,
+          t.type,
+          category?.name || 'Uncategorized',
+          t.amount
+        ];
+      })
+    ];
+    
+    const csv = rows.map(row => row.join(',')).join('\n');
+    downloadCSV(csv, `transactions-${startDate}-to-${endDate}.csv`);
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: "Export Successful",
+      description: `Report exported as ${filename}`,
+    });
+  };
+
+  // PDF Export Functions
+  const exportProfitLossPDF = () => {
+    if (!profitLoss) return;
+    
+    const content = generateProfitLossPDFContent();
+    downloadPDF(content, `profit-loss-${startDate}-to-${endDate}.pdf`);
+  };
+
+  const exportBalanceSheetPDF = () => {
+    if (!balanceSheet) return;
+    
+    const content = generateBalanceSheetPDFContent();
+    downloadPDF(content, `balance-sheet-${endDate}.pdf`);
+  };
+
+  const exportTransactionsPDF = () => {
+    if (!transactions || transactions.length === 0) return;
+    
+    const content = generateTransactionsPDFContent();
+    downloadPDF(content, `transactions-${startDate}-to-${endDate}.pdf`);
+  };
+
+  const generateProfitLossPDFContent = () => {
+    if (!profitLoss) return '';
+    
+    let html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
+            h2 { color: #666; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
+            .header { margin-bottom: 30px; }
+            .org-name { color: #666; font-size: 14px; }
+            .date-range { color: #888; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { text-align: left; padding: 8px; background-color: #f5f5f5; border-bottom: 2px solid #ddd; }
+            td { padding: 8px; border-bottom: 1px solid #eee; }
+            .amount { text-align: right; font-family: monospace; }
+            .total { font-weight: bold; border-top: 2px solid #333; }
+            .net-income { background-color: #f0f0f0; font-size: 18px; font-weight: bold; padding: 15px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Profit & Loss Statement</h1>
+            <div class="org-name">${currentOrganization.name}</div>
+            <div class="date-range">${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}</div>
+          </div>
+          
+          <h2>Income</h2>
+          <table>
+            <thead>
+              <tr><th>Category</th><th class="amount">Amount</th></tr>
+            </thead>
+            <tbody>
+              ${profitLoss.incomeByCategory.map(item => `
+                <tr>
+                  <td>${item.categoryName || 'Uncategorized'}</td>
+                  <td class="amount">$${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              <tr class="total">
+                <td>Total Income</td>
+                <td class="amount">$${parseFloat(profitLoss.totalIncome).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h2>Expenses</h2>
+          <table>
+            <thead>
+              <tr><th>Category</th><th class="amount">Amount</th></tr>
+            </thead>
+            <tbody>
+              ${profitLoss.expensesByCategory.map(item => `
+                <tr>
+                  <td>${item.categoryName || 'Uncategorized'}</td>
+                  <td class="amount">$${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              <tr class="total">
+                <td>Total Expenses</td>
+                <td class="amount">$${parseFloat(profitLoss.totalExpenses).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="net-income">
+            <table>
+              <tr>
+                <td>Net Income</td>
+                <td class="amount">$${parseFloat(profitLoss.netIncome).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </table>
+          </div>
+        </body>
+      </html>
+    `;
+    return html;
+  };
+
+  const generateBalanceSheetPDFContent = () => {
+    if (!balanceSheet) return '';
+    
+    let html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
+            h2 { color: #666; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
+            .header { margin-bottom: 30px; }
+            .org-name { color: #666; font-size: 14px; }
+            .date-range { color: #888; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { text-align: left; padding: 8px; background-color: #f5f5f5; border-bottom: 2px solid #ddd; }
+            td { padding: 8px; border-bottom: 1px solid #eee; }
+            .amount { text-align: right; font-family: monospace; }
+            .total { font-weight: bold; border-top: 2px solid #333; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Balance Sheet</h1>
+            <div class="org-name">${currentOrganization.name}</div>
+            <div class="date-range">As of ${format(new Date(endDate), 'MMM dd, yyyy')}</div>
+          </div>
+          
+          <h2>Assets</h2>
+          <table>
+            <thead>
+              <tr><th>Category</th><th class="amount">Amount</th></tr>
+            </thead>
+            <tbody>
+              ${balanceSheet.assetsByCategory.map(item => `
+                <tr>
+                  <td>${item.categoryName}</td>
+                  <td class="amount">$${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              <tr class="total">
+                <td>Total Assets</td>
+                <td class="amount">$${parseFloat(balanceSheet.totalAssets).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h2>Liabilities</h2>
+          <table>
+            <thead>
+              <tr><th>Category</th><th class="amount">Amount</th></tr>
+            </thead>
+            <tbody>
+              ${balanceSheet.liabilitiesByCategory.map(item => `
+                <tr>
+                  <td>${item.categoryName}</td>
+                  <td class="amount">$${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              <tr class="total">
+                <td>Total Liabilities</td>
+                <td class="amount">$${parseFloat(balanceSheet.totalLiabilities).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h2>Equity</h2>
+          <table>
+            <thead>
+              <tr><th>Category</th><th class="amount">Amount</th></tr>
+            </thead>
+            <tbody>
+              ${balanceSheet.equityByCategory.map(item => `
+                <tr>
+                  <td>${item.categoryName}</td>
+                  <td class="amount">$${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              <tr class="total">
+                <td>Total Equity</td>
+                <td class="amount">$${parseFloat(balanceSheet.totalEquity).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    return html;
+  };
+
+  const generateTransactionsPDFContent = () => {
+    if (!transactions || transactions.length === 0) return '';
+    
+    const filteredTrans = transactions.filter(t => {
+      const typeMatch = filterType === 'all' || t.type === filterType;
+      const catMatch = filterCategory === 'all' || t.categoryId?.toString() === filterCategory;
+      return typeMatch && catMatch;
+    });
+
+    let html = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
+            .header { margin-bottom: 30px; }
+            .org-name { color: #666; font-size: 14px; }
+            .date-range { color: #888; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+            th { text-align: left; padding: 6px; background-color: #f5f5f5; border-bottom: 2px solid #ddd; }
+            td { padding: 6px; border-bottom: 1px solid #eee; }
+            .amount { text-align: right; font-family: monospace; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Transaction History</h1>
+            <div class="org-name">${currentOrganization.name}</div>
+            <div class="date-range">${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}</div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th class="amount">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredTrans.map(t => {
+                const category = categories?.find(c => c.id === t.categoryId);
+                return `
+                  <tr>
+                    <td>${format(new Date(t.date), 'MM/dd/yyyy')}</td>
+                    <td>${t.description}</td>
+                    <td>${t.type}</td>
+                    <td>${category?.name || 'Uncategorized'}</td>
+                    <td class="amount">$${parseFloat(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    return html;
+  };
+
+  const downloadPDF = (htmlContent: string, filename: string) => {
+    // Open in new window for printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+      toast({
+        title: "PDF Ready",
+        description: "Use the print dialog to save as PDF",
+      });
+    }
+  };
 
   const { data: profitLoss, isLoading, error } = useQuery<ProfitLossData>({
     queryKey: [`/api/reports/profit-loss/${currentOrganization.id}?startDate=${startDate}&endDate=${endDate}`],
@@ -221,10 +593,16 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                       {format(new Date(startDate), 'MMM dd, yyyy')} - {format(new Date(endDate), 'MMM dd, yyyy')}
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export PDF
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={exportProfitLossCSV} data-testid="button-export-pl-csv">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportProfitLossPDF} data-testid="button-export-pl-pdf">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -333,10 +711,16 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                       As of {format(new Date(endDate), 'MMM dd, yyyy')}
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export PDF
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={exportBalanceSheetCSV} data-testid="button-export-bs-csv">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportBalanceSheetPDF} data-testid="button-export-bs-pdf">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -489,10 +873,16 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                       {format(new Date(startDate), 'MMM dd, yyyy')} - {format(new Date(endDate), 'MMM dd, yyyy')}
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={exportTransactionsCSV} data-testid="button-export-txn-csv">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportTransactionsPDF} data-testid="button-export-txn-pdf">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-3 mt-4">
                   <Select value={filterType} onValueChange={setFilterType}>
