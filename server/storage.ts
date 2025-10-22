@@ -8,6 +8,7 @@ import {
   grants,
   plaidItems,
   plaidAccounts,
+  categorizationHistory,
   type User,
   type UpsertUser,
   type Organization,
@@ -24,6 +25,8 @@ import {
   type InsertPlaidItem,
   type PlaidAccount,
   type InsertPlaidAccount,
+  type CategorizationHistory,
+  type InsertCategorizationHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -95,6 +98,11 @@ export interface IStorage {
   getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null }>>;
   createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
   updatePlaidAccountBalances(accountId: string, currentBalance: string, availableBalance: string): Promise<void>;
+
+  // AI Categorization history operations
+  recordCategorizationSuggestion(history: InsertCategorizationHistory): Promise<CategorizationHistory>;
+  updateCategorizationDecision(id: number, userDecision: 'accepted' | 'rejected' | 'modified', finalCategoryId?: number): Promise<void>;
+  getCategorizationHistory(organizationId: number, limit?: number): Promise<CategorizationHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -670,6 +678,38 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(plaidAccounts.accountId, accountId));
+  }
+
+  // AI Categorization history operations
+  async recordCategorizationSuggestion(history: InsertCategorizationHistory): Promise<CategorizationHistory> {
+    const [record] = await db
+      .insert(categorizationHistory)
+      .values(history)
+      .returning();
+    return record;
+  }
+
+  async updateCategorizationDecision(
+    id: number,
+    userDecision: 'accepted' | 'rejected' | 'modified',
+    finalCategoryId?: number
+  ): Promise<void> {
+    await db
+      .update(categorizationHistory)
+      .set({
+        userDecision,
+        finalCategoryId: finalCategoryId ?? null,
+      })
+      .where(eq(categorizationHistory.id, id));
+  }
+
+  async getCategorizationHistory(organizationId: number, limit: number = 100): Promise<CategorizationHistory[]> {
+    return await db
+      .select()
+      .from(categorizationHistory)
+      .where(eq(categorizationHistory.organizationId, organizationId))
+      .orderBy(desc(categorizationHistory.createdAt))
+      .limit(limit);
   }
 }
 
