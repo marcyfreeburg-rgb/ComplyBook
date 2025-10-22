@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Building2, Users } from "lucide-react";
+import { Plus, Building2, Users, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "wouter";
 import type { Organization, InsertOrganization, UserOrganizationRole } from "@shared/schema";
 
 interface OrganizationsProps {
@@ -141,7 +142,14 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
             Manage your businesses and non-profits
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="flex gap-2">
+          <Link href="/">
+            <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-organization">
               <Plus className="h-4 w-4 mr-2" />
@@ -215,6 +223,7 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Organizations Grid */}
