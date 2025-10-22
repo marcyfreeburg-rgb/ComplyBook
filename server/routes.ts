@@ -266,7 +266,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No suitable category found" });
       }
 
-      res.json(suggestion);
+      // Record the suggestion in categorization history with 'pending' status
+      const historyRecord = await storage.recordCategorizationSuggestion({
+        organizationId,
+        transactionId: null, // No transaction ID for preview suggestions
+        userId,
+        transactionDescription: description,
+        transactionAmount: parsedAmount.toString(),
+        transactionType: type,
+        suggestedCategoryId: suggestion.categoryId,
+        suggestedCategoryName: suggestion.categoryName,
+        confidence: suggestion.confidence,
+        reasoning: suggestion.reasoning,
+        userDecision: 'pending',
+        finalCategoryId: null,
+      });
+
+      res.json({ ...suggestion, historyId: historyRecord.id });
     } catch (error) {
       console.error("Error suggesting category:", error);
       res.status(500).json({ message: "Failed to suggest category" });
@@ -322,6 +338,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error suggesting categories in bulk:", error);
       res.status(500).json({ message: "Failed to suggest categories" });
+    }
+  });
+
+  // Record user feedback on AI categorization suggestions
+  app.post('/api/ai/categorization-feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { historyId, userDecision, finalCategoryId } = req.body;
+
+      if (!historyId || !userDecision) {
+        return res.status(400).json({ message: "historyId and userDecision are required" });
+      }
+
+      if (!['accepted', 'rejected', 'modified'].includes(userDecision)) {
+        return res.status(400).json({ message: "userDecision must be 'accepted', 'rejected', or 'modified'" });
+      }
+
+      if (userDecision === 'modified' && !finalCategoryId) {
+        return res.status(400).json({ message: "finalCategoryId is required when userDecision is 'modified'" });
+      }
+
+      await storage.updateCategorizationDecision(historyId, userDecision, finalCategoryId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording categorization feedback:", error);
+      res.status(500).json({ message: "Failed to record feedback" });
     }
   });
 
