@@ -180,6 +180,56 @@ export type InsertGrant = z.infer<typeof insertGrantSchema>;
 export type Grant = typeof grants.$inferSelect;
 
 // ============================================
+// PLAID INTEGRATIONS
+// ============================================
+
+export const plaidItems = pgTable("plaid_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  itemId: varchar("item_id", { length: 255 }).notNull().unique(),
+  accessToken: text("access_token").notNull(),
+  institutionId: varchar("institution_id", { length: 255 }),
+  institutionName: varchar("institution_name", { length: 255 }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPlaidItem = z.infer<typeof insertPlaidItemSchema>;
+export type PlaidItem = typeof plaidItems.$inferSelect;
+
+export const plaidAccounts = pgTable("plaid_accounts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  plaidItemId: integer("plaid_item_id").notNull().references(() => plaidItems.id, { onDelete: 'cascade' }),
+  accountId: varchar("account_id", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  officialName: varchar("official_name", { length: 255 }),
+  mask: varchar("mask", { length: 10 }),
+  type: varchar("type", { length: 50 }),
+  subtype: varchar("subtype", { length: 50 }),
+  currentBalance: numeric("current_balance", { precision: 12, scale: 2 }),
+  availableBalance: numeric("available_balance", { precision: 12, scale: 2 }),
+  isoCurrencyCode: varchar("iso_currency_code", { length: 3 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPlaidAccountSchema = createInsertSchema(plaidAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPlaidAccount = z.infer<typeof insertPlaidAccountSchema>;
+export type PlaidAccount = typeof plaidAccounts.$inferSelect;
+
+// ============================================
 // RELATIONS
 // ============================================
 

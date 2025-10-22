@@ -6,6 +6,8 @@ import {
   categories,
   transactions,
   grants,
+  plaidItems,
+  plaidAccounts,
   type User,
   type UpsertUser,
   type Organization,
@@ -18,6 +20,10 @@ import {
   type InsertTransaction,
   type Grant,
   type InsertGrant,
+  type PlaidItem,
+  type InsertPlaidItem,
+  type PlaidAccount,
+  type InsertPlaidAccount,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -69,6 +75,16 @@ export interface IStorage {
     incomeByCategory: Array<{ categoryName: string; amount: string }>;
     expensesByCategory: Array<{ categoryName: string; amount: string }>;
   }>;
+
+  // Plaid operations
+  getPlaidItems(organizationId: number): Promise<PlaidItem[]>;
+  getPlaidItem(itemId: string): Promise<PlaidItem | undefined>;
+  createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem>;
+  deletePlaidItem(id: number): Promise<void>;
+  getPlaidAccounts(plaidItemId: number): Promise<PlaidAccount[]>;
+  getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null }>>;
+  createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
+  updatePlaidAccountBalances(accountId: string, currentBalance: string, availableBalance: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -439,6 +455,78 @@ export class DatabaseStorage implements IStorage {
       incomeByCategory,
       expensesByCategory,
     };
+  }
+
+  // Plaid operations
+  async getPlaidItems(organizationId: number): Promise<PlaidItem[]> {
+    return await db
+      .select()
+      .from(plaidItems)
+      .where(eq(plaidItems.organizationId, organizationId))
+      .orderBy(desc(plaidItems.createdAt));
+  }
+
+  async getPlaidItem(itemId: string): Promise<PlaidItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(plaidItems)
+      .where(eq(plaidItems.itemId, itemId));
+    return item;
+  }
+
+  async createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem> {
+    const [plaidItem] = await db
+      .insert(plaidItems)
+      .values(item)
+      .returning();
+    return plaidItem;
+  }
+
+  async deletePlaidItem(id: number): Promise<void> {
+    await db.delete(plaidItems).where(eq(plaidItems.id, id));
+  }
+
+  async getPlaidAccounts(plaidItemId: number): Promise<PlaidAccount[]> {
+    return await db
+      .select()
+      .from(plaidAccounts)
+      .where(eq(plaidAccounts.plaidItemId, plaidItemId));
+  }
+
+  async getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null }>> {
+    const results = await db
+      .select({
+        account: plaidAccounts,
+        institutionName: plaidItems.institutionName,
+      })
+      .from(plaidAccounts)
+      .innerJoin(plaidItems, eq(plaidAccounts.plaidItemId, plaidItems.id))
+      .where(eq(plaidItems.organizationId, organizationId))
+      .orderBy(desc(plaidAccounts.createdAt));
+
+    return results.map(r => ({
+      ...r.account,
+      institutionName: r.institutionName,
+    }));
+  }
+
+  async createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount> {
+    const [plaidAccount] = await db
+      .insert(plaidAccounts)
+      .values(account)
+      .returning();
+    return plaidAccount;
+  }
+
+  async updatePlaidAccountBalances(accountId: string, currentBalance: string, availableBalance: string): Promise<void> {
+    await db
+      .update(plaidAccounts)
+      .set({
+        currentBalance,
+        availableBalance,
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidAccounts.accountId, accountId));
   }
 }
 

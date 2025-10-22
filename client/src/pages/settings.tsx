@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { usePlaidLink } from "react-plaid-link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -9,9 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil } from "lucide-react";
+import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, Organization, Category, InsertCategory } from "@shared/schema";
+
+interface PlaidAccount {
+  id: number;
+  accountId: string;
+  name: string;
+  officialName: string | null;
+  mask: string | null;
+  type: string | null;
+  subtype: string | null;
+  currentBalance: string | null;
+  availableBalance: string | null;
+  institutionName: string | null;
+}
 
 interface SettingsProps {
   currentOrganization: Organization;
@@ -27,10 +41,35 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
     name: "",
     type: "income" as "income" | "expense",
   });
+  const [linkToken, setLinkToken] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
   });
+
+  const { data: plaidAccounts, isLoading: plaidAccountsLoading } = useQuery<PlaidAccount[]>({
+    queryKey: [`/api/plaid/accounts/${currentOrganization.id}`],
+  });
+
+  // Fetch link token when component mounts
+  useEffect(() => {
+    const fetchLinkToken = async () => {
+      try {
+        const response = await fetch(`/api/plaid/create-link-token/${currentOrganization.id}`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setLinkToken(data.link_token);
+        }
+      } catch (error) {
+        console.error("Error fetching link token:", error);
+      }
+    };
+    
+    fetchLinkToken();
+  }, [currentOrganization.id]);
 
   const createCategoryMutation = useMutation({
     mutationFn: async (data: InsertCategory) => {
@@ -94,6 +133,61 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
         variant: "destructive",
       });
     },
+  });
+
+  const disconnectBankMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return await apiRequest('DELETE', `/api/plaid/item/${itemId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
+      toast({
+        title: "Bank disconnected",
+        description: "Your bank account has been disconnected successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect bank account. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle successful Plaid Link
+  const onPlaidSuccess = useCallback(async (public_token: string, metadata: any) => {
+    try {
+      await apiRequest('POST', `/api/plaid/exchange-token/${currentOrganization.id}`, {
+        public_token,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
+      
+      toast({
+        title: "Bank connected",
+        description: `Successfully connected ${metadata.institution?.name || 'your bank account'}.`,
+      });
+    } catch (error) {
+      console.error("Error exchanging token:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect bank account. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [currentOrganization.id, toast]);
+
+  const onPlaidExit = useCallback((err: any, metadata: any) => {
+    if (err) {
+      console.error("Plaid Link exited with error:", err, metadata);
+    }
+  }, []);
+
+  const { open, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: onPlaidSuccess,
+    onExit: onPlaidExit,
   });
 
   const handleCreateCategory = () => {
@@ -202,6 +296,90 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
                 <p className="text-sm text-foreground">{currentOrganization.description}</p>
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bank Connections */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle>Bank Connections</CardTitle>
+              <CardDescription>
+                Connect your bank accounts to automatically import transactions
+              </CardDescription>
+            </div>
+            <Button 
+              onClick={() => open()} 
+              disabled={!ready}
+              data-testid="button-connect-bank"
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              Connect Bank
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {plaidAccountsLoading ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">Loading bank accounts...</p>
+            </div>
+          ) : !plaidAccounts || plaidAccounts.length === 0 ? (
+            <div className="text-center py-8">
+              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-foreground mb-1">No bank accounts connected</p>
+              <p className="text-sm text-muted-foreground">
+                Connect your bank to automatically import transactions
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {plaidAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="flex items-center justify-between p-4 rounded-md bg-muted/50"
+                  data-testid={`bank-account-${account.id}`}
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {account.name}
+                        {account.mask && (
+                          <span className="text-muted-foreground ml-2">••••{account.mask}</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {account.institutionName || 'Bank Account'}
+                        {account.type && ` • ${account.type}`}
+                        {account.subtype && ` • ${account.subtype}`}
+                      </p>
+                    </div>
+                    {account.currentBalance && (
+                      <div className="text-right">
+                        <p className="text-sm font-mono font-medium text-foreground">
+                          ${parseFloat(account.currentBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Current Balance</p>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => disconnectBankMutation.mutate(account.accountId)}
+                    disabled={disconnectBankMutation.isPending}
+                    className="ml-2"
+                    data-testid={`button-disconnect-${account.id}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -76,6 +76,8 @@ Preferred communication style: Simple, everyday language.
 - Categories table for income/expense classification (scoped to organizations)
 - Transactions table with foreign keys to organizations, categories, and optional grants
 - Grants table for non-profit grant tracking with status and restriction fields
+- Plaid Items table for storing bank connection tokens (organization-scoped)
+- Plaid Accounts table for storing connected bank account details with balances
 - Session table for server-side session storage
 
 **Schema Management:**
@@ -102,6 +104,13 @@ Preferred communication style: Simple, everyday language.
 - Environment variable: `DATABASE_URL`
 - WebSocket connection support for serverless environments
 
+**Bank Integration:**
+- **Plaid API** - Bank account connectivity and transaction data
+- Environment variables: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`
+- Plaid Link for secure OAuth-based bank authentication
+- Automatic account balance syncing and institution metadata
+- Support for sandbox, development, and production environments
+
 **UI Libraries:**
 - **Radix UI** - Headless component primitives for accessibility
 - **shadcn/ui** - Pre-styled component system built on Radix
@@ -124,6 +133,8 @@ Preferred communication style: Simple, everyday language.
 - Class Variance Authority (CVA) for component variant management
 - clsx and tailwind-merge for className utilities
 - Drizzle ORM and Drizzle Zod for database operations and validation
+- Plaid Node SDK for bank API integration
+- react-plaid-link for frontend bank connection UI
 
 **Build & Deployment:**
 - Development: `npm run dev` - Runs Vite dev server and Express with tsx

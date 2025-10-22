@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { plaidClient } from "./plaid";
 import {
   insertOrganizationSchema,
   insertCategorySchema,
@@ -282,6 +283,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching transaction history:", error);
       res.status(500).json({ message: "Failed to fetch transaction history" });
+    }
+  });
+
+  // Plaid routes
+  app.post('/api/plaid/create-link-token/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can connect bank accounts" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const response = await plaidClient.linkTokenCreate({
+        user: {
+          client_user_id: userId,
+        },
+        client_name: 'Budget Manager',
+        products: ['transactions' as any],
+        country_codes: ['US' as any],
+        language: 'en',
+      });
+
+      res.json({ link_token: response.data.link_token });
+    } catch (error) {
+      console.error("Error creating link token:", error);
+      res.status(500).json({ message: "Failed to create link token" });
+    }
+  });
+
+  app.post('/api/plaid/exchange-token/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { public_token } = req.body;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can connect bank accounts" });
+      }
+
+      // Exchange public token for access token
+      const tokenResponse = await plaidClient.itemPublicTokenExchange({
+        public_token,
+      });
+
+      const accessToken = tokenResponse.data.access_token;
+      const itemId = tokenResponse.data.item_id;
+
+      // Get institution info
+      const itemResponse = await plaidClient.itemGet({
+        access_token: accessToken,
+      });
+
+      const institutionId = itemResponse.data.item.institution_id || null;
+      let institutionName = null;
+
+      if (institutionId) {
+        try {
+          const instResponse = await plaidClient.institutionsGetById({
+            institution_id: institutionId,
+            country_codes: ['US' as any],
+          });
+          institutionName = instResponse.data.institution.name;
+        } catch (error) {
+          console.error("Error fetching institution name:", error);
+        }
+      }
+
+      // Store the Plaid item
+      const plaidItem = await storage.createPlaidItem({
+        organizationId,
+        itemId,
+        accessToken,
+        institutionId,
+        institutionName,
+        createdBy: userId,
+      });
+
+      // Get accounts
+      const accountsResponse = await plaidClient.accountsGet({
+        access_token: accessToken,
+      });
+
+      // Store accounts
+      for (const account of accountsResponse.data.accounts) {
+        await storage.createPlaidAccount({
+          plaidItemId: plaidItem.id,
+          accountId: account.account_id,
+          name: account.name,
+          officialName: account.official_name || null,
+          mask: account.mask || null,
+          type: account.type,
+          subtype: account.subtype || null,
+          currentBalance: account.balances.current?.toString() || null,
+          availableBalance: account.balances.available?.toString() || null,
+          isoCurrencyCode: account.balances.iso_currency_code || null,
+        });
+      }
+
+      res.json({ success: true, accounts: accountsResponse.data.accounts.length });
+    } catch (error) {
+      console.error("Error exchanging token:", error);
+      res.status(500).json({ message: "Failed to connect bank account" });
+    }
+  });
+
+  app.get('/api/plaid/accounts/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const accounts = await storage.getAllPlaidAccounts(organizationId);
+      res.json(accounts);
+    } catch (error) {
+      console.error("Error fetching Plaid accounts:", error);
+      res.status(500).json({ message: "Failed to fetch bank accounts" });
+    }
+  });
+
+  app.delete('/api/plaid/item/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = req.params.itemId;
+
+      // Get the Plaid item to check organization
+      const plaidItem = await storage.getPlaidItem(itemId);
+      if (!plaidItem) {
+        return res.status(404).json({ message: "Bank connection not found" });
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, plaidItem.organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can disconnect bank accounts" });
+      }
+
+      // Remove the item from Plaid
+      try {
+        await plaidClient.itemRemove({
+          access_token: plaidItem.accessToken,
+        });
+      } catch (error) {
+        console.error("Error removing item from Plaid:", error);
+      }
+
+      // Delete from database (cascade will delete accounts)
+      await storage.deletePlaidItem(plaidItem.id);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error disconnecting bank account:", error);
+      res.status(500).json({ message: "Failed to disconnect bank account" });
     }
   });
 
