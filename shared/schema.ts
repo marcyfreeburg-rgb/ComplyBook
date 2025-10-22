@@ -24,6 +24,7 @@ export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expens
 export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'asset', 'liability', 'equity']);
 export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
 export const aiDecisionEnum = pgEnum('ai_decision', ['pending', 'accepted', 'rejected', 'modified']);
+export const budgetPeriodEnum = pgEnum('budget_period', ['monthly', 'quarterly', 'yearly']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -179,6 +180,54 @@ export const insertGrantSchema = createInsertSchema(grants).omit({
 
 export type InsertGrant = z.infer<typeof insertGrantSchema>;
 export type Grant = typeof grants.$inferSelect;
+
+// ============================================
+// BUDGETS
+// ============================================
+
+export const budgets = pgTable("budgets", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  period: budgetPeriodEnum("period").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBudgetSchema = createInsertSchema(budgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+});
+
+export type InsertBudget = z.infer<typeof insertBudgetSchema>;
+export type Budget = typeof budgets.$inferSelect;
+
+export const budgetItems = pgTable("budget_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  budgetId: integer("budget_id").notNull().references(() => budgets.id, { onDelete: 'cascade' }),
+  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: 'cascade' }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
+export type BudgetItem = typeof budgetItems.$inferSelect;
 
 // ============================================
 // PLAID INTEGRATIONS
