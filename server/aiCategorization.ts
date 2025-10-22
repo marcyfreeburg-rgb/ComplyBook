@@ -26,6 +26,7 @@ export async function suggestCategory(
     const categories = await storage.getCategories(organizationId);
     
     if (categories.length === 0) {
+      console.log(`[AI Categorization] No categories found for organization ${organizationId}`);
       return null;
     }
 
@@ -41,6 +42,7 @@ export async function suggestCategory(
     });
 
     if (relevantCategories.length === 0) {
+      console.log(`[AI Categorization] No ${transactionType} categories found for organization ${organizationId}. Total categories: ${categories.length}`);
       return null;
     }
 

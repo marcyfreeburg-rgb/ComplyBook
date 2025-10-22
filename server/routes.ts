@@ -354,6 +354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const suggestions = await suggestCategoryBulk(organizationId, transactions);
+      
+      console.log(`[Bulk Categorization] Organization ${organizationId} - Received ${suggestions.size} suggestions for ${transactions.length} transactions`);
 
       // Record suggestions in categorization history and attach historyId to each
       const suggestionsWithHistory = new Map<number, any>();

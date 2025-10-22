@@ -23,7 +23,7 @@ export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant',
 export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expense']);
 export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'asset', 'liability', 'equity']);
 export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
-export const aiDecisionEnum = pgEnum('ai_decision', ['accepted', 'rejected', 'modified']);
+export const aiDecisionEnum = pgEnum('ai_decision', ['pending', 'accepted', 'rejected', 'modified']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
