@@ -93,6 +93,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/categories/:categoryId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const categoryId = parseInt(req.params.categoryId);
+      const updates = req.body;
+      
+      // Get the category to check organization access
+      const category = await storage.getCategory(categoryId);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, category.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedCategory = await storage.updateCategory(categoryId, updates);
+      res.status(200).json(updatedCategory);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(400).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete('/api/categories/:categoryId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const categoryId = parseInt(req.params.categoryId);
+      
+      // Get the category to check organization access
+      const category = await storage.getCategory(categoryId);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, category.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteCategory(categoryId);
+      res.status(200).json({ message: "Category deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(400).json({ message: "Failed to delete category" });
+    }
+  });
+
   // Transaction routes
   app.get('/api/transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
