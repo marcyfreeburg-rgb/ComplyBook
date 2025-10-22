@@ -253,6 +253,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/transactions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+
+      // Get the existing transaction first
+      const existingTransaction = await storage.getTransaction(transactionId);
+      
+      if (!existingTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteTransaction(transactionId);
+      res.status(200).json({ message: "Transaction deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      res.status(500).json({ message: "Failed to delete transaction" });
+    }
+  });
+
   // AI Categorization routes
   app.post('/api/ai/suggest-category/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

@@ -67,6 +67,7 @@ export interface IStorage {
   getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
+  deleteTransaction(id: number): Promise<void>;
 
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
@@ -317,6 +318,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.id, id))
       .returning();
     return transaction;
+  }
+
+  async deleteTransaction(id: number): Promise<void> {
+    await db
+      .delete(transactions)
+      .where(eq(transactions.id, id));
   }
 
   // Grant operations
