@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft } from "lucide-react";
+import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, Organization, Category, InsertCategory } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
 
 interface PlaidAccount {
   id: number;
@@ -26,6 +27,27 @@ interface PlaidAccount {
   currentBalance: string | null;
   availableBalance: string | null;
   institutionName: string | null;
+}
+
+interface TeamMember {
+  userId: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  permissions: string | null;
+  createdAt: Date;
+}
+
+interface Invitation {
+  id: number;
+  email: string;
+  role: string;
+  permissions: string;
+  status: string;
+  inviterName: string;
+  createdAt: Date;
+  expiresAt: Date;
 }
 
 interface SettingsProps {
@@ -43,6 +65,14 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
     type: "income" as "income" | "expense",
   });
   const [linkToken, setLinkToken] = useState<string | null>(null);
+  
+  // Team & Invitations state
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteFormData, setInviteFormData] = useState({
+    email: "",
+    permissions: "view_only",
+  });
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -50,6 +80,14 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
 
   const { data: plaidAccounts, isLoading: plaidAccountsLoading } = useQuery<PlaidAccount[]>({
     queryKey: [`/api/plaid/accounts/${currentOrganization.id}`],
+  });
+
+  const { data: teamMembers, isLoading: teamMembersLoading } = useQuery<TeamMember[]>({
+    queryKey: [`/api/team/${currentOrganization.id}`],
+  });
+
+  const { data: invitations, isLoading: invitationsLoading } = useQuery<Invitation[]>({
+    queryKey: [`/api/invitations/${currentOrganization.id}`],
   });
 
   // Fetch link token when component mounts
@@ -151,6 +189,80 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
       toast({
         title: "Error",
         description: "Failed to disconnect bank account. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Team management mutations
+  const createInvitationMutation = useMutation({
+    mutationFn: async (data: { email: string; permissions: string }) => {
+      return await apiRequest('POST', `/api/invitations/${currentOrganization.id}`, {
+        email: data.email,
+        role: 'viewer',
+        permissions: data.permissions,
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/invitations/${currentOrganization.id}`] });
+      toast({
+        title: "Invitation sent",
+        description: "The invitation has been created successfully.",
+      });
+      setIsInviteDialogOpen(false);
+      setInviteFormData({ email: "", permissions: "view_only" });
+      
+      // Copy link to clipboard
+      if (data.inviteLink) {
+        navigator.clipboard.writeText(data.inviteLink);
+        setCopiedLink(data.inviteLink);
+        setTimeout(() => setCopiedLink(null), 3000);
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send invitation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteInvitationMutation = useMutation({
+    mutationFn: async (invitationId: number) => {
+      return await apiRequest('DELETE', `/api/invitations/${invitationId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/invitations/${currentOrganization.id}`] });
+      toast({
+        title: "Invitation cancelled",
+        description: "The invitation has been cancelled.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to cancel invitation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeTeamMemberMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest('DELETE', `/api/team/${currentOrganization.id}/${userId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/team/${currentOrganization.id}`] });
+      toast({
+        title: "Member removed",
+        description: "The team member has been removed from this organization.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove team member. Please try again.",
         variant: "destructive",
       });
     },
@@ -305,6 +417,216 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
                 <p className="text-sm text-foreground">{currentOrganization.description}</p>
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Team Members */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>
+                Manage people who have access to this organization
+              </CardDescription>
+            </div>
+            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-invite-member">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Invite Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invite Team Member</DialogTitle>
+                  <DialogDescription>
+                    Send an invitation link to add a new member to this organization
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-email">Email Address</Label>
+                    <Input
+                      id="invite-email"
+                      type="email"
+                      placeholder="colleague@example.com"
+                      value={inviteFormData.email}
+                      onChange={(e) => setInviteFormData({ ...inviteFormData, email: e.target.value })}
+                      data-testid="input-invite-email"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-permissions">Permissions</Label>
+                    <Select
+                      value={inviteFormData.permissions}
+                      onValueChange={(value) => setInviteFormData({ ...inviteFormData, permissions: value })}
+                    >
+                      <SelectTrigger id="invite-permissions" data-testid="select-invite-permissions">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="view_only">View Only</SelectItem>
+                        <SelectItem value="make_reports">Make Reports</SelectItem>
+                        <SelectItem value="edit_transactions">Edit Transactions Only</SelectItem>
+                        <SelectItem value="view_make_reports">View & Make Reports</SelectItem>
+                        <SelectItem value="full_access">Full Access</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {inviteFormData.permissions === 'view_only' && 'Can only view data'}
+                      {inviteFormData.permissions === 'make_reports' && 'Can view and generate reports'}
+                      {inviteFormData.permissions === 'edit_transactions' && 'Can view and edit transactions'}
+                      {inviteFormData.permissions === 'view_make_reports' && 'Can view and make reports'}
+                      {inviteFormData.permissions === 'full_access' && 'Can view, edit transactions, and make reports'}
+                    </p>
+                  </div>
+                  {copiedLink && (
+                    <div className="flex items-center gap-2 p-3 rounded-md bg-primary/10 text-sm text-primary">
+                      <Check className="h-4 w-4" />
+                      <span>Invitation link copied to clipboard!</span>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsInviteDialogOpen(false)}
+                    data-testid="button-cancel-invite"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => createInvitationMutation.mutate(inviteFormData)}
+                    disabled={createInvitationMutation.isPending || !inviteFormData.email}
+                    data-testid="button-submit-invite"
+                  >
+                    {createInvitationMutation.isPending ? "Sending..." : "Send Invitation"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {teamMembersLoading ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">Loading team members...</p>
+            </div>
+          ) : !teamMembers || teamMembers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-foreground mb-1">No team members yet</p>
+              <p className="text-sm text-muted-foreground">
+                Invite people to collaborate on this organization
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {teamMembers.map((member) => (
+                <div
+                  key={member.userId}
+                  className="flex items-center justify-between p-4 rounded-md bg-muted/50"
+                  data-testid={`team-member-${member.userId}`}
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="text-sm font-medium">
+                        {member.firstName?.[0]}{member.lastName?.[0] || member.email?.[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {member.firstName} {member.lastName}
+                        {member.userId === user.id && (
+                          <span className="text-xs text-muted-foreground ml-2">(You)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{member.role}</Badge>
+                      {member.permissions && (
+                        <Badge variant="outline" className="text-xs">
+                          {member.permissions.replace(/_/g, ' ')}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {member.userId !== user.id && member.role !== 'owner' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeTeamMemberMutation.mutate(member.userId)}
+                      disabled={removeTeamMemberMutation.isPending}
+                      className="ml-2"
+                      data-testid={`button-remove-member-${member.userId}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pending Invitations */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Invitations</CardTitle>
+          <CardDescription>
+            Invitations that haven't been accepted yet
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invitationsLoading ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">Loading invitations...</p>
+            </div>
+          ) : !invitations || invitations.length === 0 ? (
+            <div className="text-center py-8">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground">No pending invitations</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {invitations.map((invitation) => (
+                <div
+                  key={invitation.id}
+                  className="flex items-center justify-between p-4 rounded-md bg-muted/50"
+                  data-testid={`invitation-${invitation.id}`}
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{invitation.email}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-muted-foreground">
+                        Invited by {invitation.inviterName}
+                      </p>
+                      <span className="text-muted-foreground">•</span>
+                      <Badge variant="outline" className="text-xs">
+                        {invitation.permissions.replace(/_/g, ' ')}
+                      </Badge>
+                      <span className="text-muted-foreground">•</span>
+                      <Badge variant={invitation.status === 'pending' ? 'default' : 'secondary'} className="text-xs">
+                        {invitation.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteInvitationMutation.mutate(invitation.id)}
+                    disabled={deleteInvitationMutation.isPending}
+                    data-testid={`button-cancel-invitation-${invitation.id}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
