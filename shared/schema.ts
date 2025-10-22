@@ -23,6 +23,7 @@ export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant',
 export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expense']);
 export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'asset', 'liability', 'equity']);
 export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
+export const aiDecisionEnum = pgEnum('ai_decision', ['accepted', 'rejected', 'modified']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -228,6 +229,35 @@ export const insertPlaidAccountSchema = createInsertSchema(plaidAccounts).omit({
 
 export type InsertPlaidAccount = z.infer<typeof insertPlaidAccountSchema>;
 export type PlaidAccount = typeof plaidAccounts.$inferSelect;
+
+// ============================================
+// AI CATEGORIZATION HISTORY
+// ============================================
+
+export const categorizationHistory = pgTable("categorization_history", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  transactionDescription: text("transaction_description").notNull(),
+  transactionAmount: numeric("transaction_amount", { precision: 12, scale: 2 }).notNull(),
+  transactionType: transactionTypeEnum("transaction_type").notNull(),
+  suggestedCategoryId: integer("suggested_category_id").notNull().references(() => categories.id, { onDelete: 'cascade' }),
+  suggestedCategoryName: varchar("suggested_category_name", { length: 255 }).notNull(),
+  confidence: integer("confidence").notNull(),
+  reasoning: text("reasoning"),
+  userDecision: aiDecisionEnum("user_decision").notNull(),
+  finalCategoryId: integer("final_category_id").references(() => categories.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCategorizationHistorySchema = createInsertSchema(categorizationHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCategorizationHistory = z.infer<typeof insertCategorizationHistorySchema>;
+export type CategorizationHistory = typeof categorizationHistory.$inferSelect;
 
 // ============================================
 // RELATIONS
