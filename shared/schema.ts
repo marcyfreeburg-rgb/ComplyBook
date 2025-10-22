@@ -1,0 +1,246 @@
+// Referenced from javascript_log_in_with_replit and javascript_database blueprints
+import { sql, relations } from 'drizzle-orm';
+import {
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+  pgEnum,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// ============================================
+// ENUMS
+// ============================================
+
+export const organizationTypeEnum = pgEnum('organization_type', ['nonprofit', 'forprofit']);
+export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'accountant', 'viewer']);
+export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expense']);
+export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'asset', 'liability', 'equity']);
+export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
+
+// ============================================
+// SESSION & USER TABLES (Required for Replit Auth)
+// ============================================
+
+// Session storage table - mandatory for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table - mandatory for Replit Auth
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
+
+// ============================================
+// ORGANIZATIONS
+// ============================================
+
+export const organizations = pgTable("organizations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: organizationTypeEnum("type").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// ============================================
+// USER ORGANIZATION ROLES
+// ============================================
+
+export const userOrganizationRoles = pgTable("user_organization_roles", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  role: userRoleEnum("role").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertUserOrganizationRoleSchema = createInsertSchema(userOrganizationRoles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUserOrganizationRole = z.infer<typeof insertUserOrganizationRoleSchema>;
+export type UserOrganizationRole = typeof userOrganizationRoles.$inferSelect;
+
+// ============================================
+// CHART OF ACCOUNTS / CATEGORIES
+// ============================================
+
+export const categories = pgTable("categories", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: accountTypeEnum("type").notNull(),
+  description: text("description"),
+  parentCategoryId: integer("parent_category_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCategorySchema = createInsertSchema(categories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type Category = typeof categories.$inferSelect;
+
+// ============================================
+// TRANSACTIONS
+// ============================================
+
+export const transactions = pgTable("transactions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  date: timestamp("date").notNull(),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
+  grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTransactionSchema = createInsertSchema(transactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  date: z.coerce.date(),
+  amount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type Transaction = typeof transactions.$inferSelect;
+
+// ============================================
+// GRANTS (For Non-Profits)
+// ============================================
+
+export const grants = pgTable("grants", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  restrictions: text("restrictions"),
+  status: grantStatusEnum("status").notNull().default('active'),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGrantSchema = createInsertSchema(grants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  startDate: z.coerce.date().optional().nullable(),
+  endDate: z.coerce.date().optional().nullable(),
+});
+
+export type InsertGrant = z.infer<typeof insertGrantSchema>;
+export type Grant = typeof grants.$inferSelect;
+
+// ============================================
+// RELATIONS
+// ============================================
+
+export const usersRelations = relations(users, ({ many }) => ({
+  organizationRoles: many(userOrganizationRoles),
+  transactions: many(transactions),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  userRoles: many(userOrganizationRoles),
+  categories: many(categories),
+  transactions: many(transactions),
+  grants: many(grants),
+}));
+
+export const userOrganizationRolesRelations = relations(userOrganizationRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [userOrganizationRoles.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [userOrganizationRoles.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [categories.organizationId],
+    references: [organizations.id],
+  }),
+  parentCategory: one(categories, {
+    fields: [categories.parentCategoryId],
+    references: [categories.id],
+  }),
+  transactions: many(transactions),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [transactions.organizationId],
+    references: [organizations.id],
+  }),
+  category: one(categories, {
+    fields: [transactions.categoryId],
+    references: [categories.id],
+  }),
+  grant: one(grants, {
+    fields: [transactions.grantId],
+    references: [grants.id],
+  }),
+  creator: one(users, {
+    fields: [transactions.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const grantsRelations = relations(grants, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [grants.organizationId],
+    references: [organizations.id],
+  }),
+  transactions: many(transactions),
+}));
