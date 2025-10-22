@@ -47,6 +47,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
+  const [bulkSuggestions, setBulkSuggestions] = useState<Map<number, CategorySuggestion>>(new Map());
+  const [showBulkCategorization, setShowBulkCategorization] = useState(false);
   const [formData, setFormData] = useState<Partial<InsertTransaction>>({
     organizationId: currentOrganization.id,
     type: 'expense',
@@ -180,6 +182,52 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     }
   };
 
+  const bulkCategorizeMutation = useMutation({
+    mutationFn: async (transactionsToProcess: Transaction[]) => {
+      const transactionData = transactionsToProcess.map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+      }));
+      
+      const response = await apiRequest('POST', `/api/ai/suggest-categories-bulk/${currentOrganization.id}`, {
+        transactions: transactionData,
+      });
+      return await response.json() as Record<number, CategorySuggestion>;
+    },
+    onSuccess: (suggestionsObj) => {
+      const suggestionsMap = new Map<number, CategorySuggestion>();
+      Object.entries(suggestionsObj).forEach(([id, suggestion]) => {
+        suggestionsMap.set(parseInt(id), suggestion);
+      });
+      setBulkSuggestions(suggestionsMap);
+      setShowBulkCategorization(true);
+      toast({
+        title: "Bulk Categorization Complete",
+        description: `Generated suggestions for ${suggestionsMap.size} transaction${suggestionsMap.size !== 1 ? 's' : ''}`,
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Bulk Categorization Failed",
+        description: error.message || "Could not categorize transactions. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || !formData.amount || !formData.date) {
@@ -196,6 +244,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const filteredTransactions = transactions?.filter(t => 
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const uncategorizedTransactions = transactions?.filter(t => !t.categoryId) || [];
 
   if (transactionsLoading) {
     return (
@@ -445,6 +495,145 @@ export default function Transactions({ currentOrganization, userId }: Transactio
           data-testid="input-search-transactions"
         />
       </div>
+
+      {/* Bulk Categorization */}
+      {uncategorizedTransactions.length > 0 && !searchQuery && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  AI Bulk Categorization
+                </CardTitle>
+                <CardDescription>
+                  {uncategorizedTransactions.length} uncategorized transaction{uncategorizedTransactions.length !== 1 ? 's' : ''} found
+                </CardDescription>
+              </div>
+              {!showBulkCategorization ? (
+                <Button
+                  onClick={() => bulkCategorizeMutation.mutate(uncategorizedTransactions)}
+                  disabled={bulkCategorizeMutation.isPending}
+                  data-testid="button-bulk-categorize"
+                >
+                  {bulkCategorizeMutation.isPending ? "Analyzing..." : "Categorize All"}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowBulkCategorization(false);
+                    setBulkSuggestions(new Map());
+                  }}
+                  data-testid="button-hide-bulk-suggestions"
+                >
+                  Hide Suggestions
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          {showBulkCategorization && bulkSuggestions.size > 0 && (
+            <CardContent>
+              <div className="space-y-3">
+                {Array.from(bulkSuggestions.entries()).map(([transactionId, suggestion]) => {
+                  const transaction = transactions?.find(t => t.id === transactionId);
+                  if (!transaction) return null;
+                  
+                  return (
+                    <div
+                      key={transactionId}
+                      className="p-4 bg-muted/30 rounded-md space-y-3"
+                      data-testid={`bulk-suggestion-${transactionId}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {transaction.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {transaction.type === 'income' ? '+' : '-'}
+                            ${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">
+                          {suggestion.confidence}% confidence
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                        <p className="text-sm font-semibold text-foreground">
+                          {suggestion.categoryName}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        {suggestion.reasoning}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            // Update the transaction with the suggested category
+                            try {
+                              await apiRequest('PATCH', `/api/transactions/${transactionId}`, {
+                                categoryId: suggestion.categoryId,
+                              });
+                              
+                              // Send accepted feedback
+                              sendCategorizationFeedback(suggestion.historyId, 'accepted', suggestion.categoryId);
+                              
+                              // Remove from bulk suggestions
+                              const newSuggestions = new Map(bulkSuggestions);
+                              newSuggestions.delete(transactionId);
+                              setBulkSuggestions(newSuggestions);
+                              
+                              // Invalidate transactions cache
+                              queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+                              
+                              toast({
+                                title: "Category Applied",
+                                description: `Set to: ${suggestion.categoryName}`,
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Error",
+                                description: "Failed to update transaction.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="flex-1"
+                          data-testid={`button-accept-bulk-suggestion-${transactionId}`}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Apply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            // Send rejected feedback
+                            sendCategorizationFeedback(suggestion.historyId, 'rejected');
+                            
+                            // Remove from bulk suggestions
+                            const newSuggestions = new Map(bulkSuggestions);
+                            newSuggestions.delete(transactionId);
+                            setBulkSuggestions(newSuggestions);
+                          }}
+                          className="flex-1"
+                          data-testid={`button-reject-bulk-suggestion-${transactionId}`}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Ignore
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Transactions List */}
       <Card>

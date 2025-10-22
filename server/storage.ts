@@ -55,10 +55,12 @@ export interface IStorage {
   deleteCategory(id: number): Promise<void>;
 
   // Transaction operations
+  getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
 
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
@@ -232,6 +234,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Transaction operations
+  async getTransaction(id: number): Promise<Transaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
+    return transaction;
+  }
+
   async getTransactions(organizationId: number): Promise<Transaction[]> {
     return await db
       .select()
@@ -271,6 +281,15 @@ export class DatabaseStorage implements IStorage {
     const [transaction] = await db
       .insert(transactions)
       .values(transactionData)
+      .returning();
+    return transaction;
+  }
+
+  async updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction> {
+    const [transaction] = await db
+      .update(transactions)
+      .set(updates)
+      .where(eq(transactions.id, id))
       .returning();
     return transaction;
   }

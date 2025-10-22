@@ -222,6 +222,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/transactions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+      const updates = req.body;
+
+      // Get the existing transaction first
+      const existingTransaction = await storage.getTransaction(transactionId);
+      
+      if (!existingTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedTransaction = await storage.updateTransaction(transactionId, updates);
+      res.json(updatedTransaction);
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      res.status(400).json({ message: "Failed to update transaction" });
+    }
+  });
+
   // AI Categorization routes
   app.post('/api/ai/suggest-category/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
@@ -328,9 +355,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const suggestions = await suggestCategoryBulk(organizationId, transactions);
 
+      // Record suggestions in categorization history and attach historyId to each
+      const suggestionsWithHistory = new Map<number, any>();
+      
+      for (const [transactionId, suggestion] of suggestions.entries()) {
+        const tx = transactions.find((t: any) => t.id === transactionId);
+        if (tx && suggestion) {
+          const historyRecord = await storage.recordCategorizationSuggestion({
+            organizationId,
+            transactionId,
+            userId,
+            transactionDescription: tx.description,
+            transactionAmount: tx.amount.toString(),
+            transactionType: tx.type,
+            suggestedCategoryId: suggestion.categoryId,
+            suggestedCategoryName: suggestion.categoryName,
+            confidence: suggestion.confidence,
+            reasoning: suggestion.reasoning,
+            userDecision: 'pending',
+            finalCategoryId: null,
+          });
+          
+          suggestionsWithHistory.set(transactionId, {
+            ...suggestion,
+            historyId: historyRecord.id,
+          });
+        }
+      }
+
       // Convert Map to object for JSON response
       const suggestionsObj: Record<number, any> = {};
-      suggestions.forEach((value, key) => {
+      suggestionsWithHistory.forEach((value, key) => {
         suggestionsObj[key] = value;
       });
 
