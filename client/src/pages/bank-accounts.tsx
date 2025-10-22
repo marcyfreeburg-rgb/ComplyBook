@@ -37,6 +37,7 @@ interface PlaidAccount {
   availableBalance: string | null;
   isoCurrencyCode: string | null;
   institutionName: string | null;
+  itemId: string;
 }
 
 export default function BankAccounts({ currentOrganization }: BankAccountsProps) {
@@ -253,8 +254,8 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
       {!isLoading && accounts && accounts.length > 0 && (
         <div className="space-y-4">
           {Object.entries(accountsByInstitution).map(([institution, institutionAccounts]) => {
-            // Get a unique itemId for this institution (all accounts from same institution share itemId)
-            const itemId = institutionAccounts[0]?.accountId;
+            // Get the Plaid itemId for this institution (all accounts from same institution share itemId)
+            const itemId = institutionAccounts[0]?.itemId;
 
             return (
               <Card key={institution}>

@@ -97,7 +97,7 @@ export interface IStorage {
   createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem>;
   deletePlaidItem(id: number): Promise<void>;
   getPlaidAccounts(plaidItemId: number): Promise<PlaidAccount[]>;
-  getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null }>>;
+  getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null; itemId: string }>>;
   createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
   updatePlaidAccountBalances(accountId: string, currentBalance: string, availableBalance: string): Promise<void>;
 
@@ -663,11 +663,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(plaidAccounts.plaidItemId, plaidItemId));
   }
 
-  async getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null }>> {
+  async getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null; itemId: string }>> {
     const results = await db
       .select({
         account: plaidAccounts,
         institutionName: plaidItems.institutionName,
+        itemId: plaidItems.itemId,
       })
       .from(plaidAccounts)
       .innerJoin(plaidItems, eq(plaidAccounts.plaidItemId, plaidItems.id))
@@ -677,6 +678,7 @@ export class DatabaseStorage implements IStorage {
     return results.map(r => ({
       ...r.account,
       institutionName: r.institutionName,
+      itemId: r.itemId,
     }));
   }
 
