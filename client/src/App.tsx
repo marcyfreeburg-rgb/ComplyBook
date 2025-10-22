@@ -15,6 +15,7 @@ import Dashboard from "@/pages/dashboard";
 import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
+import Budgets from "@/pages/budgets";
 import BankAccounts from "@/pages/bank-accounts";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
@@ -129,6 +130,9 @@ function AuthenticatedApp() {
                   <Grants currentOrganization={currentOrganization} />
                 </Route>
               )}
+              <Route path="/budgets">
+                <Budgets />
+              </Route>
               <Route path="/bank-accounts">
                 <BankAccounts currentOrganization={currentOrganization} />
               </Route>
