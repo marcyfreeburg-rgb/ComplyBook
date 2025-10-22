@@ -53,13 +53,10 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Create link token mutation
   const createLinkToken = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest<{ link_token: string }>(
-        `/api/plaid/create-link-token/${currentOrganization.id}`,
-        { method: "POST" }
-      );
+      const response = await apiRequest('POST', `/api/plaid/create-link-token/${currentOrganization.id}`, {});
       return response;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setLinkToken(data.link_token);
     },
     onError: (error: Error) => {
@@ -85,14 +82,9 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Exchange token mutation
   const exchangeToken = useMutation({
     mutationFn: async (publicToken: string) => {
-      return await apiRequest(
-        `/api/plaid/exchange-token/${currentOrganization.id}`,
-        {
-          method: "POST",
-          body: JSON.stringify({ public_token: publicToken }),
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return await apiRequest('POST', `/api/plaid/exchange-token/${currentOrganization.id}`, {
+        public_token: publicToken,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
@@ -114,12 +106,9 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Sync transactions mutation
   const syncTransactions = useMutation({
     mutationFn: async () => {
-      return await apiRequest<{ imported: number; message: string }>(
-        `/api/plaid/sync-transactions/${currentOrganization.id}`,
-        { method: "POST" }
-      );
+      return await apiRequest('POST', `/api/plaid/sync-transactions/${currentOrganization.id}`, {});
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       toast({
         title: "Sync Complete",
@@ -138,7 +127,7 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Disconnect account mutation
   const disconnectAccount = useMutation({
     mutationFn: async (itemId: string) => {
-      return await apiRequest(`/api/plaid/item/${itemId}`, { method: "DELETE" });
+      return await apiRequest('DELETE', `/api/plaid/item/${itemId}`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
