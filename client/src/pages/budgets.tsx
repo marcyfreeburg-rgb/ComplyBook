@@ -349,9 +349,9 @@ export default function Budgets() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {categories.filter(c => c.type === 'expense').map((category) => (
+                                      {categories.map((category) => (
                                         <SelectItem key={category.id} value={category.id.toString()}>
-                                          {category.name}
+                                          {category.name} ({category.type})
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
