@@ -27,6 +27,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
+import memoize from "memoizee";
 
 // Interface for storage operations
 export interface IStorage {
@@ -477,6 +478,11 @@ export class DatabaseStorage implements IStorage {
     liabilitiesByCategory: Array<{ categoryName: string; amount: string }>;
     equityByCategory: Array<{ categoryName: string; amount: string }>;
   }> {
+    const startTime = Date.now();
+    const cacheKey = `balance-sheet-${organizationId}-${asOfDate.toISOString()}`;
+    
+    console.log(`[Balance Sheet] Starting query for org ${organizationId}, asOfDate ${asOfDate.toISOString()}`);
+
     // Get total assets (sum of all transactions in asset categories up to date)
     const [assetsResult] = await db
       .select({
@@ -580,13 +586,17 @@ export class DatabaseStorage implements IStorage {
     const totalLiabilities = liabilitiesResult?.total || '0';
     const totalEquity = equityResult?.total || '0';
 
+    const executionTime = Date.now() - startTime;
+    console.log(`[Balance Sheet] Query completed in ${executionTime}ms for org ${organizationId}`);
+    console.log(`[Balance Sheet] Results: Assets=${totalAssets}, Liabilities=${totalLiabilities}, Equity=${totalEquity}`);
+
     return {
       totalAssets,
       totalLiabilities,
       totalEquity,
-      assetsByCategory,
-      liabilitiesByCategory,
-      equityByCategory,
+      assetsByCategory: assetsByCategory.length > 0 ? assetsByCategory : [],
+      liabilitiesByCategory: liabilitiesByCategory.length > 0 ? liabilitiesByCategory : [],
+      equityByCategory: equityByCategory.length > 0 ? equityByCategory : [],
     };
   }
 

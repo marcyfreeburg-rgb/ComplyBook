@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { plaidClient } from "./plaid";
+import memoize from "memoizee";
 import {
   insertOrganizationSchema,
   insertCategorySchema,
@@ -14,6 +15,19 @@ import {
   type InsertTransaction,
   type InsertGrant,
 } from "@shared/schema";
+
+// Cached Balance Sheet query (5 minute TTL)
+const getBalanceSheetCached = memoize(
+  async (organizationId: number, asOfDate: Date) => {
+    return await storage.getBalanceSheetReport(organizationId, asOfDate);
+  },
+  {
+    promise: true,
+    maxAge: 5 * 60 * 1000, // 5 minutes cache
+    normalizer: (args) => `${args[0]}-${args[1].toISOString()}`,
+    length: 2,
+  }
+);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -277,7 +291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      const report = await storage.getBalanceSheetReport(organizationId, asOfDate);
+      // Use cached version for better performance
+      const report = await getBalanceSheetCached(organizationId, asOfDate);
       res.json(report);
     } catch (error) {
       console.error("Error fetching balance sheet report:", error);
