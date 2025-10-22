@@ -715,6 +715,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/plaid/sync-transactions/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Get all plaid items for this organization
+      const plaidItems = await storage.getPlaidItems(organizationId);
+      if (plaidItems.length === 0) {
+        return res.json({ imported: 0, message: "No bank accounts connected" });
+      }
+
+      let totalImported = 0;
+      const errors = [];
+
+      // Sync transactions for each plaid item
+      for (const plaidItem of plaidItems) {
+        try {
+          // Get transactions from last 30 days
+          const endDate = new Date();
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - 30);
+
+          const transactionsResponse = await plaidClient.transactionsGet({
+            access_token: plaidItem.accessToken,
+            start_date: startDate.toISOString().split('T')[0],
+            end_date: endDate.toISOString().split('T')[0],
+            options: {
+              count: 500,
+              offset: 0,
+            },
+          });
+
+          // Update account balances
+          for (const account of transactionsResponse.data.accounts) {
+            await storage.updatePlaidAccountBalances(
+              account.account_id,
+              account.balances.current?.toString() || '0',
+              account.balances.available?.toString() || '0'
+            );
+          }
+
+          // Import transactions
+          for (const plaidTx of transactionsResponse.data.transactions) {
+            // Check if transaction already exists by looking for similar transactions
+            // (same amount, date, and description)
+            const existingTxs = await storage.getTransactionsByDateRange(
+              organizationId,
+              new Date(plaidTx.date),
+              new Date(plaidTx.date)
+            );
+
+            const isDuplicate = existingTxs.some(tx => 
+              Math.abs(parseFloat(tx.amount) - Math.abs(plaidTx.amount)) < 0.01 &&
+              tx.description === plaidTx.name
+            );
+
+            if (isDuplicate) {
+              continue;
+            }
+
+            // Determine transaction type (income vs expense)
+            // Plaid amounts are positive for money spent, negative for money received
+            const isIncome = plaidTx.amount < 0;
+            const amount = Math.abs(plaidTx.amount);
+
+            // Create transaction
+            await storage.createTransaction({
+              organizationId,
+              date: new Date(plaidTx.date),
+              description: plaidTx.name,
+              amount: amount.toString(),
+              type: isIncome ? 'income' : 'expense',
+              categoryId: null,
+              grantId: null,
+              createdBy: userId,
+            });
+
+            totalImported++;
+          }
+        } catch (error) {
+          console.error(`Error syncing transactions for item ${plaidItem.itemId}:`, error);
+          errors.push({
+            institution: plaidItem.institutionName || 'Unknown',
+            error: 'Failed to sync transactions',
+          });
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(207).json({
+          imported: totalImported,
+          errors,
+          message: `Imported ${totalImported} transactions with some errors`,
+        });
+      }
+
+      res.json({
+        imported: totalImported,
+        message: `Successfully imported ${totalImported} new transactions`,
+      });
+    } catch (error) {
+      console.error("Error syncing transactions:", error);
+      res.status(500).json({ message: "Failed to sync transactions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
