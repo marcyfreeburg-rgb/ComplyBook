@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Download, ArrowUpRight, ArrowDownRight, FileSpreadsheet } from "lucide-react";
+import { FileText, Download, ArrowUpRight, ArrowDownRight, FileSpreadsheet, ArrowLeft } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import type { Organization, Transaction, Category } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 
 interface ReportsProps {
   currentOrganization: Organization;
@@ -478,11 +479,19 @@ export default function Reports({ currentOrganization }: ReportsProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-semibold text-foreground">Reports</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {currentOrganization.name}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Reports</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {currentOrganization.name}
+          </p>
+        </div>
+        <Link href="/">
+          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
       </div>
 
       {/* Filters */}
