@@ -34,6 +34,7 @@ interface CategorySuggestion {
   categoryName: string;
   confidence: number;
   reasoning: string;
+  historyId: number;
 }
 
 interface TransactionsProps {
@@ -162,6 +163,22 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       });
     },
   });
+
+  const sendCategorizationFeedback = async (
+    historyId: number,
+    userDecision: 'accepted' | 'rejected' | 'modified',
+    finalCategoryId?: number
+  ) => {
+    try {
+      await apiRequest('POST', '/api/ai/categorization-feedback', {
+        historyId,
+        userDecision,
+        finalCategoryId,
+      });
+    } catch (error) {
+      console.error("Failed to send categorization feedback:", error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,7 +331,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => setAiSuggestion(null)}
+                      onClick={() => {
+                        // Send rejected feedback when dismissing
+                        if (aiSuggestion?.historyId) {
+                          sendCategorizationFeedback(aiSuggestion.historyId, 'rejected');
+                        }
+                        setAiSuggestion(null);
+                      }}
                       className="h-6 w-6 flex-shrink-0"
                       data-testid="button-dismiss-suggestion"
                     >
@@ -329,7 +352,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                       onClick={() => {
                         const categoryId = aiSuggestion.categoryId;
                         const categoryName = aiSuggestion.categoryName;
+                        const historyId = aiSuggestion.historyId;
+                        
                         setFormData({ ...formData, categoryId });
+                        
+                        // Send accepted feedback
+                        sendCategorizationFeedback(historyId, 'accepted', categoryId);
+                        
                         setAiSuggestion(null);
                         toast({
                           title: "Category Applied",
@@ -346,7 +375,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setAiSuggestion(null)}
+                      onClick={() => {
+                        // Send rejected feedback
+                        if (aiSuggestion?.historyId) {
+                          sendCategorizationFeedback(aiSuggestion.historyId, 'rejected');
+                        }
+                        setAiSuggestion(null);
+                      }}
                       className="flex-1"
                       data-testid="button-reject-suggestion"
                     >
