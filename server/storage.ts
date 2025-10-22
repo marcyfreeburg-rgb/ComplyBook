@@ -76,6 +76,15 @@ export interface IStorage {
     expensesByCategory: Array<{ categoryName: string; amount: string }>;
   }>;
 
+  getBalanceSheetReport(organizationId: number, asOfDate: Date): Promise<{
+    totalAssets: string;
+    totalLiabilities: string;
+    totalEquity: string;
+    assetsByCategory: Array<{ categoryName: string; amount: string }>;
+    liabilitiesByCategory: Array<{ categoryName: string; amount: string }>;
+    equityByCategory: Array<{ categoryName: string; amount: string }>;
+  }>;
+
   // Plaid operations
   getPlaidItems(organizationId: number): Promise<PlaidItem[]>;
   getPlaidItem(itemId: string): Promise<PlaidItem | undefined>;
@@ -454,6 +463,130 @@ export class DatabaseStorage implements IStorage {
       netIncome,
       incomeByCategory,
       expensesByCategory,
+    };
+  }
+
+  async getBalanceSheetReport(
+    organizationId: number,
+    asOfDate: Date
+  ): Promise<{
+    totalAssets: string;
+    totalLiabilities: string;
+    totalEquity: string;
+    assetsByCategory: Array<{ categoryName: string; amount: string }>;
+    liabilitiesByCategory: Array<{ categoryName: string; amount: string }>;
+    equityByCategory: Array<{ categoryName: string; amount: string }>;
+  }> {
+    // Get total assets (sum of all transactions in asset categories up to date)
+    const [assetsResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(categories.type, 'asset'),
+          lte(transactions.date, asOfDate)
+        )
+      );
+
+    // Get total liabilities
+    const [liabilitiesResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(categories.type, 'liability'),
+          lte(transactions.date, asOfDate)
+        )
+      );
+
+    // Get total equity
+    const [equityResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(categories.type, 'equity'),
+          lte(transactions.date, asOfDate)
+        )
+      );
+
+    // Get assets by category
+    const assetsByCategory = await db
+      .select({
+        categoryName: categories.name,
+        amount: sql<string>`SUM(${transactions.amount})`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(categories.type, 'asset'),
+          lte(transactions.date, asOfDate)
+        )
+      )
+      .groupBy(categories.name)
+      .orderBy(categories.name);
+
+    // Get liabilities by category
+    const liabilitiesByCategory = await db
+      .select({
+        categoryName: categories.name,
+        amount: sql<string>`SUM(${transactions.amount})`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(categories.type, 'liability'),
+          lte(transactions.date, asOfDate)
+        )
+      )
+      .groupBy(categories.name)
+      .orderBy(categories.name);
+
+    // Get equity by category
+    const equityByCategory = await db
+      .select({
+        categoryName: categories.name,
+        amount: sql<string>`SUM(${transactions.amount})`,
+      })
+      .from(transactions)
+      .innerJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(categories.type, 'equity'),
+          lte(transactions.date, asOfDate)
+        )
+      )
+      .groupBy(categories.name)
+      .orderBy(categories.name);
+
+    const totalAssets = assetsResult?.total || '0';
+    const totalLiabilities = liabilitiesResult?.total || '0';
+    const totalEquity = equityResult?.total || '0';
+
+    return {
+      totalAssets,
+      totalLiabilities,
+      totalEquity,
+      assetsByCategory,
+      liabilitiesByCategory,
+      equityByCategory,
     };
   }
 
