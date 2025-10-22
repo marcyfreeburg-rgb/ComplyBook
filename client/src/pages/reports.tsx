@@ -31,6 +31,15 @@ interface ProfitLossData {
   expensesByCategory: Array<{ categoryName: string; amount: string }>;
 }
 
+interface BalanceSheetData {
+  totalAssets: string;
+  totalLiabilities: string;
+  totalEquity: string;
+  assetsByCategory: Array<{ categoryName: string; amount: string }>;
+  liabilitiesByCategory: Array<{ categoryName: string; amount: string }>;
+  equityByCategory: Array<{ categoryName: string; amount: string }>;
+}
+
 export default function Reports({ currentOrganization }: ReportsProps) {
   const { toast } = useToast();
   const [reportType, setReportType] = useState<'profit-loss' | 'balance-sheet' | 'transactions'>('profit-loss');
@@ -43,6 +52,12 @@ export default function Reports({ currentOrganization }: ReportsProps) {
     queryKey: [`/api/reports/profit-loss/${currentOrganization.id}?startDate=${startDate}&endDate=${endDate}`],
     retry: false,
     enabled: reportType === 'profit-loss',
+  });
+
+  const { data: balanceSheet, isLoading: balanceSheetLoading } = useQuery<BalanceSheetData>({
+    queryKey: [`/api/reports/balance-sheet/${currentOrganization.id}?asOfDate=${endDate}`],
+    retry: false,
+    enabled: reportType === 'balance-sheet',
   });
 
   const { data: transactions, isLoading: transactionsLoading } = useQuery<Transaction[]>({
@@ -119,7 +134,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="profit-loss">Profit & Loss Statement</SelectItem>
-                  <SelectItem value="balance-sheet">Balance Sheet (Coming Soon)</SelectItem>
+                  <SelectItem value="balance-sheet">Balance Sheet</SelectItem>
                   <SelectItem value="transactions">Transaction History</SelectItem>
                 </SelectContent>
               </Select>
@@ -286,6 +301,166 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                 <div className="text-center">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                   <p className="text-sm text-muted-foreground">No data available for this period</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Balance Sheet Report */}
+      {reportType === 'balance-sheet' && (
+        <>
+          {balanceSheetLoading ? (
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32 mt-2" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </CardContent>
+            </Card>
+          ) : balanceSheet ? (
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-2xl">Balance Sheet</CardTitle>
+                    <CardDescription className="mt-2">
+                      As of {format(new Date(endDate), 'MMM dd, yyyy')}
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" disabled>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export PDF
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Assets Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Assets</h3>
+                  {balanceSheet.assetsByCategory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No assets recorded</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {balanceSheet.assetsByCategory.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-2">
+                          <span className="text-sm text-foreground">{item.categoryName}</span>
+                          <span className="text-sm font-mono font-medium text-foreground">
+                            ${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                      <Separator />
+                      <div className="flex justify-between py-2">
+                        <span className="text-base font-semibold text-foreground">Total Assets</span>
+                        <span className="text-base font-mono font-semibold text-chart-2" data-testid="text-total-assets">
+                          ${parseFloat(balanceSheet.totalAssets).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Liabilities Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Liabilities</h3>
+                  {balanceSheet.liabilitiesByCategory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No liabilities recorded</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {balanceSheet.liabilitiesByCategory.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-2">
+                          <span className="text-sm text-foreground">{item.categoryName}</span>
+                          <span className="text-sm font-mono font-medium text-foreground">
+                            ${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                      <Separator />
+                      <div className="flex justify-between py-2">
+                        <span className="text-base font-semibold text-foreground">Total Liabilities</span>
+                        <span className="text-base font-mono font-semibold text-chart-3" data-testid="text-total-liabilities">
+                          ${parseFloat(balanceSheet.totalLiabilities).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Equity Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Equity</h3>
+                  {balanceSheet.equityByCategory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No equity recorded</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {balanceSheet.equityByCategory.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-2">
+                          <span className="text-sm text-foreground">{item.categoryName}</span>
+                          <span className="text-sm font-mono font-medium text-foreground">
+                            ${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                      <Separator />
+                      <div className="flex justify-between py-2">
+                        <span className="text-base font-semibold text-foreground">Total Equity</span>
+                        <span className="text-base font-mono font-semibold text-chart-2" data-testid="text-total-equity">
+                          ${parseFloat(balanceSheet.totalEquity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator className="border-t-2" />
+
+                {/* Accounting Equation Validation */}
+                <div className="bg-muted/50 px-4 py-3 rounded-md space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Assets</span>
+                    <span className="text-sm font-mono text-foreground">
+                      ${parseFloat(balanceSheet.totalAssets).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Liabilities + Equity</span>
+                    <span className="text-sm font-mono text-foreground">
+                      ${(parseFloat(balanceSheet.totalLiabilities) + parseFloat(balanceSheet.totalEquity)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-base font-semibold text-foreground">Balance</span>
+                    <span className={`text-base font-mono font-semibold ${
+                      Math.abs(parseFloat(balanceSheet.totalAssets) - (parseFloat(balanceSheet.totalLiabilities) + parseFloat(balanceSheet.totalEquity))) < 0.01
+                        ? 'text-chart-2'
+                        : 'text-chart-3'
+                    }`} data-testid="text-balance-check">
+                      {Math.abs(parseFloat(balanceSheet.totalAssets) - (parseFloat(balanceSheet.totalLiabilities) + parseFloat(balanceSheet.totalEquity))) < 0.01
+                        ? 'Balanced ✓'
+                        : `Out of balance by $${Math.abs(parseFloat(balanceSheet.totalAssets) - (parseFloat(balanceSheet.totalLiabilities) + parseFloat(balanceSheet.totalEquity))).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                      }
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground">No data available for this date</p>
                 </div>
               </CardContent>
             </Card>

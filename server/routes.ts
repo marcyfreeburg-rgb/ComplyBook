@@ -265,6 +265,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/reports/balance-sheet/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const asOfDate = new Date(req.query.asOfDate as string);
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const report = await storage.getBalanceSheetReport(organizationId, asOfDate);
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching balance sheet report:", error);
+      res.status(500).json({ message: "Failed to fetch balance sheet report" });
+    }
+  });
+
   app.get('/api/reports/transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
