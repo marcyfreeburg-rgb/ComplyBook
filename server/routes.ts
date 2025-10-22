@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/budgets', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const data = insertBudgetSchema.parse(req.body);
+      const data = insertBudgetSchema.parse({ ...req.body, createdBy: userId });
       
       const userRole = await storage.getUserRole(userId, data.organizationId);
       if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
