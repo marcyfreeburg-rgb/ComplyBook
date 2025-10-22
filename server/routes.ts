@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { plaidClient } from "./plaid";
+import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import memoize from "memoizee";
 import {
   insertOrganizationSchema,
@@ -195,6 +196,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating transaction:", error);
       res.status(400).json({ message: "Failed to create transaction" });
+    }
+  });
+
+  // AI Categorization routes
+  app.post('/api/ai/suggest-category/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { description, amount, type } = req.body;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Validate inputs
+      if (!description || !amount || !type) {
+        return res.status(400).json({ message: "Missing required fields: description, amount, type" });
+      }
+
+      if (type !== 'income' && type !== 'expense') {
+        return res.status(400).json({ message: "Type must be 'income' or 'expense'" });
+      }
+
+      const suggestion = await suggestCategory(
+        organizationId,
+        description,
+        parseFloat(amount),
+        type
+      );
+
+      if (!suggestion) {
+        return res.status(404).json({ message: "No suitable category found" });
+      }
+
+      res.json(suggestion);
+    } catch (error) {
+      console.error("Error suggesting category:", error);
+      res.status(500).json({ message: "Failed to suggest category" });
+    }
+  });
+
+  app.post('/api/ai/suggest-categories-bulk/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { transactions } = req.body;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!Array.isArray(transactions) || transactions.length === 0) {
+        return res.status(400).json({ message: "Transactions array is required" });
+      }
+
+      // Limit bulk requests to avoid long processing times
+      if (transactions.length > 50) {
+        return res.status(400).json({ message: "Maximum 50 transactions allowed per bulk request" });
+      }
+
+      const suggestions = await suggestCategoryBulk(organizationId, transactions);
+
+      // Convert Map to object for JSON response
+      const suggestionsObj: Record<number, any> = {};
+      suggestions.forEach((value, key) => {
+        suggestionsObj[key] = value;
+      });
+
+      res.json(suggestionsObj);
+    } catch (error) {
+      console.error("Error suggesting categories in bulk:", error);
+      res.status(500).json({ message: "Failed to suggest categories" });
     }
   });
 
