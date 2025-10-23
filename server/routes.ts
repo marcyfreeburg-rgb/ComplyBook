@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
+import { ObjectStorageService } from "./objectStorage";
 import memoize from "memoizee";
 import {
   insertOrganizationSchema,
@@ -195,6 +196,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating organization:", error);
       res.status(400).json({ message: "Failed to create organization" });
+    }
+  });
+
+  // Invoice settings routes
+  app.patch('/api/organizations/:id/invoice-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.id);
+      
+      // Check user has owner or admin role
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Only owners and admins can update invoice settings" });
+      }
+
+      // Only allow updating invoice-related fields
+      const allowedFields: (keyof InsertOrganization)[] = [
+        'logoUrl', 'companyName', 'companyAddress', 'companyPhone', 
+        'companyEmail', 'companyWebsite', 'taxId', 'invoicePrefix', 'invoiceNotes'
+      ];
+      
+      const updates: Partial<InsertOrganization> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+
+      const updated = await storage.updateOrganization(organizationId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating invoice settings:", error);
+      res.status(400).json({ message: "Failed to update invoice settings" });
+    }
+  });
+
+  app.post('/api/organizations/:id/logo-upload-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.id);
+      
+      // Check user has owner or admin role
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Only owners and admins can upload logos" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const uploadUrl = await objectStorageService.getPublicObjectUploadURL(`logos/org-${organizationId}`);
+      
+      res.json({ uploadUrl });
+    } catch (error) {
+      console.error("Error generating logo upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
     }
   });
 
