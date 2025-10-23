@@ -4,6 +4,8 @@ import {
   organizations,
   userOrganizationRoles,
   categories,
+  vendors,
+  clients,
   transactions,
   grants,
   budgets,
@@ -20,6 +22,10 @@ import {
   type InsertUserOrganizationRole,
   type Category,
   type InsertCategory,
+  type Vendor,
+  type InsertVendor,
+  type Client,
+  type InsertClient,
   type Transaction,
   type InsertTransaction,
   type Grant,
@@ -69,6 +75,20 @@ export interface IStorage {
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(id: number, updates: Partial<InsertCategory>): Promise<Category>;
   deleteCategory(id: number): Promise<void>;
+
+  // Vendor operations
+  getVendors(organizationId: number): Promise<Vendor[]>;
+  getVendor(id: number): Promise<Vendor | undefined>;
+  createVendor(vendor: InsertVendor): Promise<Vendor>;
+  updateVendor(id: number, updates: Partial<InsertVendor>): Promise<Vendor>;
+  deleteVendor(id: number): Promise<void>;
+
+  // Client operations
+  getClients(organizationId: number): Promise<Client[]>;
+  getClient(id: number): Promise<Client | undefined>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: number, updates: Partial<InsertClient>): Promise<Client>;
+  deleteClient(id: number): Promise<void>;
 
   // Transaction operations
   getTransaction(id: number): Promise<Transaction | undefined>;
@@ -306,6 +326,82 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCategory(id: number): Promise<void> {
     await db.delete(categories).where(eq(categories.id, id));
+  }
+
+  // Vendor operations
+  async getVendors(organizationId: number): Promise<Vendor[]> {
+    return await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.organizationId, organizationId))
+      .orderBy(vendors.name);
+  }
+
+  async getVendor(id: number): Promise<Vendor | undefined> {
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.id, id));
+    return vendor;
+  }
+
+  async createVendor(vendorData: InsertVendor): Promise<Vendor> {
+    const [vendor] = await db
+      .insert(vendors)
+      .values(vendorData)
+      .returning();
+    return vendor;
+  }
+
+  async updateVendor(id: number, updates: Partial<InsertVendor>): Promise<Vendor> {
+    const [vendor] = await db
+      .update(vendors)
+      .set(updates)
+      .where(eq(vendors.id, id))
+      .returning();
+    return vendor;
+  }
+
+  async deleteVendor(id: number): Promise<void> {
+    await db.delete(vendors).where(eq(vendors.id, id));
+  }
+
+  // Client operations
+  async getClients(organizationId: number): Promise<Client[]> {
+    return await db
+      .select()
+      .from(clients)
+      .where(eq(clients.organizationId, organizationId))
+      .orderBy(clients.name);
+  }
+
+  async getClient(id: number): Promise<Client | undefined> {
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, id));
+    return client;
+  }
+
+  async createClient(clientData: InsertClient): Promise<Client> {
+    const [client] = await db
+      .insert(clients)
+      .values(clientData)
+      .returning();
+    return client;
+  }
+
+  async updateClient(id: number, updates: Partial<InsertClient>): Promise<Client> {
+    const [client] = await db
+      .update(clients)
+      .set(updates)
+      .where(eq(clients.id, id))
+      .returning();
+    return client;
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    await db.delete(clients).where(eq(clients.id, id));
   }
 
   // Transaction operations
