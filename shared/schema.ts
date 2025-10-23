@@ -34,6 +34,8 @@ export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'p
 export const aiDecisionEnum = pgEnum('ai_decision', ['pending', 'accepted', 'rejected', 'modified']);
 export const budgetPeriodEnum = pgEnum('budget_period', ['monthly', 'quarterly', 'yearly']);
 export const recurringFrequencyEnum = pgEnum('recurring_frequency', ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']);
+export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled']);
+export const billStatusEnum = pgEnum('bill_status', ['received', 'scheduled', 'paid', 'partial', 'overdue', 'cancelled']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -211,6 +213,132 @@ export const insertClientSchema = createInsertSchema(clients).omit({
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
+
+// ============================================
+// INVOICES (Sent to Clients)
+// ============================================
+
+export const invoices = pgTable("invoices", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  invoiceNumber: varchar("invoice_number", { length: 100 }).notNull(),
+  issueDate: timestamp("issue_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: invoiceStatusEnum("status").notNull().default('draft'),
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
+  taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  notes: text("notes"),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+} as const).extend({
+  issueDate: z.coerce.date(),
+  dueDate: z.coerce.date(),
+  subtotal: z.string().or(z.number()).transform(val => String(val)),
+  taxAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  totalAmount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+// ============================================
+// INVOICE LINE ITEMS
+// ============================================
+
+export const invoiceLineItems = pgTable("invoice_line_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  rate: numeric("rate", { precision: 12, scale: 2 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
+  id: true,
+  createdAt: true,
+} as const).extend({
+  quantity: z.string().or(z.number()).transform(val => String(val)),
+  rate: z.string().or(z.number()).transform(val => String(val)),
+  amount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+
+// ============================================
+// BILLS (Received from Vendors)
+// ============================================
+
+export const bills = pgTable("bills", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
+  billNumber: varchar("bill_number", { length: 100 }).notNull(),
+  issueDate: timestamp("issue_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: billStatusEnum("status").notNull().default('received'),
+  subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
+  taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  notes: text("notes"),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBillSchema = createInsertSchema(bills).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+} as const).extend({
+  issueDate: z.coerce.date(),
+  dueDate: z.coerce.date(),
+  subtotal: z.string().or(z.number()).transform(val => String(val)),
+  taxAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  totalAmount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertBill = z.infer<typeof insertBillSchema>;
+export type Bill = typeof bills.$inferSelect;
+
+// ============================================
+// BILL LINE ITEMS
+// ============================================
+
+export const billLineItems = pgTable("bill_line_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  billId: integer("bill_id").notNull().references(() => bills.id, { onDelete: 'cascade' }),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  rate: numeric("rate", { precision: 12, scale: 2 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertBillLineItemSchema = createInsertSchema(billLineItems).omit({
+  id: true,
+  createdAt: true,
+} as const).extend({
+  quantity: z.string().or(z.number()).transform(val => String(val)),
+  rate: z.string().or(z.number()).transform(val => String(val)),
+  amount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertBillLineItem = z.infer<typeof insertBillLineItemSchema>;
+export type BillLineItem = typeof billLineItems.$inferSelect;
 
 // ============================================
 // TRANSACTIONS
