@@ -84,6 +84,51 @@ function hasPermission(
   }
 }
 
+// Helper function to calculate the next occurrence of a recurring transaction
+function getNextOccurrence(recurring: any, referenceDate: Date): Date | null {
+  const lastGenerated = recurring.lastGeneratedDate ? new Date(recurring.lastGeneratedDate) : null;
+  const startDate = new Date(recurring.startDate);
+  const baseDate = lastGenerated && lastGenerated >= startDate ? lastGenerated : startDate;
+  
+  const nextDate = new Date(baseDate);
+  
+  switch (recurring.frequency) {
+    case 'daily':
+      nextDate.setDate(nextDate.getDate() + 1);
+      break;
+    case 'weekly':
+      nextDate.setDate(nextDate.getDate() + 7);
+      break;
+    case 'biweekly':
+      nextDate.setDate(nextDate.getDate() + 14);
+      break;
+    case 'monthly':
+      // If dayOfMonth is specified, use it; otherwise use the day of startDate
+      if (recurring.dayOfMonth) {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        nextDate.setDate(Math.min(recurring.dayOfMonth, new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate()));
+      } else {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      }
+      break;
+    case 'quarterly':
+      nextDate.setMonth(nextDate.getMonth() + 3);
+      break;
+    case 'yearly':
+      nextDate.setFullYear(nextDate.getFullYear() + 1);
+      break;
+    default:
+      return null;
+  }
+  
+  // Only return if the next date is before or equal to today
+  if (nextDate <= referenceDate) {
+    return nextDate;
+  }
+  
+  return null;
+}
+
 // Cached Balance Sheet query (5 minute TTL)
 const getBalanceSheetCached = memoize(
   async (organizationId: number, asOfDate: Date) => {
@@ -616,6 +661,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting transaction:", error);
       res.status(500).json({ message: "Failed to delete transaction" });
+    }
+  });
+
+  // Recurring Transaction routes
+  app.get('/api/recurring-transactions/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const recurringTransactions = await storage.getRecurringTransactions(organizationId);
+      res.json(recurringTransactions);
+    } catch (error) {
+      console.error("Error fetching recurring transactions:", error);
+      res.status(500).json({ message: "Failed to fetch recurring transactions" });
+    }
+  });
+
+  app.post('/api/recurring-transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...data } = req.body;
+      
+      // Check user has access and permission to edit transactions
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to create recurring transactions" });
+      }
+
+      const recurringTransaction = await storage.createRecurringTransaction({
+        organizationId,
+        ...data,
+        createdBy: userId,
+      });
+      
+      res.status(201).json(recurringTransaction);
+    } catch (error) {
+      console.error("Error creating recurring transaction:", error);
+      res.status(400).json({ message: "Failed to create recurring transaction" });
+    }
+  });
+
+  app.patch('/api/recurring-transactions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      // Get the existing recurring transaction
+      const existing = await storage.getRecurringTransaction(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Recurring transaction not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit recurring transactions" });
+      }
+
+      const updated = await storage.updateRecurringTransaction(id, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating recurring transaction:", error);
+      res.status(400).json({ message: "Failed to update recurring transaction" });
+    }
+  });
+
+  app.delete('/api/recurring-transactions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      // Get the existing recurring transaction
+      const existing = await storage.getRecurringTransaction(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Recurring transaction not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete recurring transactions" });
+      }
+
+      await storage.deleteRecurringTransaction(id);
+      res.status(200).json({ message: "Recurring transaction deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting recurring transaction:", error);
+      res.status(500).json({ message: "Failed to delete recurring transaction" });
+    }
+  });
+
+  app.post('/api/recurring-transactions/generate/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to generate transactions" });
+      }
+
+      const recurringTransactions = await storage.getRecurringTransactions(organizationId);
+      const activeRecurring = recurringTransactions.filter(rt => rt.isActive === 1);
+      
+      const now = new Date();
+      const generatedCount = { count: 0 };
+
+      for (const recurring of activeRecurring) {
+        const nextDate = getNextOccurrence(recurring, now);
+        
+        if (nextDate && (!recurring.endDate || nextDate <= new Date(recurring.endDate))) {
+          // Create transaction
+          await storage.createTransaction({
+            organizationId: recurring.organizationId,
+            date: nextDate,
+            description: recurring.description,
+            amount: recurring.amount,
+            type: recurring.type,
+            categoryId: recurring.categoryId,
+            createdBy: userId,
+          });
+          
+          // Update last generated date
+          await storage.updateRecurringTransactionLastGenerated(recurring.id, nextDate);
+          generatedCount.count++;
+        }
+      }
+
+      res.json({ 
+        message: `Generated ${generatedCount.count} transaction(s)`,
+        count: generatedCount.count
+      });
+    } catch (error) {
+      console.error("Error generating transactions:", error);
+      res.status(500).json({ message: "Failed to generate transactions" });
     }
   });
 
