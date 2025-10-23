@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +43,16 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Categories",
       url: "/categories",
       icon: Tag,
+    },
+    {
+      title: "Vendors",
+      url: "/vendors",
+      icon: Truck,
+    },
+    {
+      title: "Clients",
+      url: "/clients",
+      icon: Users,
     },
     {
       title: "Reports",

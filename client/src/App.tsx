@@ -15,6 +15,8 @@ import Dashboard from "@/pages/dashboard";
 import Transactions from "@/pages/transactions";
 import RecurringTransactions from "@/pages/recurring-transactions";
 import Categories from "@/pages/categories";
+import Vendors from "@/pages/vendors";
+import Clients from "@/pages/clients";
 import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
 import Budgets from "@/pages/budgets";
@@ -142,6 +144,18 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/categories">
                 <Categories 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/vendors">
+                <Vendors 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/clients">
+                <Clients 
                   currentOrganization={currentOrganization}
                   userId={user?.id || ''}
                 />
