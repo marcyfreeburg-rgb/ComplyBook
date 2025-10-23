@@ -13,6 +13,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Transactions from "@/pages/transactions";
+import RecurringTransactions from "@/pages/recurring-transactions";
 import Categories from "@/pages/categories";
 import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
@@ -129,6 +130,12 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/transactions">
                 <Transactions 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/recurring-transactions">
+                <RecurringTransactions 
                   currentOrganization={currentOrganization}
                   userId={user?.id || ''}
                 />

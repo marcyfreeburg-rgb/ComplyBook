@@ -88,9 +88,17 @@ function hasPermission(
 function getNextOccurrence(recurring: any, referenceDate: Date): Date | null {
   const lastGenerated = recurring.lastGeneratedDate ? new Date(recurring.lastGeneratedDate) : null;
   const startDate = new Date(recurring.startDate);
-  const baseDate = lastGenerated && lastGenerated >= startDate ? lastGenerated : startDate;
   
-  const nextDate = new Date(baseDate);
+  // If we haven't generated anything yet, check if startDate is due
+  if (!lastGenerated) {
+    if (startDate <= referenceDate) {
+      return startDate;
+    }
+    return null;
+  }
+  
+  // Calculate the next occurrence after last generated
+  const nextDate = new Date(lastGenerated);
   
   switch (recurring.frequency) {
     case 'daily':

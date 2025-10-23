@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -33,6 +33,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Transactions",
       url: "/transactions",
       icon: Receipt,
+    },
+    {
+      title: "Recurring",
+      url: "/recurring-transactions",
+      icon: Clock,
     },
     {
       title: "Categories",
