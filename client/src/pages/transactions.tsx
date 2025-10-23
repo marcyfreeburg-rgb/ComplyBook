@@ -25,10 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import type { Organization, Transaction, Category, InsertTransaction } from "@shared/schema";
+import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 interface CategorySuggestion {
   categoryId: number;
@@ -55,6 +56,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
   const [bulkSuggestions, setBulkSuggestions] = useState<Map<number, CategorySuggestion>>(new Map());
   const [showBulkCategorization, setShowBulkCategorization] = useState(false);
+  const [isAttachmentsDialogOpen, setIsAttachmentsDialogOpen] = useState(false);
+  const [selectedTransactionForAttachments, setSelectedTransactionForAttachments] = useState<Transaction | null>(null);
   const [formData, setFormData] = useState<Partial<InsertTransaction>>({
     organizationId: currentOrganization.id,
     type: 'expense',
@@ -73,6 +76,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
+    retry: false,
+  });
+
+  const { data: attachments, refetch: refetchAttachments } = useQuery<TransactionAttachment[]>({
+    queryKey: [`/api/transactions/${selectedTransactionForAttachments?.id}/attachments`],
+    enabled: !!selectedTransactionForAttachments && isAttachmentsDialogOpen,
     retry: false,
   });
 
@@ -264,6 +273,26 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       toast({
         title: "Error",
         description: error.message || "Failed to delete transaction.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: number) => {
+      return await apiRequest('DELETE', `/api/attachments/${attachmentId}`, {});
+    },
+    onSuccess: () => {
+      refetchAttachments();
+      toast({
+        title: "Attachment deleted",
+        description: "The attachment has been removed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete attachment.",
         variant: "destructive",
       });
     },
@@ -868,6 +897,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                               size="icon"
                               variant="ghost"
                               onClick={() => {
+                                setSelectedTransactionForAttachments(transaction);
+                                setIsAttachmentsDialogOpen(true);
+                              }}
+                              data-testid={`button-attachments-transaction-${transaction.id}`}
+                            >
+                              <Paperclip className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
                                 setEditingTransaction(transaction);
                                 setIsEditDialogOpen(true);
                               }}
@@ -1023,6 +1063,92 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </Button>
               </div>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Attachments Dialog */}
+      <Dialog open={isAttachmentsDialogOpen} onOpenChange={setIsAttachmentsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Transaction Attachments</DialogTitle>
+            <DialogDescription>
+              Upload receipts, documents, and other files for this transaction
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTransactionForAttachments && (
+            <div className="space-y-6">
+              <div className="border-b pb-4">
+                <p className="text-sm text-muted-foreground">
+                  {selectedTransactionForAttachments.description} - ${parseFloat(selectedTransactionForAttachments.amount).toFixed(2)}
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium mb-3">Existing Attachments</h3>
+                {attachments && attachments.length > 0 ? (
+                  <div className="space-y-2">
+                    {attachments.map((attachment) => (
+                      <div 
+                        key={attachment.id} 
+                        className="flex items-center justify-between p-3 border rounded-md hover-elevate"
+                        data-testid={`attachment-item-${attachment.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{attachment.fileName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(attachment.fileSize / 1024).toFixed(2)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              window.open(`/api/attachments/${attachment.id}/download`, '_blank');
+                            }}
+                            data-testid={`button-download-attachment-${attachment.id}`}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this attachment?')) {
+                                deleteAttachmentMutation.mutate(attachment.id);
+                              }
+                            }}
+                            data-testid={`button-delete-attachment-${attachment.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No attachments yet</p>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium mb-3">Upload New Attachments</h3>
+                <ObjectUploader
+                  transactionId={selectedTransactionForAttachments.id}
+                  onUploadComplete={() => {
+                    refetchAttachments();
+                    toast({
+                      title: "Upload complete",
+                      description: "Your files have been uploaded successfully.",
+                    });
+                  }}
+                />
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
