@@ -695,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recurring-transactions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { organizationId, ...data } = req.body;
+      const { organizationId, startDate, endDate, ...data } = req.body;
       
       // Check user has access and permission to edit transactions
       const userRole = await storage.getUserRole(userId, organizationId);
@@ -707,11 +707,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to create recurring transactions" });
       }
 
-      const recurringTransaction = await storage.createRecurringTransaction({
+      // Convert date strings to Date objects
+      const recurringData: any = {
         organizationId,
         ...data,
         createdBy: userId,
-      });
+        startDate: startDate ? new Date(startDate) : undefined,
+      };
+      
+      if (endDate) {
+        recurringData.endDate = new Date(endDate);
+      }
+
+      const recurringTransaction = await storage.createRecurringTransaction(recurringData);
       
       res.status(201).json(recurringTransaction);
     } catch (error) {
@@ -724,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const updates = req.body;
+      const { startDate, endDate, ...updates } = req.body;
 
       // Get the existing recurring transaction
       const existing = await storage.getRecurringTransaction(id);
@@ -743,7 +751,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to edit recurring transactions" });
       }
 
-      const updated = await storage.updateRecurringTransaction(id, updates);
+      // Convert date strings to Date objects if present
+      const updateData: any = { ...updates };
+      if (startDate) {
+        updateData.startDate = new Date(startDate);
+      }
+      if (endDate) {
+        updateData.endDate = new Date(endDate);
+      }
+
+      const updated = await storage.updateRecurringTransaction(id, updateData);
       res.json(updated);
     } catch (error) {
       console.error("Error updating recurring transaction:", error);
