@@ -48,6 +48,18 @@ import {
   transactionAttachments,
   type TransactionAttachment,
   type InsertTransactionAttachment,
+  invoices,
+  invoiceLineItems,
+  bills,
+  billLineItems,
+  type Invoice,
+  type InsertInvoice,
+  type InvoiceLineItem,
+  type InsertInvoiceLineItem,
+  type Bill,
+  type InsertBill,
+  type BillLineItem,
+  type InsertBillLineItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -195,6 +207,28 @@ export interface IStorage {
   getTransactionAttachments(transactionId: number): Promise<TransactionAttachment[]>;
   createTransactionAttachment(attachment: InsertTransactionAttachment): Promise<TransactionAttachment>;
   deleteTransactionAttachment(id: number): Promise<void>;
+
+  // Invoice operations
+  getInvoices(organizationId: number): Promise<Array<Invoice & { clientName: string | null }>>;
+  getInvoice(id: number): Promise<Invoice | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: number, updates: Partial<InsertInvoice>): Promise<Invoice>;
+  deleteInvoice(id: number): Promise<void>;
+  getInvoiceLineItems(invoiceId: number): Promise<InvoiceLineItem[]>;
+  createInvoiceLineItem(item: InsertInvoiceLineItem): Promise<InvoiceLineItem>;
+  updateInvoiceLineItem(id: number, updates: Partial<InsertInvoiceLineItem>): Promise<InvoiceLineItem>;
+  deleteInvoiceLineItem(id: number): Promise<void>;
+
+  // Bill operations
+  getBills(organizationId: number): Promise<Array<Bill & { vendorName: string | null }>>;
+  getBill(id: number): Promise<Bill | undefined>;
+  createBill(bill: InsertBill): Promise<Bill>;
+  updateBill(id: number, updates: Partial<InsertBill>): Promise<Bill>;
+  deleteBill(id: number): Promise<void>;
+  getBillLineItems(billId: number): Promise<BillLineItem[]>;
+  createBillLineItem(item: InsertBillLineItem): Promise<BillLineItem>;
+  updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem>;
+  deleteBillLineItem(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1213,6 +1247,174 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(transactionAttachments)
       .where(eq(transactionAttachments.id, id));
+  }
+
+  // Invoice operations
+  async getInvoices(organizationId: number): Promise<Array<Invoice & { clientName: string | null }>> {
+    const results = await db
+      .select({
+        id: invoices.id,
+        organizationId: invoices.organizationId,
+        clientId: invoices.clientId,
+        invoiceNumber: invoices.invoiceNumber,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        subtotal: invoices.subtotal,
+        taxAmount: invoices.taxAmount,
+        totalAmount: invoices.totalAmount,
+        notes: invoices.notes,
+        transactionId: invoices.transactionId,
+        createdBy: invoices.createdBy,
+        createdAt: invoices.createdAt,
+        updatedAt: invoices.updatedAt,
+        clientName: clients.name,
+      })
+      .from(invoices)
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .where(eq(invoices.organizationId, organizationId))
+      .orderBy(desc(invoices.issueDate));
+    
+    return results;
+  }
+
+  async getInvoice(id: number): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    return invoice;
+  }
+
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [newInvoice] = await db
+      .insert(invoices)
+      .values(invoice)
+      .returning();
+    return newInvoice;
+  }
+
+  async updateInvoice(id: number, updates: Partial<InsertInvoice>): Promise<Invoice> {
+    const [updated] = await db
+      .update(invoices)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(invoices.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInvoice(id: number): Promise<void> {
+    await db.delete(invoices).where(eq(invoices.id, id));
+  }
+
+  async getInvoiceLineItems(invoiceId: number): Promise<InvoiceLineItem[]> {
+    const items = await db
+      .select()
+      .from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, invoiceId));
+    return items;
+  }
+
+  async createInvoiceLineItem(item: InsertInvoiceLineItem): Promise<InvoiceLineItem> {
+    const [newItem] = await db
+      .insert(invoiceLineItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+
+  async updateInvoiceLineItem(id: number, updates: Partial<InsertInvoiceLineItem>): Promise<InvoiceLineItem> {
+    const [updated] = await db
+      .update(invoiceLineItems)
+      .set(updates)
+      .where(eq(invoiceLineItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInvoiceLineItem(id: number): Promise<void> {
+    await db.delete(invoiceLineItems).where(eq(invoiceLineItems.id, id));
+  }
+
+  // Bill operations
+  async getBills(organizationId: number): Promise<Array<Bill & { vendorName: string | null }>> {
+    const results = await db
+      .select({
+        id: bills.id,
+        organizationId: bills.organizationId,
+        vendorId: bills.vendorId,
+        billNumber: bills.billNumber,
+        issueDate: bills.issueDate,
+        dueDate: bills.dueDate,
+        status: bills.status,
+        subtotal: bills.subtotal,
+        taxAmount: bills.taxAmount,
+        totalAmount: bills.totalAmount,
+        notes: bills.notes,
+        transactionId: bills.transactionId,
+        createdBy: bills.createdBy,
+        createdAt: bills.createdAt,
+        updatedAt: bills.updatedAt,
+        vendorName: vendors.name,
+      })
+      .from(bills)
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .where(eq(bills.organizationId, organizationId))
+      .orderBy(desc(bills.issueDate));
+    
+    return results;
+  }
+
+  async getBill(id: number): Promise<Bill | undefined> {
+    const [bill] = await db.select().from(bills).where(eq(bills.id, id));
+    return bill;
+  }
+
+  async createBill(bill: InsertBill): Promise<Bill> {
+    const [newBill] = await db
+      .insert(bills)
+      .values(bill)
+      .returning();
+    return newBill;
+  }
+
+  async updateBill(id: number, updates: Partial<InsertBill>): Promise<Bill> {
+    const [updated] = await db
+      .update(bills)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(bills.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBill(id: number): Promise<void> {
+    await db.delete(bills).where(eq(bills.id, id));
+  }
+
+  async getBillLineItems(billId: number): Promise<BillLineItem[]> {
+    const items = await db
+      .select()
+      .from(billLineItems)
+      .where(eq(billLineItems.billId, billId));
+    return items;
+  }
+
+  async createBillLineItem(item: InsertBillLineItem): Promise<BillLineItem> {
+    const [newItem] = await db
+      .insert(billLineItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+
+  async updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem> {
+    const [updated] = await db
+      .update(billLineItems)
+      .set(updates)
+      .where(eq(billLineItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBillLineItem(id: number): Promise<void> {
+    await db.delete(billLineItems).where(eq(billLineItems.id, id));
   }
 }
 
