@@ -19,6 +19,7 @@ import Vendors from "@/pages/vendors";
 import Clients from "@/pages/clients";
 import Invoices from "@/pages/invoices";
 import Bills from "@/pages/bills";
+import InvoiceSettings from "@/pages/invoice-settings";
 import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
 import Budgets from "@/pages/budgets";
@@ -167,6 +168,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/bills">
                 <Bills currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/invoice-settings">
+                <InvoiceSettings currentOrganization={currentOrganization} />
               </Route>
               <Route path="/reports">
                 <Reports currentOrganization={currentOrganization} />
