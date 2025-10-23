@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment } from "@shared/schema";
+import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
 interface CategorySuggestion {
@@ -66,8 +66,10 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     amount: '',
     categoryId: undefined,
     grantId: undefined,
+    vendorId: undefined,
+    clientId: undefined,
     createdBy: userId,
-  });
+  } as Partial<InsertTransaction>);
 
   const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
@@ -76,6 +78,16 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
+    retry: false,
+  });
+
+  const { data: vendors } = useQuery<Vendor[]>({
+    queryKey: [`/api/vendors/${currentOrganization.id}`],
+    retry: false,
+  });
+
+  const { data: clients } = useQuery<Client[]>({
+    queryKey: [`/api/clients/${currentOrganization.id}`],
     retry: false,
   });
 
@@ -119,8 +131,10 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         amount: '',
         categoryId: undefined,
         grantId: undefined,
+        vendorId: undefined,
+        clientId: undefined,
         createdBy: userId,
-      });
+      } as Partial<InsertTransaction>);
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -515,6 +529,52 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   required
                 />
               </div>
+
+              {/* Vendor selection for expenses */}
+              {formData.type === 'expense' && (
+                <div className="space-y-2">
+                  <Label htmlFor="vendor">Vendor (Optional)</Label>
+                  <Select
+                    value={formData.vendorId?.toString() || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, vendorId: value === "none" ? undefined : parseInt(value) })}
+                  >
+                    <SelectTrigger id="vendor" data-testid="select-transaction-vendor">
+                      <SelectValue placeholder="Select a vendor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No vendor</SelectItem>
+                      {vendors?.map((vendor) => (
+                        <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                          {vendor.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Client selection for income */}
+              {formData.type === 'income' && (
+                <div className="space-y-2">
+                  <Label htmlFor="client">Client (Optional)</Label>
+                  <Select
+                    value={formData.clientId?.toString() || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, clientId: value === "none" ? undefined : parseInt(value) })}
+                  >
+                    <SelectTrigger id="client" data-testid="select-transaction-client">
+                      <SelectValue placeholder="Select a client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No client</SelectItem>
+                      {clients?.map((client) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* AI Suggest Category Button */}
               <div>
