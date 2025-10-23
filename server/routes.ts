@@ -10,6 +10,8 @@ import memoize from "memoizee";
 import {
   insertOrganizationSchema,
   insertCategorySchema,
+  insertVendorSchema,
+  insertClientSchema,
   insertTransactionSchema,
   insertGrantSchema,
   insertBudgetSchema,
@@ -17,6 +19,8 @@ import {
   insertInvitationSchema,
   type InsertOrganization,
   type InsertCategory,
+  type InsertVendor,
+  type InsertClient,
   type InsertTransaction,
   type InsertGrant,
   type InsertBudget,
@@ -565,6 +569,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting category:", error);
       res.status(400).json({ message: "Failed to delete category" });
+    }
+  });
+
+  // Vendor routes
+  app.get('/api/vendors/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const vendors = await storage.getVendors(organizationId);
+      res.json(vendors);
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+      res.status(500).json({ message: "Failed to fetch vendors" });
+    }
+  });
+
+  app.post('/api/vendors', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertVendorSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage vendors" });
+      }
+
+      const vendor = await storage.createVendor(data);
+      res.status(201).json(vendor);
+    } catch (error) {
+      console.error("Error creating vendor:", error);
+      res.status(400).json({ message: "Failed to create vendor" });
+    }
+  });
+
+  app.patch('/api/vendors/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendorId = parseInt(req.params.vendorId);
+      const updates = req.body;
+      
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, vendor.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage vendors" });
+      }
+
+      const updatedVendor = await storage.updateVendor(vendorId, updates);
+      res.status(200).json(updatedVendor);
+    } catch (error) {
+      console.error("Error updating vendor:", error);
+      res.status(400).json({ message: "Failed to update vendor" });
+    }
+  });
+
+  app.delete('/api/vendors/:vendorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendorId = parseInt(req.params.vendorId);
+      
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, vendor.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage vendors" });
+      }
+
+      await storage.deleteVendor(vendorId);
+      res.status(200).json({ message: "Vendor deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting vendor:", error);
+      res.status(400).json({ message: "Failed to delete vendor" });
+    }
+  });
+
+  // Client routes
+  app.get('/api/clients/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const clients = await storage.getClients(organizationId);
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json({ message: "Failed to fetch clients" });
+    }
+  });
+
+  app.post('/api/clients', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertClientSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage clients" });
+      }
+
+      const client = await storage.createClient(data);
+      res.status(201).json(client);
+    } catch (error) {
+      console.error("Error creating client:", error);
+      res.status(400).json({ message: "Failed to create client" });
+    }
+  });
+
+  app.patch('/api/clients/:clientId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const clientId = parseInt(req.params.clientId);
+      const updates = req.body;
+      
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, client.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage clients" });
+      }
+
+      const updatedClient = await storage.updateClient(clientId, updates);
+      res.status(200).json(updatedClient);
+    } catch (error) {
+      console.error("Error updating client:", error);
+      res.status(400).json({ message: "Failed to update client" });
+    }
+  });
+
+  app.delete('/api/clients/:clientId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const clientId = parseInt(req.params.clientId);
+      
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, client.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage clients" });
+      }
+
+      await storage.deleteClient(clientId);
+      res.status(200).json({ message: "Client deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      res.status(400).json({ message: "Failed to delete client" });
     }
   });
 
