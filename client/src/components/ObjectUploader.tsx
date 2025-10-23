@@ -1,10 +1,6 @@
 import { useState } from "react";
 import Uppy from "@uppy/core";
-import XHRUpload from "@uppy/xhr-upload";
 import { Dashboard } from "@uppy/react";
-
-import "@uppy/core/dist/style.min.css";
-import "@uppy/dashboard/dist/style.min.css";
 
 interface ObjectUploaderProps {
   transactionId: number;
@@ -31,72 +27,29 @@ export function ObjectUploader({
       autoProceed: false,
     });
 
-    uppyInstance.use(XHRUpload, {
-      endpoint: `/api/transactions/${transactionId}/attachments`,
-      method: "POST",
-      fieldName: "file",
-      getResponseData: (responseText, response) => {
-        return JSON.parse(responseText);
-      },
-      async getResponseError(responseText, response) {
-        let error = new Error("Upload failed");
-        try {
-          const json = JSON.parse(responseText);
-          error = new Error(json.message || "Upload failed");
-        } catch {
-          // Keep default error
-        }
-        return error;
-      },
-    });
-
-    // Before upload, get the signed upload URL and set up the file upload
-    uppyInstance.on("file-added", async (file) => {
-      try {
-        // Get upload URL from server
-        const response = await fetch(`/api/transactions/${transactionId}/attachments/upload-url`, {
-          method: "POST",
-        });
-        
-        if (!response.ok) {
-          throw new Error("Failed to get upload URL");
-        }
-        
-        const { uploadUrl } = await response.json();
-        
-        // Store metadata for later
-        uppyInstance.setFileMeta(file.id, {
-          uploadUrl,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type || "application/octet-stream",
-        });
-      } catch (error) {
-        console.error("Error getting upload URL:", error);
-        uppyInstance.removeFile(file.id);
-      }
-    });
-
-    // Override the upload to use the signed URL
+    // Custom upload implementation
     uppyInstance.on("upload", async () => {
       const files = uppyInstance.getFiles();
       
       for (const file of files) {
-        const meta = uppyInstance.getFile(file.id)?.meta;
-        if (!meta?.uploadUrl) {
-          uppyInstance.setFileState(file.id, {
-            error: "No upload URL available",
-          });
-          continue;
-        }
-
         try {
-          // Upload directly to object storage using signed URL
-          const uploadResponse = await fetch(meta.uploadUrl, {
+          // Get signed upload URL from server
+          const uploadUrlResponse = await fetch(`/api/transactions/${transactionId}/attachments/upload-url`, {
+            method: "POST",
+          });
+          
+          if (!uploadUrlResponse.ok) {
+            throw new Error("Failed to get upload URL");
+          }
+          
+          const { uploadUrl } = await uploadUrlResponse.json();
+
+          // Upload file directly to object storage using signed URL
+          const uploadResponse = await fetch(uploadUrl, {
             method: "PUT",
             body: file.data,
             headers: {
-              "Content-Type": meta.fileType,
+              "Content-Type": file.type || "application/octet-stream",
             },
           });
 
@@ -104,17 +57,18 @@ export function ObjectUploader({
             throw new Error("Upload to storage failed");
           }
 
-          // Save attachment metadata to database
+          // Save attachment metadata to database with the raw upload URL
+          // The backend will normalize it to the canonical object path
           const saveResponse = await fetch(`/api/transactions/${transactionId}/attachments`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              fileName: meta.fileName,
-              fileSize: meta.fileSize,
-              fileType: meta.fileType,
-              objectPath: meta.uploadUrl,
+              fileName: file.name,
+              fileSize: file.size as number,
+              fileType: file.type || "application/octet-stream",
+              objectPath: uploadUrl,
             }),
           });
 
@@ -122,19 +76,19 @@ export function ObjectUploader({
             throw new Error("Failed to save attachment metadata");
           }
 
-          uppyInstance.setFileState(file.id, {
-            progress: { uploadComplete: true, uploadStarted: true },
-          });
+          // Mark file as successfully uploaded
+          uppyInstance.emit("upload-success", file, {});
         } catch (error: any) {
-          uppyInstance.setFileState(file.id, {
-            error: error.message || "Upload failed",
-          });
+          uppyInstance.emit("upload-error", file, error);
         }
       }
+      
+      // Trigger complete event
+      uppyInstance.emit("complete", { successful: uppyInstance.getFiles(), failed: [] });
     });
 
-    uppyInstance.on("complete", (result) => {
-      if (result.successful.length > 0 && onUploadComplete) {
+    uppyInstance.on("complete", (result: any) => {
+      if (result.successful && result.successful.length > 0 && onUploadComplete) {
         onUploadComplete();
       }
     });
