@@ -34,6 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **AI-Powered Transaction Categorization:** AI suggestions with confidence scores, bulk categorization UI, user feedback system, and history tracking. Integrates with OpenAI GPT-4.
 - **Budget Planning & Forecasting:** Customizable budgets (monthly, quarterly, yearly), budget item definition, visual budget vs. actual comparison, and dashboard integration.
 - **Team Collaboration & Invitations:** Role-based team member invitations with email notifications via SendGrid, granular permission control (view_only, make_reports, edit_transactions, view_make_reports, full_access), invitation lifecycle management (accept, decline, cancel), and automatic duplicate member detection.
+- **Recurring Transactions:** Automatic transaction templates with multiple frequencies (daily, weekly, biweekly, monthly, quarterly, yearly), manual generation via "Generate Now" button, active/inactive status toggle, start/end date support, and optional day-of-month scheduling for monthly transactions. Integrates with permission system requiring edit_transactions access.
 
 ## External Dependencies
 
