@@ -268,6 +268,7 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
 
 export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
   id: true,
+  invoiceId: true,
   createdAt: true,
 } as const).extend({
   quantity: z.string().or(z.number()).transform(val => String(val)),
@@ -332,6 +333,7 @@ export const billLineItems = pgTable("bill_line_items", {
 
 export const insertBillLineItemSchema = createInsertSchema(billLineItems).omit({
   id: true,
+  billId: true,
   createdAt: true,
 } as const).extend({
   quantity: z.string().or(z.number()).transform(val => String(val)),
