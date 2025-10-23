@@ -171,6 +171,7 @@ export interface IStorage {
   updateRecurringTransactionLastGenerated(id: number, date: Date): Promise<void>;
 
   // Transaction attachment operations
+  getTransactionAttachment(id: number): Promise<TransactionAttachment | undefined>;
   getTransactionAttachments(transactionId: number): Promise<TransactionAttachment[]>;
   createTransactionAttachment(attachment: InsertTransactionAttachment): Promise<TransactionAttachment>;
   deleteTransactionAttachment(id: number): Promise<void>;
@@ -1088,6 +1089,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Transaction attachment operations
+  async getTransactionAttachment(id: number): Promise<TransactionAttachment | undefined> {
+    const [attachment] = await db
+      .select()
+      .from(transactionAttachments)
+      .where(eq(transactionAttachments.id, id));
+    return attachment;
+  }
+
   async getTransactionAttachments(transactionId: number): Promise<TransactionAttachment[]> {
     return await db
       .select()

@@ -850,6 +850,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Transaction Attachment routes
+  app.get('/api/transactions/:transactionId/attachments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.transactionId);
+      
+      // Get the transaction to check organization access
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, transaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const attachments = await storage.getTransactionAttachments(transactionId);
+      res.json(attachments);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      res.status(500).json({ message: "Failed to fetch attachments" });
+    }
+  });
+
+  app.post('/api/transactions/:transactionId/attachments/upload-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.transactionId);
+      
+      // Get the transaction to check organization access
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Check user has access and permission to edit transactions
+      const userRole = await storage.getUserRole(userId, transaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to upload attachments" });
+      }
+
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+      
+      res.json({ uploadUrl });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  app.post('/api/transactions/:transactionId/attachments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.transactionId);
+      const { fileName, fileSize, fileType, objectPath } = req.body;
+      
+      // Get the transaction to check organization access
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Check user has access and permission to edit transactions
+      const userRole = await storage.getUserRole(userId, transaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to upload attachments" });
+      }
+
+      // Set ACL policy for the object
+      const { ObjectStorageService, ObjectAccessGroupType, ObjectPermission } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+        owner: userId,
+        visibility: 'private',
+        aclRules: [
+          {
+            group: {
+              type: ObjectAccessGroupType.ORGANIZATION_MEMBER,
+              id: String(transaction.organizationId),
+            },
+            permission: ObjectPermission.READ,
+          },
+        ],
+      });
+
+      // Save attachment metadata
+      const attachment = await storage.createTransactionAttachment({
+        transactionId,
+        organizationId: transaction.organizationId,
+        fileName,
+        fileSize,
+        fileType,
+        objectPath: normalizedPath,
+        uploadedBy: userId,
+      });
+      
+      res.status(201).json(attachment);
+    } catch (error) {
+      console.error("Error saving attachment:", error);
+      res.status(500).json({ message: "Failed to save attachment" });
+    }
+  });
+
+  app.get('/api/attachments/:id/download', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const attachmentId = parseInt(req.params.id);
+      
+      // Get attachment from database
+      const attachment = await storage.getTransactionAttachment(attachmentId);
+      
+      if (!attachment) {
+        return res.status(404).json({ message: "Attachment not found" });
+      }
+      
+      // Check user has access to the organization
+      const userRole = await storage.getUserRole(userId, attachment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get the object file and check ACL
+      const { ObjectStorageService, ObjectPermission } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(attachment.objectPath);
+      
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        userId,
+        objectFile,
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      if (!canAccess) {
+        return res.status(403).json({ message: "Access denied to this file" });
+      }
+
+      // Download the file
+      await objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to download attachment" });
+      }
+    }
+  });
+
+  app.delete('/api/attachments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const attachmentId = parseInt(req.params.id);
+      
+      // Get attachment from database
+      const attachment = await storage.getTransactionAttachment(attachmentId);
+      
+      if (!attachment) {
+        return res.status(404).json({ message: "Attachment not found" });
+      }
+      
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, attachment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete attachments" });
+      }
+
+      // Delete from object storage
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(attachment.objectPath);
+      await objectFile.delete();
+
+      // Delete from database
+      await storage.deleteTransactionAttachment(attachmentId);
+      
+      res.status(200).json({ message: "Attachment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      res.status(500).json({ message: "Failed to delete attachment" });
+    }
+  });
+
   // AI Categorization routes
   app.post('/api/ai/suggest-category/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
