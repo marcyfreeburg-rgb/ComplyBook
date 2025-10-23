@@ -85,34 +85,29 @@ export default function Bills({ currentOrganization }: BillsProps) {
       const totalAmount = calculateTotal();
 
       // Create the bill first
-      const bill = await apiRequest<Bill>('/api/bills', {
-        method: 'POST',
-        body: JSON.stringify({
-          organizationId: currentOrganization.id,
-          vendorId: (data.vendorId && data.vendorId !== "none") ? parseInt(data.vendorId) : null,
-          billNumber: data.billNumber,
-          issueDate: new Date(data.issueDate),
-          dueDate: new Date(data.dueDate),
-          status: data.status,
-          subtotal: subtotal.toFixed(2),
-          taxAmount: data.taxAmount || null,
-          totalAmount: totalAmount.toFixed(2),
-          notes: data.notes || null,
-        }),
+      const res = await apiRequest('POST', '/api/bills', {
+        organizationId: currentOrganization.id,
+        vendorId: (data.vendorId && data.vendorId !== "none") ? parseInt(data.vendorId) : null,
+        billNumber: data.billNumber,
+        issueDate: new Date(data.issueDate),
+        dueDate: new Date(data.dueDate),
+        status: data.status,
+        subtotal: subtotal.toFixed(2),
+        taxAmount: data.taxAmount || null,
+        totalAmount: totalAmount.toFixed(2),
+        notes: data.notes || null,
       });
+      const bill = await res.json() as Bill;
 
       // Create line items
       for (const item of data.lineItems) {
         if (item.description.trim()) {
           const amount = calculateLineItemTotal(item.quantity, item.rate);
-          await apiRequest(`/api/bills/${bill.id}/line-items`, {
-            method: 'POST',
-            body: JSON.stringify({
-              description: item.description,
-              quantity: item.quantity,
-              rate: item.rate,
-              amount: amount.toFixed(2),
-            }),
+          await apiRequest('POST', `/api/bills/${bill.id}/line-items`, {
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            amount: amount.toFixed(2),
           });
         }
       }
@@ -142,19 +137,16 @@ export default function Bills({ currentOrganization }: BillsProps) {
       const subtotal = calculateSubtotal();
       const totalAmount = calculateTotal();
 
-      return apiRequest(`/api/bills/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          vendorId: (updates.vendorId && updates.vendorId !== "none") ? parseInt(updates.vendorId) : null,
-          billNumber: updates.billNumber,
-          issueDate: updates.issueDate ? new Date(updates.issueDate) : undefined,
-          dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
-          status: updates.status,
-          subtotal: subtotal.toFixed(2),
-          taxAmount: updates.taxAmount || null,
-          totalAmount: totalAmount.toFixed(2),
-          notes: updates.notes || null,
-        }),
+      return apiRequest('PATCH', `/api/bills/${id}`, {
+        vendorId: (updates.vendorId && updates.vendorId !== "none") ? parseInt(updates.vendorId) : null,
+        billNumber: updates.billNumber,
+        issueDate: updates.issueDate ? new Date(updates.issueDate) : undefined,
+        dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
+        status: updates.status,
+        subtotal: subtotal.toFixed(2),
+        taxAmount: updates.taxAmount || null,
+        totalAmount: totalAmount.toFixed(2),
+        notes: updates.notes || null,
       });
     },
     onSuccess: () => {
@@ -177,7 +169,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
   });
 
   const deleteBillMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/bills/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => apiRequest('DELETE', `/api/bills/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/bills', currentOrganization.id] });
       toast({

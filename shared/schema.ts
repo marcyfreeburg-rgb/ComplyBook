@@ -238,6 +238,7 @@ export const invoices = pgTable("invoices", {
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   id: true,
+  createdBy: true,
   createdAt: true,
   updatedAt: true,
 } as const).extend({
@@ -301,6 +302,7 @@ export const bills = pgTable("bills", {
 
 export const insertBillSchema = createInsertSchema(bills).omit({
   id: true,
+  createdBy: true,
   createdAt: true,
   updatedAt: true,
 } as const).extend({
