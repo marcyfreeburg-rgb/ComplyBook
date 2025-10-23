@@ -811,7 +811,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const transactionId = parseInt(req.params.id);
-      const updates = req.body;
+      
+      // Parse and validate the updates through the insert schema (partial)
+      const updates = insertTransactionSchema.partial().parse(req.body);
 
       // Get the existing transaction first
       const existingTransaction = await storage.getTransaction(transactionId);
