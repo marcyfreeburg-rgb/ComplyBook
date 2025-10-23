@@ -163,10 +163,10 @@ function AuthenticatedApp() {
                 />
               </Route>
               <Route path="/invoices">
-                <Invoices />
+                <Invoices currentOrganization={currentOrganization} />
               </Route>
               <Route path="/bills">
-                <Bills />
+                <Bills currentOrganization={currentOrganization} />
               </Route>
               <Route path="/reports">
                 <Reports currentOrganization={currentOrganization} />

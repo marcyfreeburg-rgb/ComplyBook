@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign } from "lucide-react";
 import { format } from "date-fns";
-import type { Invoice, InvoiceLineItem, Client } from "@shared/schema";
+import type { Invoice, InvoiceLineItem, Client, Organization } from "@shared/schema";
 
 interface InvoiceFormData {
   clientId: string;
@@ -30,17 +30,20 @@ interface InvoiceFormData {
   }>;
 }
 
-export default function Invoices() {
+interface InvoicesProps {
+  currentOrganization: Organization;
+}
+
+export default function Invoices({ currentOrganization }: InvoicesProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [formData, setFormData] = useState<InvoiceFormData>({
-    clientId: "",
+    clientId: "none",
     invoiceNumber: "",
     issueDate: format(new Date(), "yyyy-MM-dd"),
     dueDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"), // 30 days from now
@@ -50,26 +53,14 @@ export default function Invoices() {
     lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
   });
 
-  // Fetch organizations
-  const { data: organizations = [] } = useQuery<Array<{ id: number; name: string; userRole: string }>>({
-    queryKey: ['/api/organizations'],
-  });
-
-  // Auto-select first organization
-  if (organizations.length > 0 && !selectedOrgId) {
-    setSelectedOrgId(organizations[0].id);
-  }
-
   // Fetch invoices
   const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Array<Invoice & { clientName: string | null }>>({
-    queryKey: ['/api/invoices', selectedOrgId],
-    enabled: !!selectedOrgId,
+    queryKey: ['/api/invoices', currentOrganization.id],
   });
 
   // Fetch clients for dropdown
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ['/api/clients', selectedOrgId],
-    enabled: !!selectedOrgId,
+    queryKey: ['/api/clients', currentOrganization.id],
   });
 
   const calculateLineItemTotal = (quantity: string, rate: string): number => {
@@ -90,8 +81,6 @@ export default function Invoices() {
 
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: InvoiceFormData) => {
-      if (!selectedOrgId) throw new Error("No organization selected");
-
       const subtotal = calculateSubtotal();
       const totalAmount = calculateTotal();
 
@@ -99,8 +88,8 @@ export default function Invoices() {
       const invoice = await apiRequest<Invoice>('/api/invoices', {
         method: 'POST',
         body: JSON.stringify({
-          organizationId: selectedOrgId,
-          clientId: data.clientId ? parseInt(data.clientId) : null,
+          organizationId: currentOrganization.id,
+          clientId: (data.clientId && data.clientId !== "none") ? parseInt(data.clientId) : null,
           invoiceNumber: data.invoiceNumber,
           issueDate: new Date(data.issueDate),
           dueDate: new Date(data.dueDate),
@@ -131,7 +120,7 @@ export default function Invoices() {
       return invoice;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices', selectedOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', currentOrganization.id] });
       toast({
         title: "Success",
         description: "Invoice created successfully",
@@ -156,7 +145,7 @@ export default function Invoices() {
       return apiRequest(`/api/invoices/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          clientId: updates.clientId ? parseInt(updates.clientId) : null,
+          clientId: (updates.clientId && updates.clientId !== "none") ? parseInt(updates.clientId) : null,
           invoiceNumber: updates.invoiceNumber,
           issueDate: updates.issueDate ? new Date(updates.issueDate) : undefined,
           dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
@@ -169,7 +158,7 @@ export default function Invoices() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices', selectedOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', currentOrganization.id] });
       toast({
         title: "Success",
         description: "Invoice updated successfully",
@@ -190,7 +179,7 @@ export default function Invoices() {
   const deleteInvoiceMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/invoices/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invoices', selectedOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', currentOrganization.id] });
       toast({
         title: "Success",
         description: "Invoice deleted successfully",
@@ -207,7 +196,7 @@ export default function Invoices() {
 
   const resetForm = () => {
     setFormData({
-      clientId: "",
+      clientId: "none",
       invoiceNumber: "",
       issueDate: format(new Date(), "yyyy-MM-dd"),
       dueDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
@@ -221,7 +210,7 @@ export default function Invoices() {
   const handleEdit = (invoice: Invoice & { clientName: string | null }) => {
     setEditingInvoice(invoice);
     setFormData({
-      clientId: invoice.clientId?.toString() || "",
+      clientId: invoice.clientId?.toString() || "none",
       invoiceNumber: invoice.invoiceNumber,
       issueDate: format(new Date(invoice.issueDate), "yyyy-MM-dd"),
       dueDate: format(new Date(invoice.dueDate), "yyyy-MM-dd"),
@@ -288,28 +277,6 @@ export default function Invoices() {
         </Button>
       </div>
 
-      {organizations.length > 1 && (
-        <Card>
-          <CardContent className="pt-6">
-            <Label htmlFor="org-select">Organization</Label>
-            <Select
-              value={selectedOrgId?.toString()}
-              onValueChange={(value) => setSelectedOrgId(parseInt(value))}
-            >
-              <SelectTrigger id="org-select" data-testid="select-organization">
-                <SelectValue placeholder="Select organization" />
-              </SelectTrigger>
-              <SelectContent>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id.toString()}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>
@@ -445,7 +412,7 @@ export default function Invoices() {
                     <SelectValue placeholder="Select client (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No client</SelectItem>
+                    <SelectItem value="none">No client</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id.toString()}>
                         {client.name}

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign } from "lucide-react";
 import { format } from "date-fns";
-import type { Bill, BillLineItem, Vendor } from "@shared/schema";
+import type { Bill, BillLineItem, Vendor, Organization } from "@shared/schema";
 
 interface BillFormData {
   vendorId: string;
@@ -30,17 +30,20 @@ interface BillFormData {
   }>;
 }
 
-export default function Bills() {
+interface BillsProps {
+  currentOrganization: Organization;
+}
+
+export default function Bills({ currentOrganization }: BillsProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [formData, setFormData] = useState<BillFormData>({
-    vendorId: "",
+    vendorId: "none",
     billNumber: "",
     issueDate: format(new Date(), "yyyy-MM-dd"),
     dueDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
@@ -50,26 +53,14 @@ export default function Bills() {
     lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
   });
 
-  // Fetch organizations
-  const { data: organizations = [] } = useQuery<Array<{ id: number; name: string; userRole: string }>>({
-    queryKey: ['/api/organizations'],
-  });
-
-  // Auto-select first organization
-  if (organizations.length > 0 && !selectedOrgId) {
-    setSelectedOrgId(organizations[0].id);
-  }
-
   // Fetch bills
   const { data: bills = [], isLoading: isLoadingBills } = useQuery<Array<Bill & { vendorName: string | null }>>({
-    queryKey: ['/api/bills', selectedOrgId],
-    enabled: !!selectedOrgId,
+    queryKey: ['/api/bills', currentOrganization.id],
   });
 
   // Fetch vendors for dropdown
   const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ['/api/vendors', selectedOrgId],
-    enabled: !!selectedOrgId,
+    queryKey: ['/api/vendors', currentOrganization.id],
   });
 
   const calculateLineItemTotal = (quantity: string, rate: string): number => {
@@ -90,8 +81,6 @@ export default function Bills() {
 
   const createBillMutation = useMutation({
     mutationFn: async (data: BillFormData) => {
-      if (!selectedOrgId) throw new Error("No organization selected");
-
       const subtotal = calculateSubtotal();
       const totalAmount = calculateTotal();
 
@@ -99,8 +88,8 @@ export default function Bills() {
       const bill = await apiRequest<Bill>('/api/bills', {
         method: 'POST',
         body: JSON.stringify({
-          organizationId: selectedOrgId,
-          vendorId: data.vendorId ? parseInt(data.vendorId) : null,
+          organizationId: currentOrganization.id,
+          vendorId: (data.vendorId && data.vendorId !== "none") ? parseInt(data.vendorId) : null,
           billNumber: data.billNumber,
           issueDate: new Date(data.issueDate),
           dueDate: new Date(data.dueDate),
@@ -131,7 +120,7 @@ export default function Bills() {
       return bill;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/bills', selectedOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bills', currentOrganization.id] });
       toast({
         title: "Success",
         description: "Bill created successfully",
@@ -156,7 +145,7 @@ export default function Bills() {
       return apiRequest(`/api/bills/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          vendorId: updates.vendorId ? parseInt(updates.vendorId) : null,
+          vendorId: (updates.vendorId && updates.vendorId !== "none") ? parseInt(updates.vendorId) : null,
           billNumber: updates.billNumber,
           issueDate: updates.issueDate ? new Date(updates.issueDate) : undefined,
           dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
@@ -169,7 +158,7 @@ export default function Bills() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/bills', selectedOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bills', currentOrganization.id] });
       toast({
         title: "Success",
         description: "Bill updated successfully",
@@ -190,7 +179,7 @@ export default function Bills() {
   const deleteBillMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/bills/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/bills', selectedOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bills', currentOrganization.id] });
       toast({
         title: "Success",
         description: "Bill deleted successfully",
@@ -207,7 +196,7 @@ export default function Bills() {
 
   const resetForm = () => {
     setFormData({
-      vendorId: "",
+      vendorId: "none",
       billNumber: "",
       issueDate: format(new Date(), "yyyy-MM-dd"),
       dueDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
@@ -221,7 +210,7 @@ export default function Bills() {
   const handleEdit = (bill: Bill & { vendorName: string | null }) => {
     setEditingBill(bill);
     setFormData({
-      vendorId: bill.vendorId?.toString() || "",
+      vendorId: bill.vendorId?.toString() || "none",
       billNumber: bill.billNumber,
       issueDate: format(new Date(bill.issueDate), "yyyy-MM-dd"),
       dueDate: format(new Date(bill.dueDate), "yyyy-MM-dd"),
@@ -288,28 +277,6 @@ export default function Bills() {
         </Button>
       </div>
 
-      {organizations.length > 1 && (
-        <Card>
-          <CardContent className="pt-6">
-            <Label htmlFor="org-select">Organization</Label>
-            <Select
-              value={selectedOrgId?.toString()}
-              onValueChange={(value) => setSelectedOrgId(parseInt(value))}
-            >
-              <SelectTrigger id="org-select" data-testid="select-organization">
-                <SelectValue placeholder="Select organization" />
-              </SelectTrigger>
-              <SelectContent>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id.toString()}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>
@@ -445,7 +412,7 @@ export default function Bills() {
                     <SelectValue placeholder="Select vendor (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No vendor</SelectItem>
+                    <SelectItem value="none">No vendor</SelectItem>
                     {vendors.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id.toString()}>
                         {vendor.name}
