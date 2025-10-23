@@ -12,6 +12,10 @@ import {
   insertCategorySchema,
   insertVendorSchema,
   insertClientSchema,
+  insertInvoiceSchema,
+  insertInvoiceLineItemSchema,
+  insertBillSchema,
+  insertBillLineItemSchema,
   insertTransactionSchema,
   insertGrantSchema,
   insertBudgetSchema,
@@ -2026,6 +2030,478 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error syncing transactions:", error);
       res.status(500).json({ message: "Failed to sync transactions" });
+    }
+  });
+
+  // Invoice routes
+  app.get('/api/invoices/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const invoices = await storage.getInvoices(organizationId);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get('/api/invoices/single/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.id);
+      
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
+  app.post('/api/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertInvoiceSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      const invoice = await storage.createInvoice({ ...data, createdBy: userId });
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      res.status(400).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  app.patch('/api/invoices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.id);
+      const updates = insertInvoiceSchema.partial().parse(req.body);
+
+      const existingInvoice = await storage.getInvoice(invoiceId);
+      if (!existingInvoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingInvoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      const updated = await storage.updateInvoice(invoiceId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      res.status(400).json({ message: "Failed to update invoice" });
+    }
+  });
+
+  app.delete('/api/invoices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.id);
+
+      const existingInvoice = await storage.getInvoice(invoiceId);
+      if (!existingInvoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingInvoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      await storage.deleteInvoice(invoiceId);
+      res.json({ message: "Invoice deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      res.status(500).json({ message: "Failed to delete invoice" });
+    }
+  });
+
+  app.get('/api/invoices/:invoiceId/line-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.invoiceId);
+      
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const lineItems = await storage.getInvoiceLineItems(invoiceId);
+      res.json(lineItems);
+    } catch (error) {
+      console.error("Error fetching invoice line items:", error);
+      res.status(500).json({ message: "Failed to fetch line items" });
+    }
+  });
+
+  app.post('/api/invoices/:invoiceId/line-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.invoiceId);
+      const data = insertInvoiceLineItemSchema.parse(req.body);
+      
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      const lineItem = await storage.createInvoiceLineItem({ ...data, invoiceId });
+      res.status(201).json(lineItem);
+    } catch (error) {
+      console.error("Error creating invoice line item:", error);
+      res.status(400).json({ message: "Failed to create line item" });
+    }
+  });
+
+  app.patch('/api/invoice-line-items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const lineItemId = parseInt(req.params.id);
+      const updates = insertInvoiceLineItemSchema.partial().parse(req.body);
+
+      const lineItems = await storage.getInvoiceLineItems(0);
+      const lineItem = lineItems.find(item => item.id === lineItemId);
+      if (!lineItem) {
+        return res.status(404).json({ message: "Line item not found" });
+      }
+
+      const invoice = await storage.getInvoice(lineItem.invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      const updated = await storage.updateInvoiceLineItem(lineItemId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating invoice line item:", error);
+      res.status(400).json({ message: "Failed to update line item" });
+    }
+  });
+
+  app.delete('/api/invoice-line-items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const lineItemId = parseInt(req.params.id);
+
+      const lineItems = await storage.getInvoiceLineItems(0);
+      const lineItem = lineItems.find(item => item.id === lineItemId);
+      if (!lineItem) {
+        return res.status(404).json({ message: "Line item not found" });
+      }
+
+      const invoice = await storage.getInvoice(lineItem.invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      await storage.deleteInvoiceLineItem(lineItemId);
+      res.json({ message: "Line item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting invoice line item:", error);
+      res.status(500).json({ message: "Failed to delete line item" });
+    }
+  });
+
+  // Bill routes
+  app.get('/api/bills/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const bills = await storage.getBills(organizationId);
+      res.json(bills);
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      res.status(500).json({ message: "Failed to fetch bills" });
+    }
+  });
+
+  app.get('/api/bills/single/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.id);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(bill);
+    } catch (error) {
+      console.error("Error fetching bill:", error);
+      res.status(500).json({ message: "Failed to fetch bill" });
+    }
+  });
+
+  app.post('/api/bills', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertBillSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage bills" });
+      }
+
+      const bill = await storage.createBill({ ...data, createdBy: userId });
+      res.status(201).json(bill);
+    } catch (error) {
+      console.error("Error creating bill:", error);
+      res.status(400).json({ message: "Failed to create bill" });
+    }
+  });
+
+  app.patch('/api/bills/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.id);
+      const updates = insertBillSchema.partial().parse(req.body);
+
+      const existingBill = await storage.getBill(billId);
+      if (!existingBill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingBill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage bills" });
+      }
+
+      const updated = await storage.updateBill(billId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating bill:", error);
+      res.status(400).json({ message: "Failed to update bill" });
+    }
+  });
+
+  app.delete('/api/bills/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.id);
+
+      const existingBill = await storage.getBill(billId);
+      if (!existingBill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingBill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage bills" });
+      }
+
+      await storage.deleteBill(billId);
+      res.json({ message: "Bill deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bill:", error);
+      res.status(500).json({ message: "Failed to delete bill" });
+    }
+  });
+
+  app.get('/api/bills/:billId/line-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.billId);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const lineItems = await storage.getBillLineItems(billId);
+      res.json(lineItems);
+    } catch (error) {
+      console.error("Error fetching bill line items:", error);
+      res.status(500).json({ message: "Failed to fetch line items" });
+    }
+  });
+
+  app.post('/api/bills/:billId/line-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.billId);
+      const data = insertBillLineItemSchema.parse(req.body);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage bills" });
+      }
+
+      const lineItem = await storage.createBillLineItem({ ...data, billId });
+      res.status(201).json(lineItem);
+    } catch (error) {
+      console.error("Error creating bill line item:", error);
+      res.status(400).json({ message: "Failed to create line item" });
+    }
+  });
+
+  app.patch('/api/bill-line-items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const lineItemId = parseInt(req.params.id);
+      const updates = insertBillLineItemSchema.partial().parse(req.body);
+
+      const lineItems = await storage.getBillLineItems(0);
+      const lineItem = lineItems.find(item => item.id === lineItemId);
+      if (!lineItem) {
+        return res.status(404).json({ message: "Line item not found" });
+      }
+
+      const bill = await storage.getBill(lineItem.billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage bills" });
+      }
+
+      const updated = await storage.updateBillLineItem(lineItemId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating bill line item:", error);
+      res.status(400).json({ message: "Failed to update line item" });
+    }
+  });
+
+  app.delete('/api/bill-line-items/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const lineItemId = parseInt(req.params.id);
+
+      const lineItems = await storage.getBillLineItems(0);
+      const lineItem = lineItems.find(item => item.id === lineItemId);
+      if (!lineItem) {
+        return res.status(404).json({ message: "Line item not found" });
+      }
+
+      const bill = await storage.getBill(lineItem.billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage bills" });
+      }
+
+      await storage.deleteBillLineItem(lineItemId);
+      res.json({ message: "Line item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bill line item:", error);
+      res.status(500).json({ message: "Failed to delete line item" });
     }
   });
 
