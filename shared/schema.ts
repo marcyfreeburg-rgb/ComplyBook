@@ -191,6 +191,30 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 
 // ============================================
+// TRANSACTION ATTACHMENTS (Receipts & Documents)
+// ============================================
+
+export const transactionAttachments = pgTable("transaction_attachments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  transactionId: integer("transaction_id").notNull().references(() => transactions.id, { onDelete: 'cascade' }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  fileType: varchar("file_type", { length: 100 }).notNull(),
+  objectPath: text("object_path").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertTransactionAttachmentSchema = createInsertSchema(transactionAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTransactionAttachment = z.infer<typeof insertTransactionAttachmentSchema>;
+export type TransactionAttachment = typeof transactionAttachments.$inferSelect;
+
+// ============================================
 // GRANTS (For Non-Profits)
 // ============================================
 
