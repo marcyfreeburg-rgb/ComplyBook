@@ -36,6 +36,9 @@ import {
   type InsertCategorizationHistory,
   type Invitation,
   type InsertInvitation,
+  recurringTransactions,
+  type RecurringTransaction,
+  type InsertRecurringTransaction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -155,6 +158,14 @@ export interface IStorage {
   }>>;
   updateUserPermissions(userId: string, organizationId: number, permissions: string): Promise<void>;
   removeTeamMember(userId: string, organizationId: number): Promise<void>;
+
+  // Recurring transaction operations
+  getRecurringTransactions(organizationId: number): Promise<RecurringTransaction[]>;
+  getRecurringTransaction(id: number): Promise<RecurringTransaction | undefined>;
+  createRecurringTransaction(transaction: InsertRecurringTransaction): Promise<RecurringTransaction>;
+  updateRecurringTransaction(id: number, updates: Partial<InsertRecurringTransaction>): Promise<RecurringTransaction>;
+  deleteRecurringTransaction(id: number): Promise<void>;
+  updateRecurringTransactionLastGenerated(id: number, date: Date): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1019,6 +1030,53 @@ export class DatabaseStorage implements IStorage {
           eq(userOrganizationRoles.organizationId, organizationId)
         )
       );
+  }
+
+  // Recurring transaction operations
+  async getRecurringTransactions(organizationId: number): Promise<RecurringTransaction[]> {
+    return await db
+      .select()
+      .from(recurringTransactions)
+      .where(eq(recurringTransactions.organizationId, organizationId))
+      .orderBy(desc(recurringTransactions.createdAt));
+  }
+
+  async getRecurringTransaction(id: number): Promise<RecurringTransaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(recurringTransactions)
+      .where(eq(recurringTransactions.id, id));
+    return transaction;
+  }
+
+  async createRecurringTransaction(transaction: InsertRecurringTransaction): Promise<RecurringTransaction> {
+    const [newTransaction] = await db
+      .insert(recurringTransactions)
+      .values(transaction)
+      .returning();
+    return newTransaction;
+  }
+
+  async updateRecurringTransaction(id: number, updates: Partial<InsertRecurringTransaction>): Promise<RecurringTransaction> {
+    const [updated] = await db
+      .update(recurringTransactions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(recurringTransactions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRecurringTransaction(id: number): Promise<void> {
+    await db
+      .delete(recurringTransactions)
+      .where(eq(recurringTransactions.id, id));
+  }
+
+  async updateRecurringTransactionLastGenerated(id: number, date: Date): Promise<void> {
+    await db
+      .update(recurringTransactions)
+      .set({ lastGeneratedDate: date })
+      .where(eq(recurringTransactions.id, id));
   }
 }
 
