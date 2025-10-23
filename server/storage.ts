@@ -76,6 +76,7 @@ export interface IStorage {
   getOrganizations(userId: string): Promise<Array<Organization & { userRole: string }>>;
   getOrganization(id: number): Promise<Organization | undefined>;
   createOrganization(org: InsertOrganization, userId: string): Promise<Organization>;
+  updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization>;
 
   // User organization role operations
   getUserRole(userId: string, organizationId: number): Promise<UserOrganizationRole | undefined>;
@@ -301,6 +302,15 @@ export class DatabaseStorage implements IStorage {
     });
 
     return org;
+  }
+
+  async updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization> {
+    const [updated] = await db
+      .update(organizations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    return updated;
   }
 
   // User organization role operations
