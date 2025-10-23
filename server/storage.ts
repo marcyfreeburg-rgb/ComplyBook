@@ -39,6 +39,9 @@ import {
   recurringTransactions,
   type RecurringTransaction,
   type InsertRecurringTransaction,
+  transactionAttachments,
+  type TransactionAttachment,
+  type InsertTransactionAttachment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -166,6 +169,11 @@ export interface IStorage {
   updateRecurringTransaction(id: number, updates: Partial<InsertRecurringTransaction>): Promise<RecurringTransaction>;
   deleteRecurringTransaction(id: number): Promise<void>;
   updateRecurringTransactionLastGenerated(id: number, date: Date): Promise<void>;
+
+  // Transaction attachment operations
+  getTransactionAttachments(transactionId: number): Promise<TransactionAttachment[]>;
+  createTransactionAttachment(attachment: InsertTransactionAttachment): Promise<TransactionAttachment>;
+  deleteTransactionAttachment(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1077,6 +1085,29 @@ export class DatabaseStorage implements IStorage {
       .update(recurringTransactions)
       .set({ lastGeneratedDate: date })
       .where(eq(recurringTransactions.id, id));
+  }
+
+  // Transaction attachment operations
+  async getTransactionAttachments(transactionId: number): Promise<TransactionAttachment[]> {
+    return await db
+      .select()
+      .from(transactionAttachments)
+      .where(eq(transactionAttachments.transactionId, transactionId))
+      .orderBy(desc(transactionAttachments.createdAt));
+  }
+
+  async createTransactionAttachment(attachment: InsertTransactionAttachment): Promise<TransactionAttachment> {
+    const [newAttachment] = await db
+      .insert(transactionAttachments)
+      .values(attachment)
+      .returning();
+    return newAttachment;
+  }
+
+  async deleteTransactionAttachment(id: number): Promise<void> {
+    await db
+      .delete(transactionAttachments)
+      .where(eq(transactionAttachments.id, id));
   }
 }
 
