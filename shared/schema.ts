@@ -161,6 +161,58 @@ export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categories.$inferSelect;
 
 // ============================================
+// VENDORS (Suppliers/Service Providers)
+// ============================================
+
+export const vendors = pgTable("vendors", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  contactName: varchar("contact_name", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVendorSchema = createInsertSchema(vendors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+
+// ============================================
+// CLIENTS (Customers)
+// ============================================
+
+export const clients = pgTable("clients", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  contactName: varchar("contact_name", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type Client = typeof clients.$inferSelect;
+
+// ============================================
 // TRANSACTIONS
 // ============================================
 
@@ -173,6 +225,8 @@ export const transactions = pgTable("transactions", {
   type: transactionTypeEnum("type").notNull(),
   categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
   grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
+  vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: 'set null' }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
