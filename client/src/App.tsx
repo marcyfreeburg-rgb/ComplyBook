@@ -17,6 +17,8 @@ import RecurringTransactions from "@/pages/recurring-transactions";
 import Categories from "@/pages/categories";
 import Vendors from "@/pages/vendors";
 import Clients from "@/pages/clients";
+import Invoices from "@/pages/invoices";
+import Bills from "@/pages/bills";
 import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
 import Budgets from "@/pages/budgets";
@@ -159,6 +161,12 @@ function AuthenticatedApp() {
                   currentOrganization={currentOrganization}
                   userId={user?.id || ''}
                 />
+              </Route>
+              <Route path="/invoices">
+                <Invoices />
+              </Route>
+              <Route path="/bills">
+                <Bills />
               </Route>
               <Route path="/reports">
                 <Reports currentOrganization={currentOrganization} />
