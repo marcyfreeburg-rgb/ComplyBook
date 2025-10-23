@@ -33,6 +33,7 @@ Preferred communication style: Simple, everyday language.
 - **Plaid Bank Integration:** Automatic bank account connectivity, transaction import, balance syncing, and secure credential storage.
 - **AI-Powered Transaction Categorization:** AI suggestions with confidence scores, bulk categorization UI, user feedback system, and history tracking. Integrates with OpenAI GPT-4.
 - **Budget Planning & Forecasting:** Customizable budgets (monthly, quarterly, yearly), budget item definition, visual budget vs. actual comparison, and dashboard integration.
+- **Team Collaboration & Invitations:** Role-based team member invitations with email notifications via SendGrid, granular permission control (view_only, make_reports, edit_transactions, view_make_reports, full_access), invitation lifecycle management (accept, decline, cancel), and automatic duplicate member detection.
 
 ## External Dependencies
 
@@ -44,6 +45,9 @@ Preferred communication style: Simple, everyday language.
 
 ### Bank Integration
 - **Plaid API:** For bank account connectivity and transaction data, using Plaid Link and Plaid Node SDK.
+
+### Email Service
+- **SendGrid:** For transactional emails including team invitations. Uses Replit's SendGrid connector for secure API key management.
 
 ### UI Libraries
 - **Radix UI:** Headless components.
