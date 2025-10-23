@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, InvoiceLineItem, Client, Organization } from "@shared/schema";
+import { InvoicePreview } from "@/components/invoice-preview";
 
 interface InvoiceFormData {
   clientId: string;
@@ -39,7 +40,9 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [previewingInvoice, setPreviewingInvoice] = useState<(Invoice & { clientName: string | null }) | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [formData, setFormData] = useState<InvoiceFormData>({
@@ -61,6 +64,12 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   // Fetch clients for dropdown
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients', currentOrganization.id],
+  });
+
+  // Fetch line items for preview
+  const { data: previewLineItems = [] } = useQuery<InvoiceLineItem[]>({
+    queryKey: ['/api/invoices', previewingInvoice?.id, 'line-items'],
+    enabled: !!previewingInvoice,
   });
 
   const calculateLineItemTotal = (quantity: string, rate: string): number => {
@@ -220,6 +229,11 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
     }
   };
 
+  const handleView = (invoice: Invoice & { clientName: string | null }) => {
+    setPreviewingInvoice(invoice);
+    setIsPreviewDialogOpen(true);
+  };
+
   const addLineItem = () => {
     setFormData({
       ...formData,
@@ -339,6 +353,14 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
                       <td className="py-3">{getStatusBadge(invoice.status)}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(invoice)}
+                            data-testid={`button-view-invoice-${invoice.id}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -598,6 +620,30 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Invoice Dialog */}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsPreviewDialogOpen(false);
+          setPreviewingInvoice(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invoice Preview</DialogTitle>
+            <DialogDescription>
+              View and print invoice with company branding
+            </DialogDescription>
+          </DialogHeader>
+          {previewingInvoice && (
+            <InvoicePreview
+              invoice={previewingInvoice}
+              lineItems={previewLineItems}
+              organization={currentOrganization}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
