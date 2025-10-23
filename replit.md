@@ -26,7 +26,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database:** PostgreSQL (Neon Serverless) as the primary relational database.
 - **ORM:** Drizzle ORM for type-safe queries and schema management, Drizzle Kit for migrations.
-- **Schema Design:** Multi-tenant with organization-scoped data; tables for users, organizations, user-organization roles, categories, transactions, grants, budgets, budget items, Plaid items, Plaid accounts, and categorization history.
+- **Schema Design:** Multi-tenant with organization-scoped data; tables for users, organizations, user-organization roles, categories, transactions, grants, budgets, budget items, Plaid items, Plaid accounts, vendors, clients, and categorization history.
 - **Data Access:** Repository pattern with an IStorage interface, reusable query methods, support for filtering, pagination, and aggregations.
 
 ### Key Features Implemented
@@ -35,6 +35,7 @@ Preferred communication style: Simple, everyday language.
 - **Budget Planning & Forecasting:** Customizable budgets (monthly, quarterly, yearly), budget item definition, visual budget vs. actual comparison, and dashboard integration.
 - **Team Collaboration & Invitations:** Role-based team member invitations with email notifications via SendGrid, granular permission control (view_only, make_reports, edit_transactions, view_make_reports, full_access), invitation lifecycle management (accept, decline, cancel), and automatic duplicate member detection.
 - **Recurring Transactions:** Automatic transaction templates with multiple frequencies (daily, weekly, biweekly, monthly, quarterly, yearly), manual generation via "Generate Now" button, active/inactive status toggle, start/end date support, and optional day-of-month scheduling for monthly transactions. Integrates with permission system requiring edit_transactions access.
+- **Vendor & Client Management:** Full CRUD operations for vendors (suppliers/service providers) and clients (customers), with contact information tracking (name, contact person, email, phone, address, notes). Transactions can be linked to vendors for expenses and clients for income, enabling better relationship tracking and reporting. Requires admin/owner permissions for creating, updating, or deleting vendor/client records.
 
 ## External Dependencies
 
