@@ -39,6 +39,20 @@ interface CategorySuggestion {
   historyId: number;
 }
 
+// Form data type for transaction form (uses string for date field)
+interface TransactionFormData {
+  organizationId: number;
+  type: 'income' | 'expense';
+  date: string;
+  description: string;
+  amount: string;
+  categoryId?: number;
+  grantId?: number;
+  vendorId?: number;
+  clientId?: number;
+  createdBy: string;
+}
+
 interface TransactionsProps {
   currentOrganization: Organization;
   userId: string;
@@ -58,7 +72,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [showBulkCategorization, setShowBulkCategorization] = useState(false);
   const [isAttachmentsDialogOpen, setIsAttachmentsDialogOpen] = useState(false);
   const [selectedTransactionForAttachments, setSelectedTransactionForAttachments] = useState<Transaction | null>(null);
-  const [formData, setFormData] = useState<Partial<InsertTransaction>>({
+  const [formData, setFormData] = useState<TransactionFormData>({
     organizationId: currentOrganization.id,
     type: 'expense',
     date: new Date().toISOString().split('T')[0],
@@ -69,7 +83,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     vendorId: undefined,
     clientId: undefined,
     createdBy: userId,
-  } as Partial<InsertTransaction>);
+  });
 
   const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
@@ -134,7 +148,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         vendorId: undefined,
         clientId: undefined,
         createdBy: userId,
-      } as Partial<InsertTransaction>);
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -368,7 +382,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       });
       return;
     }
-    createMutation.mutate(formData as InsertTransaction);
+    // Convert form data to InsertTransaction with Date object
+    const transactionData: InsertTransaction = {
+      ...formData,
+      date: new Date(formData.date),
+    };
+    createMutation.mutate(transactionData);
   };
 
   const filteredTransactions = transactions?.filter(t => 
@@ -1017,7 +1036,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 editTransactionMutation.mutate({
                   id: editingTransaction.id,
                   updates: {
-                    date: formData.get('date') as string,
+                    date: new Date(formData.get('date') as string),
                     description: formData.get('description') as string,
                     amount: formData.get('amount') as string,
                     type: formData.get('type') as 'income' | 'expense',
@@ -1035,7 +1054,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   id="edit-date"
                   name="date"
                   type="date"
-                  defaultValue={editingTransaction.date}
+                  defaultValue={format(new Date(editingTransaction.date), 'yyyy-MM-dd')}
                   required
                   data-testid="input-edit-date"
                 />

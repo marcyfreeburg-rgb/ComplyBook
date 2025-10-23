@@ -81,7 +81,7 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as const);
 
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizations.$inferSelect;
@@ -102,7 +102,7 @@ export const userOrganizationRoles = pgTable("user_organization_roles", {
 export const insertUserOrganizationRoleSchema = createInsertSchema(userOrganizationRoles).omit({
   id: true,
   createdAt: true,
-});
+} as const);
 
 export type InsertUserOrganizationRole = z.infer<typeof insertUserOrganizationRoleSchema>;
 export type UserOrganizationRole = typeof userOrganizationRoles.$inferSelect;
@@ -129,7 +129,7 @@ export const insertInvitationSchema = createInsertSchema(invitations).omit({
   id: true,
   createdAt: true,
   acceptedAt: true,
-}).extend({
+} as const).extend({
   expiresAt: z.coerce.date(),
 });
 
@@ -155,7 +155,7 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as const);
 
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categories.$inferSelect;
@@ -181,7 +181,7 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as const);
 
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
@@ -207,7 +207,7 @@ export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as const);
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -236,7 +236,7 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
+} as const).extend({
   date: z.coerce.date(),
   amount: z.string().or(z.number()).transform(val => String(val)),
 });
@@ -263,7 +263,7 @@ export const transactionAttachments = pgTable("transaction_attachments", {
 export const insertTransactionAttachmentSchema = createInsertSchema(transactionAttachments).omit({
   id: true,
   createdAt: true,
-});
+} as const);
 
 export type InsertTransactionAttachment = z.infer<typeof insertTransactionAttachmentSchema>;
 export type TransactionAttachment = typeof transactionAttachments.$inferSelect;
@@ -289,7 +289,7 @@ export const insertGrantSchema = createInsertSchema(grants).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
+} as const).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
@@ -318,7 +318,7 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
+} as const).extend({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
 });
@@ -339,7 +339,7 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
+} as const).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
 });
 
@@ -366,7 +366,7 @@ export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as const);
 
 export type InsertPlaidItem = z.infer<typeof insertPlaidItemSchema>;
 export type PlaidItem = typeof plaidItems.$inferSelect;
@@ -391,7 +391,7 @@ export const insertPlaidAccountSchema = createInsertSchema(plaidAccounts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+} as const);
 
 export type InsertPlaidAccount = z.infer<typeof insertPlaidAccountSchema>;
 export type PlaidAccount = typeof plaidAccounts.$inferSelect;
@@ -420,7 +420,7 @@ export const categorizationHistory = pgTable("categorization_history", {
 export const insertCategorizationHistorySchema = createInsertSchema(categorizationHistory).omit({
   id: true,
   createdAt: true,
-});
+} as const);
 
 export type InsertCategorizationHistory = z.infer<typeof insertCategorizationHistorySchema>;
 export type CategorizationHistory = typeof categorizationHistory.$inferSelect;
@@ -452,7 +452,7 @@ export const insertRecurringTransactionSchema = createInsertSchema(recurringTran
   createdAt: true,
   updatedAt: true,
   lastGeneratedDate: true,
-}).extend({
+} as const).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional().nullable(),
