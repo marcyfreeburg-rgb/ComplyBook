@@ -184,6 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send invitation email
       const inviteLink = `${req.protocol}://${req.get('host')}/invite/${token}`;
+      let emailSent = false;
       
       try {
         const { sendInvitationEmail } = await import('./email');
@@ -195,12 +196,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           permissions: invitation.permissions || 'view_only',
           expiresAt: invitation.expiresAt,
         });
-      } catch (emailError) {
+        emailSent = true;
+      } catch (emailError: any) {
         console.error("Error sending invitation email:", emailError);
         // Don't fail the invitation creation if email fails
+        // Check if it's a SendGrid authorization issue
+        if (emailError?.message?.includes('Unauthorized') || emailError?.code === 401) {
+          console.log("SendGrid is not properly authorized. Please verify your 'From' email address in SendGrid and ensure your API key has 'Mail Send' permissions.");
+        }
       }
       
-      res.status(201).json({ ...invitation, inviteLink });
+      res.status(201).json({ ...invitation, inviteLink, emailSent });
     } catch (error) {
       console.error("Error creating invitation:", error);
       res.status(400).json({ message: "Failed to create invitation" });

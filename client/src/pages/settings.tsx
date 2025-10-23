@@ -206,10 +206,21 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/invitations/${currentOrganization.id}`] });
-      toast({
-        title: "Invitation sent",
-        description: "The invitation has been created successfully.",
-      });
+      
+      // Show different message based on whether email was sent
+      if (data.emailSent) {
+        toast({
+          title: "Invitation sent",
+          description: "The invitation email has been sent successfully. The link has been copied to your clipboard.",
+        });
+      } else {
+        toast({
+          title: "Invitation created",
+          description: "Invitation created! Email couldn't be sent - please use the Copy Link button to share it manually. (SendGrid may need email verification)",
+          variant: "default",
+        });
+      }
+      
       setIsInviteDialogOpen(false);
       setInviteFormData({ email: "", permissions: "view_only" });
       
