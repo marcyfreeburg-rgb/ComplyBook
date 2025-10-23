@@ -33,6 +33,7 @@ export const accountTypeEnum = pgEnum('account_type', ['income', 'expense', 'ass
 export const grantStatusEnum = pgEnum('grant_status', ['active', 'completed', 'pending']);
 export const aiDecisionEnum = pgEnum('ai_decision', ['pending', 'accepted', 'rejected', 'modified']);
 export const budgetPeriodEnum = pgEnum('budget_period', ['monthly', 'quarterly', 'yearly']);
+export const recurringFrequencyEnum = pgEnum('recurring_frequency', ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -345,6 +346,44 @@ export const insertCategorizationHistorySchema = createInsertSchema(categorizati
 
 export type InsertCategorizationHistory = z.infer<typeof insertCategorizationHistorySchema>;
 export type CategorizationHistory = typeof categorizationHistory.$inferSelect;
+
+// ============================================
+// RECURRING TRANSACTIONS
+// ============================================
+
+export const recurringTransactions = pgTable("recurring_transactions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
+  frequency: recurringFrequencyEnum("frequency").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  lastGeneratedDate: timestamp("last_generated_date"),
+  dayOfMonth: integer("day_of_month"),
+  isActive: integer("is_active").notNull().default(1),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertRecurringTransactionSchema = createInsertSchema(recurringTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastGeneratedDate: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
+  dayOfMonth: z.number().min(1).max(31).optional().nullable(),
+  isActive: z.number().default(1),
+});
+
+export type InsertRecurringTransaction = z.infer<typeof insertRecurringTransactionSchema>;
+export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
 
 // ============================================
 // RELATIONS
