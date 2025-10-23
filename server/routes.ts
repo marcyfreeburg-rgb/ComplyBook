@@ -149,6 +149,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only owners and admins can invite users" });
       }
 
+      // Check if user being invited already has access
+      const inviteeEmail = req.body.email;
+      const existingUser = await storage.getUserByEmail(inviteeEmail);
+      if (existingUser) {
+        const existingRole = await storage.getUserRole(existingUser.id, organizationId);
+        if (existingRole) {
+          return res.status(400).json({ message: "This user already has access to this organization" });
+        }
+      }
+
       // Generate secure unique invitation token
       const token = crypto.randomUUID();
       
@@ -167,8 +177,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const invitation = await storage.createInvitation(invitationData);
       
-      // Return invitation link
+      // Get organization and inviter details for email
+      const organization = await storage.getOrganization(organizationId);
+      const inviter = await storage.getUser(userId);
+      const inviterName = inviter ? `${inviter.firstName || ''} ${inviter.lastName || ''}`.trim() || inviter.email : 'Unknown';
+      
+      // Send invitation email
       const inviteLink = `${req.protocol}://${req.get('host')}/invite/${token}`;
+      
+      try {
+        const { sendInvitationEmail } = await import('./email');
+        await sendInvitationEmail({
+          to: invitation.email,
+          organizationName: organization?.name || 'Unknown Organization',
+          inviterName,
+          invitationLink: inviteLink,
+          permissions: invitation.permissions || 'view_only',
+          expiresAt: invitation.expiresAt,
+        });
+      } catch (emailError) {
+        console.error("Error sending invitation email:", emailError);
+        // Don't fail the invitation creation if email fails
+      }
+      
       res.status(201).json({ ...invitation, inviteLink });
     } catch (error) {
       console.error("Error creating invitation:", error);
