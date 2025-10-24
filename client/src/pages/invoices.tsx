@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, InvoiceLineItem, Client, Organization } from "@shared/schema";
 import { InvoicePreview } from "@/components/invoice-preview";
+import html2pdf from "html2pdf.js";
 
 interface InvoiceFormData {
   clientId: string;
@@ -232,6 +233,23 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   const handleView = (invoice: Invoice & { clientName: string | null }) => {
     setPreviewingInvoice(invoice);
     setIsPreviewDialogOpen(true);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!previewingInvoice) return;
+    
+    const element = document.querySelector('[data-testid="invoice-preview"]');
+    if (!element) return;
+
+    const opt = {
+      margin: 0.5,
+      filename: `invoice-${previewingInvoice.invoiceNumber}.pdf`,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+    };
+
+    html2pdf().set(opt).from(element as HTMLElement).save();
   };
 
   const addLineItem = () => {
@@ -632,10 +650,23 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
       }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Invoice Preview</DialogTitle>
-            <DialogDescription>
-              View and print invoice with company branding
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Invoice Preview</DialogTitle>
+                <DialogDescription>
+                  View and print invoice with company branding
+                </DialogDescription>
+              </div>
+              <Button
+                onClick={handleDownloadPDF}
+                variant="default"
+                size="sm"
+                data-testid="button-download-invoice-pdf"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
           </DialogHeader>
           {previewingInvoice && (
             <InvoicePreview
