@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye } from "lucide-react";
 import { format } from "date-fns";
 import type { Bill, BillLineItem, Vendor, Organization } from "@shared/schema";
+import { BillPreview } from "@/components/bill-preview";
 
 interface BillFormData {
   vendorId: string;
@@ -39,7 +40,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
+  const [previewingBill, setPreviewingBill] = useState<(Bill & { vendorName: string | null }) | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [formData, setFormData] = useState<BillFormData>({
@@ -61,6 +64,12 @@ export default function Bills({ currentOrganization }: BillsProps) {
   // Fetch vendors for dropdown
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors', currentOrganization.id],
+  });
+
+  // Fetch line items for preview
+  const { data: previewLineItems = [] } = useQuery<BillLineItem[]>({
+    queryKey: ['/api/bills', previewingBill?.id, 'line-items'],
+    enabled: !!previewingBill,
   });
 
   const calculateLineItemTotal = (quantity: string, rate: string): number => {
@@ -220,6 +229,11 @@ export default function Bills({ currentOrganization }: BillsProps) {
     }
   };
 
+  const handleView = (bill: Bill & { vendorName: string | null }) => {
+    setPreviewingBill(bill);
+    setIsPreviewDialogOpen(true);
+  };
+
   const addLineItem = () => {
     setFormData({
       ...formData,
@@ -339,6 +353,14 @@ export default function Bills({ currentOrganization }: BillsProps) {
                       <td className="py-3">{getStatusBadge(bill.status)}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(bill)}
+                            data-testid={`button-view-bill-${bill.id}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -598,6 +620,30 @@ export default function Bills({ currentOrganization }: BillsProps) {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Bill Dialog */}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsPreviewDialogOpen(false);
+          setPreviewingBill(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bill Preview</DialogTitle>
+            <DialogDescription>
+              View and print bill with company branding
+            </DialogDescription>
+          </DialogHeader>
+          {previewingBill && (
+            <BillPreview
+              bill={previewingBill}
+              lineItems={previewLineItems}
+              organization={currentOrganization}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
