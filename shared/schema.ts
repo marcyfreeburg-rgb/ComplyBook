@@ -36,6 +36,9 @@ export const budgetPeriodEnum = pgEnum('budget_period', ['monthly', 'quarterly',
 export const recurringFrequencyEnum = pgEnum('recurring_frequency', ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled']);
 export const billStatusEnum = pgEnum('bill_status', ['received', 'scheduled', 'paid', 'partial', 'overdue', 'cancelled']);
+export const approvalStatusEnum = pgEnum('approval_status', ['pending', 'approved', 'rejected', 'cancelled']);
+export const taxFormTypeEnum = pgEnum('tax_form_type', ['1099_nec', '1099_misc', '1099_int', 'w2', '990', '1040_schedule_c']);
+export const cashFlowScenarioTypeEnum = pgEnum('cash_flow_scenario_type', ['optimistic', 'realistic', 'pessimistic', 'custom']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -603,6 +606,194 @@ export const insertRecurringTransactionSchema = createInsertSchema(recurringTran
 
 export type InsertRecurringTransaction = z.infer<typeof insertRecurringTransactionSchema>;
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
+
+// ============================================
+// EXPENSE APPROVALS
+// ============================================
+
+export const expenseApprovals = pgTable("expense_approvals", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
+  vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
+  requestDate: timestamp("request_date").notNull().defaultNow(),
+  requestedBy: varchar("requested_by").notNull().references(() => users.id),
+  status: approvalStatusEnum("status").notNull().default('pending'),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  receiptUrl: varchar("receipt_url"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertExpenseApprovalSchema = createInsertSchema(expenseApprovals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  requestDate: true,
+  reviewedAt: true,
+} as const).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  status: z.enum(['pending', 'approved', 'rejected', 'cancelled']).default('pending'),
+});
+
+export type InsertExpenseApproval = z.infer<typeof insertExpenseApprovalSchema>;
+export type ExpenseApproval = typeof expenseApprovals.$inferSelect;
+
+// ============================================
+// CASH FLOW FORECASTING
+// ============================================
+
+export const cashFlowScenarios = pgTable("cash_flow_scenarios", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: cashFlowScenarioTypeEnum("type").notNull(),
+  description: text("description"),
+  incomeGrowthRate: numeric("income_growth_rate", { precision: 5, scale: 2 }).default('0'),
+  expenseGrowthRate: numeric("expense_growth_rate", { precision: 5, scale: 2 }).default('0'),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCashFlowScenarioSchema = createInsertSchema(cashFlowScenarios).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+} as const).extend({
+  incomeGrowthRate: z.string().or(z.number()).transform(val => String(val)),
+  expenseGrowthRate: z.string().or(z.number()).transform(val => String(val)),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+});
+
+export type InsertCashFlowScenario = z.infer<typeof insertCashFlowScenarioSchema>;
+export type CashFlowScenario = typeof cashFlowScenarios.$inferSelect;
+
+export const cashFlowProjections = pgTable("cash_flow_projections", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  scenarioId: integer("scenario_id").notNull().references(() => cashFlowScenarios.id, { onDelete: 'cascade' }),
+  month: timestamp("month").notNull(),
+  projectedIncome: numeric("projected_income", { precision: 12, scale: 2 }).notNull(),
+  projectedExpenses: numeric("projected_expenses", { precision: 12, scale: 2 }).notNull(),
+  projectedBalance: numeric("projected_balance", { precision: 12, scale: 2 }).notNull(),
+  actualIncome: numeric("actual_income", { precision: 12, scale: 2 }),
+  actualExpenses: numeric("actual_expenses", { precision: 12, scale: 2 }),
+  actualBalance: numeric("actual_balance", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCashFlowProjectionSchema = createInsertSchema(cashFlowProjections).omit({
+  id: true,
+  createdAt: true,
+} as const).extend({
+  month: z.coerce.date(),
+  projectedIncome: z.string().or(z.number()).transform(val => String(val)),
+  projectedExpenses: z.string().or(z.number()).transform(val => String(val)),
+  projectedBalance: z.string().or(z.number()).transform(val => String(val)),
+  actualIncome: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  actualExpenses: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  actualBalance: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+});
+
+export type InsertCashFlowProjection = z.infer<typeof insertCashFlowProjectionSchema>;
+export type CashFlowProjection = typeof cashFlowProjections.$inferSelect;
+
+// ============================================
+// TAX REPORTING
+// ============================================
+
+export const taxCategories = pgTable("tax_categories", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  taxFormType: taxFormTypeEnum("tax_form_type"),
+  isDeductible: integer("is_deductible").notNull().default(1),
+  formLine: varchar("form_line", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTaxCategorySchema = createInsertSchema(taxCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+} as const).extend({
+  isDeductible: z.number().default(1),
+});
+
+export type InsertTaxCategory = z.infer<typeof insertTaxCategorySchema>;
+export type TaxCategory = typeof taxCategories.$inferSelect;
+
+export const taxReports = pgTable("tax_reports", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  taxYear: integer("tax_year").notNull(),
+  formType: taxFormTypeEnum("form_type").notNull(),
+  totalIncome: numeric("total_income", { precision: 12, scale: 2 }).notNull().default('0'),
+  totalExpenses: numeric("total_expenses", { precision: 12, scale: 2 }).notNull().default('0'),
+  totalDeductions: numeric("total_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
+  netIncome: numeric("net_income", { precision: 12, scale: 2 }).notNull().default('0'),
+  reportData: jsonb("report_data"),
+  notes: text("notes"),
+  generatedBy: varchar("generated_by").notNull().references(() => users.id),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertTaxReportSchema = createInsertSchema(taxReports).omit({
+  id: true,
+  createdAt: true,
+  generatedAt: true,
+} as const).extend({
+  totalIncome: z.string().or(z.number()).transform(val => String(val)),
+  totalExpenses: z.string().or(z.number()).transform(val => String(val)),
+  totalDeductions: z.string().or(z.number()).transform(val => String(val)),
+  netIncome: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertTaxReport = z.infer<typeof insertTaxReportSchema>;
+export type TaxReport = typeof taxReports.$inferSelect;
+
+export const taxForm1099s = pgTable("tax_form_1099s", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  taxYear: integer("tax_year").notNull(),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: 'cascade' }),
+  formType: taxFormTypeEnum("form_type").notNull().default('1099_nec'),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  recipientName: varchar("recipient_name", { length: 255 }).notNull(),
+  recipientTin: varchar("recipient_tin", { length: 20 }),
+  recipientAddress: text("recipient_address"),
+  isFiled: integer("is_filed").notNull().default(0),
+  filedDate: timestamp("filed_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTaxForm1099Schema = createInsertSchema(taxForm1099s).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  filedDate: true,
+} as const).extend({
+  totalAmount: z.string().or(z.number()).transform(val => String(val)),
+  isFiled: z.number().default(0),
+});
+
+export type InsertTaxForm1099 = z.infer<typeof insertTaxForm1099Schema>;
+export type TaxForm1099 = typeof taxForm1099s.$inferSelect;
 
 // ============================================
 // RELATIONS
