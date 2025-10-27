@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -73,6 +73,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Reports",
       url: "/reports",
       icon: FileText,
+    },
+    {
+      title: "Custom Reports",
+      url: "/custom-reports",
+      icon: FileLineChart,
     },
     ...(currentOrganization?.type === 'nonprofit' ? [{
       title: "Grants",

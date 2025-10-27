@@ -30,6 +30,7 @@ import AcceptInvitation from "@/pages/accept-invitation";
 import CashFlow from "@/pages/cash-flow";
 import TaxReporting from "@/pages/tax-reporting";
 import ExpenseApprovals from "@/pages/expense-approvals";
+import CustomReports from "@/pages/custom-reports";
 import type { Organization } from "@shared/schema";
 
 function AuthenticatedApp() {
@@ -177,6 +178,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/reports">
                 <Reports currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/custom-reports">
+                <CustomReports currentOrganization={currentOrganization} />
               </Route>
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/grants">
