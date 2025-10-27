@@ -2597,7 +2597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
-      const data: InsertExpenseApproval = insertExpenseApprovalSchema.parse(req.body);
+      const data = insertExpenseApprovalSchema.omit({ organizationId: true, requestedBy: true }).parse(req.body);
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
@@ -2954,6 +2954,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/tax-form-1099s/:organizationId/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const taxYear = parseInt(req.params.year);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const forms = await storage.getTaxForm1099s(organizationId, taxYear);
+      res.json(forms);
+    } catch (error) {
+      console.error("Error fetching 1099 forms:", error);
+      res.status(500).json({ message: "Failed to fetch 1099 forms" });
+    }
+  });
+
   app.get('/api/tax-form-1099s/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2977,7 +2996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
-      const data: InsertTaxForm1099 = insertTaxForm1099Schema.parse(req.body);
+      const data = insertTaxForm1099Schema.omit({ organizationId: true, createdBy: true }).parse(req.body);
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {

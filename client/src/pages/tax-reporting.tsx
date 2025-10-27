@@ -68,10 +68,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
 
   const createCategoryMutation = useMutation({
     mutationFn: async (data: InsertTaxCategory) => {
-      return await apiRequest(`/api/tax-categories/${currentOrganization.id}`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', `/api/tax-categories/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tax-categories', currentOrganization.id] });
@@ -86,13 +83,10 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
 
   const create1099Mutation = useMutation({
     mutationFn: async (data: InsertTaxForm1099) => {
-      return await apiRequest(`/api/tax-form-1099s/${currentOrganization.id}`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', `/api/tax-form-1099s/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear] });
       toast({ title: "1099 form created successfully" });
       setIs1099DialogOpen(false);
       form1099Form.reset();
@@ -104,10 +98,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
 
   const generateTaxReportMutation = useMutation({
     mutationFn: async (taxYear: number) => {
-      return await apiRequest(`/api/tax-reports/${currentOrganization.id}/generate`, {
-        method: 'POST',
-        body: JSON.stringify({ taxYear }),
-      });
+      return await apiRequest('POST', `/api/tax-reports/${currentOrganization.id}/generate`, { taxYear });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tax-reports', currentOrganization.id] });
@@ -438,7 +429,12 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                                 <FormItem>
                                   <FormLabel>Tax Year</FormLabel>
                                   <FormControl>
-                                    <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} data-testid="input-1099-year" />
+                                    <Input 
+                                      type="number" 
+                                      value={field.value || ''}
+                                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : new Date().getFullYear())} 
+                                      data-testid="input-1099-year" 
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>

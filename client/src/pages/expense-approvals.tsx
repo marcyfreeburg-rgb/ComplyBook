@@ -58,10 +58,7 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
 
   const createApprovalMutation = useMutation({
     mutationFn: async (data: InsertExpenseApproval) => {
-      return await apiRequest(`/api/expense-approvals/${currentOrganization.id}`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', `/api/expense-approvals/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
@@ -76,10 +73,7 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
 
   const approveMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: number; notes?: string }) => {
-      return await apiRequest(`/api/expense-approvals/${id}/approve`, {
-        method: 'POST',
-        body: JSON.stringify({ notes }),
-      });
+      return await apiRequest('POST', `/api/expense-approvals/${id}/approve`, { notes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
@@ -95,10 +89,7 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
 
   const rejectMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: number; notes?: string }) => {
-      return await apiRequest(`/api/expense-approvals/${id}/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ notes }),
-      });
+      return await apiRequest('POST', `/api/expense-approvals/${id}/reject`, { notes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });

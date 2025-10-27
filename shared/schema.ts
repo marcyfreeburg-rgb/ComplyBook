@@ -768,7 +768,7 @@ export const taxForm1099s = pgTable("tax_form_1099s", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   taxYear: integer("tax_year").notNull(),
-  vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: 'cascade' }),
+  vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'cascade' }),
   formType: taxFormTypeEnum("form_type").notNull().default('1099_nec'),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
   recipientName: varchar("recipient_name", { length: 255 }).notNull(),
