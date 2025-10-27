@@ -120,6 +120,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("[CreateReport] Submitting data:", JSON.stringify(data, null, 2));
       return await apiRequest(`/api/custom-reports/${currentOrganization.id}`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -132,8 +133,10 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
       resetForm();
       setDialogOpen(false);
     },
-    onError: () => {
-      toast({ title: "Failed to create report", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("[CreateReport] Error:", error);
+      const errorMessage = error?.message || "Failed to create report";
+      toast({ title: errorMessage, variant: "destructive" });
     },
   });
 
