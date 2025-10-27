@@ -22,6 +22,12 @@ import {
   insertBudgetSchema,
   insertBudgetItemSchema,
   insertInvitationSchema,
+  insertExpenseApprovalSchema,
+  insertCashFlowScenarioSchema,
+  insertCashFlowProjectionSchema,
+  insertTaxCategorySchema,
+  insertTaxReportSchema,
+  insertTaxForm1099Schema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -31,6 +37,11 @@ import {
   type InsertBudget,
   type InsertBudgetItem,
   type InsertInvitation,
+  type InsertExpenseApproval,
+  type InsertCashFlowScenario,
+  type InsertTaxCategory,
+  type InsertTaxReport,
+  type InsertTaxForm1099,
 } from "@shared/schema";
 
 // Simple in-memory rate limiter for AI endpoints
@@ -2557,6 +2568,436 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting bill line item:", error);
       res.status(500).json({ message: "Failed to delete line item" });
+    }
+  });
+
+  // ============================================
+  // EXPENSE APPROVAL ROUTES
+  // ============================================
+
+  app.get('/api/expense-approvals/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const approvals = await storage.getExpenseApprovals(organizationId);
+      res.json(approvals);
+    } catch (error) {
+      console.error("Error fetching expense approvals:", error);
+      res.status(500).json({ message: "Failed to fetch expense approvals" });
+    }
+  });
+
+  app.post('/api/expense-approvals/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const data: InsertExpenseApproval = insertExpenseApprovalSchema.parse(req.body);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const approval = await storage.createExpenseApproval({
+        ...data,
+        organizationId,
+        requestedBy: userId,
+      });
+
+      res.status(201).json(approval);
+    } catch (error) {
+      console.error("Error creating expense approval:", error);
+      res.status(400).json({ message: "Failed to create expense approval" });
+    }
+  });
+
+  app.patch('/api/expense-approvals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const approvalId = parseInt(req.params.id);
+      const updates = insertExpenseApprovalSchema.partial().parse(req.body);
+
+      const approval = await storage.getExpenseApproval(approvalId);
+      if (!approval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, approval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only the requester can update a pending request
+      if (approval.requestedBy !== userId && approval.status === 'pending') {
+        return res.status(403).json({ message: "You can only update your own requests" });
+      }
+
+      const updated = await storage.updateExpenseApproval(approvalId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating expense approval:", error);
+      res.status(400).json({ message: "Failed to update expense approval" });
+    }
+  });
+
+  app.post('/api/expense-approvals/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const approvalId = parseInt(req.params.id);
+      const { notes } = req.body;
+
+      const approval = await storage.getExpenseApproval(approvalId);
+      if (!approval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, approval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only admins and owners can approve
+      if (userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins and owners can approve expenses" });
+      }
+
+      const updated = await storage.approveExpenseApproval(approvalId, userId, notes);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error approving expense:", error);
+      res.status(400).json({ message: "Failed to approve expense" });
+    }
+  });
+
+  app.post('/api/expense-approvals/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const approvalId = parseInt(req.params.id);
+      const { notes } = req.body;
+
+      const approval = await storage.getExpenseApproval(approvalId);
+      if (!approval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, approval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only admins and owners can reject
+      if (userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins and owners can reject expenses" });
+      }
+
+      const updated = await storage.rejectExpenseApproval(approvalId, userId, notes);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting expense:", error);
+      res.status(400).json({ message: "Failed to reject expense" });
+    }
+  });
+
+  app.delete('/api/expense-approvals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const approvalId = parseInt(req.params.id);
+
+      const approval = await storage.getExpenseApproval(approvalId);
+      if (!approval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, approval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only the requester or admin/owner can delete
+      if (approval.requestedBy !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "You can only delete your own requests" });
+      }
+
+      await storage.deleteExpenseApproval(approvalId);
+      res.json({ message: "Expense approval deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting expense approval:", error);
+      res.status(500).json({ message: "Failed to delete expense approval" });
+    }
+  });
+
+  // ============================================
+  // CASH FLOW FORECASTING ROUTES
+  // ============================================
+
+  app.get('/api/cash-flow-scenarios/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const scenarios = await storage.getCashFlowScenarios(organizationId);
+      res.json(scenarios);
+    } catch (error) {
+      console.error("Error fetching cash flow scenarios:", error);
+      res.status(500).json({ message: "Failed to fetch scenarios" });
+    }
+  });
+
+  app.post('/api/cash-flow-scenarios/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const data: InsertCashFlowScenario = insertCashFlowScenarioSchema.parse(req.body);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to create forecasts" });
+      }
+
+      const scenario = await storage.createCashFlowScenario({
+        ...data,
+        organizationId,
+        createdBy: userId,
+      });
+
+      res.status(201).json(scenario);
+    } catch (error) {
+      console.error("Error creating cash flow scenario:", error);
+      res.status(400).json({ message: "Failed to create scenario" });
+    }
+  });
+
+  app.get('/api/cash-flow-projections/:scenarioId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scenarioId = parseInt(req.params.scenarioId);
+
+      const scenario = await storage.getCashFlowScenario(scenarioId);
+      if (!scenario) {
+        return res.status(404).json({ message: "Scenario not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, scenario.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const projections = await storage.getCashFlowProjections(scenarioId);
+      res.json(projections);
+    } catch (error) {
+      console.error("Error fetching projections:", error);
+      res.status(500).json({ message: "Failed to fetch projections" });
+    }
+  });
+
+  app.post('/api/cash-flow-projections/:scenarioId/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scenarioId = parseInt(req.params.scenarioId);
+
+      const scenario = await storage.getCashFlowScenario(scenarioId);
+      if (!scenario) {
+        return res.status(404).json({ message: "Scenario not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, scenario.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to generate forecasts" });
+      }
+
+      const projections = await storage.generateCashFlowProjections(scenarioId);
+      res.json(projections);
+    } catch (error) {
+      console.error("Error generating projections:", error);
+      res.status(500).json({ message: "Failed to generate projections" });
+    }
+  });
+
+  app.delete('/api/cash-flow-scenarios/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scenarioId = parseInt(req.params.id);
+
+      const scenario = await storage.getCashFlowScenario(scenarioId);
+      if (!scenario) {
+        return res.status(404).json({ message: "Scenario not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, scenario.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to delete forecasts" });
+      }
+
+      await storage.deleteCashFlowScenario(scenarioId);
+      res.json({ message: "Scenario deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting scenario:", error);
+      res.status(500).json({ message: "Failed to delete scenario" });
+    }
+  });
+
+  // ============================================
+  // TAX REPORTING ROUTES
+  // ============================================
+
+  app.get('/api/tax-categories/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const categories = await storage.getTaxCategories(organizationId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching tax categories:", error);
+      res.status(500).json({ message: "Failed to fetch tax categories" });
+    }
+  });
+
+  app.post('/api/tax-categories/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const data: InsertTaxCategory = insertTaxCategorySchema.parse(req.body);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins and owners can manage tax categories" });
+      }
+
+      const category = await storage.createTaxCategory({
+        ...data,
+        organizationId,
+      });
+
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating tax category:", error);
+      res.status(400).json({ message: "Failed to create tax category" });
+    }
+  });
+
+  app.get('/api/tax-reports/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const taxYear = req.query.taxYear ? parseInt(req.query.taxYear as string) : undefined;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const reports = await storage.getTaxReports(organizationId, taxYear);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching tax reports:", error);
+      res.status(500).json({ message: "Failed to fetch tax reports" });
+    }
+  });
+
+  app.post('/api/tax-reports/:organizationId/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { taxYear } = req.body;
+
+      if (!taxYear || typeof taxYear !== 'number') {
+        return res.status(400).json({ message: "Tax year is required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to generate tax reports" });
+      }
+
+      const report = await storage.generateYearEndTaxReport(organizationId, taxYear);
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Error generating tax report:", error);
+      res.status(500).json({ message: "Failed to generate tax report" });
+    }
+  });
+
+  app.get('/api/tax-form-1099s/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const taxYear = req.query.taxYear ? parseInt(req.query.taxYear as string) : undefined;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const forms = await storage.getTaxForm1099s(organizationId, taxYear);
+      res.json(forms);
+    } catch (error) {
+      console.error("Error fetching 1099 forms:", error);
+      res.status(500).json({ message: "Failed to fetch 1099 forms" });
+    }
+  });
+
+  app.post('/api/tax-form-1099s/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const data: InsertTaxForm1099 = insertTaxForm1099Schema.parse(req.body);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins and owners can manage 1099 forms" });
+      }
+
+      const form = await storage.createTaxForm1099({
+        ...data,
+        organizationId,
+        createdBy: userId,
+      });
+
+      res.status(201).json(form);
+    } catch (error) {
+      console.error("Error creating 1099 form:", error);
+      res.status(400).json({ message: "Failed to create 1099 form" });
     }
   });
 

@@ -60,6 +60,24 @@ import {
   type InsertBill,
   type BillLineItem,
   type InsertBillLineItem,
+  expenseApprovals,
+  type ExpenseApproval,
+  type InsertExpenseApproval,
+  cashFlowScenarios,
+  cashFlowProjections,
+  type CashFlowScenario,
+  type InsertCashFlowScenario,
+  type CashFlowProjection,
+  type InsertCashFlowProjection,
+  taxCategories,
+  taxReports,
+  taxForm1099s,
+  type TaxCategory,
+  type InsertTaxCategory,
+  type TaxReport,
+  type InsertTaxReport,
+  type TaxForm1099,
+  type InsertTaxForm1099,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -230,6 +248,44 @@ export interface IStorage {
   createBillLineItem(item: InsertBillLineItem): Promise<BillLineItem>;
   updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem>;
   deleteBillLineItem(id: number): Promise<void>;
+
+  // Expense approval operations
+  getExpenseApprovals(organizationId: number): Promise<Array<ExpenseApproval & { requestedByName: string; categoryName: string | null; vendorName: string | null }>>;
+  getExpenseApproval(id: number): Promise<ExpenseApproval | undefined>;
+  createExpenseApproval(approval: InsertExpenseApproval): Promise<ExpenseApproval>;
+  updateExpenseApproval(id: number, updates: Partial<InsertExpenseApproval>): Promise<ExpenseApproval>;
+  deleteExpenseApproval(id: number): Promise<void>;
+  approveExpenseApproval(id: number, reviewerId: string, notes?: string): Promise<ExpenseApproval>;
+  rejectExpenseApproval(id: number, reviewerId: string, notes?: string): Promise<ExpenseApproval>;
+
+  // Cash flow forecasting operations
+  getCashFlowScenarios(organizationId: number): Promise<CashFlowScenario[]>;
+  getCashFlowScenario(id: number): Promise<CashFlowScenario | undefined>;
+  createCashFlowScenario(scenario: InsertCashFlowScenario): Promise<CashFlowScenario>;
+  updateCashFlowScenario(id: number, updates: Partial<InsertCashFlowScenario>): Promise<CashFlowScenario>;
+  deleteCashFlowScenario(id: number): Promise<void>;
+  getCashFlowProjections(scenarioId: number): Promise<CashFlowProjection[]>;
+  createCashFlowProjection(projection: InsertCashFlowProjection): Promise<CashFlowProjection>;
+  updateCashFlowProjection(id: number, updates: Partial<InsertCashFlowProjection>): Promise<CashFlowProjection>;
+  deleteCashFlowProjection(id: number): Promise<void>;
+  generateCashFlowProjections(scenarioId: number): Promise<CashFlowProjection[]>;
+
+  // Tax reporting operations
+  getTaxCategories(organizationId: number): Promise<TaxCategory[]>;
+  getTaxCategory(id: number): Promise<TaxCategory | undefined>;
+  createTaxCategory(category: InsertTaxCategory): Promise<TaxCategory>;
+  updateTaxCategory(id: number, updates: Partial<InsertTaxCategory>): Promise<TaxCategory>;
+  deleteTaxCategory(id: number): Promise<void>;
+  getTaxReports(organizationId: number, taxYear?: number): Promise<TaxReport[]>;
+  getTaxReport(id: number): Promise<TaxReport | undefined>;
+  createTaxReport(report: InsertTaxReport): Promise<TaxReport>;
+  deleteTaxReport(id: number): Promise<void>;
+  getTaxForm1099s(organizationId: number, taxYear?: number): Promise<Array<TaxForm1099 & { vendorName: string }>>;
+  getTaxForm1099(id: number): Promise<TaxForm1099 | undefined>;
+  createTaxForm1099(form: InsertTaxForm1099): Promise<TaxForm1099>;
+  updateTaxForm1099(id: number, updates: Partial<InsertTaxForm1099>): Promise<TaxForm1099>;
+  deleteTaxForm1099(id: number): Promise<void>;
+  generateYearEndTaxReport(organizationId: number, taxYear: number): Promise<TaxReport>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1433,6 +1489,453 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBillLineItem(id: number): Promise<void> {
     await db.delete(billLineItems).where(eq(billLineItems.id, id));
+  }
+
+  // ============================================
+  // EXPENSE APPROVAL OPERATIONS
+  // ============================================
+
+  async getExpenseApprovals(organizationId: number): Promise<Array<ExpenseApproval & { requestedByName: string; categoryName: string | null; vendorName: string | null }>> {
+    const results = await db
+      .select({
+        id: expenseApprovals.id,
+        organizationId: expenseApprovals.organizationId,
+        description: expenseApprovals.description,
+        amount: expenseApprovals.amount,
+        categoryId: expenseApprovals.categoryId,
+        vendorId: expenseApprovals.vendorId,
+        requestDate: expenseApprovals.requestDate,
+        requestedBy: expenseApprovals.requestedBy,
+        status: expenseApprovals.status,
+        reviewedBy: expenseApprovals.reviewedBy,
+        reviewedAt: expenseApprovals.reviewedAt,
+        reviewNotes: expenseApprovals.reviewNotes,
+        receiptUrl: expenseApprovals.receiptUrl,
+        notes: expenseApprovals.notes,
+        createdAt: expenseApprovals.createdAt,
+        updatedAt: expenseApprovals.updatedAt,
+        requestedByName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+        categoryName: categories.name,
+        vendorName: vendors.name,
+      })
+      .from(expenseApprovals)
+      .leftJoin(users, eq(expenseApprovals.requestedBy, users.id))
+      .leftJoin(categories, eq(expenseApprovals.categoryId, categories.id))
+      .leftJoin(vendors, eq(expenseApprovals.vendorId, vendors.id))
+      .where(eq(expenseApprovals.organizationId, organizationId))
+      .orderBy(desc(expenseApprovals.requestDate));
+    
+    return results;
+  }
+
+  async getExpenseApproval(id: number): Promise<ExpenseApproval | undefined> {
+    const [approval] = await db.select().from(expenseApprovals).where(eq(expenseApprovals.id, id));
+    return approval;
+  }
+
+  async createExpenseApproval(approval: InsertExpenseApproval): Promise<ExpenseApproval> {
+    const [newApproval] = await db
+      .insert(expenseApprovals)
+      .values(approval)
+      .returning();
+    return newApproval;
+  }
+
+  async updateExpenseApproval(id: number, updates: Partial<InsertExpenseApproval>): Promise<ExpenseApproval> {
+    const [updated] = await db
+      .update(expenseApprovals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(expenseApprovals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpenseApproval(id: number): Promise<void> {
+    await db.delete(expenseApprovals).where(eq(expenseApprovals.id, id));
+  }
+
+  async approveExpenseApproval(id: number, reviewerId: string, notes?: string): Promise<ExpenseApproval> {
+    const [updated] = await db
+      .update(expenseApprovals)
+      .set({
+        status: 'approved',
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(expenseApprovals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectExpenseApproval(id: number, reviewerId: string, notes?: string): Promise<ExpenseApproval> {
+    const [updated] = await db
+      .update(expenseApprovals)
+      .set({
+        status: 'rejected',
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(expenseApprovals.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ============================================
+  // CASH FLOW FORECASTING OPERATIONS
+  // ============================================
+
+  async getCashFlowScenarios(organizationId: number): Promise<CashFlowScenario[]> {
+    const scenarios = await db
+      .select()
+      .from(cashFlowScenarios)
+      .where(eq(cashFlowScenarios.organizationId, organizationId))
+      .orderBy(desc(cashFlowScenarios.createdAt));
+    return scenarios;
+  }
+
+  async getCashFlowScenario(id: number): Promise<CashFlowScenario | undefined> {
+    const [scenario] = await db.select().from(cashFlowScenarios).where(eq(cashFlowScenarios.id, id));
+    return scenario;
+  }
+
+  async createCashFlowScenario(scenario: InsertCashFlowScenario): Promise<CashFlowScenario> {
+    const [newScenario] = await db
+      .insert(cashFlowScenarios)
+      .values(scenario)
+      .returning();
+    return newScenario;
+  }
+
+  async updateCashFlowScenario(id: number, updates: Partial<InsertCashFlowScenario>): Promise<CashFlowScenario> {
+    const [updated] = await db
+      .update(cashFlowScenarios)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(cashFlowScenarios.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCashFlowScenario(id: number): Promise<void> {
+    await db.delete(cashFlowScenarios).where(eq(cashFlowScenarios.id, id));
+  }
+
+  async getCashFlowProjections(scenarioId: number): Promise<CashFlowProjection[]> {
+    const projections = await db
+      .select()
+      .from(cashFlowProjections)
+      .where(eq(cashFlowProjections.scenarioId, scenarioId))
+      .orderBy(cashFlowProjections.month);
+    return projections;
+  }
+
+  async createCashFlowProjection(projection: InsertCashFlowProjection): Promise<CashFlowProjection> {
+    const [newProjection] = await db
+      .insert(cashFlowProjections)
+      .values(projection)
+      .returning();
+    return newProjection;
+  }
+
+  async updateCashFlowProjection(id: number, updates: Partial<InsertCashFlowProjection>): Promise<CashFlowProjection> {
+    const [updated] = await db
+      .update(cashFlowProjections)
+      .set(updates)
+      .where(eq(cashFlowProjections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCashFlowProjection(id: number): Promise<void> {
+    await db.delete(cashFlowProjections).where(eq(cashFlowProjections.id, id));
+  }
+
+  async generateCashFlowProjections(scenarioId: number): Promise<CashFlowProjection[]> {
+    const scenario = await this.getCashFlowScenario(scenarioId);
+    if (!scenario) {
+      throw new Error('Scenario not found');
+    }
+
+    // Get historical transactions for baseline
+    const startDate = new Date(scenario.startDate);
+    const endDate = new Date(scenario.endDate);
+    const historicalStart = new Date(startDate);
+    historicalStart.setMonth(historicalStart.getMonth() - 6); // Get 6 months of historical data
+
+    const historicalTransactions = await this.getTransactionsByDateRange(
+      scenario.organizationId,
+      historicalStart,
+      startDate
+    );
+
+    // Calculate average monthly income and expenses
+    const monthCount = 6;
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    historicalTransactions.forEach(tx => {
+      const amount = parseFloat(tx.amount);
+      if (tx.type === 'income') {
+        totalIncome += amount;
+      } else {
+        totalExpenses += amount;
+      }
+    });
+
+    const avgMonthlyIncome = totalIncome / monthCount;
+    const avgMonthlyExpenses = totalExpenses / monthCount;
+
+    // Get recurring transactions to add to projections
+    const recurringTxs = await db
+      .select()
+      .from(recurringTransactions)
+      .where(
+        and(
+          eq(recurringTransactions.organizationId, scenario.organizationId),
+          eq(recurringTransactions.isActive, 1)
+        )
+      );
+
+    // Generate monthly projections
+    const projections: CashFlowProjection[] = [];
+    let runningBalance = 0;
+
+    const currentMonth = new Date(startDate);
+    while (currentMonth <= endDate) {
+      const incomeGrowthMultiplier = 1 + (parseFloat(scenario.incomeGrowthRate || '0') / 100);
+      const expenseGrowthMultiplier = 1 + (parseFloat(scenario.expenseGrowthRate || '0') / 100);
+
+      // Calculate projected income and expenses with growth
+      const monthsFromStart = Math.floor(
+        (currentMonth.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      );
+      
+      let projectedIncome = avgMonthlyIncome * Math.pow(incomeGrowthMultiplier, monthsFromStart);
+      let projectedExpenses = avgMonthlyExpenses * Math.pow(expenseGrowthMultiplier, monthsFromStart);
+
+      // Add recurring transactions for this month
+      recurringTxs.forEach(rtx => {
+        const amount = parseFloat(rtx.amount);
+        if (rtx.type === 'income') {
+          projectedIncome += amount;
+        } else {
+          projectedExpenses += amount;
+        }
+      });
+
+      runningBalance += projectedIncome - projectedExpenses;
+
+      const [projection] = await db
+        .insert(cashFlowProjections)
+        .values({
+          scenarioId,
+          month: new Date(currentMonth),
+          projectedIncome: projectedIncome.toFixed(2),
+          projectedExpenses: projectedExpenses.toFixed(2),
+          projectedBalance: runningBalance.toFixed(2),
+        })
+        .returning();
+
+      projections.push(projection);
+
+      // Move to next month
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+
+    return projections;
+  }
+
+  // ============================================
+  // TAX REPORTING OPERATIONS
+  // ============================================
+
+  async getTaxCategories(organizationId: number): Promise<TaxCategory[]> {
+    const categories = await db
+      .select()
+      .from(taxCategories)
+      .where(eq(taxCategories.organizationId, organizationId))
+      .orderBy(taxCategories.name);
+    return categories;
+  }
+
+  async getTaxCategory(id: number): Promise<TaxCategory | undefined> {
+    const [category] = await db.select().from(taxCategories).where(eq(taxCategories.id, id));
+    return category;
+  }
+
+  async createTaxCategory(category: InsertTaxCategory): Promise<TaxCategory> {
+    const [newCategory] = await db
+      .insert(taxCategories)
+      .values(category)
+      .returning();
+    return newCategory;
+  }
+
+  async updateTaxCategory(id: number, updates: Partial<InsertTaxCategory>): Promise<TaxCategory> {
+    const [updated] = await db
+      .update(taxCategories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(taxCategories.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTaxCategory(id: number): Promise<void> {
+    await db.delete(taxCategories).where(eq(taxCategories.id, id));
+  }
+
+  async getTaxReports(organizationId: number, taxYear?: number): Promise<TaxReport[]> {
+    let query = db
+      .select()
+      .from(taxReports)
+      .where(eq(taxReports.organizationId, organizationId));
+
+    if (taxYear) {
+      query = query.where(eq(taxReports.taxYear, taxYear));
+    }
+
+    const reports = await query.orderBy(desc(taxReports.taxYear));
+    return reports;
+  }
+
+  async getTaxReport(id: number): Promise<TaxReport | undefined> {
+    const [report] = await db.select().from(taxReports).where(eq(taxReports.id, id));
+    return report;
+  }
+
+  async createTaxReport(report: InsertTaxReport): Promise<TaxReport> {
+    const [newReport] = await db
+      .insert(taxReports)
+      .values(report)
+      .returning();
+    return newReport;
+  }
+
+  async deleteTaxReport(id: number): Promise<void> {
+    await db.delete(taxReports).where(eq(taxReports.id, id));
+  }
+
+  async getTaxForm1099s(organizationId: number, taxYear?: number): Promise<Array<TaxForm1099 & { vendorName: string }>> {
+    let query = db
+      .select({
+        id: taxForm1099s.id,
+        organizationId: taxForm1099s.organizationId,
+        taxYear: taxForm1099s.taxYear,
+        vendorId: taxForm1099s.vendorId,
+        formType: taxForm1099s.formType,
+        totalAmount: taxForm1099s.totalAmount,
+        recipientName: taxForm1099s.recipientName,
+        recipientTin: taxForm1099s.recipientTin,
+        recipientAddress: taxForm1099s.recipientAddress,
+        isFiled: taxForm1099s.isFiled,
+        filedDate: taxForm1099s.filedDate,
+        notes: taxForm1099s.notes,
+        createdBy: taxForm1099s.createdBy,
+        createdAt: taxForm1099s.createdAt,
+        updatedAt: taxForm1099s.updatedAt,
+        vendorName: vendors.name,
+      })
+      .from(taxForm1099s)
+      .leftJoin(vendors, eq(taxForm1099s.vendorId, vendors.id))
+      .where(eq(taxForm1099s.organizationId, organizationId));
+
+    if (taxYear) {
+      query = query.where(eq(taxForm1099s.taxYear, taxYear));
+    }
+
+    const forms = await query.orderBy(desc(taxForm1099s.taxYear));
+    return forms;
+  }
+
+  async getTaxForm1099(id: number): Promise<TaxForm1099 | undefined> {
+    const [form] = await db.select().from(taxForm1099s).where(eq(taxForm1099s.id, id));
+    return form;
+  }
+
+  async createTaxForm1099(form: InsertTaxForm1099): Promise<TaxForm1099> {
+    const [newForm] = await db
+      .insert(taxForm1099s)
+      .values(form)
+      .returning();
+    return newForm;
+  }
+
+  async updateTaxForm1099(id: number, updates: Partial<InsertTaxForm1099>): Promise<TaxForm1099> {
+    const [updated] = await db
+      .update(taxForm1099s)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(taxForm1099s.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTaxForm1099(id: number): Promise<void> {
+    await db.delete(taxForm1099s).where(eq(taxForm1099s.id, id));
+  }
+
+  async generateYearEndTaxReport(organizationId: number, taxYear: number): Promise<TaxReport> {
+    // Get all transactions for the tax year
+    const startDate = new Date(taxYear, 0, 1);
+    const endDate = new Date(taxYear, 11, 31, 23, 59, 59, 999);
+
+    const yearTransactions = await this.getTransactionsByDateRange(
+      organizationId,
+      startDate,
+      endDate
+    );
+
+    // Calculate totals
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let totalDeductions = 0;
+
+    const categoryTotals: Record<string, number> = {};
+
+    yearTransactions.forEach(tx => {
+      const amount = parseFloat(tx.amount);
+      if (tx.type === 'income') {
+        totalIncome += amount;
+      } else {
+        totalExpenses += amount;
+        // TODO: Check if expense is tax deductible based on category
+        totalDeductions += amount; // For now, all expenses are deductible
+      }
+
+      // Track by category
+      if (tx.categoryId) {
+        categoryTotals[tx.categoryId] = (categoryTotals[tx.categoryId] || 0) + amount;
+      }
+    });
+
+    const netIncome = totalIncome - totalExpenses;
+
+    // Get organization to determine form type
+    const org = await this.getOrganization(organizationId);
+    const formType = org?.type === 'nonprofit' ? '990' : '1040_schedule_c';
+
+    // Create the tax report
+    const [report] = await db
+      .insert(taxReports)
+      .values({
+        organizationId,
+        taxYear,
+        formType,
+        totalIncome: totalIncome.toFixed(2),
+        totalExpenses: totalExpenses.toFixed(2),
+        totalDeductions: totalDeductions.toFixed(2),
+        netIncome: netIncome.toFixed(2),
+        reportData: {
+          categoryTotals,
+          transactionCount: yearTransactions.length,
+        },
+        generatedBy: 'system', // TODO: Pass in actual user ID
+      })
+      .returning();
+
+    return report;
   }
 }
 
