@@ -2758,7 +2758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
-      const data: InsertCashFlowScenario = insertCashFlowScenarioSchema.parse(req.body);
+      const data = insertCashFlowScenarioSchema.omit({ organizationId: true, createdBy: true }).parse(req.body);
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {

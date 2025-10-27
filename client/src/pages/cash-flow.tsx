@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, TrendingDown, DollarSign, Plus, Trash2, BarChart3 } from "lucide-react";
 import type { Organization, CashFlowScenario, CashFlowProjection, InsertCashFlowScenario } from "@shared/schema";
@@ -40,6 +41,7 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
     resolver: zodResolver(insertCashFlowScenarioSchema.omit({ organizationId: true, createdBy: true })),
     defaultValues: {
       name: "",
+      type: "realistic",
       description: "",
       startDate: new Date(),
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
@@ -61,10 +63,7 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
 
   const createScenarioMutation = useMutation({
     mutationFn: async (data: InsertCashFlowScenario) => {
-      return await apiRequest(`/api/cash-flow-scenarios/${currentOrganization.id}`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', `/api/cash-flow-scenarios/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-flow-scenarios', currentOrganization.id] });
@@ -79,9 +78,7 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
 
   const generateProjectionsMutation = useMutation({
     mutationFn: async (scenarioId: number) => {
-      return await apiRequest(`/api/cash-flow-projections/${scenarioId}/generate`, {
-        method: 'POST',
-      });
+      return await apiRequest('POST', `/api/cash-flow-projections/${scenarioId}/generate`, undefined);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-flow-projections', selectedScenario] });
@@ -94,9 +91,7 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
 
   const deleteScenarioMutation = useMutation({
     mutationFn: async (scenarioId: number) => {
-      return await apiRequest(`/api/cash-flow-scenarios/${scenarioId}`, {
-        method: 'DELETE',
-      });
+      return await apiRequest('DELETE', `/api/cash-flow-scenarios/${scenarioId}`, undefined);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-flow-scenarios', currentOrganization.id] });
@@ -168,6 +163,30 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
                 
                 <FormField
                   control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Scenario Type</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-scenario-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="optimistic">Optimistic</SelectItem>
+                          <SelectItem value="realistic">Realistic</SelectItem>
+                          <SelectItem value="pessimistic">Pessimistic</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
@@ -195,7 +214,6 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
                         <FormControl>
                           <Input
                             type="date"
-                            {...field}
                             value={field.value instanceof Date ? format(field.value, 'yyyy-MM-dd') : ''}
                             onChange={(e) => field.onChange(new Date(e.target.value))}
                             data-testid="input-start-date"
@@ -215,7 +233,6 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
                         <FormControl>
                           <Input
                             type="date"
-                            {...field}
                             value={field.value instanceof Date ? format(field.value, 'yyyy-MM-dd') : ''}
                             onChange={(e) => field.onChange(new Date(e.target.value))}
                             data-testid="input-end-date"

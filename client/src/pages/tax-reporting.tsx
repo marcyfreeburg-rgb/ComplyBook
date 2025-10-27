@@ -41,7 +41,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     resolver: zodResolver(insertTaxForm1099Schema.omit({ organizationId: true, createdBy: true })),
     defaultValues: {
       taxYear: new Date().getFullYear(),
-      formType: "1099_NEC",
+      formType: "1099_nec",
       totalAmount: "",
       recipientName: "",
       recipientTin: "",
@@ -458,9 +458,9 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="1099_NEC">1099-NEC (Non-Employee Compensation)</SelectItem>
-                                      <SelectItem value="1099_MISC">1099-MISC (Miscellaneous)</SelectItem>
-                                      <SelectItem value="1099_INT">1099-INT (Interest)</SelectItem>
+                                      <SelectItem value="1099_nec">1099-NEC (Non-Employee Compensation)</SelectItem>
+                                      <SelectItem value="1099_misc">1099-MISC (Miscellaneous)</SelectItem>
+                                      <SelectItem value="1099_int">1099-INT (Interest)</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   <FormMessage />
