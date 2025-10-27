@@ -121,11 +121,8 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       console.log("[CreateReport] Submitting data:", JSON.stringify(data, null, 2));
-      return await apiRequest(`/api/custom-reports/${currentOrganization.id}`, {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await apiRequest("POST", `/api/custom-reports/${currentOrganization.id}`, data);
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-reports", currentOrganization.id] });
@@ -142,11 +139,8 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return await apiRequest(`/api/custom-reports/${currentOrganization.id}/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await apiRequest("PATCH", `/api/custom-reports/${currentOrganization.id}/${id}`, data);
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-reports", currentOrganization.id] });
@@ -161,9 +155,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/custom-reports/${currentOrganization.id}/${id}`, {
-        method: "DELETE",
-      });
+      await apiRequest("DELETE", `/api/custom-reports/${currentOrganization.id}/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/custom-reports", currentOrganization.id] });
@@ -176,11 +168,8 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
 
   const executeMutation = useMutation({
     mutationFn: async ({ id, dateFrom, dateTo }: { id: number; dateFrom?: string; dateTo?: string }) => {
-      return await apiRequest(`/api/custom-reports/${currentOrganization.id}/${id}/execute`, {
-        method: "POST",
-        body: JSON.stringify({ dateFrom, dateTo }),
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await apiRequest("POST", `/api/custom-reports/${currentOrganization.id}/${id}/execute`, { dateFrom, dateTo });
+      return await res.json();
     },
     onSuccess: (data) => {
       setReportResults(data);
@@ -225,15 +214,17 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     if (filterMinAmount) filters.minAmount = filterMinAmount;
     if (filterMaxAmount) filters.maxAmount = filterMaxAmount;
 
-    const reportData = {
+    const reportData: any = {
       name: reportName,
-      description: reportDescription || null,
       dataSource,
       selectedFields,
-      filters: Object.keys(filters).length > 0 ? filters : null,
-      sortBy: sortBy && sortBy !== "none" ? sortBy : null,
-      sortOrder: sortOrder || null,
     };
+
+    // Only include optional fields if they have values
+    if (reportDescription) reportData.description = reportDescription;
+    if (Object.keys(filters).length > 0) reportData.filters = filters;
+    if (sortBy && sortBy !== "none") reportData.sortBy = sortBy;
+    if (sortOrder) reportData.sortOrder = sortOrder;
 
     if (editingReport) {
       updateMutation.mutate({ id: editingReport.id, data: reportData });
