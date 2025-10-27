@@ -3020,59 +3020,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============================================
-  // Currency Routes
-  // ============================================
-
-  // Get all currencies
-  app.get('/api/currencies', async (req: any, res) => {
-    try {
-      const currencies = await storage.getCurrencies();
-      res.json(currencies);
-    } catch (error) {
-      console.error("Error fetching currencies:", error);
-      res.status(500).json({ message: "Failed to fetch currencies" });
-    }
-  });
-
-  // Update currency exchange rate (admin only)
-  app.patch('/api/currencies/:code/exchange-rate', isAuthenticated, async (req: any, res) => {
-    try {
-      const { code } = req.params;
-      const { exchangeRate } = req.body;
-      
-      if (!exchangeRate) {
-        return res.status(400).json({ message: "Exchange rate is required" });
-      }
-
-      const currency = await storage.updateCurrencyExchangeRate(code, String(exchangeRate));
-      res.json(currency);
-    } catch (error) {
-      console.error("Error updating exchange rate:", error);
-      res.status(500).json({ message: "Failed to update exchange rate" });
-    }
-  });
-
-  // Update organization default currency
-  app.patch('/api/organizations/:organizationId/default-currency', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const organizationId = parseInt(req.params.organizationId);
-      const { currencyCode } = req.body;
-
-      const userRole = await storage.getUserRole(userId, organizationId);
-      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
-        return res.status(403).json({ message: "Only admins and owners can change default currency" });
-      }
-
-      const organization = await storage.updateOrganizationDefaultCurrency(organizationId, currencyCode);
-      res.json(organization);
-    } catch (error) {
-      console.error("Error updating default currency:", error);
-      res.status(500).json({ message: "Failed to update default currency" });
-    }
-  });
-
   const httpServer = createServer(app);
   return httpServer;
 }

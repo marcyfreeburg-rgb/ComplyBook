@@ -289,12 +289,6 @@ export interface IStorage {
   updateTaxForm1099(id: number, updates: Partial<InsertTaxForm1099>): Promise<TaxForm1099>;
   deleteTaxForm1099(id: number): Promise<void>;
   generateYearEndTaxReport(organizationId: number, taxYear: number): Promise<TaxReport>;
-
-  // Currency operations
-  getCurrencies(): Promise<Currency[]>;
-  getCurrency(code: string): Promise<Currency | undefined>;
-  updateCurrencyExchangeRate(code: string, exchangeRate: string): Promise<Currency>;
-  updateOrganizationDefaultCurrency(organizationId: number, currencyCode: string): Promise<Organization>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1945,34 +1939,6 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return report;
-  }
-
-  // Currency operations
-  async getCurrencies(): Promise<Currency[]> {
-    return await db.select().from(currencies).where(eq(currencies.isActive, 1)).orderBy(currencies.code);
-  }
-
-  async getCurrency(code: string): Promise<Currency | undefined> {
-    const [currency] = await db.select().from(currencies).where(eq(currencies.code, code));
-    return currency;
-  }
-
-  async updateCurrencyExchangeRate(code: string, exchangeRate: string): Promise<Currency> {
-    const [currency] = await db
-      .update(currencies)
-      .set({ exchangeRateToUSD: exchangeRate, updatedAt: new Date() })
-      .where(eq(currencies.code, code))
-      .returning();
-    return currency;
-  }
-
-  async updateOrganizationDefaultCurrency(organizationId: number, currencyCode: string): Promise<Organization> {
-    const [organization] = await db
-      .update(organizations)
-      .set({ defaultCurrency: currencyCode, updatedAt: new Date() })
-      .where(eq(organizations.id, organizationId))
-      .returning();
-    return organization;
   }
 }
 
