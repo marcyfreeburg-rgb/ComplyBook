@@ -84,6 +84,9 @@ import {
   customReports,
   type CustomReport,
   type InsertCustomReport,
+  auditLogs,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -300,6 +303,21 @@ export interface IStorage {
   updateCustomReport(id: number, updates: Partial<InsertCustomReport>): Promise<CustomReport>;
   deleteCustomReport(id: number): Promise<void>;
   executeCustomReport(id: number, dateFrom?: string, dateTo?: string): Promise<any[]>;
+
+  // Audit log operations
+  getAuditLogs(organizationId: number, filters?: {
+    entityType?: string;
+    entityId?: string;
+    userId?: string;
+    action?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<Array<AuditLog & { userName: string; userEmail: string }>>;
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void>;
+  logUpdate(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any, newValues: any): Promise<void>;
+  logDelete(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2121,6 +2139,118 @@ export class DatabaseStorage implements IStorage {
     }
 
     return results;
+  }
+
+  // Audit log operations
+  async getAuditLogs(organizationId: number, filters?: {
+    entityType?: string;
+    entityId?: string;
+    userId?: string;
+    action?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<Array<AuditLog & { userName: string; userEmail: string }>> {
+    let query = db
+      .select({
+        auditLog: auditLogs,
+        userName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`.as('userName'),
+        userEmail: users.email,
+      })
+      .from(auditLogs)
+      .innerJoin(users, eq(auditLogs.userId, users.id))
+      .where(eq(auditLogs.organizationId, organizationId))
+      .$dynamic();
+
+    // Apply filters
+    if (filters?.entityType) {
+      query = query.where(eq(auditLogs.entityType, filters.entityType));
+    }
+    if (filters?.entityId) {
+      query = query.where(eq(auditLogs.entityId, filters.entityId));
+    }
+    if (filters?.userId) {
+      query = query.where(eq(auditLogs.userId, filters.userId));
+    }
+    if (filters?.action) {
+      query = query.where(eq(auditLogs.action, filters.action as any));
+    }
+    if (filters?.startDate) {
+      query = query.where(gte(auditLogs.timestamp, filters.startDate));
+    }
+    if (filters?.endDate) {
+      query = query.where(lte(auditLogs.timestamp, filters.endDate));
+    }
+
+    // Order by timestamp descending (newest first)
+    query = query.orderBy(desc(auditLogs.timestamp));
+
+    // Apply limit
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    } else {
+      query = query.limit(100); // Default limit
+    }
+
+    const results = await query;
+    return results.map(r => ({
+      ...r.auditLog,
+      userName: r.userName || 'Unknown User',
+      userEmail: r.userEmail || '',
+    }));
+  }
+
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db
+      .insert(auditLogs)
+      .values(log)
+      .returning();
+    return newLog;
+  }
+
+  async logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void> {
+    await this.createAuditLog({
+      organizationId,
+      userId,
+      action: 'create',
+      entityType,
+      entityId: String(entityId),
+      newValues,
+      changes: `Created ${entityType} #${entityId}`,
+    });
+  }
+
+  async logUpdate(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any, newValues: any): Promise<void> {
+    // Generate human-readable changes summary
+    const changedFields = Object.keys(newValues).filter(key => 
+      JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])
+    );
+    const changes = changedFields.length > 0 
+      ? `Updated ${entityType} #${entityId}: ${changedFields.join(', ')}`
+      : `Updated ${entityType} #${entityId}`;
+
+    await this.createAuditLog({
+      organizationId,
+      userId,
+      action: 'update',
+      entityType,
+      entityId: String(entityId),
+      oldValues,
+      newValues,
+      changes,
+    });
+  }
+
+  async logDelete(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any): Promise<void> {
+    await this.createAuditLog({
+      organizationId,
+      userId,
+      action: 'delete',
+      entityType,
+      entityId: String(entityId),
+      oldValues,
+      changes: `Deleted ${entityType} #${entityId}`,
+    });
   }
 }
 
