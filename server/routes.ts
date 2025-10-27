@@ -3286,6 +3286,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Audit log routes
+  app.get('/api/audit-logs/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access to this organization and is admin/owner
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      // Only admin and owner can view audit logs
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "You don't have permission to view audit logs" });
+      }
+      
+      // Parse query parameters for filtering
+      const { entityType, entityId, userId: filterUserId, action, startDate, endDate, limit } = req.query;
+      
+      const filters: any = {};
+      if (entityType) filters.entityType = entityType as string;
+      if (entityId) filters.entityId = entityId as string;
+      if (filterUserId) filters.userId = filterUserId as string;
+      if (action) filters.action = action as string;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      if (limit) filters.limit = parseInt(limit as string);
+      
+      const auditLogs = await storage.getAuditLogs(organizationId, filters);
+      res.json(auditLogs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
