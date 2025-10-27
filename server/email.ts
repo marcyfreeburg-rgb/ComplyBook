@@ -46,6 +46,13 @@ interface InvitationEmailParams {
   invitationLink: string;
   permissions: string;
   expiresAt: Date;
+  branding?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    footer?: string;
+  };
 }
 
 export async function sendInvitationEmail({
@@ -54,11 +61,22 @@ export async function sendInvitationEmail({
   inviterName,
   invitationLink,
   permissions,
-  expiresAt
+  expiresAt,
+  branding
 }: InvitationEmailParams): Promise<void> {
   const { client, fromEmail } = await getUncachableSendGridClient();
 
   const permissionDescription = getPermissionDescription(permissions);
+  
+  const primaryColor = branding?.primaryColor || '#0070f3';
+  const accentColor = branding?.accentColor || '#0052cc';
+  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  const logoHtml = branding?.logoUrl 
+    ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${branding.logoUrl}" alt="Organization Logo" style="max-width: 150px; height: auto;" /></div>`
+    : '';
+  const footerHtml = branding?.footer
+    ? `<div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px; text-align: center; color: #666; font-size: 12px; white-space: pre-line;">${branding.footer}</div>`
+    : '';
   
   const msg = {
     to,
@@ -72,10 +90,11 @@ export async function sendInvitationEmail({
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Organization Invitation</title>
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
-            <h1 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 24px;">You've Been Invited!</h1>
-            <p style="color: #666; margin: 0; font-size: 16px;">${inviterName} has invited you to join their organization</p>
+        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          ${logoHtml}
+          <div style="background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); border-radius: 8px; padding: 30px; margin-bottom: 20px; color: white;">
+            <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">You've Been Invited!</h1>
+            <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">${inviterName} has invited you to join their organization</p>
           </div>
           
           <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px; margin-bottom: 20px;">
@@ -99,7 +118,7 @@ export async function sendInvitationEmail({
           </div>
           
           <div style="text-align: center; margin-bottom: 20px;">
-            <a href="${invitationLink}" style="display: inline-block; background-color: #0070f3; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 500; font-size: 16px;">Accept Invitation</a>
+            <a href="${invitationLink}" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 500; font-size: 16px;">Accept Invitation</a>
           </div>
           
           <div style="background-color: #fef3c7; border: 1px solid #fbbf24; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
@@ -113,9 +132,10 @@ export async function sendInvitationEmail({
               If you weren't expecting this invitation, you can safely ignore this email.
             </p>
             <p style="color: #666; font-size: 14px; margin: 10px 0 0 0;">
-              Or copy and paste this link into your browser: <a href="${invitationLink}" style="color: #0070f3; word-break: break-all;">${invitationLink}</a>
+              Or copy and paste this link into your browser: <a href="${invitationLink}" style="color: ${primaryColor}; word-break: break-all;">${invitationLink}</a>
             </p>
           </div>
+          ${footerHtml}
         </body>
       </html>
     `,

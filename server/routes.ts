@@ -326,6 +326,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invitationLink: inviteLink,
           permissions: invitation.permissions || 'view_only',
           expiresAt: invitation.expiresAt,
+          branding: organization ? {
+            primaryColor: organization.invoicePrimaryColor || undefined,
+            accentColor: organization.invoiceAccentColor || undefined,
+            fontFamily: organization.invoiceFontFamily || undefined,
+            logoUrl: organization.logoUrl || undefined,
+            footer: organization.invoiceFooter || undefined,
+          } : undefined,
         });
         emailSent = true;
       } catch (emailError: any) {
@@ -3213,8 +3220,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No data to export" });
       }
 
+      // Get organization for branding
+      const organization = await storage.getOrganization(organizationId);
+      
+      // Build branded CSV header rows
+      const brandedHeaders: string[] = [];
+      const orgName = organization?.companyName || organization?.name || 'Organization';
+      brandedHeaders.push(`"${orgName}"`);
+      brandedHeaders.push(`"${existingReport.name}"`);
+      
+      if (dateFrom && dateTo) {
+        brandedHeaders.push(`"Period: ${new Date(dateFrom).toLocaleDateString()} - ${new Date(dateTo).toLocaleDateString()}"`);
+      } else if (dateTo) {
+        brandedHeaders.push(`"As of: ${new Date(dateTo).toLocaleDateString()}"`);
+      } else if (dateFrom) {
+        brandedHeaders.push(`"From: ${new Date(dateFrom).toLocaleDateString()}"`);
+      }
+      
+      brandedHeaders.push(`"Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}"`);
+      
+      if (organization?.invoiceFooter) {
+        brandedHeaders.push(`"${organization.invoiceFooter.replace(/"/g, '""')}"`);
+      }
+      
+      brandedHeaders.push(''); // Empty line for separation
+
       const headers = Object.keys(results[0]);
       const csvRows = [
+        ...brandedHeaders,
         headers.join(','),
         ...results.map(row => 
           headers.map(header => {
