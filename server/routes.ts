@@ -227,7 +227,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only allow updating invoice-related fields
       const allowedFields: (keyof InsertOrganization)[] = [
         'logoUrl', 'companyName', 'companyAddress', 'companyPhone', 
-        'companyEmail', 'companyWebsite', 'taxId', 'invoicePrefix', 'invoiceNotes'
+        'companyEmail', 'companyWebsite', 'taxId', 'invoicePrefix', 'invoiceNotes',
+        'invoicePrimaryColor', 'invoiceAccentColor', 'invoiceFontFamily', 'invoiceTemplate',
+        'invoicePaymentTerms', 'invoicePaymentMethods', 'invoiceFooter'
       ];
       
       const updates: Partial<InsertOrganization> = {};

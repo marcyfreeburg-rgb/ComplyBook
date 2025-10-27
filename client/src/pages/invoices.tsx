@@ -73,6 +73,18 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
     enabled: !!previewingInvoice,
   });
 
+  // Fetch fresh organization data with customization settings for preview
+  const { data: organizationForPreview } = useQuery<Organization>({
+    queryKey: ['/api/organizations', currentOrganization.id, 'full'],
+    queryFn: async () => {
+      const orgs = await fetch('/api/organizations').then(r => r.json()) as Array<Organization & { userRole: string }>;
+      const org = orgs.find((o: Organization & { userRole: string }) => o.id === currentOrganization.id);
+      if (!org) throw new Error("Organization not found");
+      return org;
+    },
+    enabled: isPreviewDialogOpen,
+  });
+
   const calculateLineItemTotal = (quantity: string, rate: string): number => {
     return parseFloat(quantity || "0") * parseFloat(rate || "0");
   };
@@ -668,11 +680,11 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               </Button>
             </div>
           </DialogHeader>
-          {previewingInvoice && (
+          {previewingInvoice && organizationForPreview && (
             <InvoicePreview
               invoice={previewingInvoice}
               lineItems={previewLineItems}
-              organization={currentOrganization}
+              organization={organizationForPreview}
             />
           )}
         </DialogContent>

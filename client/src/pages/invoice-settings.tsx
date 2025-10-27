@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Upload, Building2, Save } from "lucide-react";
+import { Upload, Building2, Save, Palette, CreditCard, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Organization } from "@shared/schema";
 
 interface InvoiceSettingsProps {
@@ -29,6 +30,13 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
     taxId: currentOrganization.taxId || "",
     invoicePrefix: currentOrganization.invoicePrefix || "INV-",
     invoiceNotes: currentOrganization.invoiceNotes || "",
+    invoicePrimaryColor: currentOrganization.invoicePrimaryColor || "#3b82f6",
+    invoiceAccentColor: currentOrganization.invoiceAccentColor || "#1e40af",
+    invoiceFontFamily: currentOrganization.invoiceFontFamily || "Inter",
+    invoiceTemplate: currentOrganization.invoiceTemplate || "classic",
+    invoicePaymentTerms: currentOrganization.invoicePaymentTerms || "",
+    invoicePaymentMethods: currentOrganization.invoicePaymentMethods || "",
+    invoiceFooter: currentOrganization.invoiceFooter || "",
   });
 
   // Fetch current organization data to stay up-to-date
@@ -53,6 +61,13 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
       taxId: organization.taxId || "",
       invoicePrefix: organization.invoicePrefix || "INV-",
       invoiceNotes: organization.invoiceNotes || "",
+      invoicePrimaryColor: organization.invoicePrimaryColor || "#3b82f6",
+      invoiceAccentColor: organization.invoiceAccentColor || "#1e40af",
+      invoiceFontFamily: organization.invoiceFontFamily || "Inter",
+      invoiceTemplate: organization.invoiceTemplate || "classic",
+      invoicePaymentTerms: organization.invoicePaymentTerms || "",
+      invoicePaymentMethods: organization.invoicePaymentMethods || "",
+      invoiceFooter: organization.invoiceFooter || "",
     });
   }
 
@@ -325,6 +340,206 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
               >
                 <Save className="w-4 h-4 mr-2" />
                 {updateSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Theme & Appearance */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="w-5 h-5" />
+            <CardTitle>Theme & Appearance</CardTitle>
+          </div>
+          <CardDescription>
+            Customize the look and feel of your invoices
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="invoicePrimaryColor">Primary Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="invoicePrimaryColor"
+                    type="color"
+                    value={formData.invoicePrimaryColor}
+                    onChange={(e) => setFormData({ ...formData, invoicePrimaryColor: e.target.value })}
+                    className="w-20 h-10"
+                    data-testid="input-primary-color"
+                  />
+                  <Input
+                    type="text"
+                    value={formData.invoicePrimaryColor}
+                    onChange={(e) => setFormData({ ...formData, invoicePrimaryColor: e.target.value })}
+                    placeholder="#3b82f6"
+                    className="flex-1"
+                    data-testid="input-primary-color-text"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invoiceAccentColor">Accent Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="invoiceAccentColor"
+                    type="color"
+                    value={formData.invoiceAccentColor}
+                    onChange={(e) => setFormData({ ...formData, invoiceAccentColor: e.target.value })}
+                    className="w-20 h-10"
+                    data-testid="input-accent-color"
+                  />
+                  <Input
+                    type="text"
+                    value={formData.invoiceAccentColor}
+                    onChange={(e) => setFormData({ ...formData, invoiceAccentColor: e.target.value })}
+                    placeholder="#1e40af"
+                    className="flex-1"
+                    data-testid="input-accent-color-text"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invoiceFontFamily">Font Family</Label>
+                <Select
+                  value={formData.invoiceFontFamily}
+                  onValueChange={(value) => setFormData({ ...formData, invoiceFontFamily: value })}
+                >
+                  <SelectTrigger data-testid="select-font-family">
+                    <SelectValue placeholder="Select font" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Inter">Inter (Modern)</SelectItem>
+                    <SelectItem value="Arial">Arial (Classic)</SelectItem>
+                    <SelectItem value="Georgia">Georgia (Serif)</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman (Traditional)</SelectItem>
+                    <SelectItem value="Helvetica">Helvetica (Clean)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invoiceTemplate">Invoice Template</Label>
+                <Select
+                  value={formData.invoiceTemplate}
+                  onValueChange={(value) => setFormData({ ...formData, invoiceTemplate: value })}
+                >
+                  <SelectTrigger data-testid="select-template">
+                    <SelectValue placeholder="Select template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">Classic</SelectItem>
+                    <SelectItem value="modern">Modern</SelectItem>
+                    <SelectItem value="minimal">Minimal</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button
+                type="submit"
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-save-theme"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateSettingsMutation.isPending ? "Saving..." : "Save Theme Settings"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Payment Information */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            <CardTitle>Payment Information</CardTitle>
+          </div>
+          <CardDescription>
+            Configure payment terms and accepted payment methods
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoicePaymentTerms">Payment Terms</Label>
+              <Textarea
+                id="invoicePaymentTerms"
+                value={formData.invoicePaymentTerms}
+                onChange={(e) => setFormData({ ...formData, invoicePaymentTerms: e.target.value })}
+                placeholder="e.g., Net 30, Due upon receipt, 2/10 Net 30"
+                rows={3}
+                data-testid="input-payment-terms"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invoicePaymentMethods">Accepted Payment Methods</Label>
+              <Textarea
+                id="invoicePaymentMethods"
+                value={formData.invoicePaymentMethods}
+                onChange={(e) => setFormData({ ...formData, invoicePaymentMethods: e.target.value })}
+                placeholder="e.g., Check, ACH Transfer, Credit Card&#10;Bank: ABC Bank, Account: 1234567890&#10;PayPal: payments@company.com"
+                rows={4}
+                data-testid="input-payment-methods"
+              />
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button
+                type="submit"
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-save-payment"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateSettingsMutation.isPending ? "Saving..." : "Save Payment Settings"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Additional Customization */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            <CardTitle>Additional Customization</CardTitle>
+          </div>
+          <CardDescription>
+            Add footer text, disclaimers, or other information
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoiceFooter">Invoice Footer</Label>
+              <Textarea
+                id="invoiceFooter"
+                value={formData.invoiceFooter}
+                onChange={(e) => setFormData({ ...formData, invoiceFooter: e.target.value })}
+                placeholder="e.g., Thank you for your business! For questions, contact us at support@company.com"
+                rows={3}
+                data-testid="input-invoice-footer"
+              />
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button
+                type="submit"
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-save-footer"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateSettingsMutation.isPending ? "Saving..." : "Save Footer Settings"}
               </Button>
             </div>
           </form>
