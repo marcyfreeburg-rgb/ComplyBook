@@ -31,6 +31,7 @@ import CashFlow from "@/pages/cash-flow";
 import TaxReporting from "@/pages/tax-reporting";
 import ExpenseApprovals from "@/pages/expense-approvals";
 import CustomReports from "@/pages/custom-reports";
+import AuditTrail from "@/pages/audit-trail";
 import type { Organization } from "@shared/schema";
 
 function AuthenticatedApp() {
@@ -204,6 +205,9 @@ function AuthenticatedApp() {
                   currentOrganization={currentOrganization}
                   userId={user?.id || ''}
                 />
+              </Route>
+              <Route path="/audit-trail">
+                <AuditTrail currentOrganization={currentOrganization} />
               </Route>
               <Route path="/settings">
                 <Settings 
