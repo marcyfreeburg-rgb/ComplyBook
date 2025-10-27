@@ -70,6 +70,31 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 // ============================================
+// CURRENCIES
+// ============================================
+
+export const currencies = pgTable("currencies", {
+  code: varchar("code", { length: 3 }).primaryKey(), // ISO 4217 code (USD, EUR, GBP, etc.)
+  name: varchar("name", { length: 100 }).notNull(),
+  symbol: varchar("symbol", { length: 10 }).notNull(),
+  exchangeRateToUSD: numeric("exchange_rate_to_usd", { precision: 12, scale: 6 }).notNull().default('1.000000'),
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCurrencySchema = createInsertSchema(currencies).omit({
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  exchangeRateToUSD: z.string().or(z.number()).transform(val => String(val)),
+  isActive: z.number().default(1),
+});
+
+export type InsertCurrency = z.infer<typeof insertCurrencySchema>;
+export type Currency = typeof currencies.$inferSelect;
+
+// ============================================
 // ORGANIZATIONS
 // ============================================
 
@@ -87,6 +112,7 @@ export const organizations = pgTable("organizations", {
   taxId: varchar("tax_id", { length: 100 }),
   invoicePrefix: varchar("invoice_prefix", { length: 20 }),
   invoiceNotes: text("invoice_notes"),
+  defaultCurrency: varchar("default_currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -95,7 +121,7 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const);
+});
 
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizations.$inferSelect;
@@ -116,7 +142,7 @@ export const userOrganizationRoles = pgTable("user_organization_roles", {
 export const insertUserOrganizationRoleSchema = createInsertSchema(userOrganizationRoles).omit({
   id: true,
   createdAt: true,
-} as const);
+});
 
 export type InsertUserOrganizationRole = z.infer<typeof insertUserOrganizationRoleSchema>;
 export type UserOrganizationRole = typeof userOrganizationRoles.$inferSelect;
@@ -143,7 +169,7 @@ export const insertInvitationSchema = createInsertSchema(invitations).omit({
   id: true,
   createdAt: true,
   acceptedAt: true,
-} as const).extend({
+}).extend({
   expiresAt: z.coerce.date(),
 });
 
@@ -169,7 +195,7 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const);
+});
 
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categories.$inferSelect;
@@ -195,7 +221,7 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const);
+});
 
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
@@ -221,7 +247,7 @@ export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const);
+});
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -241,6 +267,7 @@ export const invoices = pgTable("invoices", {
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
   taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   notes: text("notes"),
   transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
@@ -253,7 +280,7 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   createdBy: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   issueDate: z.coerce.date(),
   dueDate: z.coerce.date(),
   subtotal: z.string().or(z.number()).transform(val => String(val)),
@@ -282,7 +309,7 @@ export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).
   id: true,
   invoiceId: true,
   createdAt: true,
-} as const).extend({
+}).extend({
   quantity: z.string().or(z.number()).transform(val => String(val)),
   rate: z.string().or(z.number()).transform(val => String(val)),
   amount: z.string().or(z.number()).transform(val => String(val)),
@@ -306,6 +333,7 @@ export const bills = pgTable("bills", {
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
   taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   notes: text("notes"),
   transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
@@ -318,7 +346,7 @@ export const insertBillSchema = createInsertSchema(bills).omit({
   createdBy: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   issueDate: z.coerce.date(),
   dueDate: z.coerce.date(),
   subtotal: z.string().or(z.number()).transform(val => String(val)),
@@ -347,7 +375,7 @@ export const insertBillLineItemSchema = createInsertSchema(billLineItems).omit({
   id: true,
   billId: true,
   createdAt: true,
-} as const).extend({
+}).extend({
   quantity: z.string().or(z.number()).transform(val => String(val)),
   rate: z.string().or(z.number()).transform(val => String(val)),
   amount: z.string().or(z.number()).transform(val => String(val)),
@@ -366,6 +394,7 @@ export const transactions = pgTable("transactions", {
   date: timestamp("date").notNull(),
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   type: transactionTypeEnum("type").notNull(),
   categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
   grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
@@ -380,7 +409,7 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   date: z.coerce.date(),
   amount: z.string().or(z.number()).transform(val => String(val)),
 });
@@ -407,7 +436,7 @@ export const transactionAttachments = pgTable("transaction_attachments", {
 export const insertTransactionAttachmentSchema = createInsertSchema(transactionAttachments).omit({
   id: true,
   createdAt: true,
-} as const);
+});
 
 export type InsertTransactionAttachment = z.infer<typeof insertTransactionAttachmentSchema>;
 export type TransactionAttachment = typeof transactionAttachments.$inferSelect;
@@ -421,6 +450,7 @@ export const grants = pgTable("grants", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 255 }).notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   restrictions: text("restrictions"),
   status: grantStatusEnum("status").notNull().default('active'),
   startDate: timestamp("start_date"),
@@ -433,7 +463,7 @@ export const insertGrantSchema = createInsertSchema(grants).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
@@ -451,6 +481,7 @@ export const budgets = pgTable("budgets", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 255 }).notNull(),
   period: budgetPeriodEnum("period").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   createdBy: varchar("created_by").notNull().references(() => users.id),
@@ -462,7 +493,7 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
 });
@@ -483,7 +514,7 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
 });
 
@@ -510,7 +541,7 @@ export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const);
+});
 
 export type InsertPlaidItem = z.infer<typeof insertPlaidItemSchema>;
 export type PlaidItem = typeof plaidItems.$inferSelect;
@@ -535,7 +566,7 @@ export const insertPlaidAccountSchema = createInsertSchema(plaidAccounts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const);
+});
 
 export type InsertPlaidAccount = z.infer<typeof insertPlaidAccountSchema>;
 export type PlaidAccount = typeof plaidAccounts.$inferSelect;
@@ -564,7 +595,7 @@ export const categorizationHistory = pgTable("categorization_history", {
 export const insertCategorizationHistorySchema = createInsertSchema(categorizationHistory).omit({
   id: true,
   createdAt: true,
-} as const);
+});
 
 export type InsertCategorizationHistory = z.infer<typeof insertCategorizationHistorySchema>;
 export type CategorizationHistory = typeof categorizationHistory.$inferSelect;
@@ -578,6 +609,7 @@ export const recurringTransactions = pgTable("recurring_transactions", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   type: transactionTypeEnum("type").notNull(),
   categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
   frequency: recurringFrequencyEnum("frequency").notNull(),
@@ -596,7 +628,7 @@ export const insertRecurringTransactionSchema = createInsertSchema(recurringTran
   createdAt: true,
   updatedAt: true,
   lastGeneratedDate: true,
-} as const).extend({
+}).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional().nullable(),
@@ -616,6 +648,7 @@ export const expenseApprovals = pgTable("expense_approvals", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
   vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
   requestDate: timestamp("request_date").notNull().defaultNow(),
@@ -636,7 +669,7 @@ export const insertExpenseApprovalSchema = createInsertSchema(expenseApprovals).
   updatedAt: true,
   requestDate: true,
   reviewedAt: true,
-} as const).extend({
+}).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
   status: z.enum(['pending', 'approved', 'rejected', 'cancelled']).default('pending'),
 });
@@ -654,6 +687,7 @@ export const cashFlowScenarios = pgTable("cash_flow_scenarios", {
   name: varchar("name", { length: 255 }).notNull(),
   type: cashFlowScenarioTypeEnum("type").notNull(),
   description: text("description"),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   incomeGrowthRate: numeric("income_growth_rate", { precision: 5, scale: 2 }).default('0'),
   expenseGrowthRate: numeric("expense_growth_rate", { precision: 5, scale: 2 }).default('0'),
   startDate: timestamp("start_date").notNull(),
@@ -667,7 +701,7 @@ export const insertCashFlowScenarioSchema = createInsertSchema(cashFlowScenarios
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   incomeGrowthRate: z.string().or(z.number()).transform(val => String(val)),
   expenseGrowthRate: z.string().or(z.number()).transform(val => String(val)),
   startDate: z.coerce.date(),
@@ -694,7 +728,7 @@ export const cashFlowProjections = pgTable("cash_flow_projections", {
 export const insertCashFlowProjectionSchema = createInsertSchema(cashFlowProjections).omit({
   id: true,
   createdAt: true,
-} as const).extend({
+}).extend({
   month: z.coerce.date(),
   projectedIncome: z.string().or(z.number()).transform(val => String(val)),
   projectedExpenses: z.string().or(z.number()).transform(val => String(val)),
@@ -727,7 +761,7 @@ export const insertTaxCategorySchema = createInsertSchema(taxCategories).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-} as const).extend({
+}).extend({
   isDeductible: z.number().default(1),
 });
 
@@ -739,6 +773,7 @@ export const taxReports = pgTable("tax_reports", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   taxYear: integer("tax_year").notNull(),
   formType: taxFormTypeEnum("form_type").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   totalIncome: numeric("total_income", { precision: 12, scale: 2 }).notNull().default('0'),
   totalExpenses: numeric("total_expenses", { precision: 12, scale: 2 }).notNull().default('0'),
   totalDeductions: numeric("total_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
@@ -754,7 +789,7 @@ export const insertTaxReportSchema = createInsertSchema(taxReports).omit({
   id: true,
   createdAt: true,
   generatedAt: true,
-} as const).extend({
+}).extend({
   totalIncome: z.string().or(z.number()).transform(val => String(val)),
   totalExpenses: z.string().or(z.number()).transform(val => String(val)),
   totalDeductions: z.string().or(z.number()).transform(val => String(val)),
@@ -771,6 +806,7 @@ export const taxForm1099s = pgTable("tax_form_1099s", {
   vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'cascade' }),
   formType: taxFormTypeEnum("form_type").notNull().default('1099_nec'),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default('USD').references(() => currencies.code),
   recipientName: varchar("recipient_name", { length: 255 }).notNull(),
   recipientTin: varchar("recipient_tin", { length: 20 }),
   recipientAddress: text("recipient_address"),
@@ -787,7 +823,7 @@ export const insertTaxForm1099Schema = createInsertSchema(taxForm1099s).omit({
   createdAt: true,
   updatedAt: true,
   filedDate: true,
-} as const).extend({
+}).extend({
   totalAmount: z.string().or(z.number()).transform(val => String(val)),
   isFiled: z.number().default(0),
 });
