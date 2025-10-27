@@ -173,33 +173,64 @@ export default function Reports({ currentOrganization }: ReportsProps) {
     downloadPDF(content, `transactions-${startDate}-to-${endDate}.pdf`);
   };
 
+  // Helper to generate branded PDF styles
+  const getBrandedPDFStyles = () => {
+    const primaryColor = currentOrganization.invoicePrimaryColor || '#3b82f6';
+    const accentColor = currentOrganization.invoiceAccentColor || '#1e40af';
+    const fontFamily = currentOrganization.invoiceFontFamily || 'Arial';
+    
+    return `
+      body { font-family: ${fontFamily}, sans-serif; margin: 40px; }
+      h1 { color: ${primaryColor}; font-size: 24px; margin-bottom: 10px; font-weight: bold; }
+      h2 { color: ${accentColor}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
+      .header { margin-bottom: 30px; display: flex; align-items: center; gap: 20px; }
+      .logo { width: 80px; height: 80px; object-fit: contain; }
+      .header-text { flex: 1; }
+      .org-name { color: #666; font-size: 14px; margin-top: 5px; }
+      .date-range { color: #888; font-size: 12px; margin-top: 3px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+      th { text-align: left; padding: 8px; background-color: ${primaryColor}15; border-bottom: 2px solid ${primaryColor}; color: ${primaryColor}; font-weight: 600; }
+      td { padding: 8px; border-bottom: 1px solid #eee; }
+      .amount { text-align: right; font-family: monospace; }
+      .total { font-weight: bold; border-top: 2px solid ${primaryColor}; }
+      .net-income { background-color: ${primaryColor}10; font-size: 18px; font-weight: bold; padding: 15px; margin-top: 20px; color: ${primaryColor}; }
+      .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #888; white-space: pre-line; }
+    `;
+  };
+
+  const getBrandedHeader = (title: string, dateInfo: string) => {
+    const logoHtml = currentOrganization.logoUrl 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" class="logo" />` 
+      : '';
+    
+    return `
+      <div class="header">
+        ${logoHtml}
+        <div class="header-text">
+          <h1>${title}</h1>
+          <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
+          <div class="date-range">${dateInfo}</div>
+        </div>
+      </div>
+    `;
+  };
+
+  const getBrandedFooter = () => {
+    return currentOrganization.invoiceFooter 
+      ? `<div class="footer">${currentOrganization.invoiceFooter}</div>`
+      : '';
+  };
+
   const generateProfitLossPDFContent = () => {
     if (!profitLoss) return '';
     
     let html = `
       <html>
         <head>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
-            h2 { color: #666; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-            .header { margin-bottom: 30px; }
-            .org-name { color: #666; font-size: 14px; }
-            .date-range { color: #888; font-size: 12px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th { text-align: left; padding: 8px; background-color: #f5f5f5; border-bottom: 2px solid #ddd; }
-            td { padding: 8px; border-bottom: 1px solid #eee; }
-            .amount { text-align: right; font-family: monospace; }
-            .total { font-weight: bold; border-top: 2px solid #333; }
-            .net-income { background-color: #f0f0f0; font-size: 18px; font-weight: bold; padding: 15px; margin-top: 20px; }
-          </style>
+          <style>${getBrandedPDFStyles()}</style>
         </head>
         <body>
-          <div class="header">
-            <h1>Profit & Loss Statement</h1>
-            <div class="org-name">${currentOrganization.name}</div>
-            <div class="date-range">${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}</div>
-          </div>
+          ${getBrandedHeader('Profit & Loss Statement', `${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}`)}
           
           <h2>Income</h2>
           <table>
@@ -247,6 +278,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
               </tr>
             </table>
           </div>
+          ${getBrandedFooter()}
         </body>
       </html>
     `;
@@ -259,26 +291,10 @@ export default function Reports({ currentOrganization }: ReportsProps) {
     let html = `
       <html>
         <head>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
-            h2 { color: #666; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-            .header { margin-bottom: 30px; }
-            .org-name { color: #666; font-size: 14px; }
-            .date-range { color: #888; font-size: 12px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th { text-align: left; padding: 8px; background-color: #f5f5f5; border-bottom: 2px solid #ddd; }
-            td { padding: 8px; border-bottom: 1px solid #eee; }
-            .amount { text-align: right; font-family: monospace; }
-            .total { font-weight: bold; border-top: 2px solid #333; }
-          </style>
+          <style>${getBrandedPDFStyles()}</style>
         </head>
         <body>
-          <div class="header">
-            <h1>Balance Sheet</h1>
-            <div class="org-name">${currentOrganization.name}</div>
-            <div class="date-range">As of ${format(new Date(endDate), 'MMM dd, yyyy')}</div>
-          </div>
+          ${getBrandedHeader('Balance Sheet', `As of ${format(new Date(endDate), 'MMM dd, yyyy')}`)}
           
           <h2>Assets</h2>
           <table>
@@ -336,6 +352,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
               </tr>
             </tbody>
           </table>
+          ${getBrandedFooter()}
         </body>
       </html>
     `;
@@ -355,23 +372,14 @@ export default function Reports({ currentOrganization }: ReportsProps) {
       <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
-            .header { margin-bottom: 30px; }
-            .org-name { color: #666; font-size: 14px; }
-            .date-range { color: #888; font-size: 12px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-            th { text-align: left; padding: 6px; background-color: #f5f5f5; border-bottom: 2px solid #ddd; }
-            td { padding: 6px; border-bottom: 1px solid #eee; }
-            .amount { text-align: right; font-family: monospace; }
+            ${getBrandedPDFStyles()}
+            table { font-size: 11px; }
+            th { padding: 6px; }
+            td { padding: 6px; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>Transaction History</h1>
-            <div class="org-name">${currentOrganization.name}</div>
-            <div class="date-range">${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}</div>
-          </div>
+          ${getBrandedHeader('Transaction History', `${format(new Date(startDate), 'MMM dd, yyyy')} - ${format(new Date(endDate), 'MMM dd, yyyy')}`)}
           
           <table>
             <thead>
@@ -398,6 +406,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
               }).join('')}
             </tbody>
           </table>
+          ${getBrandedFooter()}
         </body>
       </html>
     `;

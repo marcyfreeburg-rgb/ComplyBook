@@ -15,10 +15,22 @@ export function BillPreview({ bill, lineItems, organization }: BillPreviewProps)
   const tax = parseFloat(bill.taxAmount || "0");
   const total = subtotal + tax;
 
+  // Apply brand customization
+  const primaryColor = organization.invoicePrimaryColor || "#3b82f6";
+  const accentColor = organization.invoiceAccentColor || "#1e40af";
+  const fontFamily = organization.invoiceFontFamily || "Inter";
+
   return (
-    <div className="bg-background p-8 max-w-4xl mx-auto space-y-8" data-testid="bill-preview">
+    <div 
+      className="bg-background p-8 max-w-4xl mx-auto space-y-8" 
+      style={{ fontFamily }}
+      data-testid="bill-preview"
+    >
       {/* Header with Logo and Company Info */}
-      <div className="flex items-start justify-between gap-6 pb-6 border-b">
+      <div 
+        className="flex items-start justify-between gap-6 pb-6 border-b" 
+        style={{ borderColor: primaryColor + '30' }}
+      >
         <div className="flex items-start gap-4">
           {organization.logoUrl ? (
             <img
@@ -65,7 +77,10 @@ export function BillPreview({ bill, lineItems, organization }: BillPreviewProps)
         </div>
 
         <div className="text-right space-y-2">
-          <h1 className="text-3xl font-bold">BILL</h1>
+          <h1 
+            className="text-3xl font-bold" 
+            style={{ color: primaryColor }}
+          >BILL</h1>
           <div className="space-y-1 text-sm">
             <div>
               <span className="text-muted-foreground">Bill #: </span>
@@ -90,7 +105,10 @@ export function BillPreview({ bill, lineItems, organization }: BillPreviewProps)
       {/* Vendor Section */}
       {bill.vendorName && (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground">FROM:</h3>
+          <h3 
+            className="text-sm font-medium" 
+            style={{ color: accentColor }}
+          >FROM:</h3>
           <p className="font-medium" data-testid="text-vendor-name">{bill.vendorName}</p>
         </div>
       )}
@@ -99,7 +117,7 @@ export function BillPreview({ bill, lineItems, organization }: BillPreviewProps)
       <div className="space-y-4">
         <table className="w-full">
           <thead>
-            <tr className="border-b-2">
+            <tr className="border-b-2" style={{ borderColor: primaryColor }}>
               <th className="text-left pb-3 font-medium">Description</th>
               <th className="text-right pb-3 font-medium w-24">Quantity</th>
               <th className="text-right pb-3 font-medium w-32">Rate</th>
@@ -133,9 +151,16 @@ export function BillPreview({ bill, lineItems, organization }: BillPreviewProps)
                 <span className="font-medium" data-testid="text-tax">${tax.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between py-2 border-t-2 text-lg">
+            <div 
+              className="flex justify-between py-2 border-t-2 text-lg"
+              style={{ borderColor: primaryColor }}
+            >
               <span className="font-bold">Total:</span>
-              <span className="font-bold" data-testid="text-total">${total.toFixed(2)}</span>
+              <span 
+                className="font-bold" 
+                style={{ color: primaryColor }}
+                data-testid="text-total"
+              >${total.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -144,9 +169,55 @@ export function BillPreview({ bill, lineItems, organization }: BillPreviewProps)
       {/* Notes */}
       {bill.notes && (
         <div className="space-y-2 pt-4 border-t">
-          <h3 className="text-sm font-medium text-muted-foreground">NOTES:</h3>
+          <h3 
+            className="text-sm font-medium" 
+            style={{ color: accentColor }}
+          >NOTES:</h3>
           <p className="text-sm whitespace-pre-line" data-testid="text-notes">
             {bill.notes}
+          </p>
+        </div>
+      )}
+
+      {/* Payment Information */}
+      {(organization.invoicePaymentTerms || organization.invoicePaymentMethods) && (
+        <div 
+          className="space-y-4 pt-6 border-t"
+          style={{ borderColor: primaryColor + '20' }}
+        >
+          {organization.invoicePaymentTerms && (
+            <div className="space-y-2">
+              <h3 
+                className="text-sm font-medium" 
+                style={{ color: accentColor }}
+              >PAYMENT TERMS:</h3>
+              <p className="text-sm whitespace-pre-line" data-testid="text-payment-terms">
+                {organization.invoicePaymentTerms}
+              </p>
+            </div>
+          )}
+          {organization.invoicePaymentMethods && (
+            <div className="space-y-2">
+              <h3 
+                className="text-sm font-medium" 
+                style={{ color: accentColor }}
+              >PAYMENT METHODS:</h3>
+              <p className="text-sm whitespace-pre-line" data-testid="text-payment-methods">
+                {organization.invoicePaymentMethods}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer */}
+      {organization.invoiceFooter && (
+        <div 
+          className="text-center pt-6 border-t text-xs text-muted-foreground" 
+          style={{ borderColor: primaryColor + '20' }}
+        >
+          <p className="whitespace-pre-line" data-testid="text-bill-footer">
+            {organization.invoiceFooter}
           </p>
         </div>
       )}
