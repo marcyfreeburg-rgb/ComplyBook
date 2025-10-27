@@ -27,6 +27,9 @@ import BankAccounts from "@/pages/bank-accounts";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
 import AcceptInvitation from "@/pages/accept-invitation";
+import CashFlow from "@/pages/cash-flow";
+import TaxReporting from "@/pages/tax-reporting";
+import ExpenseApprovals from "@/pages/expense-approvals";
 import type { Organization } from "@shared/schema";
 
 function AuthenticatedApp() {
@@ -185,6 +188,18 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/bank-accounts">
                 <BankAccounts currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/cash-flow">
+                <CashFlow currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/tax-reporting">
+                <TaxReporting currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/expense-approvals">
+                <ExpenseApprovals 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
               </Route>
               <Route path="/settings">
                 <Settings 

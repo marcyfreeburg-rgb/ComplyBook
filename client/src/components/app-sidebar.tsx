@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -88,6 +88,21 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Bank Accounts",
       url: "/bank-accounts",
       icon: Landmark,
+    },
+    {
+      title: "Cash Flow",
+      url: "/cash-flow",
+      icon: BarChart3,
+    },
+    {
+      title: "Tax Reporting",
+      url: "/tax-reporting",
+      icon: Calculator,
+    },
+    {
+      title: "Expense Approvals",
+      url: "/expense-approvals",
+      icon: ClipboardCheck,
     },
     {
       title: "Organizations",
