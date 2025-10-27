@@ -470,6 +470,10 @@ export class DatabaseStorage implements IStorage {
     startDate: Date,
     endDate: Date
   ): Promise<Transaction[]> {
+    // Ensure we include the entire end date by setting time to end of day
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    
     return await db
       .select()
       .from(transactions)
@@ -477,7 +481,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(transactions.organizationId, organizationId),
           gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          lte(transactions.date, endOfDay)
         )
       )
       .orderBy(desc(transactions.date));
@@ -763,6 +767,10 @@ export class DatabaseStorage implements IStorage {
     incomeByCategory: Array<{ categoryName: string; amount: string }>;
     expensesByCategory: Array<{ categoryName: string; amount: string }>;
   }> {
+    // Ensure we include the entire end date by setting time to end of day
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    
     // Get total income
     const [incomeResult] = await db
       .select({
@@ -774,7 +782,7 @@ export class DatabaseStorage implements IStorage {
           eq(transactions.organizationId, organizationId),
           eq(transactions.type, 'income'),
           gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          lte(transactions.date, endOfDay)
         )
       );
 
@@ -789,7 +797,7 @@ export class DatabaseStorage implements IStorage {
           eq(transactions.organizationId, organizationId),
           eq(transactions.type, 'expense'),
           gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          lte(transactions.date, endOfDay)
         )
       );
 
@@ -806,7 +814,7 @@ export class DatabaseStorage implements IStorage {
           eq(transactions.organizationId, organizationId),
           eq(transactions.type, 'income'),
           gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          lte(transactions.date, endOfDay)
         )
       )
       .groupBy(categories.name);
@@ -824,7 +832,7 @@ export class DatabaseStorage implements IStorage {
           eq(transactions.organizationId, organizationId),
           eq(transactions.type, 'expense'),
           gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
+          lte(transactions.date, endOfDay)
         )
       )
       .groupBy(categories.name);
