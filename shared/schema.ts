@@ -796,6 +796,35 @@ export type InsertTaxForm1099 = z.infer<typeof insertTaxForm1099Schema>;
 export type TaxForm1099 = typeof taxForm1099s.$inferSelect;
 
 // ============================================
+// CUSTOM REPORTS
+// ============================================
+
+export const customReports = pgTable("custom_reports", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  dataSource: varchar("data_source", { length: 50 }).notNull(), // 'transactions', 'invoices', 'bills', etc.
+  selectedFields: jsonb("selected_fields").notNull(), // Array of field names to include
+  filters: jsonb("filters"), // Filter configuration object
+  groupBy: varchar("group_by", { length: 100 }), // Field to group by (optional)
+  sortBy: varchar("sort_by", { length: 100 }), // Field to sort by (optional)
+  sortOrder: varchar("sort_order", { length: 10 }).default('desc'), // 'asc' or 'desc'
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCustomReportSchema = createInsertSchema(customReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCustomReport = z.infer<typeof insertCustomReportSchema>;
+export type CustomReport = typeof customReports.$inferSelect;
+
+// ============================================
 // RELATIONS
 // ============================================
 
