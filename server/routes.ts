@@ -2178,6 +2178,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const invoice = await storage.createInvoice({ ...data, createdBy: userId });
+      
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId: data.organizationId,
+        userId,
+        entityType: 'invoice',
+        entityId: invoice.id.toString(),
+        action: 'create',
+        oldValues: null,
+        newValues: invoice,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+      
       res.status(201).json(invoice);
     } catch (error) {
       console.error("Error creating invoice:", error);
@@ -2206,6 +2220,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await storage.updateInvoice(invoiceId, updates);
+      
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId: existingInvoice.organizationId,
+        userId,
+        entityType: 'invoice',
+        entityId: invoiceId.toString(),
+        action: 'update',
+        oldValues: existingInvoice,
+        newValues: updated,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+      
       res.json(updated);
     } catch (error) {
       console.error("Error updating invoice:", error);
@@ -2231,6 +2259,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to manage invoices" });
       }
+
+      // Log audit trail before deletion
+      await storage.logAuditTrail({
+        organizationId: existingInvoice.organizationId,
+        userId,
+        entityType: 'invoice',
+        entityId: invoiceId.toString(),
+        action: 'delete',
+        oldValues: existingInvoice,
+        newValues: null,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
 
       await storage.deleteInvoice(invoiceId);
       res.json({ message: "Invoice deleted successfully" });
@@ -2414,6 +2455,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const bill = await storage.createBill({ ...data, createdBy: userId });
+      
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId: data.organizationId,
+        userId,
+        entityType: 'bill',
+        entityId: bill.id.toString(),
+        action: 'create',
+        oldValues: null,
+        newValues: bill,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+      
       res.status(201).json(bill);
     } catch (error) {
       console.error("Error creating bill:", error);
@@ -2442,6 +2497,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await storage.updateBill(billId, updates);
+      
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId: existingBill.organizationId,
+        userId,
+        entityType: 'bill',
+        entityId: billId.toString(),
+        action: 'update',
+        oldValues: existingBill,
+        newValues: updated,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+      
       res.json(updated);
     } catch (error) {
       console.error("Error updating bill:", error);
@@ -2467,6 +2536,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to manage bills" });
       }
+
+      // Log audit trail before deletion
+      await storage.logAuditTrail({
+        organizationId: existingBill.organizationId,
+        userId,
+        entityType: 'bill',
+        entityId: billId.toString(),
+        action: 'delete',
+        oldValues: existingBill,
+        newValues: null,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
 
       await storage.deleteBill(billId);
       res.json({ message: "Bill deleted successfully" });
