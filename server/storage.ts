@@ -2029,7 +2029,7 @@ export class DatabaseStorage implements IStorage {
         }
         
         // Apply additional filters from report definition
-        if (filters?.type) {
+        if (filters?.type && filters.type !== 'all') {
           query = query.where(eq(transactions.type, filters.type));
         }
         if (filters?.categoryId) {
@@ -2054,7 +2054,7 @@ export class DatabaseStorage implements IStorage {
           query = query.where(lte(invoices.issueDate, new Date(dateTo)));
         }
         
-        if (filters?.status) {
+        if (filters?.status && filters.status !== 'all') {
           query = query.where(eq(invoices.status, filters.status));
         }
         break;
@@ -2070,7 +2070,7 @@ export class DatabaseStorage implements IStorage {
           query = query.where(lte(bills.issueDate, new Date(dateTo)));
         }
         
-        if (filters?.status) {
+        if (filters?.status && filters.status !== 'all') {
           query = query.where(eq(bills.status, filters.status));
         }
         break;
@@ -2079,7 +2079,7 @@ export class DatabaseStorage implements IStorage {
         query = db.select().from(grants);
         query = query.where(eq(grants.organizationId, report.organizationId));
         
-        if (filters?.status) {
+        if (filters?.status && filters.status !== 'all') {
           query = query.where(eq(grants.status, filters.status));
         }
         break;
@@ -2089,7 +2089,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Apply sorting (validate sortBy field is in allowed list)
-    if (report.sortBy && report.sortOrder) {
+    if (report.sortBy && report.sortOrder && report.sortBy !== 'none') {
       const dataSourceFields = allowedFields[report.dataSource] || [];
       if (dataSourceFields.includes(report.sortBy)) {
         const table = report.dataSource === 'transactions' ? transactions :

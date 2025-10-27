@@ -104,12 +104,12 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
   const [reportDescription, setReportDescription] = useState("");
   const [dataSource, setDataSource] = useState("transactions");
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategoryId, setFilterCategoryId] = useState("");
   const [filterMinAmount, setFilterMinAmount] = useState("");
   const [filterMaxAmount, setFilterMaxAmount] = useState("");
-  const [sortBy, setSortBy] = useState("");
+  const [sortBy, setSortBy] = useState("none");
   const [sortOrder, setSortOrder] = useState("desc");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -193,12 +193,12 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     setReportDescription("");
     setDataSource("transactions");
     setSelectedFields([]);
-    setFilterType("");
-    setFilterStatus("");
+    setFilterType("all");
+    setFilterStatus("all");
     setFilterCategoryId("");
     setFilterMinAmount("");
     setFilterMaxAmount("");
-    setSortBy("");
+    setSortBy("none");
     setSortOrder("desc");
     setEditingReport(null);
   };
@@ -216,8 +216,8 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     }
 
     const filters: any = {};
-    if (filterType) filters.type = filterType;
-    if (filterStatus) filters.status = filterStatus;
+    if (filterType && filterType !== "all") filters.type = filterType;
+    if (filterStatus && filterStatus !== "all") filters.status = filterStatus;
     if (filterCategoryId) filters.categoryId = filterCategoryId;
     if (filterMinAmount) filters.minAmount = filterMinAmount;
     if (filterMaxAmount) filters.maxAmount = filterMaxAmount;
@@ -228,7 +228,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
       dataSource,
       selectedFields,
       filters: Object.keys(filters).length > 0 ? filters : null,
-      sortBy: sortBy || null,
+      sortBy: sortBy && sortBy !== "none" ? sortBy : null,
       sortOrder: sortOrder || null,
     };
 
@@ -246,12 +246,12 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     setDataSource(report.dataSource);
     setSelectedFields(report.selectedFields);
     const filters = report.filters || {};
-    setFilterType(filters.type || "");
-    setFilterStatus(filters.status || "");
+    setFilterType(filters.type || "all");
+    setFilterStatus(filters.status || "all");
     setFilterCategoryId(filters.categoryId || "");
     setFilterMinAmount(filters.minAmount || "");
     setFilterMaxAmount(filters.maxAmount || "");
-    setSortBy(report.sortBy || "");
+    setSortBy(report.sortBy || "none");
     setSortOrder(report.sortOrder || "desc");
     setDialogOpen(true);
   };
@@ -396,7 +396,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                             <SelectValue placeholder="All" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All</SelectItem>
+                            <SelectItem value="all">All</SelectItem>
                             <SelectItem value="income">Income</SelectItem>
                             <SelectItem value="expense">Expense</SelectItem>
                           </SelectContent>
@@ -456,7 +456,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                           <SelectValue placeholder="All" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
                           <SelectItem value="pending">Pending</SelectItem>
@@ -474,7 +474,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                       <SelectValue placeholder="Select field" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {FIELD_OPTIONS[dataSource]?.map((field) => (
                         <SelectItem key={field.value} value={field.value}>
                           {field.label}
