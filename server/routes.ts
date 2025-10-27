@@ -881,6 +881,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const transaction = await storage.createTransaction(data);
+      
+      // Log audit trail
+      await storage.logCreate(data.organizationId, userId, 'transaction', transaction.id.toString(), transaction);
+      
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error creating transaction:", error);
@@ -914,6 +918,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedTransaction = await storage.updateTransaction(transactionId, updates);
+      
+      // Log audit trail
+      await storage.logUpdate(existingTransaction.organizationId, userId, 'transaction', transactionId.toString(), existingTransaction, updates);
+      
       res.json(updatedTransaction);
     } catch (error) {
       console.error("Error updating transaction:", error);
@@ -944,6 +952,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteTransaction(transactionId);
+      
+      // Log audit trail
+      await storage.logDelete(existingTransaction.organizationId, userId, 'transaction', transactionId.toString(), existingTransaction);
+      
       res.status(200).json({ message: "Transaction deleted successfully" });
     } catch (error) {
       console.error("Error deleting transaction:", error);
