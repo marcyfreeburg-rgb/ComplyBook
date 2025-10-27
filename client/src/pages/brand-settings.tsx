@@ -11,11 +11,11 @@ import { Upload, Building2, Save, Palette, CreditCard, FileText } from "lucide-r
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Organization } from "@shared/schema";
 
-interface InvoiceSettingsProps {
+interface BrandSettingsProps {
   currentOrganization: Organization;
 }
 
-export default function InvoiceSettings({ currentOrganization }: InvoiceSettingsProps) {
+export default function BrandSettings({ currentOrganization }: BrandSettingsProps) {
   const { toast } = useToast();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
       queryClient.invalidateQueries({ queryKey: ['/api/organizations'] });
       toast({
         title: "Success",
-        description: "Invoice settings updated successfully",
+        description: "Brand settings updated successfully",
       });
     },
     onError: (error: any) => {
@@ -175,11 +175,11 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
-        <Building2 className="w-8 h-8" />
+        <Palette className="w-8 h-8" />
         <div>
-          <h1 className="text-3xl font-bold">Invoice Settings</h1>
+          <h1 className="text-3xl font-bold">Brand Settings</h1>
           <p className="text-muted-foreground">
-            Customize your invoices with company branding and information
+            Customize your organization's branding across all documents, reports, and communications
           </p>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
         <CardHeader>
           <CardTitle>Company Logo</CardTitle>
           <CardDescription>
-            Upload a logo that will appear on your invoices (max 5MB)
+            Upload a logo that will appear on all documents, reports, and communications (max 5MB)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -234,7 +234,7 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
         <CardHeader>
           <CardTitle>Company Information</CardTitle>
           <CardDescription>
-            This information will appear on your invoices
+            This information will appear on all documents, invoices, bills, and reports
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -354,7 +354,7 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
             <CardTitle>Theme & Appearance</CardTitle>
           </div>
           <CardDescription>
-            Customize the look and feel of your invoices
+            Customize colors and fonts that will appear across all documents, invoices, bills, reports, and emails
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -464,7 +464,7 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
             <CardTitle>Payment Information</CardTitle>
           </div>
           <CardDescription>
-            Configure payment terms and accepted payment methods
+            Configure payment terms and methods that will appear on invoices and bills
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -515,13 +515,13 @@ export default function InvoiceSettings({ currentOrganization }: InvoiceSettings
             <CardTitle>Additional Customization</CardTitle>
           </div>
           <CardDescription>
-            Add footer text, disclaimers, or other information
+            Add footer text that will appear on all documents, reports, and emails
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="invoiceFooter">Invoice Footer</Label>
+              <Label htmlFor="invoiceFooter">Document Footer</Label>
               <Textarea
                 id="invoiceFooter"
                 value={formData.invoiceFooter}

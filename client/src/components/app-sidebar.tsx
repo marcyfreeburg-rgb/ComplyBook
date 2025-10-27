@@ -65,8 +65,8 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: FileX,
     },
     {
-      title: "Invoice Settings",
-      url: "/invoice-settings",
+      title: "Brand Settings",
+      url: "/brand-settings",
       icon: FileSliders,
     },
     {
