@@ -81,6 +81,9 @@ import {
   type InsertTaxReport,
   type TaxForm1099,
   type InsertTaxForm1099,
+  customReports,
+  type CustomReport,
+  type InsertCustomReport,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
@@ -289,6 +292,14 @@ export interface IStorage {
   updateTaxForm1099(id: number, updates: Partial<InsertTaxForm1099>): Promise<TaxForm1099>;
   deleteTaxForm1099(id: number): Promise<void>;
   generateYearEndTaxReport(organizationId: number, taxYear: number): Promise<TaxReport>;
+
+  // Custom report operations
+  getCustomReports(organizationId: number): Promise<CustomReport[]>;
+  getCustomReport(id: number): Promise<CustomReport | undefined>;
+  createCustomReport(report: InsertCustomReport): Promise<CustomReport>;
+  updateCustomReport(id: number, updates: Partial<InsertCustomReport>): Promise<CustomReport>;
+  deleteCustomReport(id: number): Promise<void>;
+  executeCustomReport(id: number, dateFrom?: string, dateTo?: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1939,6 +1950,162 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return report;
+  }
+
+  // Custom report operations
+  async getCustomReports(organizationId: number): Promise<CustomReport[]> {
+    return await db
+      .select()
+      .from(customReports)
+      .where(eq(customReports.organizationId, organizationId))
+      .orderBy(desc(customReports.createdAt));
+  }
+
+  async getCustomReport(id: number): Promise<CustomReport | undefined> {
+    const [report] = await db
+      .select()
+      .from(customReports)
+      .where(eq(customReports.id, id));
+    return report;
+  }
+
+  async createCustomReport(report: InsertCustomReport): Promise<CustomReport> {
+    const [newReport] = await db
+      .insert(customReports)
+      .values(report)
+      .returning();
+    return newReport;
+  }
+
+  async updateCustomReport(id: number, updates: Partial<InsertCustomReport>): Promise<CustomReport> {
+    const [updated] = await db
+      .update(customReports)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(customReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCustomReport(id: number): Promise<void> {
+    await db.delete(customReports).where(eq(customReports.id, id));
+  }
+
+  async executeCustomReport(id: number, dateFrom?: string, dateTo?: string): Promise<any[]> {
+    const report = await this.getCustomReport(id);
+    if (!report) {
+      throw new Error('Report not found');
+    }
+
+    let query;
+    const selectedFields = report.selectedFields as string[];
+    const filters = report.filters as any;
+
+    // Build query based on data source
+    switch (report.dataSource) {
+      case 'transactions':
+        query = db.select().from(transactions);
+        
+        // Apply organization filter
+        query = query.where(eq(transactions.organizationId, report.organizationId));
+        
+        // Apply date range if provided
+        if (dateFrom) {
+          query = query.where(gte(transactions.date, new Date(dateFrom)));
+        }
+        if (dateTo) {
+          query = query.where(lte(transactions.date, new Date(dateTo)));
+        }
+        
+        // Apply additional filters from report definition
+        if (filters?.type) {
+          query = query.where(eq(transactions.type, filters.type));
+        }
+        if (filters?.categoryId) {
+          query = query.where(eq(transactions.categoryId, parseInt(filters.categoryId)));
+        }
+        if (filters?.minAmount) {
+          query = query.where(gte(transactions.amount, filters.minAmount));
+        }
+        if (filters?.maxAmount) {
+          query = query.where(lte(transactions.amount, filters.maxAmount));
+        }
+        break;
+
+      case 'invoices':
+        query = db.select().from(invoices);
+        query = query.where(eq(invoices.organizationId, report.organizationId));
+        
+        if (dateFrom) {
+          query = query.where(gte(invoices.issueDate, new Date(dateFrom)));
+        }
+        if (dateTo) {
+          query = query.where(lte(invoices.issueDate, new Date(dateTo)));
+        }
+        
+        if (filters?.status) {
+          query = query.where(eq(invoices.status, filters.status));
+        }
+        break;
+
+      case 'bills':
+        query = db.select().from(bills);
+        query = query.where(eq(bills.organizationId, report.organizationId));
+        
+        if (dateFrom) {
+          query = query.where(gte(bills.issueDate, new Date(dateFrom)));
+        }
+        if (dateTo) {
+          query = query.where(lte(bills.issueDate, new Date(dateTo)));
+        }
+        
+        if (filters?.status) {
+          query = query.where(eq(bills.status, filters.status));
+        }
+        break;
+
+      case 'grants':
+        query = db.select().from(grants);
+        query = query.where(eq(grants.organizationId, report.organizationId));
+        
+        if (filters?.status) {
+          query = query.where(eq(grants.status, filters.status));
+        }
+        break;
+
+      default:
+        throw new Error(`Unsupported data source: ${report.dataSource}`);
+    }
+
+    // Apply sorting
+    if (report.sortBy && report.sortOrder) {
+      const table = report.dataSource === 'transactions' ? transactions :
+                    report.dataSource === 'invoices' ? invoices :
+                    report.dataSource === 'bills' ? bills : grants;
+      
+      const sortField = (table as any)[report.sortBy];
+      if (sortField) {
+        query = report.sortOrder === 'asc' 
+          ? query.orderBy(sortField)
+          : query.orderBy(desc(sortField));
+      }
+    }
+
+    const results = await query;
+    
+    // Filter results to only include selected fields
+    if (selectedFields && selectedFields.length > 0) {
+      return results.map(row => {
+        const filtered: any = {};
+        selectedFields.forEach(field => {
+          if (row.hasOwnProperty(field)) {
+            filtered[field] = (row as any)[field];
+          }
+        });
+        return filtered;
+      });
+    }
+
+    return results;
   }
 }
 
