@@ -34,6 +34,9 @@ import CustomReports from "@/pages/custom-reports";
 import AuditTrail from "@/pages/audit-trail";
 import type { Organization } from "@shared/schema";
 
+// Organization with user role
+type OrganizationWithRole = Organization & { userRole: string };
+
 function AuthenticatedApp() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
@@ -48,8 +51,8 @@ function AuthenticatedApp() {
     }
   }, [location, setLocation]);
 
-  // Fetch user's organizations
-  const { data: organizations } = useQuery<Organization[]>({
+  // Fetch user's organizations (with user roles)
+  const { data: organizations } = useQuery<OrganizationWithRole[]>({
     queryKey: ['/api/organizations'],
     retry: false,
   });

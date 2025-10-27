@@ -15,13 +15,19 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User, Organization } from "@shared/schema";
 
+// Organization with user role
+type OrganizationWithRole = Organization & { userRole: string };
+
 interface AppSidebarProps {
   user: User;
-  currentOrganization?: Organization;
+  currentOrganization?: OrganizationWithRole;
 }
 
 export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
   const [location, setLocation] = useLocation();
+
+  // Check if user has admin or owner role
+  const isAdminOrOwner = currentOrganization?.userRole === 'owner' || currentOrganization?.userRole === 'admin';
 
   const menuItems = [
     {
@@ -109,11 +115,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       url: "/expense-approvals",
       icon: ClipboardCheck,
     },
-    {
+    ...(isAdminOrOwner ? [{
       title: "Audit Trail",
       url: "/audit-trail",
       icon: History,
-    },
+    }] : []),
     {
       title: "Organizations",
       url: "/organizations",
