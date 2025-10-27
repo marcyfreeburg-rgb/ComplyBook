@@ -3186,6 +3186,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export custom report results as CSV
+  app.post('/api/custom-reports/:organizationId/:id/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const reportId = parseInt(req.params.id);
+      const { dateFrom, dateTo } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const existingReport = await storage.getCustomReport(reportId);
+      if (!existingReport || existingReport.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      const results = await storage.executeCustomReport(reportId, dateFrom, dateTo);
+      
+      // Convert results to CSV
+      if (results.length === 0) {
+        return res.status(404).json({ message: "No data to export" });
+      }
+
+      const headers = Object.keys(results[0]);
+      const csvRows = [
+        headers.join(','),
+        ...results.map(row => 
+          headers.map(header => {
+            const value = (row as any)[header];
+            if (value === null || value === undefined) return '';
+            // Escape values that contain commas, quotes, or newlines
+            const stringValue = String(value);
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+          }).join(',')
+        )
+      ];
+
+      const csv = csvRows.join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${existingReport.name}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting custom report:", error);
+      res.status(500).json({ message: "Failed to export custom report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

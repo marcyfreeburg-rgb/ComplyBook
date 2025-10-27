@@ -274,22 +274,39 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     }
   };
 
-  const handleExportCSV = () => {
-    if (!reportResults || reportResults.length === 0) return;
+  const handleExportCSV = async () => {
+    if (!executingReport) return;
 
-    const headers = Object.keys(reportResults[0]);
-    const csvContent = [
-      headers.join(","),
-      ...reportResults.map((row) => headers.map((h) => JSON.stringify(row[h] || "")).join(",")),
-    ].join("\n");
+    try {
+      const response = await fetch(`/api/custom-reports/${currentOrganization.id}/${executingReport.id}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        }),
+        credentials: 'include',
+      });
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${executingReport?.name || "report"}-${format(new Date(), "yyyy-MM-dd")}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      if (!response.ok) {
+        throw new Error('Failed to export report');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${executingReport.name}-${format(new Date(), "yyyy-MM-dd")}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast({ title: "Report exported successfully" });
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      toast({ title: "Failed to export report", variant: "destructive" });
+    }
   };
 
   return (

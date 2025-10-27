@@ -2000,6 +2000,18 @@ export class DatabaseStorage implements IStorage {
     const selectedFields = report.selectedFields as string[];
     const filters = report.filters as any;
 
+    // Define allowed fields for each data source to prevent SQL injection
+    const allowedFields: Record<string, string[]> = {
+      transactions: ['id', 'organizationId', 'userId', 'date', 'amount', 'type', 'description', 'categoryId', 'vendorId', 'clientId', 'invoiceId', 'billId', 'isRecurring', 'plaidAccountId', 'plaidTransactionId', 'createdAt', 'updatedAt'],
+      invoices: ['id', 'organizationId', 'invoiceNumber', 'clientId', 'issueDate', 'dueDate', 'status', 'subtotal', 'taxAmount', 'total', 'notes', 'createdBy', 'createdAt', 'updatedAt'],
+      bills: ['id', 'organizationId', 'billNumber', 'vendorId', 'issueDate', 'dueDate', 'status', 'subtotal', 'taxAmount', 'total', 'notes', 'createdBy', 'createdAt', 'updatedAt'],
+      grants: ['id', 'organizationId', 'name', 'grantNumber', 'funder', 'amount', 'startDate', 'endDate', 'status', 'description', 'restrictions', 'createdAt', 'updatedAt'],
+    };
+
+    // Validate selectedFields against allowed fields
+    const dataSourceFields = allowedFields[report.dataSource] || [];
+    const validatedFields = selectedFields.filter(field => dataSourceFields.includes(field));
+
     // Build query based on data source
     switch (report.dataSource) {
       case 'transactions':
@@ -2076,27 +2088,30 @@ export class DatabaseStorage implements IStorage {
         throw new Error(`Unsupported data source: ${report.dataSource}`);
     }
 
-    // Apply sorting
+    // Apply sorting (validate sortBy field is in allowed list)
     if (report.sortBy && report.sortOrder) {
-      const table = report.dataSource === 'transactions' ? transactions :
-                    report.dataSource === 'invoices' ? invoices :
-                    report.dataSource === 'bills' ? bills : grants;
-      
-      const sortField = (table as any)[report.sortBy];
-      if (sortField) {
-        query = report.sortOrder === 'asc' 
-          ? query.orderBy(sortField)
-          : query.orderBy(desc(sortField));
+      const dataSourceFields = allowedFields[report.dataSource] || [];
+      if (dataSourceFields.includes(report.sortBy)) {
+        const table = report.dataSource === 'transactions' ? transactions :
+                      report.dataSource === 'invoices' ? invoices :
+                      report.dataSource === 'bills' ? bills : grants;
+        
+        const sortField = (table as any)[report.sortBy];
+        if (sortField) {
+          query = report.sortOrder === 'asc' 
+            ? query.orderBy(sortField)
+            : query.orderBy(desc(sortField));
+        }
       }
     }
 
     const results = await query;
     
-    // Filter results to only include selected fields
-    if (selectedFields && selectedFields.length > 0) {
+    // Filter results to only include validated selected fields
+    if (validatedFields && validatedFields.length > 0) {
       return results.map(row => {
         const filtered: any = {};
-        selectedFields.forEach(field => {
+        validatedFields.forEach(field => {
           if (row.hasOwnProperty(field)) {
             filtered[field] = (row as any)[field];
           }
