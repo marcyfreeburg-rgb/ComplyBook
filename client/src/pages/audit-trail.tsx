@@ -39,17 +39,27 @@ export default function AuditTrail({ currentOrganization }: AuditTrailProps) {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   
+  // Build query parameters
+  const queryParams = new URLSearchParams();
+  if (entityTypeFilter && entityTypeFilter !== "all") queryParams.set('entityType', entityTypeFilter);
+  if (actionFilter && actionFilter !== "all") queryParams.set('action', actionFilter);
+  if (startDate) queryParams.set('startDate', startDate);
+  if (endDate) queryParams.set('endDate', endDate);
+  
+  const queryString = queryParams.toString();
+  const apiUrl = `/api/audit-logs/${currentOrganization.id}${queryString ? `?${queryString}` : ''}`;
+  
   const { data: auditLogs = [], isLoading } = useQuery<AuditLog[]>({
     queryKey: ['/api/audit-logs', currentOrganization.id, entityTypeFilter, actionFilter, startDate, endDate],
+    queryFn: async () => {
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error('Failed to fetch audit logs');
+      return response.json();
+    },
   });
 
+  // Client-side filtering for search term only (server handles entity type and action filters)
   const filteredLogs = auditLogs.filter(log => {
-    // Apply entity type filter
-    if (entityTypeFilter !== "all" && log.entityType !== entityTypeFilter) return false;
-    
-    // Apply action filter
-    if (actionFilter !== "all" && log.action !== actionFilter) return false;
-    
     // Apply search filter (searches in changes, user name, entity ID)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();

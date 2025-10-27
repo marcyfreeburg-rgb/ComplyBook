@@ -315,6 +315,17 @@ export interface IStorage {
     limit?: number;
   }): Promise<Array<AuditLog & { userName: string; userEmail: string }>>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  logAuditTrail(params: {
+    organizationId: number;
+    userId: string;
+    entityType: string;
+    entityId: string;
+    action: 'create' | 'update' | 'delete';
+    oldValues?: any;
+    newValues?: any;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  }): Promise<void>;
   logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void>;
   logUpdate(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any, newValues: any): Promise<void>;
   logDelete(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any): Promise<void>;
@@ -2206,6 +2217,60 @@ export class DatabaseStorage implements IStorage {
       .values(log)
       .returning();
     return newLog;
+  }
+
+  async logAuditTrail(params: {
+    organizationId: number;
+    userId: string;
+    entityType: string;
+    entityId: string;
+    action: 'create' | 'update' | 'delete';
+    oldValues?: any;
+    newValues?: any;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  }): Promise<void> {
+    const { organizationId, userId, entityType, entityId, action, oldValues, newValues, ipAddress, userAgent } = params;
+    
+    // Extract human-readable identifier (invoice number, bill number, etc.)
+    let identifier = `#${entityId}`;
+    if (entityType === 'invoice' && newValues?.invoiceNumber) {
+      identifier = `${newValues.invoiceNumber} (ID: ${entityId})`;
+    } else if (entityType === 'bill' && newValues?.billNumber) {
+      identifier = `${newValues.billNumber} (ID: ${entityId})`;
+    } else if (entityType === 'invoice' && oldValues?.invoiceNumber) {
+      identifier = `${oldValues.invoiceNumber} (ID: ${entityId})`;
+    } else if (entityType === 'bill' && oldValues?.billNumber) {
+      identifier = `${oldValues.billNumber} (ID: ${entityId})`;
+    }
+    
+    // Generate human-readable changes summary
+    let changes = '';
+    if (action === 'create') {
+      changes = `Created ${entityType} ${identifier}`;
+    } else if (action === 'update' && oldValues && newValues) {
+      const changedFields = Object.keys(newValues).filter(key => 
+        JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])
+      );
+      changes = changedFields.length > 0 
+        ? `Updated ${entityType} ${identifier}: ${changedFields.join(', ')}`
+        : `Updated ${entityType} ${identifier}`;
+    } else if (action === 'delete') {
+      changes = `Deleted ${entityType} ${identifier}`;
+    }
+
+    await this.createAuditLog({
+      organizationId,
+      userId,
+      action,
+      entityType,
+      entityId: String(entityId),
+      oldValues: oldValues || null,
+      newValues: newValues || null,
+      changes,
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+    });
   }
 
   async logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void> {
