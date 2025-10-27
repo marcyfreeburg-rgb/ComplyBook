@@ -28,6 +28,7 @@ import {
   insertTaxCategorySchema,
   insertTaxReportSchema,
   insertTaxForm1099Schema,
+  insertCustomReportSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -42,6 +43,7 @@ import {
   type InsertTaxCategory,
   type InsertTaxReport,
   type InsertTaxForm1099,
+  type InsertCustomReport,
 } from "@shared/schema";
 
 // Simple in-memory rate limiter for AI endpoints
@@ -3017,6 +3019,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating 1099 form:", error);
       res.status(400).json({ message: "Failed to create 1099 form" });
+    }
+  });
+
+  // ============================================
+  // Custom Report Routes
+  // ============================================
+
+  // Get all custom reports for an organization
+  app.get('/api/custom-reports/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const reports = await storage.getCustomReports(organizationId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching custom reports:", error);
+      res.status(500).json({ message: "Failed to fetch custom reports" });
+    }
+  });
+
+  // Get a single custom report
+  app.get('/api/custom-reports/:organizationId/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const reportId = parseInt(req.params.id);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const report = await storage.getCustomReport(reportId);
+      if (!report || report.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching custom report:", error);
+      res.status(500).json({ message: "Failed to fetch custom report" });
+    }
+  });
+
+  // Create a new custom report
+  app.post('/api/custom-reports/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const data = insertCustomReportSchema.omit({ organizationId: true, createdBy: true }).parse(req.body);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check if user has permission to create reports
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to create reports" });
+      }
+
+      const report = await storage.createCustomReport({
+        ...data,
+        organizationId,
+        createdBy: userId,
+      });
+
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("Error creating custom report:", error);
+      res.status(400).json({ message: "Failed to create custom report" });
+    }
+  });
+
+  // Update a custom report
+  app.patch('/api/custom-reports/:organizationId/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const reportId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check if user has permission to edit reports
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to edit reports" });
+      }
+
+      const existingReport = await storage.getCustomReport(reportId);
+      if (!existingReport || existingReport.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      const report = await storage.updateCustomReport(reportId, updates);
+      res.json(report);
+    } catch (error) {
+      console.error("Error updating custom report:", error);
+      res.status(400).json({ message: "Failed to update custom report" });
+    }
+  });
+
+  // Delete a custom report
+  app.delete('/api/custom-reports/:organizationId/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const reportId = parseInt(req.params.id);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check if user has permission to delete reports
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to delete reports" });
+      }
+
+      const existingReport = await storage.getCustomReport(reportId);
+      if (!existingReport || existingReport.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      await storage.deleteCustomReport(reportId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting custom report:", error);
+      res.status(500).json({ message: "Failed to delete custom report" });
+    }
+  });
+
+  // Execute a custom report (run the query and get results)
+  app.post('/api/custom-reports/:organizationId/:id/execute', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const reportId = parseInt(req.params.id);
+      const { dateFrom, dateTo } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const existingReport = await storage.getCustomReport(reportId);
+      if (!existingReport || existingReport.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      const results = await storage.executeCustomReport(reportId, dateFrom, dateTo);
+      res.json(results);
+    } catch (error) {
+      console.error("Error executing custom report:", error);
+      res.status(500).json({ message: "Failed to execute custom report" });
     }
   });
 
