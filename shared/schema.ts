@@ -39,6 +39,7 @@ export const billStatusEnum = pgEnum('bill_status', ['received', 'scheduled', 'p
 export const approvalStatusEnum = pgEnum('approval_status', ['pending', 'approved', 'rejected', 'cancelled']);
 export const taxFormTypeEnum = pgEnum('tax_form_type', ['1099_nec', '1099_misc', '1099_int', 'w2', '990', '1040_schedule_c']);
 export const cashFlowScenarioTypeEnum = pgEnum('cash_flow_scenario_type', ['optimistic', 'realistic', 'pessimistic', 'custom']);
+export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -831,6 +832,38 @@ export const insertCustomReportSchema = createInsertSchema(customReports).omit({
 
 export type InsertCustomReport = z.infer<typeof insertCustomReportSchema>;
 export type CustomReport = typeof customReports.$inferSelect;
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+export const auditLogs = pgTable("audit_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: auditActionEnum("action").notNull(),
+  entityType: varchar("entity_type", { length: 100 }).notNull(), // e.g., 'transaction', 'invoice', 'bill'
+  entityId: varchar("entity_id", { length: 100 }).notNull(), // ID of the affected entity
+  oldValues: jsonb("old_values"), // Previous state for updates/deletes
+  newValues: jsonb("new_values"), // New state for creates/updates
+  changes: text("changes"), // Human-readable summary of changes
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4/IPv6
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => [
+  index("idx_audit_logs_org_id").on(table.organizationId),
+  index("idx_audit_logs_user_id").on(table.userId),
+  index("idx_audit_logs_entity").on(table.entityType, table.entityId),
+  index("idx_audit_logs_timestamp").on(table.timestamp),
+]);
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
 
 // ============================================
 // RELATIONS
