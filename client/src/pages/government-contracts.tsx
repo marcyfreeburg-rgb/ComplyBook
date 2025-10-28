@@ -207,11 +207,16 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
       if (!timeEntryFormData.taskDescription) {
         throw new Error("Task description is required");
       }
-      return await apiRequest('POST', '/api/time-entries', {
+      
+      const payload = {
         organizationId: currentOrganization.id,
         userId,
         ...timeEntryFormData,
-      });
+        projectId: timeEntryFormData.projectId === 'none' || !timeEntryFormData.projectId ? null : parseInt(timeEntryFormData.projectId),
+        contractId: timeEntryFormData.contractId === 'none' || !timeEntryFormData.contractId ? null : parseInt(timeEntryFormData.contractId),
+      };
+      
+      return await apiRequest('POST', '/api/time-entries', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/time-entries/${currentOrganization.id}`] });
@@ -227,7 +232,14 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
   const updateTimeEntryMutation = useMutation({
     mutationFn: async () => {
       if (!editingTimeEntry) throw new Error("No time entry selected");
-      return await apiRequest('PUT', `/api/time-entries/${editingTimeEntry.id}`, timeEntryFormData);
+      
+      const payload = {
+        ...timeEntryFormData,
+        projectId: timeEntryFormData.projectId === 'none' || !timeEntryFormData.projectId ? null : parseInt(timeEntryFormData.projectId),
+        contractId: timeEntryFormData.contractId === 'none' || !timeEntryFormData.contractId ? null : parseInt(timeEntryFormData.contractId),
+      };
+      
+      return await apiRequest('PUT', `/api/time-entries/${editingTimeEntry.id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/time-entries/${currentOrganization.id}`] });

@@ -1326,10 +1326,22 @@ export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   updatedAt: true,
 }).extend({
   clockInTime: z.coerce.date(),
-  clockOutTime: z.coerce.date().optional(),
-  totalHours: z.string().or(z.number()).transform(val => String(val)).optional(),
-  hourlyRate: z.string().or(z.number()).transform(val => String(val)).optional(),
-  laborCost: z.string().or(z.number()).transform(val => String(val)).optional(),
+  clockOutTime: z.preprocess(
+    (val) => val === "" || val === null ? undefined : val,
+    z.coerce.date().optional()
+  ),
+  totalHours: z.preprocess(
+    (val) => val === "" || val === null ? undefined : val,
+    z.string().or(z.number()).transform(val => String(val)).optional()
+  ),
+  hourlyRate: z.preprocess(
+    (val) => val === "" || val === null ? undefined : val,
+    z.string().or(z.number()).transform(val => String(val)).optional()
+  ),
+  laborCost: z.preprocess(
+    (val) => val === "" || val === null ? undefined : val,
+    z.string().or(z.number()).transform(val => String(val)).optional()
+  ),
 });
 
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;

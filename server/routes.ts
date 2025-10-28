@@ -5511,12 +5511,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You can only edit your own time entries" });
       }
 
+      const validatedData = insertTimeEntrySchema.partial().parse(req.body);
+      
       const oldData = JSON.stringify(entry);
-      const updated = await storage.updateTimeEntry(entryId, req.body);
+      const updated = await storage.updateTimeEntry(entryId, validatedData);
       await storage.logUpdate(entry.organizationId, userId, 'time_entry', entryId.toString(), oldData, updated);
       res.json(updated);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating time entry:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid time entry data", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to update time entry" });
     }
   });

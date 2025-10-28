@@ -3709,13 +3709,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry> {
-    const [newEntry] = await db.insert(timeEntries).values(entry).returning();
+    const entryData = { ...entry };
+    
+    if (entry.clockInTime && entry.clockOutTime) {
+      const clockInTime = new Date(entry.clockInTime);
+      const clockOutTime = new Date(entry.clockOutTime);
+      const hours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+      entryData.totalHours = hours.toFixed(2);
+      
+      if (entry.hourlyRate) {
+        const cost = hours * parseFloat(entry.hourlyRate);
+        entryData.laborCost = cost.toFixed(2);
+      }
+    }
+    
+    const [newEntry] = await db.insert(timeEntries).values(entryData).returning();
     return newEntry;
   }
 
   async updateTimeEntry(id: number, updates: Partial<InsertTimeEntry>): Promise<TimeEntry> {
+    const entry = await this.getTimeEntry(id);
+    if (!entry) throw new Error('Time entry not found');
+    
+    const updatedData = { ...updates, updatedAt: new Date() };
+    
+    const clockInTime = updates.clockInTime ? new Date(updates.clockInTime) : new Date(entry.clockInTime);
+    const clockOutTime = updates.clockOutTime ? new Date(updates.clockOutTime) : (entry.clockOutTime ? new Date(entry.clockOutTime) : null);
+    const hourlyRate = updates.hourlyRate ?? entry.hourlyRate;
+    
+    if (clockInTime && clockOutTime) {
+      const hours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+      updatedData.totalHours = hours.toFixed(2);
+      
+      if (hourlyRate) {
+        const cost = hours * parseFloat(hourlyRate);
+        updatedData.laborCost = cost.toFixed(2);
+      }
+    }
+    
     const [updated] = await db.update(timeEntries)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(updatedData)
       .where(eq(timeEntries.id, id))
       .returning();
     return updated;
