@@ -4375,14 +4375,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Fund routes
-  app.get("/api/funds", async (req: Request, res: Response) => {
+  app.get("/api/funds/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -4416,14 +4414,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/funds", async (req: Request, res: Response) => {
+  app.post("/api/funds", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
+      const userId = req.user.claims.sub;
+      const { organizationId, ...fundData } = req.body;
       if (!organizationId) {
         return res.status(400).json({ message: "No organization selected" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -4433,12 +4432,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = insertFundSchema.parse({
-        ...req.body,
+        ...fundData,
         organizationId,
       });
 
       const fund = await storage.createFund(validatedData);
-      await storage.logCreate(organizationId, req.user!.id, 'fund', fund.id.toString(), fund);
+      await storage.logCreate(organizationId, userId, 'fund', fund.id.toString(), fund);
       res.status(201).json(fund);
     } catch (error: any) {
       console.error("Error creating fund:", error);
@@ -4569,14 +4568,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/programs", async (req: Request, res: Response) => {
+  app.post("/api/programs", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
+      const userId = req.user.claims.sub;
+      const { organizationId, ...programData } = req.body;
       if (!organizationId) {
         return res.status(400).json({ message: "No organization selected" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -4586,12 +4586,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = insertProgramSchema.parse({
-        ...req.body,
+        ...programData,
         organizationId,
       });
 
       const program = await storage.createProgram(validatedData);
-      await storage.logCreate(organizationId, req.user!.id, 'program', program.id.toString(), program);
+      await storage.logCreate(organizationId, userId, 'program', program.id.toString(), program);
       res.status(201).json(program);
     } catch (error: any) {
       console.error("Error creating program:", error);
@@ -4746,14 +4746,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/pledges", async (req: Request, res: Response) => {
+  app.post("/api/pledges", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
+      const userId = req.user.claims.sub;
+      const { organizationId, ...pledgeData } = req.body;
       if (!organizationId) {
         return res.status(400).json({ message: "No organization selected" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -4763,12 +4764,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedData = insertPledgeSchema.parse({
-        ...req.body,
+        ...pledgeData,
         organizationId,
       });
 
       const pledge = await storage.createPledge(validatedData);
-      await storage.logCreate(organizationId, req.user!.id, 'pledge', pledge.id.toString(), pledge);
+      await storage.logCreate(organizationId, userId, 'pledge', pledge.id.toString(), pledge);
       res.status(201).json(pledge);
     } catch (error: any) {
       console.error("Error creating pledge:", error);

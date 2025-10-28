@@ -36,7 +36,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
   });
 
   const { data: funds = [], isLoading } = useQuery<Fund[]>({
-    queryKey: [`/api/funds`],
+    queryKey: [`/api/funds`, currentOrganization.id],
   });
 
   const { data: fundTransactions = [], isLoading: isLoadingTransactions } = useQuery<Transaction[]>({
