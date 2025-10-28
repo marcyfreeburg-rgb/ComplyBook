@@ -31,6 +31,7 @@ Key features include:
 - **Responsive Design:** Mobile-first design ensures usability across all device sizes, adapting layouts and navigation.
 - **Audit Trail System:** Comprehensive logging of critical create/update/delete operations with user attribution, timestamps, and detailed change history for compliance and accountability.
 - **Bank Reconciliation:** System for matching transactions with bank statements, supporting manual, bulk, and automatic reconciliation with status tracking and audit trails.
+- **Donor Tracking (Nonprofit Only):** Comprehensive donor management system for nonprofit organizations, including CRUD operations for donor records (name, contact, email, phone, address, tax ID), linking donations to specific donors via transaction forms, and automated annual tax deduction letter generation aggregating all donations by donor and year.
 
 ### System Design Choices
 PostgreSQL (Neon Serverless) is the primary relational database, managed with Drizzle ORM for type-safe queries and schema migrations. The schema is multi-tenant, with organization-scoped data for users, organizations, transactions, categories, grants, budgets, and more. A repository pattern with an `IStorage` interface is used for data access, supporting filtering, pagination, and aggregations.
