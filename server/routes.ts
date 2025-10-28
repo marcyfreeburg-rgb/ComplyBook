@@ -5740,6 +5740,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/time-effort-reports/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const existing = await storage.getTimeEffortReportById(reportId);
+      if (!existing) {
+        return res.status(404).json({ message: "Time effort report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update time effort reports" });
+      }
+
+      const updated = await storage.updateTimeEffortReport(reportId, updates);
+      await storage.logUpdate(existing.organizationId, userId, 'time_effort_report', reportId.toString(), existing, updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating time effort report:", error);
+      res.status(500).json({ message: "Failed to update time effort report" });
+    }
+  });
+
+  app.delete("/api/time-effort-reports/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.id);
+
+      const existing = await storage.getTimeEffortReportById(reportId);
+      if (!existing) {
+        return res.status(404).json({ message: "Time effort report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "You don't have permission to delete time effort reports" });
+      }
+
+      await storage.deleteTimeEffortReport(reportId);
+      await storage.logDelete(existing.organizationId, userId, 'time_effort_report', reportId.toString(), existing);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting time effort report:", error);
+      res.status(500).json({ message: "Failed to delete time effort report" });
+    }
+  });
+
   // Cost Allowability Check Routes
   app.get("/api/cost-allowability-checks/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -5788,6 +5837,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid check data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create cost allowability check" });
+    }
+  });
+
+  app.put("/api/cost-allowability-checks/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const checkId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const existing = await storage.getCostAllowabilityCheckById(checkId);
+      if (!existing) {
+        return res.status(404).json({ message: "Cost allowability check not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update cost allowability checks" });
+      }
+
+      const updated = await storage.updateCostAllowabilityCheck(checkId, updates);
+      await storage.logUpdate(existing.organizationId, userId, 'cost_allowability_check', checkId.toString(), existing, updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating cost allowability check:", error);
+      res.status(500).json({ message: "Failed to update cost allowability check" });
+    }
+  });
+
+  app.delete("/api/cost-allowability-checks/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const checkId = parseInt(req.params.id);
+
+      const existing = await storage.getCostAllowabilityCheckById(checkId);
+      if (!existing) {
+        return res.status(404).json({ message: "Cost allowability check not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "You don't have permission to delete cost allowability checks" });
+      }
+
+      await storage.deleteCostAllowabilityCheck(checkId);
+      await storage.logDelete(existing.organizationId, userId, 'cost_allowability_check', checkId.toString(), existing);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting cost allowability check:", error);
+      res.status(500).json({ message: "Failed to delete cost allowability check" });
     }
   });
 
@@ -5842,6 +5940,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/sub-awards/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const awardId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const existing = await storage.getSubAwardById(awardId);
+      if (!existing) {
+        return res.status(404).json({ message: "Sub-award not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update sub-awards" });
+      }
+
+      const updated = await storage.updateSubAward(awardId, updates);
+      await storage.logUpdate(existing.organizationId, userId, 'sub_award', awardId.toString(), existing, updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating sub-award:", error);
+      res.status(500).json({ message: "Failed to update sub-award" });
+    }
+  });
+
+  app.delete("/api/sub-awards/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const awardId = parseInt(req.params.id);
+
+      const existing = await storage.getSubAwardById(awardId);
+      if (!existing) {
+        return res.status(404).json({ message: "Sub-award not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "You don't have permission to delete sub-awards" });
+      }
+
+      await storage.deleteSubAward(awardId);
+      await storage.logDelete(existing.organizationId, userId, 'sub_award', awardId.toString(), existing);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting sub-award:", error);
+      res.status(500).json({ message: "Failed to delete sub-award" });
+    }
+  });
+
   // Federal Financial Report Routes
   app.get("/api/federal-financial-reports/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -5893,6 +6040,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/federal-financial-reports/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const existing = await storage.getFederalFinancialReportById(reportId);
+      if (!existing) {
+        return res.status(404).json({ message: "Federal financial report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update federal financial reports" });
+      }
+
+      const updated = await storage.updateFederalFinancialReport(reportId, updates);
+      await storage.logUpdate(existing.organizationId, userId, 'federal_financial_report', reportId.toString(), existing, updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating federal financial report:", error);
+      res.status(500).json({ message: "Failed to update federal financial report" });
+    }
+  });
+
+  app.delete("/api/federal-financial-reports/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.id);
+
+      const existing = await storage.getFederalFinancialReportById(reportId);
+      if (!existing) {
+        return res.status(404).json({ message: "Federal financial report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "You don't have permission to delete federal financial reports" });
+      }
+
+      await storage.deleteFederalFinancialReport(reportId);
+      await storage.logDelete(existing.organizationId, userId, 'federal_financial_report', reportId.toString(), existing);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting federal financial report:", error);
+      res.status(500).json({ message: "Failed to delete federal financial report" });
+    }
+  });
+
   // Audit Prep Item Routes
   app.get("/api/audit-prep-items/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -5941,6 +6137,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid item data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create audit prep item" });
+    }
+  });
+
+  app.put("/api/audit-prep-items/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const existing = await storage.getAuditPrepItemById(itemId);
+      if (!existing) {
+        return res.status(404).json({ message: "Audit prep item not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update audit prep items" });
+      }
+
+      const updated = await storage.updateAuditPrepItem(itemId, updates);
+      await storage.logUpdate(existing.organizationId, userId, 'audit_prep_item', itemId.toString(), existing, updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating audit prep item:", error);
+      res.status(500).json({ message: "Failed to update audit prep item" });
+    }
+  });
+
+  app.delete("/api/audit-prep-items/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.id);
+
+      const existing = await storage.getAuditPrepItemById(itemId);
+      if (!existing) {
+        return res.status(404).json({ message: "Audit prep item not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "You don't have permission to delete audit prep items" });
+      }
+
+      await storage.deleteAuditPrepItem(itemId);
+      await storage.logDelete(existing.organizationId, userId, 'audit_prep_item', itemId.toString(), existing);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting audit prep item:", error);
+      res.status(500).json({ message: "Failed to delete audit prep item" });
     }
   });
 
