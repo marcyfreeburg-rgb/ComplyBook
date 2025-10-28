@@ -55,6 +55,12 @@ export const functionalCategoryEnum = pgEnum('functional_category', ['program', 
 export const complianceStatusEnum = pgEnum('compliance_status', ['compliant', 'at_risk', 'non_compliant', 'pending_review']);
 export const programStatusEnum = pgEnum('program_status', ['active', 'completed', 'on_hold', 'planned']);
 
+// For-profit Government Contracts enums
+export const contractStatusEnum = pgEnum('contract_status', ['active', 'completed', 'pending', 'on_hold', 'cancelled']);
+export const milestoneStatusEnum = pgEnum('milestone_status', ['pending', 'in_progress', 'completed', 'overdue']);
+export const timeEntryStatusEnum = pgEnum('time_entry_status', ['draft', 'submitted', 'approved', 'billed']);
+export const costTypeEnum = pgEnum('cost_type', ['direct_labor', 'direct_materials', 'direct_other', 'indirect', 'overhead']);
+
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
 // ============================================
@@ -1179,6 +1185,213 @@ export const insertPledgePaymentSchema = createInsertSchema(pledgePayments).omit
 
 export type InsertPledgePayment = z.infer<typeof insertPledgePaymentSchema>;
 export type PledgePayment = typeof pledgePayments.$inferSelect;
+
+// ============================================
+// GOVERNMENT CONTRACTS (For-Profit Only)
+// ============================================
+
+// Contracts table
+export const contracts = pgTable("contracts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  contractNumber: varchar("contract_number", { length: 100 }).notNull(),
+  contractName: varchar("contract_name", { length: 255 }).notNull(),
+  clientName: varchar("client_name", { length: 255 }).notNull(),
+  description: text("description"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  totalValue: numeric("total_value", { precision: 15, scale: 2 }).notNull(),
+  fundedAmount: numeric("funded_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  billedAmount: numeric("billed_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  status: contractStatusEnum("status").notNull().default('pending'),
+  contractType: varchar("contract_type", { length: 100 }),
+  primeContractor: varchar("prime_contractor", { length: 255 }),
+  contractOfficer: varchar("contract_officer", { length: 255 }),
+  contactEmail: varchar("contact_email", { length: 255 }),
+  contactPhone: varchar("contact_phone", { length: 50 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertContractSchema = createInsertSchema(contracts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  totalValue: z.string().or(z.number()).transform(val => String(val)),
+  fundedAmount: z.string().or(z.number()).transform(val => String(val)).optional(),
+  billedAmount: z.string().or(z.number()).transform(val => String(val)).optional(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional(),
+});
+
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
+
+// Contract Milestones table
+export const contractMilestones = pgTable("contract_milestones", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  contractId: integer("contract_id").notNull().references(() => contracts.id),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  milestoneName: varchar("milestone_name", { length: 255 }).notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  milestoneAmount: numeric("milestone_amount", { precision: 15, scale: 2 }).notNull(),
+  status: milestoneStatusEnum("status").notNull().default('pending'),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertContractMilestoneSchema = createInsertSchema(contractMilestones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  milestoneAmount: z.string().or(z.number()).transform(val => String(val)),
+  dueDate: z.coerce.date(),
+  completedDate: z.coerce.date().optional(),
+});
+
+export type InsertContractMilestone = z.infer<typeof insertContractMilestoneSchema>;
+export type ContractMilestone = typeof contractMilestones.$inferSelect;
+
+// Projects (Job Costing) table
+export const projects = pgTable("projects", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  contractId: integer("contract_id").references(() => contracts.id),
+  projectNumber: varchar("project_number", { length: 100 }).notNull(),
+  projectName: varchar("project_name", { length: 255 }).notNull(),
+  description: text("description"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  budget: numeric("budget", { precision: 15, scale: 2 }),
+  actualCost: numeric("actual_cost", { precision: 15, scale: 2 }).notNull().default("0"),
+  status: varchar("status", { length: 50 }).notNull().default('active'),
+  projectManager: varchar("project_manager", { length: 255 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  budget: z.string().or(z.number()).transform(val => String(val)).optional(),
+  actualCost: z.string().or(z.number()).transform(val => String(val)).optional(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional(),
+});
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
+
+// Time Entries (DCAA Compliant) table
+export const timeEntries = pgTable("time_entries", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  projectId: integer("project_id").references(() => projects.id),
+  contractId: integer("contract_id").references(() => contracts.id),
+  taskDescription: text("task_description").notNull(),
+  clockInTime: timestamp("clock_in_time").notNull(),
+  clockOutTime: timestamp("clock_out_time"),
+  totalHours: numeric("total_hours", { precision: 6, scale: 2 }),
+  hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }),
+  laborCost: numeric("labor_cost", { precision: 15, scale: 2 }),
+  status: timeEntryStatusEnum("status").notNull().default('draft'),
+  location: varchar("location", { length: 255 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  clockInTime: z.coerce.date(),
+  clockOutTime: z.coerce.date().optional(),
+  totalHours: z.string().or(z.number()).transform(val => String(val)).optional(),
+  hourlyRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  laborCost: z.string().or(z.number()).transform(val => String(val)).optional(),
+});
+
+export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+
+// Indirect Cost Rates table
+export const indirectCostRates = pgTable("indirect_cost_rates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  rateName: varchar("rate_name", { length: 255 }).notNull(),
+  rateType: varchar("rate_type", { length: 100 }).notNull(),
+  ratePercentage: numeric("rate_percentage", { precision: 6, scale: 2 }).notNull(),
+  effectiveStartDate: timestamp("effective_start_date").notNull(),
+  effectiveEndDate: timestamp("effective_end_date"),
+  description: text("description"),
+  baseType: varchar("base_type", { length: 100 }),
+  notes: text("notes"),
+  isActive: integer("is_active").notNull().default(1),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertIndirectCostRateSchema = createInsertSchema(indirectCostRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  ratePercentage: z.string().or(z.number()).transform(val => String(val)),
+  effectiveStartDate: z.coerce.date(),
+  effectiveEndDate: z.coerce.date().optional(),
+});
+
+export type InsertIndirectCostRate = z.infer<typeof insertIndirectCostRateSchema>;
+export type IndirectCostRate = typeof indirectCostRates.$inferSelect;
+
+// Project Costs table (for job costing details)
+export const projectCosts = pgTable("project_costs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  costDate: timestamp("cost_date").notNull(),
+  costType: costTypeEnum("cost_type").notNull(),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }),
+  unitCost: numeric("unit_cost", { precision: 15, scale: 2 }),
+  vendorName: varchar("vendor_name", { length: 255 }),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertProjectCostSchema = createInsertSchema(projectCosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  quantity: z.string().or(z.number()).transform(val => String(val)).optional(),
+  unitCost: z.string().or(z.number()).transform(val => String(val)).optional(),
+  costDate: z.coerce.date(),
+});
+
+export type InsertProjectCost = z.infer<typeof insertProjectCostSchema>;
+export type ProjectCost = typeof projectCosts.$inferSelect;
 
 // ============================================
 // RELATIONS
