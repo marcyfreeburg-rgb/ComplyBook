@@ -2524,10 +2524,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const grant = await storage.createGrant(data);
+      await storage.logCreate(data.organizationId, userId, 'grant', grant.id.toString(), grant);
       res.status(201).json(grant);
     } catch (error) {
       console.error("Error creating grant:", error);
       res.status(400).json({ message: "Failed to create grant" });
+    }
+  });
+
+  app.patch('/api/grants/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const grantId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const existing = await storage.getGrant(grantId);
+      if (!existing) {
+        return res.status(404).json({ message: "Grant not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - only owners and admins can manage grants" });
+      }
+
+      const updated = await storage.updateGrant(grantId, updates);
+      await storage.logUpdate(existing.organizationId, userId, 'grant', grantId.toString(), existing, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating grant:", error);
+      res.status(500).json({ message: "Failed to update grant" });
+    }
+  });
+
+  app.delete('/api/grants/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const grantId = parseInt(req.params.id);
+
+      const existing = await storage.getGrant(grantId);
+      if (!existing) {
+        return res.status(404).json({ message: "Grant not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existing.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - only owners and admins can delete grants" });
+      }
+
+      await storage.deleteGrant(grantId);
+      await storage.logDelete(existing.organizationId, userId, 'grant', grantId.toString(), existing);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting grant:", error);
+      res.status(500).json({ message: "Failed to delete grant" });
     }
   });
 

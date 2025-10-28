@@ -9,6 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download } from "lucide-react";
@@ -44,6 +54,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [previewingBill, setPreviewingBill] = useState<(Bill & { vendorName: string | null }) | null>(null);
+  const [deleteBillId, setDeleteBillId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const [formData, setFormData] = useState<BillFormData>({
@@ -186,6 +197,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
         title: "Success",
         description: "Bill deleted successfully",
       });
+      setDeleteBillId(null);
     },
     onError: (error: Error) => {
       toast({
@@ -225,8 +237,12 @@ export default function Bills({ currentOrganization }: BillsProps) {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this bill?")) {
-      deleteBillMutation.mutate(id);
+    setDeleteBillId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteBillId) {
+      deleteBillMutation.mutate(deleteBillId);
     }
   };
 
@@ -383,7 +399,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(bill)}
-                            data-testid={`button-edit-bill-${bill.id}`}
+                            data-testid={`button-edit-${bill.id}`}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -391,7 +407,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(bill.id)}
-                            data-testid={`button-delete-bill-${bill.id}`}
+                            data-testid={`button-delete-${bill.id}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -634,7 +650,10 @@ export default function Bills({ currentOrganization }: BillsProps) {
                 disabled={createBillMutation.isPending || updateBillMutation.isPending}
                 data-testid="button-save-bill"
               >
-                {editingBill ? "Update Bill" : "Create Bill"}
+                {editingBill 
+                  ? (updateBillMutation.isPending ? "Updating..." : "Update Bill")
+                  : (createBillMutation.isPending ? "Creating..." : "Create Bill")
+                }
               </Button>
             </div>
           </form>
@@ -677,6 +696,28 @@ export default function Bills({ currentOrganization }: BillsProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteBillId !== null} onOpenChange={(open) => !open && setDeleteBillId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this bill. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

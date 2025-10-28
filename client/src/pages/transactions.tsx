@@ -23,6 +23,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download } from "lucide-react";
@@ -65,8 +75,8 @@ interface TransactionsProps {
 export default function Transactions({ currentOrganization, userId }: TransactionsProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deleteTransactionId, setDeleteTransactionId] = useState<number | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
@@ -161,24 +171,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         title: "Transaction created",
         description: "Your transaction has been added successfully.",
       });
-      setIsDialogOpen(false);
-      setAiSuggestion(null);
-      setFormData({
-        organizationId: currentOrganization.id,
-        type: 'expense',
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-        amount: '',
-        categoryId: undefined,
-        grantId: undefined,
-        vendorId: undefined,
-        clientId: undefined,
-        donorId: undefined,
-        fundId: undefined,
-        programId: undefined,
-        functionalCategory: null,
-        createdBy: userId,
-      });
+      handleCloseDialog();
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -293,44 +286,67 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     }
   };
 
-  const editTransactionMutation = useMutation({
-    mutationFn: async (data: { id: number; updates: Partial<InsertTransaction> }) => {
-      return await apiRequest('PATCH', `/api/transactions/${data.id}`, data.updates);
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return await apiRequest('PATCH', `/api/transactions/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
       toast({
         title: "Transaction updated",
-        description: "The transaction has been updated successfully.",
+        description: "Your transaction has been updated successfully.",
       });
-      setIsEditDialogOpen(false);
-      setEditingTransaction(null);
+      handleCloseDialog();
     },
-    onError: (error: any) => {
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
-        description: error.message || "Failed to update transaction.",
+        description: "Failed to update transaction. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const deleteTransactionMutation = useMutation({
-    mutationFn: async (transactionId: number) => {
-      return await apiRequest('DELETE', `/api/transactions/${transactionId}`, {});
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest('DELETE', `/api/transactions/${id}`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
       toast({
         title: "Transaction deleted",
-        description: "The transaction has been removed successfully.",
+        description: "The transaction has been deleted successfully.",
       });
+      setDeleteTransactionId(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
-        description: error.message || "Failed to delete transaction.",
+        description: "Failed to delete transaction. Please try again.",
         variant: "destructive",
       });
     },
@@ -402,6 +418,59 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
   });
 
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingTransaction(null);
+    setAiSuggestion(null);
+    setFormData({
+      organizationId: currentOrganization.id,
+      type: 'expense',
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      amount: '',
+      categoryId: undefined,
+      grantId: undefined,
+      vendorId: undefined,
+      clientId: undefined,
+      donorId: undefined,
+      fundId: undefined,
+      programId: undefined,
+      functionalCategory: null,
+      createdBy: userId,
+    });
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setFormData({
+      organizationId: transaction.organizationId,
+      type: transaction.type,
+      date: format(new Date(transaction.date), 'yyyy-MM-dd'),
+      description: transaction.description,
+      amount: transaction.amount,
+      categoryId: transaction.categoryId || undefined,
+      grantId: transaction.grantId || undefined,
+      vendorId: transaction.vendorId || undefined,
+      clientId: transaction.clientId || undefined,
+      donorId: transaction.donorId || undefined,
+      fundId: transaction.fundId || undefined,
+      programId: transaction.programId || undefined,
+      functionalCategory: transaction.functionalCategory || null,
+      createdBy: userId,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteTransaction = (id: number) => {
+    setDeleteTransactionId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTransactionId) {
+      deleteMutation.mutate(deleteTransactionId);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || !formData.amount || !formData.date) {
@@ -412,12 +481,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       });
       return;
     }
-    // Convert form data to InsertTransaction with Date object
-    const transactionData: InsertTransaction = {
-      ...formData,
-      date: new Date(formData.date),
-    };
-    createMutation.mutate(transactionData);
+
+    if (editingTransaction) {
+      updateMutation.mutate({ id: editingTransaction.id, data: formData });
+    } else {
+      // Convert form data to InsertTransaction with Date object
+      const transactionData: InsertTransaction = {
+        ...formData,
+        date: new Date(formData.date),
+      };
+      createMutation.mutate(transactionData);
+    }
   };
 
   const filteredTransactions = transactions?.filter(t => 
@@ -506,7 +580,10 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </div>
             </DialogContent>
           </Dialog>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (!open) handleCloseDialog();
+            else setIsDialogOpen(open);
+          }}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-transaction">
                 <Plus className="h-4 w-4 mr-2" />
@@ -515,9 +592,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add Transaction</DialogTitle>
+              <DialogTitle>{editingTransaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
               <DialogDescription>
-                Record a new income or expense transaction for {currentOrganization.name}.
+                {editingTransaction 
+                  ? `Update transaction details for ${currentOrganization.name}.`
+                  : `Record a new income or expense transaction for ${currentOrganization.name}.`
+                }
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -854,17 +934,20 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={handleCloseDialog}
                   data-testid="button-cancel-transaction"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   data-testid="button-submit-transaction"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create Transaction"}
+                  {editingTransaction 
+                    ? (updateMutation.isPending ? "Updating..." : "Update")
+                    : (createMutation.isPending ? "Creating..." : "Create")
+                  }
                 </Button>
               </div>
             </form>
@@ -1108,30 +1191,23 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                                 setSelectedTransactionForAttachments(transaction);
                                 setIsAttachmentsDialogOpen(true);
                               }}
-                              data-testid={`button-attachments-transaction-${transaction.id}`}
+                              data-testid={`button-attachments-${transaction.id}`}
                             >
                               <Paperclip className="h-4 w-4" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => {
-                                setEditingTransaction(transaction);
-                                setIsEditDialogOpen(true);
-                              }}
-                              data-testid={`button-edit-transaction-${transaction.id}`}
+                              onClick={() => handleEditTransaction(transaction)}
+                              data-testid={`button-edit-${transaction.id}`}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => {
-                                if (confirm('Are you sure you want to delete this transaction?')) {
-                                  deleteTransactionMutation.mutate(transaction.id);
-                                }
-                              }}
-                              data-testid={`button-delete-transaction-${transaction.id}`}
+                              onClick={() => handleDeleteTransaction(transaction.id)}
+                              data-testid={`button-delete-${transaction.id}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1147,133 +1223,26 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         </CardContent>
       </Card>
 
-      {/* Edit Transaction Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Transaction</DialogTitle>
-            <DialogDescription>
-              Update the details of this transaction
-            </DialogDescription>
-          </DialogHeader>
-          {editingTransaction && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const form = e.target as HTMLFormElement;
-                const formData = new FormData(form);
-                editTransactionMutation.mutate({
-                  id: editingTransaction.id,
-                  updates: {
-                    date: new Date(formData.get('date') as string),
-                    description: formData.get('description') as string,
-                    amount: formData.get('amount') as string,
-                    type: formData.get('type') as 'income' | 'expense',
-                    categoryId: formData.get('categoryId') ? parseInt(formData.get('categoryId') as string) : undefined,
-                  },
-                });
-              }}
-              className="space-y-4"
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteTransactionId !== null} onOpenChange={(open) => !open && setDeleteTransactionId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              data-testid="button-confirm-delete"
             >
-              <div className="space-y-2">
-                <label htmlFor="edit-date" className="text-sm font-medium">
-                  Date
-                </label>
-                <Input
-                  id="edit-date"
-                  name="date"
-                  type="date"
-                  defaultValue={format(new Date(editingTransaction.date), 'yyyy-MM-dd')}
-                  required
-                  data-testid="input-edit-date"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-description" className="text-sm font-medium">
-                  Description
-                </label>
-                <Input
-                  id="edit-description"
-                  name="description"
-                  defaultValue={editingTransaction.description}
-                  required
-                  data-testid="input-edit-description"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-type" className="text-sm font-medium">
-                  Type
-                </label>
-                <select
-                  id="edit-type"
-                  name="type"
-                  defaultValue={editingTransaction.type}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  data-testid="select-edit-type"
-                >
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-amount" className="text-sm font-medium">
-                  Amount
-                </label>
-                <Input
-                  id="edit-amount"
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  defaultValue={editingTransaction.amount}
-                  required
-                  data-testid="input-edit-amount"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-category" className="text-sm font-medium">
-                  Category
-                </label>
-                <select
-                  id="edit-category"
-                  name="categoryId"
-                  defaultValue={editingTransaction.categoryId?.toString() || ''}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  data-testid="select-edit-category"
-                >
-                  <option value="">No category</option>
-                  {categories?.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name} ({category.type})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsEditDialogOpen(false);
-                    setEditingTransaction(null);
-                  }}
-                  className="flex-1"
-                  data-testid="button-cancel-edit"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={editTransactionMutation.isPending}
-                  data-testid="button-save-edit"
-                >
-                  Save Changes
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Attachments Dialog */}
       <Dialog open={isAttachmentsDialogOpen} onOpenChange={setIsAttachmentsDialogOpen}>

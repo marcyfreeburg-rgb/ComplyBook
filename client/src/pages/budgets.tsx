@@ -11,11 +11,21 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, TrendingUp, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, TrendingUp, Trash2, ArrowLeft, Edit } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Budgets() {
   const [, setLocation] = useLocation();
@@ -23,6 +33,8 @@ export default function Budgets() {
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
   const [isCreateBudgetOpen, setIsCreateBudgetOpen] = useState(false);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [deleteBudgetId, setDeleteBudgetId] = useState<number | null>(null);
 
   const organizationId = parseInt(localStorage.getItem("currentOrganizationId") || "0");
   if (!organizationId) {
@@ -62,11 +74,24 @@ export default function Budgets() {
       apiRequest('POST', '/api/budgets', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/budgets", organizationId] });
-      setIsCreateBudgetOpen(false);
+      handleCloseDialog();
       toast({ title: "Budget created successfully" });
     },
     onError: () => {
       toast({ title: "Failed to create budget", variant: "destructive" });
+    },
+  });
+
+  const updateBudgetMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiRequest('PATCH', `/api/budgets/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/budgets", organizationId] });
+      handleCloseDialog();
+      toast({ title: "Budget updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update budget", variant: "destructive" });
     },
   });
 
@@ -76,6 +101,7 @@ export default function Budgets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/budgets", organizationId] });
       setSelectedBudgetId(null);
+      setDeleteBudgetId(null);
       toast({ title: "Budget deleted successfully" });
     },
     onError: () => {
@@ -146,9 +172,46 @@ export default function Budgets() {
     },
   });
 
+  const handleCloseDialog = () => {
+    setIsCreateBudgetOpen(false);
+    setEditingBudget(null);
+    budgetForm.reset({
+      organizationId,
+      name: "",
+      period: "monthly" as const,
+      startDate: new Date(),
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+    });
+  };
+
+  const handleEditBudget = (budget: Budget) => {
+    setEditingBudget(budget);
+    budgetForm.reset({
+      organizationId: budget.organizationId,
+      name: budget.name,
+      period: budget.period,
+      startDate: new Date(budget.startDate),
+      endDate: new Date(budget.endDate),
+    });
+    setIsCreateBudgetOpen(true);
+  };
+
+  const handleDeleteBudget = (id: number) => {
+    setDeleteBudgetId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteBudgetId) {
+      deleteBudgetMutation.mutate(deleteBudgetId);
+    }
+  };
+
   const onCreateBudget = (data: z.infer<typeof budgetFormSchema>) => {
-    // insertBudgetSchema uses z.coerce.date() so it can accept Date objects
-    createBudgetMutation.mutate(data as any);
+    if (editingBudget) {
+      updateBudgetMutation.mutate({ id: editingBudget.id, data });
+    } else {
+      createBudgetMutation.mutate(data as any);
+    }
   };
 
   const onAddItem = (data: z.infer<typeof itemFormSchema>) => {
@@ -172,7 +235,10 @@ export default function Budgets() {
             Back to Dashboard
           </Button>
         </Link>
-        <Dialog open={isCreateBudgetOpen} onOpenChange={setIsCreateBudgetOpen}>
+        <Dialog open={isCreateBudgetOpen} onOpenChange={(open) => {
+          if (!open) handleCloseDialog();
+          else setIsCreateBudgetOpen(open);
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-budget">
               <Plus className="w-4 h-4 mr-2" />
@@ -181,9 +247,12 @@ export default function Budgets() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Budget</DialogTitle>
+              <DialogTitle>{editingBudget ? 'Edit Budget' : 'Create New Budget'}</DialogTitle>
               <DialogDescription>
-                Set up a budget period to track your spending
+                {editingBudget 
+                  ? 'Update budget details and period.'
+                  : 'Set up a budget period to track your spending'
+                }
               </DialogDescription>
             </DialogHeader>
             <Form {...budgetForm}>
@@ -261,8 +330,11 @@ export default function Budgets() {
                     )}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={createBudgetMutation.isPending} data-testid="button-submit-budget">
-                  Create Budget
+                <Button type="submit" className="w-full" disabled={createBudgetMutation.isPending || updateBudgetMutation.isPending} data-testid="button-submit-budget">
+                  {editingBudget 
+                    ? (updateBudgetMutation.isPending ? "Updating..." : "Update")
+                    : (createBudgetMutation.isPending ? "Creating..." : "Create")
+                  }
                 </Button>
               </form>
             </Form>
@@ -291,16 +363,41 @@ export default function Budgets() {
             {budgets.map((budget) => (
               <Card
                 key={budget.id}
-                className={`cursor-pointer hover-elevate ${selectedBudgetId === budget.id ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => setSelectedBudgetId(budget.id)}
+                className={`hover-elevate ${selectedBudgetId === budget.id ? 'ring-2 ring-primary' : ''}`}
                 data-testid={`card-budget-${budget.id}`}
               >
-                <CardHeader>
-                  <CardTitle className="text-base">{budget.name}</CardTitle>
-                  <CardDescription>
-                    {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)} • 
-                    {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="cursor-pointer flex-1" onClick={() => setSelectedBudgetId(budget.id)}>
+                    <CardTitle className="text-base">{budget.name}</CardTitle>
+                    <CardDescription>
+                      {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)} • 
+                      {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditBudget(budget);
+                      }}
+                      data-testid={`button-edit-${budget.id}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteBudget(budget.id);
+                      }}
+                      data-testid={`button-delete-${budget.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardHeader>
               </Card>
             ))}
@@ -309,20 +406,11 @@ export default function Budgets() {
           {selectedBudget && (
             <div className="lg:col-span-2 space-y-6">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader>
                   <div>
                     <CardTitle>{selectedBudget.name}</CardTitle>
                     <CardDescription>Budget Details & Performance</CardDescription>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deleteBudgetMutation.mutate(selectedBudget.id)}
-                    disabled={deleteBudgetMutation.isPending}
-                    data-testid="button-delete-budget"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between mb-4">
@@ -445,6 +533,27 @@ export default function Budgets() {
           )}
         </div>
       )}
+
+      <AlertDialog open={deleteBudgetId !== null} onOpenChange={(open) => !open && setDeleteBudgetId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Budget</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this budget? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteBudgetMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteBudgetMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -9,6 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download } from "lucide-react";
@@ -39,10 +49,10 @@ interface InvoicesProps {
 export default function Invoices({ currentOrganization }: InvoicesProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [deleteInvoiceId, setDeleteInvoiceId] = useState<number | null>(null);
   const [previewingInvoice, setPreviewingInvoice] = useState<(Invoice & { clientName: string | null }) | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -142,8 +152,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
         title: "Success",
         description: "Invoice created successfully",
       });
-      setIsCreateDialogOpen(false);
-      resetForm();
+      handleCloseDialog();
     },
     onError: (error: Error) => {
       toast({
@@ -177,9 +186,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
         title: "Success",
         description: "Invoice updated successfully",
       });
-      setIsEditDialogOpen(false);
-      setEditingInvoice(null);
-      resetForm();
+      handleCloseDialog();
     },
     onError: (error: Error) => {
       toast({
@@ -198,6 +205,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
         title: "Success",
         description: "Invoice deleted successfully",
       });
+      setDeleteInvoiceId(null);
     },
     onError: (error: Error) => {
       toast({
@@ -208,7 +216,9 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
     },
   });
 
-  const resetForm = () => {
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingInvoice(null);
     setFormData({
       clientId: "none",
       invoiceNumber: "",
@@ -233,12 +243,16 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
       taxAmount: invoice.taxAmount || "0.00",
       lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
     });
-    setIsEditDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this invoice?")) {
-      deleteInvoiceMutation.mutate(id);
+    setDeleteInvoiceId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteInvoiceId) {
+      deleteInvoiceMutation.mutate(deleteInvoiceId);
     }
   };
 
@@ -307,7 +321,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
           <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
           <p className="text-muted-foreground">Manage invoices sent to clients</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-invoice">
+        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-invoice">
           <Plus className="w-4 h-4 mr-2" />
           Create Invoice
         </Button>
@@ -395,7 +409,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(invoice)}
-                            data-testid={`button-edit-invoice-${invoice.id}`}
+                            data-testid={`button-edit-${invoice.id}`}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -403,7 +417,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(invoice.id)}
-                            data-testid={`button-delete-invoice-${invoice.id}`}
+                            data-testid={`button-delete-${invoice.id}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -419,13 +433,9 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
       </Card>
 
       {/* Create/Edit Invoice Dialog */}
-      <Dialog open={isCreateDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsCreateDialogOpen(false);
-          setIsEditDialogOpen(false);
-          setEditingInvoice(null);
-          resetForm();
-        }
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) handleCloseDialog();
+        else setIsDialogOpen(open);
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -631,12 +641,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setIsCreateDialogOpen(false);
-                  setIsEditDialogOpen(false);
-                  setEditingInvoice(null);
-                  resetForm();
-                }}
+                onClick={handleCloseDialog}
                 data-testid="button-cancel"
               >
                 Cancel
@@ -644,9 +649,12 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               <Button
                 type="submit"
                 disabled={createInvoiceMutation.isPending || updateInvoiceMutation.isPending}
-                data-testid="button-save-invoice"
+                data-testid="button-submit-invoice"
               >
-                {editingInvoice ? "Update Invoice" : "Create Invoice"}
+                {editingInvoice 
+                  ? (updateInvoiceMutation.isPending ? "Updating..." : "Update")
+                  : (createInvoiceMutation.isPending ? "Creating..." : "Create")
+                }
               </Button>
             </div>
           </form>
@@ -689,6 +697,28 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteInvoiceId !== null} onOpenChange={(open) => !open && setDeleteInvoiceId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteInvoiceMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteInvoiceMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

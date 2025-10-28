@@ -10,8 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus } from "lucide-react";
+import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus, Edit } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { PayrollRun, PayrollItem, Employee, Deduction, Organization } from "@shared/schema";
 
 interface PayrollProps {
@@ -24,6 +34,8 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
+  const [editingPayrollRun, setEditingPayrollRun] = useState<PayrollRun | null>(null);
+  const [deletePayrollRunId, setDeletePayrollRunId] = useState<number | null>(null);
   const [selectedPayrollRun, setSelectedPayrollRun] = useState<PayrollRun | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [hoursWorked, setHoursWorked] = useState<string>("");
@@ -84,13 +96,33 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
         title: "Payroll run created",
         description: "Payroll run has been created successfully.",
       });
-      setIsCreateDialogOpen(false);
-      resetForm();
+      handleCloseDialog();
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to create payroll run. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePayrollRunMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return await apiRequest('PATCH', `/api/payroll-runs/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/payroll-runs/${currentOrganization.id}`] });
+      toast({
+        title: "Payroll run updated",
+        description: "Payroll run has been updated successfully.",
+      });
+      handleCloseDialog();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update payroll run. Please try again.",
         variant: "destructive",
       });
     },
@@ -129,6 +161,7 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
         title: "Payroll run deleted",
         description: "The payroll run has been removed successfully.",
       });
+      setDeletePayrollRunId(null);
       if (selectedPayrollRun && isViewDialogOpen) {
         setIsViewDialogOpen(false);
         setSelectedPayrollRun(null);
@@ -194,9 +227,53 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
     },
   });
 
+  const handleCloseDialog = () => {
+    setIsCreateDialogOpen(false);
+    setEditingPayrollRun(null);
+    resetForm();
+  };
+
+  const handleEditPayrollRun = (payrollRun: PayrollRun) => {
+    setEditingPayrollRun(payrollRun);
+    setFormData({
+      payPeriodStart: typeof payrollRun.payPeriodStart === 'string' ? payrollRun.payPeriodStart : new Date(payrollRun.payPeriodStart).toISOString().split('T')[0],
+      payPeriodEnd: typeof payrollRun.payPeriodEnd === 'string' ? payrollRun.payPeriodEnd : new Date(payrollRun.payPeriodEnd).toISOString().split('T')[0],
+      payDate: typeof payrollRun.payDate === 'string' ? payrollRun.payDate : new Date(payrollRun.payDate).toISOString().split('T')[0],
+      notes: payrollRun.notes || "",
+    });
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleDeletePayrollRun = (id: number) => {
+    setDeletePayrollRunId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletePayrollRunId) {
+      deletePayrollRunMutation.mutate(deletePayrollRunId);
+    }
+  };
+
   const handleViewPayrollRun = (payrollRun: PayrollRun) => {
     setSelectedPayrollRun(payrollRun);
     setIsViewDialogOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (!formData.payPeriodStart || !formData.payPeriodEnd || !formData.payDate) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingPayrollRun) {
+      updatePayrollRunMutation.mutate({ id: editingPayrollRun.id, data: formData });
+    } else {
+      createPayrollRunMutation.mutate();
+    }
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -232,7 +309,10 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Payroll</h1>
           <p className="text-muted-foreground">Manage payroll runs and employee payments</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+          if (!open) handleCloseDialog();
+          else setIsCreateDialogOpen(open);
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-payroll-run">
               <Plus className="w-4 h-4 mr-2" />
@@ -241,9 +321,12 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Payroll Run</DialogTitle>
+              <DialogTitle>{editingPayrollRun ? 'Edit Payroll Run' : 'Create Payroll Run'}</DialogTitle>
               <DialogDescription>
-                Create a new payroll run for a pay period
+                {editingPayrollRun 
+                  ? 'Update payroll run details for the pay period'
+                  : 'Create a new payroll run for a pay period'
+                }
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-4">
@@ -290,19 +373,32 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                   rows={3}
                 />
               </div>
-              <Button
-                onClick={() => createPayrollRunMutation.mutate()}
-                disabled={
-                  createPayrollRunMutation.isPending ||
-                  !formData.payPeriodStart ||
-                  !formData.payPeriodEnd ||
-                  !formData.payDate
-                }
-                className="w-full"
-                data-testid="button-create-payroll-run-submit"
-              >
-                {createPayrollRunMutation.isPending ? "Creating..." : "Create Payroll Run"}
-              </Button>
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseDialog}
+                  data-testid="button-cancel-payroll-run"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    createPayrollRunMutation.isPending ||
+                    updatePayrollRunMutation.isPending ||
+                    !formData.payPeriodStart ||
+                    !formData.payPeriodEnd ||
+                    !formData.payDate
+                  }
+                  data-testid="button-submit-payroll-run"
+                >
+                  {editingPayrollRun 
+                    ? (updatePayrollRunMutation.isPending ? "Updating..." : "Update")
+                    : (createPayrollRunMutation.isPending ? "Creating..." : "Create")
+                  }
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -603,15 +699,37 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                     <TableCell>${parseFloat(payrollRun.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
                     <TableCell className="font-semibold">${parseFloat(payrollRun.totalNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewPayrollRun(payrollRun)}
-                        data-testid={`button-view-payroll-run-${payrollRun.id}`}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewPayrollRun(payrollRun)}
+                          data-testid={`button-view-payroll-run-${payrollRun.id}`}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                        {payrollRun.status === 'draft' && (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleEditPayrollRun(payrollRun)}
+                              data-testid={`button-edit-${payrollRun.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleDeletePayrollRun(payrollRun.id)}
+                              data-testid={`button-delete-${payrollRun.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -620,6 +738,28 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deletePayrollRunId !== null} onOpenChange={(open) => !open && setDeletePayrollRunId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payroll Run</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payroll run? This action cannot be undone and will remove all associated payroll items.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deletePayrollRunMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deletePayrollRunMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

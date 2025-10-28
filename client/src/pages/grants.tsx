@@ -26,7 +26,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Gift, ArrowLeft } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Gift, ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import type { Organization, Grant, InsertGrant } from "@shared/schema";
@@ -42,14 +52,16 @@ interface GrantWithSpent extends Grant {
 export default function Grants({ currentOrganization }: GrantsProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<InsertGrant>>({
+  const [editingGrant, setEditingGrant] = useState<Grant | null>(null);
+  const [deleteGrantId, setDeleteGrantId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
     organizationId: currentOrganization.id,
     name: '',
     amount: '',
     restrictions: '',
-    status: 'active',
-    startDate: null,
-    endDate: null,
+    status: 'active' as 'active' | 'completed' | 'pending',
+    startDate: null as string | null,
+    endDate: null as string | null,
   });
 
   const { data: grants, isLoading, error } = useQuery<GrantWithSpent[]>({
@@ -80,16 +92,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
         title: "Grant created",
         description: "Your grant has been added successfully.",
       });
-      setIsDialogOpen(false);
-      setFormData({
-        organizationId: currentOrganization.id,
-        name: '',
-        amount: '',
-        restrictions: '',
-        status: 'active',
-        startDate: null,
-        endDate: null,
-      });
+      handleCloseDialog();
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -111,6 +114,108 @@ export default function Grants({ currentOrganization }: GrantsProps) {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return await apiRequest('PATCH', `/api/grants/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      toast({
+        title: "Grant updated",
+        description: "Your grant has been updated successfully.",
+      });
+      handleCloseDialog();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update grant. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest('DELETE', `/api/grants/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      toast({
+        title: "Grant deleted",
+        description: "The grant has been deleted successfully.",
+      });
+      setDeleteGrantId(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete grant. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingGrant(null);
+    setFormData({
+      organizationId: currentOrganization.id,
+      name: '',
+      amount: '',
+      restrictions: '',
+      status: 'active' as 'active' | 'completed' | 'pending',
+      startDate: null as string | null,
+      endDate: null as string | null,
+    });
+  };
+
+  const handleEditGrant = (grant: Grant) => {
+    setEditingGrant(grant);
+    setFormData({
+      organizationId: grant.organizationId,
+      name: grant.name,
+      amount: grant.amount,
+      restrictions: grant.restrictions || '',
+      status: grant.status,
+      startDate: grant.startDate ? (typeof grant.startDate === 'string' ? grant.startDate : grant.startDate.toISOString().split('T')[0]) : null,
+      endDate: grant.endDate ? (typeof grant.endDate === 'string' ? grant.endDate : grant.endDate.toISOString().split('T')[0]) : null,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteGrant = (id: number) => {
+    setDeleteGrantId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteGrantId) {
+      deleteMutation.mutate(deleteGrantId);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.amount) {
@@ -121,7 +226,12 @@ export default function Grants({ currentOrganization }: GrantsProps) {
       });
       return;
     }
-    createMutation.mutate(formData as InsertGrant);
+
+    if (editingGrant) {
+      updateMutation.mutate({ id: editingGrant.id, data: formData });
+    } else {
+      createMutation.mutate(formData as any);
+    }
   };
 
   if (isLoading) {
@@ -169,7 +279,10 @@ export default function Grants({ currentOrganization }: GrantsProps) {
             Back to Dashboard
           </Button>
         </Link>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          if (!open) handleCloseDialog();
+          else setIsDialogOpen(open);
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-grant">
               <Plus className="h-4 w-4 mr-2" />
@@ -178,9 +291,12 @@ export default function Grants({ currentOrganization }: GrantsProps) {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add Grant</DialogTitle>
+              <DialogTitle>{editingGrant ? 'Edit Grant' : 'Create Grant'}</DialogTitle>
               <DialogDescription>
-                Record a new grant for {currentOrganization.name}.
+                {editingGrant 
+                  ? `Update grant details for ${currentOrganization.name}.`
+                  : `Record a new grant for ${currentOrganization.name}.`
+                }
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -267,17 +383,20 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={handleCloseDialog}
                   data-testid="button-cancel-grant"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   data-testid="button-submit-grant"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create Grant"}
+                  {editingGrant 
+                    ? (updateMutation.isPending ? "Updating..." : "Update")
+                    : (createMutation.isPending ? "Creating..." : "Create")
+                  }
                 </Button>
               </div>
             </form>
@@ -313,9 +432,27 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{grant.name}</CardTitle>
-                    <Badge variant={getStatusVariant(grant.status)}>
-                      {grant.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusVariant(grant.status)}>
+                        {grant.status}
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEditGrant(grant)}
+                        data-testid={`button-edit-${grant.id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteGrant(grant.id)}
+                        data-testid={`button-delete-${grant.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   {grant.restrictions && (
                     <CardDescription className="mt-2">
@@ -377,6 +514,28 @@ export default function Grants({ currentOrganization }: GrantsProps) {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteGrantId !== null} onOpenChange={(open) => !open && setDeleteGrantId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Grant</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this grant? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
