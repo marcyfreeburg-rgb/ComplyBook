@@ -105,6 +105,19 @@ import {
   payrollItemDeductions,
   type PayrollItemDeduction,
   type InsertPayrollItemDeduction,
+  // Nonprofit-specific types
+  funds,
+  type Fund,
+  type InsertFund,
+  programs,
+  type Program,
+  type InsertProgram,
+  pledges,
+  type Pledge,
+  type InsertPledge,
+  pledgePayments,
+  type PledgePayment,
+  type InsertPledgePayment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -397,6 +410,73 @@ export interface IStorage {
   getPayrollItemDeductions(payrollItemId: number): Promise<Array<PayrollItemDeduction & { deductionName: string }>>;
   createPayrollItemDeduction(deduction: InsertPayrollItemDeduction): Promise<PayrollItemDeduction>;
   deletePayrollItemDeduction(id: number): Promise<void>;
+
+  // Nonprofit-specific: Fund operations
+  getFunds(organizationId: number): Promise<Fund[]>;
+  getFund(id: number): Promise<Fund | undefined>;
+  createFund(fund: InsertFund): Promise<Fund>;
+  updateFund(id: number, updates: Partial<InsertFund>): Promise<Fund>;
+  deleteFund(id: number): Promise<void>;
+  updateFundBalance(fundId: number, amount: string, isIncrease: boolean): Promise<Fund>;
+  getFundTransactions(fundId: number): Promise<Transaction[]>;
+
+  // Nonprofit-specific: Program operations
+  getPrograms(organizationId: number): Promise<Program[]>;
+  getProgram(id: number): Promise<Program | undefined>;
+  createProgram(program: InsertProgram): Promise<Program>;
+  updateProgram(id: number, updates: Partial<InsertProgram>): Promise<Program>;
+  deleteProgram(id: number): Promise<void>;
+  getProgramExpenses(programId: number, startDate?: Date, endDate?: Date): Promise<Array<Transaction & { totalAmount: string }>>;
+
+  // Nonprofit-specific: Pledge operations
+  getPledges(organizationId: number): Promise<Array<Pledge & { donorName: string }>>;
+  getPledge(id: number): Promise<Pledge | undefined>;
+  getPledgesByDonor(donorId: number): Promise<Pledge[]>;
+  getOverduePledges(organizationId: number): Promise<Array<Pledge & { donorName: string }>>;
+  createPledge(pledge: InsertPledge): Promise<Pledge>;
+  updatePledge(id: number, updates: Partial<InsertPledge>): Promise<Pledge>;
+  deletePledge(id: number): Promise<void>;
+  recordPledgePayment(pledgeId: number, payment: InsertPledgePayment): Promise<{ pledge: Pledge; payment: PledgePayment }>;
+
+  // Nonprofit-specific: Pledge payment operations
+  getPledgePayments(pledgeId: number): Promise<PledgePayment[]>;
+  getPledgePayment(id: number): Promise<PledgePayment | undefined>;
+  deletePledgePayment(id: number): Promise<void>;
+
+  // Nonprofit-specific: Enhanced grant operations
+  getGrant(id: number): Promise<Grant | undefined>;
+  updateGrant(id: number, updates: Partial<InsertGrant>): Promise<Grant>;
+  deleteGrant(id: number): Promise<void>;
+  getGrantsWithUpcomingDeadlines(organizationId: number, daysAhead: number): Promise<Grant[]>;
+  updateGrantCompliance(id: number, status: 'compliant' | 'at_risk' | 'non_compliant' | 'pending_review', notes?: string): Promise<Grant>;
+
+  // Nonprofit-specific: Functional expense reporting
+  getFunctionalExpenseReport(organizationId: number, startDate: Date, endDate: Date): Promise<{
+    programExpenses: string;
+    administrativeExpenses: string;
+    fundraisingExpenses: string;
+    totalExpenses: string;
+    programPercentage: number;
+    administrativePercentage: number;
+    fundraisingPercentage: number;
+    expensesByProgram: Array<{ programId: number; programName: string; amount: string }>;
+    expensesByCategory: Array<{ functionalCategory: string; categoryName: string; amount: string }>;
+  }>;
+
+  // Nonprofit-specific: Form 990 reporting
+  getForm990Data(organizationId: number, taxYear: number): Promise<{
+    totalRevenue: string;
+    totalExpenses: string;
+    programServiceExpenses: string;
+    managementExpenses: string;
+    fundraisingExpenses: string;
+    totalAssets: string;
+    totalLiabilities: string;
+    netAssets: string;
+    revenueBySource: Array<{ source: string; amount: string }>;
+    expensesByFunction: Array<{ function: string; amount: string }>;
+    grants: Array<{ grantorName: string; amount: string; purpose: string }>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2785,6 +2865,479 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayrollItemDeduction(id: number): Promise<void> {
     await db.delete(payrollItemDeductions).where(eq(payrollItemDeductions.id, id));
+  }
+
+  // ============================================
+  // NONPROFIT-SPECIFIC IMPLEMENTATIONS
+  // ============================================
+
+  // Fund operations
+  async getFunds(organizationId: number): Promise<Fund[]> {
+    const fundList = await db.select().from(funds)
+      .where(eq(funds.organizationId, organizationId))
+      .orderBy(funds.name);
+    return fundList;
+  }
+
+  async getFund(id: number): Promise<Fund | undefined> {
+    const [fund] = await db.select().from(funds).where(eq(funds.id, id));
+    return fund;
+  }
+
+  async createFund(fund: InsertFund): Promise<Fund> {
+    const [newFund] = await db.insert(funds).values(fund).returning();
+    return newFund;
+  }
+
+  async updateFund(id: number, updates: Partial<InsertFund>): Promise<Fund> {
+    const [updated] = await db.update(funds)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(funds.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFund(id: number): Promise<void> {
+    await db.delete(funds).where(eq(funds.id, id));
+  }
+
+  async updateFundBalance(fundId: number, amount: string, isIncrease: boolean): Promise<Fund> {
+    const fund = await this.getFund(fundId);
+    if (!fund) throw new Error('Fund not found');
+
+    const currentBalance = parseFloat(fund.currentBalance);
+    const changeAmount = parseFloat(amount);
+    const newBalance = isIncrease ? currentBalance + changeAmount : currentBalance - changeAmount;
+
+    return this.updateFund(fundId, { currentBalance: newBalance.toFixed(2) });
+  }
+
+  async getFundTransactions(fundId: number): Promise<Transaction[]> {
+    const txns = await db.select().from(transactions)
+      .where(eq(transactions.fundId, fundId))
+      .orderBy(desc(transactions.date));
+    return txns;
+  }
+
+  // Program operations
+  async getPrograms(organizationId: number): Promise<Program[]> {
+    const programList = await db.select().from(programs)
+      .where(eq(programs.organizationId, organizationId))
+      .orderBy(programs.name);
+    return programList;
+  }
+
+  async getProgram(id: number): Promise<Program | undefined> {
+    const [program] = await db.select().from(programs).where(eq(programs.id, id));
+    return program;
+  }
+
+  async createProgram(program: InsertProgram): Promise<Program> {
+    const [newProgram] = await db.insert(programs).values(program).returning();
+    return newProgram;
+  }
+
+  async updateProgram(id: number, updates: Partial<InsertProgram>): Promise<Program> {
+    const [updated] = await db.update(programs)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(programs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProgram(id: number): Promise<void> {
+    await db.delete(programs).where(eq(programs.id, id));
+  }
+
+  async getProgramExpenses(programId: number, startDate?: Date, endDate?: Date): Promise<Array<Transaction & { totalAmount: string }>> {
+    let query = db.select().from(transactions)
+      .where(eq(transactions.programId, programId));
+
+    if (startDate && endDate) {
+      query = query.where(and(
+        gte(transactions.date, startDate),
+        lte(transactions.date, endDate)
+      ));
+    }
+
+    const expenses = await query.orderBy(desc(transactions.date));
+    
+    // Calculate total
+    const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+    return expenses.map(exp => ({
+      ...exp,
+      totalAmount: total.toFixed(2)
+    }));
+  }
+
+  // Pledge operations
+  async getPledges(organizationId: number): Promise<Array<Pledge & { donorName: string }>> {
+    const pledgeList = await db.select({
+      id: pledges.id,
+      organizationId: pledges.organizationId,
+      donorId: pledges.donorId,
+      fundId: pledges.fundId,
+      amount: pledges.amount,
+      pledgeDate: pledges.pledgeDate,
+      dueDate: pledges.dueDate,
+      status: pledges.status,
+      amountPaid: pledges.amountPaid,
+      notes: pledges.notes,
+      paymentSchedule: pledges.paymentSchedule,
+      createdAt: pledges.createdAt,
+      updatedAt: pledges.updatedAt,
+      donorName: donors.name,
+    })
+    .from(pledges)
+    .innerJoin(donors, eq(pledges.donorId, donors.id))
+    .where(eq(pledges.organizationId, organizationId))
+    .orderBy(desc(pledges.pledgeDate));
+
+    return pledgeList;
+  }
+
+  async getPledge(id: number): Promise<Pledge | undefined> {
+    const [pledge] = await db.select().from(pledges).where(eq(pledges.id, id));
+    return pledge;
+  }
+
+  async getPledgesByDonor(donorId: number): Promise<Pledge[]> {
+    const pledgeList = await db.select().from(pledges)
+      .where(eq(pledges.donorId, donorId))
+      .orderBy(desc(pledges.pledgeDate));
+    return pledgeList;
+  }
+
+  async getOverduePledges(organizationId: number): Promise<Array<Pledge & { donorName: string }>> {
+    const today = new Date();
+    const overduePledgeList = await db.select({
+      id: pledges.id,
+      organizationId: pledges.organizationId,
+      donorId: pledges.donorId,
+      fundId: pledges.fundId,
+      amount: pledges.amount,
+      pledgeDate: pledges.pledgeDate,
+      dueDate: pledges.dueDate,
+      status: pledges.status,
+      amountPaid: pledges.amountPaid,
+      notes: pledges.notes,
+      paymentSchedule: pledges.paymentSchedule,
+      createdAt: pledges.createdAt,
+      updatedAt: pledges.updatedAt,
+      donorName: donors.name,
+    })
+    .from(pledges)
+    .innerJoin(donors, eq(pledges.donorId, donors.id))
+    .where(and(
+      eq(pledges.organizationId, organizationId),
+      lte(pledges.dueDate, today),
+      sql`${pledges.status} != 'fulfilled' AND ${pledges.status} != 'cancelled'`
+    ))
+    .orderBy(pledges.dueDate);
+
+    return overduePledgeList;
+  }
+
+  async createPledge(pledge: InsertPledge): Promise<Pledge> {
+    const [newPledge] = await db.insert(pledges).values(pledge).returning();
+    return newPledge;
+  }
+
+  async updatePledge(id: number, updates: Partial<InsertPledge>): Promise<Pledge> {
+    const [updated] = await db.update(pledges)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(pledges.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePledge(id: number): Promise<void> {
+    await db.delete(pledges).where(eq(pledges.id, id));
+  }
+
+  async recordPledgePayment(pledgeId: number, payment: InsertPledgePayment): Promise<{ pledge: Pledge; payment: PledgePayment }> {
+    // Create the payment record
+    const [newPayment] = await db.insert(pledgePayments).values(payment).returning();
+
+    // Update pledge amount paid
+    const pledge = await this.getPledge(pledgeId);
+    if (!pledge) throw new Error('Pledge not found');
+
+    const newAmountPaid = (parseFloat(pledge.amountPaid) + parseFloat(payment.amount)).toFixed(2);
+    const totalAmount = parseFloat(pledge.amount);
+    const paidAmount = parseFloat(newAmountPaid);
+
+    // Determine new status
+    let newStatus = pledge.status;
+    if (paidAmount >= totalAmount) {
+      newStatus = 'fulfilled';
+    } else if (paidAmount > 0) {
+      newStatus = 'partial';
+    }
+
+    const updatedPledge = await this.updatePledge(pledgeId, {
+      amountPaid: newAmountPaid,
+      status: newStatus,
+    });
+
+    return { pledge: updatedPledge, payment: newPayment };
+  }
+
+  // Pledge payment operations
+  async getPledgePayments(pledgeId: number): Promise<PledgePayment[]> {
+    const payments = await db.select().from(pledgePayments)
+      .where(eq(pledgePayments.pledgeId, pledgeId))
+      .orderBy(desc(pledgePayments.paymentDate));
+    return payments;
+  }
+
+  async getPledgePayment(id: number): Promise<PledgePayment | undefined> {
+    const [payment] = await db.select().from(pledgePayments).where(eq(pledgePayments.id, id));
+    return payment;
+  }
+
+  async deletePledgePayment(id: number): Promise<void> {
+    // When deleting a payment, we should also update the pledge's amountPaid
+    const payment = await this.getPledgePayment(id);
+    if (payment) {
+      const pledge = await this.getPledge(payment.pledgeId);
+      if (pledge) {
+        const newAmountPaid = (parseFloat(pledge.amountPaid) - parseFloat(payment.amount)).toFixed(2);
+        await this.updatePledge(payment.pledgeId, { amountPaid: newAmountPaid });
+      }
+    }
+
+    await db.delete(pledgePayments).where(eq(pledgePayments.id, id));
+  }
+
+  // Enhanced grant operations
+  async getGrant(id: number): Promise<Grant | undefined> {
+    const [grant] = await db.select().from(grants).where(eq(grants.id, id));
+    return grant;
+  }
+
+  async updateGrant(id: number, updates: Partial<InsertGrant>): Promise<Grant> {
+    const [updated] = await db.update(grants)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(grants.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteGrant(id: number): Promise<void> {
+    await db.delete(grants).where(eq(grants.id, id));
+  }
+
+  async getGrantsWithUpcomingDeadlines(organizationId: number, daysAhead: number): Promise<Grant[]> {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysAhead);
+
+    const upcomingGrants = await db.select().from(grants)
+      .where(and(
+        eq(grants.organizationId, organizationId),
+        gte(grants.nextReportDueDate, today),
+        lte(grants.nextReportDueDate, futureDate)
+      ))
+      .orderBy(grants.nextReportDueDate);
+
+    return upcomingGrants;
+  }
+
+  async updateGrantCompliance(id: number, status: 'compliant' | 'at_risk' | 'non_compliant' | 'pending_review', notes?: string): Promise<Grant> {
+    const updates: any = { complianceStatus: status, updatedAt: new Date() };
+    if (notes) {
+      updates.complianceNotes = notes;
+    }
+
+    const [updated] = await db.update(grants)
+      .set(updates)
+      .where(eq(grants.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  // Functional expense reporting
+  async getFunctionalExpenseReport(organizationId: number, startDate: Date, endDate: Date) {
+    // Get all expenses in the date range
+    const expenses = await db.select().from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense'),
+        gte(transactions.date, startDate),
+        lte(transactions.date, endDate)
+      ));
+
+    // Calculate totals by functional category
+    let programExpenses = 0;
+    let administrativeExpenses = 0;
+    let fundraisingExpenses = 0;
+
+    expenses.forEach(exp => {
+      const amount = parseFloat(exp.amount);
+      if (exp.functionalCategory === 'program') {
+        programExpenses += amount;
+      } else if (exp.functionalCategory === 'administrative') {
+        administrativeExpenses += amount;
+      } else if (exp.functionalCategory === 'fundraising') {
+        fundraisingExpenses += amount;
+      }
+    });
+
+    const totalExpenses = programExpenses + administrativeExpenses + fundraisingExpenses;
+
+    // Calculate percentages
+    const programPercentage = totalExpenses > 0 ? (programExpenses / totalExpenses) * 100 : 0;
+    const administrativePercentage = totalExpenses > 0 ? (administrativeExpenses / totalExpenses) * 100 : 0;
+    const fundraisingPercentage = totalExpenses > 0 ? (fundraisingExpenses / totalExpenses) * 100 : 0;
+
+    // Get expenses by program
+    const programExpenseData = await db.select({
+      programId: transactions.programId,
+      programName: programs.name,
+      amount: sql<string>`SUM(${transactions.amount})`,
+    })
+    .from(transactions)
+    .leftJoin(programs, eq(transactions.programId, programs.id))
+    .where(and(
+      eq(transactions.organizationId, organizationId),
+      eq(transactions.type, 'expense'),
+      gte(transactions.date, startDate),
+      lte(transactions.date, endDate),
+      sql`${transactions.programId} IS NOT NULL`
+    ))
+    .groupBy(transactions.programId, programs.name);
+
+    // Get expenses by category and functional type
+    const categoryExpenseData = await db.select({
+      functionalCategory: transactions.functionalCategory,
+      categoryName: categories.name,
+      amount: sql<string>`SUM(${transactions.amount})`,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(and(
+      eq(transactions.organizationId, organizationId),
+      eq(transactions.type, 'expense'),
+      gte(transactions.date, startDate),
+      lte(transactions.date, endDate)
+    ))
+    .groupBy(transactions.functionalCategory, categories.name);
+
+    return {
+      programExpenses: programExpenses.toFixed(2),
+      administrativeExpenses: administrativeExpenses.toFixed(2),
+      fundraisingExpenses: fundraisingExpenses.toFixed(2),
+      totalExpenses: totalExpenses.toFixed(2),
+      programPercentage: Math.round(programPercentage * 100) / 100,
+      administrativePercentage: Math.round(administrativePercentage * 100) / 100,
+      fundraisingPercentage: Math.round(fundraisingPercentage * 100) / 100,
+      expensesByProgram: programExpenseData.map(row => ({
+        programId: row.programId || 0,
+        programName: row.programName || 'Unknown',
+        amount: row.amount || '0.00',
+      })),
+      expensesByCategory: categoryExpenseData.map(row => ({
+        functionalCategory: row.functionalCategory || 'Unknown',
+        categoryName: row.categoryName || 'Uncategorized',
+        amount: row.amount || '0.00',
+      })),
+    };
+  }
+
+  // Form 990 reporting
+  async getForm990Data(organizationId: number, taxYear: number) {
+    const yearStart = new Date(taxYear, 0, 1);
+    const yearEnd = new Date(taxYear, 11, 31);
+
+    // Get all transactions for the year
+    const allTransactions = await db.select().from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        gte(transactions.date, yearStart),
+        lte(transactions.date, yearEnd)
+      ));
+
+    // Calculate revenue (income transactions)
+    const incomeTransactions = allTransactions.filter(t => t.type === 'income');
+    const totalRevenue = incomeTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+    // Calculate expenses by functional category
+    const expenseTransactions = allTransactions.filter(t => t.type === 'expense');
+    let programServiceExpenses = 0;
+    let managementExpenses = 0;
+    let fundraisingExpenses = 0;
+
+    expenseTransactions.forEach(exp => {
+      const amount = parseFloat(exp.amount);
+      if (exp.functionalCategory === 'program') {
+        programServiceExpenses += amount;
+      } else if (exp.functionalCategory === 'administrative') {
+        managementExpenses += amount;
+      } else if (exp.functionalCategory === 'fundraising') {
+        fundraisingExpenses += amount;
+      }
+    });
+
+    const totalExpenses = programServiceExpenses + managementExpenses + fundraisingExpenses;
+
+    // Get balance sheet data (simplified - would need proper asset/liability tracking)
+    const totalAssets = '0.00'; // Placeholder
+    const totalLiabilities = '0.00'; // Placeholder
+    const netAssets = (totalRevenue - totalExpenses).toFixed(2);
+
+    // Revenue by source (by category)
+    const revenueBySource = await db.select({
+      source: categories.name,
+      amount: sql<string>`SUM(${transactions.amount})`,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(and(
+      eq(transactions.organizationId, organizationId),
+      eq(transactions.type, 'income'),
+      gte(transactions.date, yearStart),
+      lte(transactions.date, yearEnd)
+    ))
+    .groupBy(categories.name);
+
+    // Expenses by function
+    const expensesByFunction = [
+      { function: 'Program Services', amount: programServiceExpenses.toFixed(2) },
+      { function: 'Management & General', amount: managementExpenses.toFixed(2) },
+      { function: 'Fundraising', amount: fundraisingExpenses.toFixed(2) },
+    ];
+
+    // Get grants received
+    const grantsReceived = await db.select().from(grants)
+      .where(and(
+        eq(grants.organizationId, organizationId),
+        gte(grants.startDate, yearStart),
+        lte(grants.startDate, yearEnd)
+      ));
+
+    return {
+      totalRevenue: totalRevenue.toFixed(2),
+      totalExpenses: totalExpenses.toFixed(2),
+      programServiceExpenses: programServiceExpenses.toFixed(2),
+      managementExpenses: managementExpenses.toFixed(2),
+      fundraisingExpenses: fundraisingExpenses.toFixed(2),
+      totalAssets,
+      totalLiabilities,
+      netAssets,
+      revenueBySource: revenueBySource.map(row => ({
+        source: row.source || 'Other',
+        amount: row.amount || '0.00',
+      })),
+      expensesByFunction,
+      grants: grantsReceived.map(g => ({
+        grantorName: g.name,
+        amount: g.amount,
+        purpose: g.restrictions || 'General support',
+      })),
+    };
   }
 }
 
