@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Clock, DollarSign, Users, FileText, CheckCircle, AlertCircle, Plus, Edit, Trash2, FileCheck, AlertTriangle, UserCheck } from "lucide-react";
@@ -109,6 +110,13 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     findings: "",
     notes: "",
   });
+
+  // Delete Confirmation Dialog States
+  const [deleteTimeEffortId, setDeleteTimeEffortId] = useState<number | null>(null);
+  const [deleteCostCheckId, setDeleteCostCheckId] = useState<number | null>(null);
+  const [deleteSubAwardId, setDeleteSubAwardId] = useState<number | null>(null);
+  const [deleteFFRId, setDeleteFFRId] = useState<number | null>(null);
+  const [deleteAuditItemId, setDeleteAuditItemId] = useState<number | null>(null);
 
   // Fetch data for dropdowns
   const { data: grants = [] } = useQuery({
@@ -243,6 +251,183 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     },
   });
 
+  // UPDATE Mutations
+  const updateTimeEffortMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest(`/api/time-effort-reports/${currentOrganization.id}/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/time-effort-reports/${currentOrganization.id}`] });
+      toast({ title: "Time & effort report updated successfully" });
+      setIsCreateTimeEffortOpen(false);
+      setEditingTimeEffort(null);
+      resetTimeEffortForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update time & effort report", variant: "destructive" });
+    },
+  });
+
+  const updateCostCheckMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest(`/api/cost-allowability-checks/${currentOrganization.id}/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cost-allowability-checks/${currentOrganization.id}`] });
+      toast({ title: "Cost allowability check updated successfully" });
+      setIsCreateCostCheckOpen(false);
+      setEditingCostCheck(null);
+      resetCostCheckForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update cost allowability check", variant: "destructive" });
+    },
+  });
+
+  const updateSubAwardMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest(`/api/sub-awards/${currentOrganization.id}/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/sub-awards/${currentOrganization.id}`] });
+      toast({ title: "Sub-award updated successfully" });
+      setIsCreateSubAwardOpen(false);
+      setEditingSubAward(null);
+      resetSubAwardForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update sub-award", variant: "destructive" });
+    },
+  });
+
+  const updateFFRMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest(`/api/federal-financial-reports/${currentOrganization.id}/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/federal-financial-reports/${currentOrganization.id}`] });
+      toast({ title: "Federal financial report updated successfully" });
+      setIsCreateFFROpen(false);
+      setEditingFFR(null);
+      resetFFRForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update federal financial report", variant: "destructive" });
+    },
+  });
+
+  const updateAuditItemMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest(`/api/audit-prep-items/${currentOrganization.id}/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/audit-prep-items/${currentOrganization.id}`] });
+      toast({ title: "Audit prep item updated successfully" });
+      setIsCreateAuditItemOpen(false);
+      setEditingAuditItem(null);
+      resetAuditItemForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to update audit prep item", variant: "destructive" });
+    },
+  });
+
+  // DELETE Mutations
+  const deleteTimeEffortMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/time-effort-reports/${currentOrganization.id}/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/time-effort-reports/${currentOrganization.id}`] });
+      toast({ title: "Time & effort report deleted successfully" });
+      setDeleteTimeEffortId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete time & effort report", variant: "destructive" });
+    },
+  });
+
+  const deleteCostCheckMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/cost-allowability-checks/${currentOrganization.id}/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cost-allowability-checks/${currentOrganization.id}`] });
+      toast({ title: "Cost allowability check deleted successfully" });
+      setDeleteCostCheckId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete cost allowability check", variant: "destructive" });
+    },
+  });
+
+  const deleteSubAwardMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/sub-awards/${currentOrganization.id}/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/sub-awards/${currentOrganization.id}`] });
+      toast({ title: "Sub-award deleted successfully" });
+      setDeleteSubAwardId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete sub-award", variant: "destructive" });
+    },
+  });
+
+  const deleteFFRMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/federal-financial-reports/${currentOrganization.id}/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/federal-financial-reports/${currentOrganization.id}`] });
+      toast({ title: "Federal financial report deleted successfully" });
+      setDeleteFFRId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete federal financial report", variant: "destructive" });
+    },
+  });
+
+  const deleteAuditItemMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/audit-prep-items/${currentOrganization.id}/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/audit-prep-items/${currentOrganization.id}`] });
+      toast({ title: "Audit prep item deleted successfully" });
+      setDeleteAuditItemId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete audit prep item", variant: "destructive" });
+    },
+  });
+
   // Form Handlers
   const handleCreateTimeEffort = () => {
     const payload = {
@@ -258,7 +443,11 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       certifiedBy: timeEffortFormData.certifiedBy || undefined,
       notes: timeEffortFormData.notes || undefined,
     };
-    createTimeEffortMutation.mutate(payload);
+    if (editingTimeEffort) {
+      updateTimeEffortMutation.mutate({ id: editingTimeEffort.id, data: payload });
+    } else {
+      createTimeEffortMutation.mutate(payload);
+    }
   };
 
   const handleCreateCostCheck = () => {
@@ -273,7 +462,11 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       justification: costCheckFormData.justification || undefined,
       notes: costCheckFormData.notes || undefined,
     };
-    createCostCheckMutation.mutate(payload);
+    if (editingCostCheck) {
+      updateCostCheckMutation.mutate({ id: editingCostCheck.id, data: payload });
+    } else {
+      createCostCheckMutation.mutate(payload);
+    }
   };
 
   const handleCreateSubAward = () => {
@@ -292,7 +485,11 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       nextMonitoringDate: subAwardFormData.nextMonitoringDate || undefined,
       notes: subAwardFormData.notes || undefined,
     };
-    createSubAwardMutation.mutate(payload);
+    if (editingSubAward) {
+      updateSubAwardMutation.mutate({ id: editingSubAward.id, data: payload });
+    } else {
+      createSubAwardMutation.mutate(payload);
+    }
   };
 
   const handleCreateFFR = () => {
@@ -312,7 +509,11 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       approvedDate: ffrFormData.approvedDate || undefined,
       notes: ffrFormData.notes || undefined,
     };
-    createFFRMutation.mutate(payload);
+    if (editingFFR) {
+      updateFFRMutation.mutate({ id: editingFFR.id, data: payload });
+    } else {
+      createFFRMutation.mutate(payload);
+    }
   };
 
   const handleCreateAuditItem = () => {
@@ -329,7 +530,11 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       findings: auditItemFormData.findings || undefined,
       notes: auditItemFormData.notes || undefined,
     };
-    createAuditItemMutation.mutate(payload);
+    if (editingAuditItem) {
+      updateAuditItemMutation.mutate({ id: editingAuditItem.id, data: payload });
+    } else {
+      createAuditItemMutation.mutate(payload);
+    }
   };
 
   // Reset forms
@@ -347,6 +552,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       certifiedBy: "",
       notes: "",
     });
+    setEditingTimeEffort(null);
   };
 
   const resetCostCheckForm = () => {
@@ -361,6 +567,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       justification: "",
       notes: "",
     });
+    setEditingCostCheck(null);
   };
 
   const resetSubAwardForm = () => {
@@ -379,6 +586,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       nextMonitoringDate: "",
       notes: "",
     });
+    setEditingSubAward(null);
   };
 
   const resetFFRForm = () => {
@@ -398,6 +606,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       approvedDate: "",
       notes: "",
     });
+    setEditingFFR(null);
   };
 
   const resetAuditItemForm = () => {
@@ -414,6 +623,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       findings: "",
       notes: "",
     });
+    setEditingAuditItem(null);
   };
 
   return (
@@ -513,6 +723,40 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                             </div>
                           )}
                         </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setEditingTimeEffort(report);
+                              setTimeEffortFormData({
+                                employeeId: report.employeeId.toString(),
+                                grantId: report.grantId.toString(),
+                                reportingPeriodStart: report.reportingPeriodStart,
+                                reportingPeriodEnd: report.reportingPeriodEnd,
+                                totalHours: report.totalHours.toString(),
+                                grantHours: report.grantHours.toString(),
+                                otherActivitiesHours: report.otherActivitiesHours?.toString() || "",
+                                percentageEffort: report.percentageEffort.toString(),
+                                certificationDate: report.certificationDate || "",
+                                certifiedBy: report.certifiedBy || "",
+                                notes: report.notes || "",
+                              });
+                              setIsCreateTimeEffortOpen(true);
+                            }}
+                            data-testid={`button-edit-${report.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => setDeleteTimeEffortId(report.id)}
+                            data-testid={`button-delete-${report.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -577,6 +821,38 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                               </p>
                             </div>
                           </div>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setEditingCostCheck(check);
+                              setCostCheckFormData({
+                                transactionId: check.transactionId?.toString() || "",
+                                grantId: check.grantId.toString(),
+                                costCategory: check.costCategory,
+                                amount: check.amount,
+                                allowabilityStatus: check.allowabilityStatus,
+                                reviewedBy: check.reviewedBy || "",
+                                reviewDate: check.reviewDate || "",
+                                justification: check.justification || "",
+                                notes: check.notes || "",
+                              });
+                              setIsCreateCostCheckOpen(true);
+                            }}
+                            data-testid={`button-edit-${check.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => setDeleteCostCheckId(check.id)}
+                            data-testid={`button-delete-${check.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -649,6 +925,42 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                               </p>
                             </div>
                           </div>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setEditingSubAward(award);
+                              setSubAwardFormData({
+                                grantId: award.grantId.toString(),
+                                subrecipientName: award.subrecipientName,
+                                subrecipientEIN: award.subrecipientEIN,
+                                awardAmount: award.awardAmount,
+                                awardDate: award.awardDate,
+                                startDate: award.startDate,
+                                endDate: award.endDate,
+                                purpose: award.purpose,
+                                status: award.status,
+                                complianceStatus: award.complianceStatus,
+                                lastMonitoringDate: award.lastMonitoringDate || "",
+                                nextMonitoringDate: award.nextMonitoringDate || "",
+                                notes: award.notes || "",
+                              });
+                              setIsCreateSubAwardOpen(true);
+                            }}
+                            data-testid={`button-edit-${award.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => setDeleteSubAwardId(award.id)}
+                            data-testid={`button-delete-${award.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -724,6 +1036,43 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                             </div>
                           </div>
                         </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setEditingFFR(report);
+                              setFFRFormData({
+                                grantId: report.grantId.toString(),
+                                reportingPeriodStart: report.reportingPeriodStart,
+                                reportingPeriodEnd: report.reportingPeriodEnd,
+                                federalShareExpenditure: report.federalShareExpenditure,
+                                recipientShareExpenditure: report.recipientShareExpenditure,
+                                totalExpenditure: report.totalExpenditure,
+                                unliquidatedObligations: report.unliquidatedObligations,
+                                recipientShareUnliquidated: report.recipientShareUnliquidated,
+                                programIncomeEarned: report.programIncomeEarned,
+                                programIncomeExpended: report.programIncomeExpended,
+                                status: report.status,
+                                submittedDate: report.submittedDate || "",
+                                approvedDate: report.approvedDate || "",
+                                notes: report.notes || "",
+                              });
+                              setIsCreateFFROpen(true);
+                            }}
+                            data-testid={`button-edit-${report.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => setDeleteFFRId(report.id)}
+                            data-testid={`button-delete-${report.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -794,6 +1143,40 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                             </div>
                           </div>
                         </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setEditingAuditItem(item);
+                              setAuditItemFormData({
+                                auditYear: item.auditYear.toString(),
+                                itemType: item.itemType,
+                                description: item.description,
+                                grantId: item.grantId?.toString() || "",
+                                amount: item.amount || "",
+                                completionStatus: item.completionStatus,
+                                assignedTo: item.assignedTo || "",
+                                dueDate: item.dueDate || "",
+                                completedDate: item.completedDate || "",
+                                findings: item.findings || "",
+                                notes: item.notes || "",
+                              });
+                              setIsCreateAuditItemOpen(true);
+                            }}
+                            data-testid={`button-edit-${item.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => setDeleteAuditItemId(item.id)}
+                            data-testid={`button-delete-${item.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -805,10 +1188,10 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       </Tabs>
 
       {/* Time/Effort Report Dialog */}
-      <Dialog open={isCreateTimeEffortOpen} onOpenChange={setIsCreateTimeEffortOpen}>
+      <Dialog open={isCreateTimeEffortOpen} onOpenChange={(open) => { setIsCreateTimeEffortOpen(open); if (!open) resetTimeEffortForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-time-effort">
           <DialogHeader>
-            <DialogTitle>Create Time & Effort Report</DialogTitle>
+            <DialogTitle>{editingTimeEffort ? "Edit" : "Create"} Time & Effort Report</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -883,8 +1266,8 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateTimeEffortOpen(false)} data-testid="button-cancel">Cancel</Button>
-              <Button onClick={handleCreateTimeEffort} disabled={createTimeEffortMutation.isPending} data-testid="button-submit">
-                {createTimeEffortMutation.isPending ? "Creating..." : "Create Report"}
+              <Button onClick={handleCreateTimeEffort} disabled={createTimeEffortMutation.isPending || updateTimeEffortMutation.isPending} data-testid="button-submit">
+                {(createTimeEffortMutation.isPending || updateTimeEffortMutation.isPending) ? (editingTimeEffort ? "Updating..." : "Creating...") : (editingTimeEffort ? "Update Report" : "Create Report")}
               </Button>
             </div>
           </div>
@@ -892,10 +1275,10 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       </Dialog>
 
       {/* Cost Allowability Check Dialog */}
-      <Dialog open={isCreateCostCheckOpen} onOpenChange={setIsCreateCostCheckOpen}>
+      <Dialog open={isCreateCostCheckOpen} onOpenChange={(open) => { setIsCreateCostCheckOpen(open); if (!open) resetCostCheckForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-cost-check">
           <DialogHeader>
-            <DialogTitle>Create Cost Allowability Check</DialogTitle>
+            <DialogTitle>{editingCostCheck ? "Edit" : "Create"} Cost Allowability Check</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -970,8 +1353,8 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateCostCheckOpen(false)} data-testid="button-cancel">Cancel</Button>
-              <Button onClick={handleCreateCostCheck} disabled={createCostCheckMutation.isPending} data-testid="button-submit">
-                {createCostCheckMutation.isPending ? "Creating..." : "Create Check"}
+              <Button onClick={handleCreateCostCheck} disabled={createCostCheckMutation.isPending || updateCostCheckMutation.isPending} data-testid="button-submit">
+                {(createCostCheckMutation.isPending || updateCostCheckMutation.isPending) ? (editingCostCheck ? "Updating..." : "Creating...") : (editingCostCheck ? "Update Check" : "Create Check")}
               </Button>
             </div>
           </div>
@@ -979,10 +1362,10 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       </Dialog>
 
       {/* Sub Award Dialog */}
-      <Dialog open={isCreateSubAwardOpen} onOpenChange={setIsCreateSubAwardOpen}>
+      <Dialog open={isCreateSubAwardOpen} onOpenChange={(open) => { setIsCreateSubAwardOpen(open); if (!open) resetSubAwardForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-sub-award">
           <DialogHeader>
-            <DialogTitle>Create Sub-Recipient Award</DialogTitle>
+            <DialogTitle>{editingSubAward ? "Edit" : "Create"} Sub-Recipient Award</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
@@ -1076,8 +1459,8 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateSubAwardOpen(false)} data-testid="button-cancel">Cancel</Button>
-              <Button onClick={handleCreateSubAward} disabled={createSubAwardMutation.isPending} data-testid="button-submit">
-                {createSubAwardMutation.isPending ? "Creating..." : "Create Sub-Award"}
+              <Button onClick={handleCreateSubAward} disabled={createSubAwardMutation.isPending || updateSubAwardMutation.isPending} data-testid="button-submit">
+                {(createSubAwardMutation.isPending || updateSubAwardMutation.isPending) ? (editingSubAward ? "Updating..." : "Creating...") : (editingSubAward ? "Update Sub-Award" : "Create Sub-Award")}
               </Button>
             </div>
           </div>
@@ -1085,10 +1468,10 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       </Dialog>
 
       {/* Federal Financial Report Dialog */}
-      <Dialog open={isCreateFFROpen} onOpenChange={setIsCreateFFROpen}>
+      <Dialog open={isCreateFFROpen} onOpenChange={(open) => { setIsCreateFFROpen(open); if (!open) resetFFRForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-ffr">
           <DialogHeader>
-            <DialogTitle>Create Federal Financial Report (SF-425)</DialogTitle>
+            <DialogTitle>{editingFFR ? "Edit" : "Create"} Federal Financial Report (SF-425)</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
@@ -1177,8 +1560,8 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateFFROpen(false)} data-testid="button-cancel">Cancel</Button>
-              <Button onClick={handleCreateFFR} disabled={createFFRMutation.isPending} data-testid="button-submit">
-                {createFFRMutation.isPending ? "Creating..." : "Create Report"}
+              <Button onClick={handleCreateFFR} disabled={createFFRMutation.isPending || updateFFRMutation.isPending} data-testid="button-submit">
+                {(createFFRMutation.isPending || updateFFRMutation.isPending) ? (editingFFR ? "Updating..." : "Creating...") : (editingFFR ? "Update Report" : "Create Report")}
               </Button>
             </div>
           </div>
@@ -1186,10 +1569,10 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       </Dialog>
 
       {/* Audit Prep Item Dialog */}
-      <Dialog open={isCreateAuditItemOpen} onOpenChange={setIsCreateAuditItemOpen}>
+      <Dialog open={isCreateAuditItemOpen} onOpenChange={(open) => { setIsCreateAuditItemOpen(open); if (!open) resetAuditItemForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-audit-item">
           <DialogHeader>
-            <DialogTitle>Create Audit Prep Item</DialogTitle>
+            <DialogTitle>{editingAuditItem ? "Edit" : "Create"} Audit Prep Item</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -1273,13 +1656,119 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateAuditItemOpen(false)} data-testid="button-cancel">Cancel</Button>
-              <Button onClick={handleCreateAuditItem} disabled={createAuditItemMutation.isPending} data-testid="button-submit">
-                {createAuditItemMutation.isPending ? "Creating..." : "Create Item"}
+              <Button onClick={handleCreateAuditItem} disabled={createAuditItemMutation.isPending || updateAuditItemMutation.isPending} data-testid="button-submit">
+                {(createAuditItemMutation.isPending || updateAuditItemMutation.isPending) ? (editingAuditItem ? "Updating..." : "Creating...") : (editingAuditItem ? "Update Item" : "Create Item")}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialogs */}
+      <AlertDialog open={deleteTimeEffortId !== null} onOpenChange={(open) => !open && setDeleteTimeEffortId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Time & Effort Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this time & effort report? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTimeEffortId && deleteTimeEffortMutation.mutate(deleteTimeEffortId)}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteCostCheckId !== null} onOpenChange={(open) => !open && setDeleteCostCheckId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Cost Allowability Check</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this cost allowability check? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCostCheckId && deleteCostCheckMutation.mutate(deleteCostCheckId)}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteSubAwardId !== null} onOpenChange={(open) => !open && setDeleteSubAwardId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sub-Award</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this sub-award? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteSubAwardId && deleteSubAwardMutation.mutate(deleteSubAwardId)}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteFFRId !== null} onOpenChange={(open) => !open && setDeleteFFRId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Federal Financial Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this federal financial report? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteFFRId && deleteFFRMutation.mutate(deleteFFRId)}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteAuditItemId !== null} onOpenChange={(open) => !open && setDeleteAuditItemId(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Audit Prep Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this audit prep item? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAuditItemId && deleteAuditItemMutation.mutate(deleteAuditItemId)}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
