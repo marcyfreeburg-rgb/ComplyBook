@@ -3709,7 +3709,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry> {
-    console.log('createTimeEntry received:', JSON.stringify(entry, null, 2));
     const entryData = { ...entry };
     
     if (entry.clockInTime && entry.clockOutTime) {
@@ -3722,30 +3721,22 @@ export class DatabaseStorage implements IStorage {
         const cost = hours * parseFloat(entry.hourlyRate);
         entryData.laborCost = cost.toFixed(2);
       }
-      console.log('Calculated hours:', entryData.totalHours, 'cost:', entryData.laborCost);
-    } else {
-      console.log('Skipping calculation - clockIn:', !!entry.clockInTime, 'clockOut:', !!entry.clockOutTime);
     }
     
-    console.log('Inserting entryData:', JSON.stringify(entryData, null, 2));
     const [newEntry] = await db.insert(timeEntries).values(entryData).returning();
-    console.log('Created entry:', JSON.stringify(newEntry, null, 2));
     return newEntry;
   }
 
   async updateTimeEntry(id: number, updates: Partial<InsertTimeEntry>): Promise<TimeEntry> {
-    console.log('updateTimeEntry received:', id, JSON.stringify(updates, null, 2));
     const entry = await this.getTimeEntry(id);
     if (!entry) throw new Error('Time entry not found');
     
-    console.log('Existing entry:', JSON.stringify(entry, null, 2));
     const updatedData = { ...updates, updatedAt: new Date() };
     
     const clockInTime = updates.clockInTime ? new Date(updates.clockInTime) : new Date(entry.clockInTime);
     const clockOutTime = updates.clockOutTime ? new Date(updates.clockOutTime) : (entry.clockOutTime ? new Date(entry.clockOutTime) : null);
     const hourlyRate = updates.hourlyRate ?? entry.hourlyRate;
     
-    console.log('Merged times - clockIn:', clockInTime, 'clockOut:', clockOutTime, 'rate:', hourlyRate);
     if (clockInTime && clockOutTime) {
       const hours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
       updatedData.totalHours = hours.toFixed(2);
@@ -3754,17 +3745,12 @@ export class DatabaseStorage implements IStorage {
         const cost = hours * parseFloat(hourlyRate);
         updatedData.laborCost = cost.toFixed(2);
       }
-      console.log('Calculated hours:', updatedData.totalHours, 'cost:', updatedData.laborCost);
-    } else {
-      console.log('Skipping calculation - clockIn:', !!clockInTime, 'clockOut:', !!clockOutTime);
     }
     
-    console.log('Updating with data:', JSON.stringify(updatedData, null, 2));
     const [updated] = await db.update(timeEntries)
       .set(updatedData)
       .where(eq(timeEntries.id, id))
       .returning();
-    console.log('Updated entry:', JSON.stringify(updated, null, 2));
     return updated;
   }
 
