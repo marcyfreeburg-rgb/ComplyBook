@@ -137,6 +137,22 @@ import {
   projectCosts,
   type ProjectCost,
   type InsertProjectCost,
+  // Government Grants (Nonprofit)
+  timeEffortReports,
+  type TimeEffortReport,
+  type InsertTimeEffortReport,
+  costAllowabilityChecks,
+  type CostAllowabilityCheck,
+  type InsertCostAllowabilityCheck,
+  subAwards,
+  type SubAward,
+  type InsertSubAward,
+  federalFinancialReports,
+  type FederalFinancialReport,
+  type InsertFederalFinancialReport,
+  auditPrepItems,
+  type AuditPrepItem,
+  type InsertAuditPrepItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -550,6 +566,41 @@ export interface IStorage {
   createIndirectCostRate(rate: InsertIndirectCostRate): Promise<IndirectCostRate>;
   updateIndirectCostRate(id: number, updates: Partial<InsertIndirectCostRate>): Promise<IndirectCostRate>;
   deleteIndirectCostRate(id: number): Promise<void>;
+
+  // Nonprofit: Time/Effort Reporting operations
+  getTimeEffortReports(organizationId: number): Promise<TimeEffortReport[]>;
+  getTimeEffortReport(id: number): Promise<TimeEffortReport | undefined>;
+  createTimeEffortReport(report: InsertTimeEffortReport): Promise<TimeEffortReport>;
+  updateTimeEffortReport(id: number, updates: Partial<InsertTimeEffortReport>): Promise<TimeEffortReport>;
+  deleteTimeEffortReport(id: number): Promise<void>;
+
+  // Nonprofit: Cost Allowability Check operations
+  getCostAllowabilityChecks(organizationId: number): Promise<CostAllowabilityCheck[]>;
+  getCostAllowabilityCheck(id: number): Promise<CostAllowabilityCheck | undefined>;
+  createCostAllowabilityCheck(check: InsertCostAllowabilityCheck): Promise<CostAllowabilityCheck>;
+  updateCostAllowabilityCheck(id: number, updates: Partial<InsertCostAllowabilityCheck>): Promise<CostAllowabilityCheck>;
+  deleteCostAllowabilityCheck(id: number): Promise<void>;
+
+  // Nonprofit: Sub Award operations
+  getSubAwards(organizationId: number): Promise<SubAward[]>;
+  getSubAward(id: number): Promise<SubAward | undefined>;
+  createSubAward(award: InsertSubAward): Promise<SubAward>;
+  updateSubAward(id: number, updates: Partial<InsertSubAward>): Promise<SubAward>;
+  deleteSubAward(id: number): Promise<void>;
+
+  // Nonprofit: Federal Financial Report operations
+  getFederalFinancialReports(organizationId: number): Promise<FederalFinancialReport[]>;
+  getFederalFinancialReport(id: number): Promise<FederalFinancialReport | undefined>;
+  createFederalFinancialReport(report: InsertFederalFinancialReport): Promise<FederalFinancialReport>;
+  updateFederalFinancialReport(id: number, updates: Partial<InsertFederalFinancialReport>): Promise<FederalFinancialReport>;
+  deleteFederalFinancialReport(id: number): Promise<void>;
+
+  // Nonprofit: Audit Prep Item operations
+  getAuditPrepItems(organizationId: number): Promise<AuditPrepItem[]>;
+  getAuditPrepItem(id: number): Promise<AuditPrepItem | undefined>;
+  createAuditPrepItem(item: InsertAuditPrepItem): Promise<AuditPrepItem>;
+  updateAuditPrepItem(id: number, updates: Partial<InsertAuditPrepItem>): Promise<AuditPrepItem>;
+  deleteAuditPrepItem(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3837,6 +3888,155 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIndirectCostRate(id: number): Promise<void> {
     await db.delete(indirectCostRates).where(eq(indirectCostRates.id, id));
+  }
+
+  // ============================================
+  // GOVERNMENT GRANTS (NONPROFIT) OPERATIONS
+  // ============================================
+
+  // Time/Effort Reporting operations
+  async getTimeEffortReports(organizationId: number): Promise<TimeEffortReport[]> {
+    return await db.select().from(timeEffortReports)
+      .where(eq(timeEffortReports.organizationId, organizationId))
+      .orderBy(desc(timeEffortReports.reportingPeriodEnd));
+  }
+
+  async getTimeEffortReport(id: number): Promise<TimeEffortReport | undefined> {
+    const [report] = await db.select().from(timeEffortReports).where(eq(timeEffortReports.id, id));
+    return report;
+  }
+
+  async createTimeEffortReport(report: InsertTimeEffortReport): Promise<TimeEffortReport> {
+    const [newReport] = await db.insert(timeEffortReports).values(report).returning();
+    return newReport;
+  }
+
+  async updateTimeEffortReport(id: number, updates: Partial<InsertTimeEffortReport>): Promise<TimeEffortReport> {
+    const [updated] = await db.update(timeEffortReports)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(timeEffortReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTimeEffortReport(id: number): Promise<void> {
+    await db.delete(timeEffortReports).where(eq(timeEffortReports.id, id));
+  }
+
+  // Cost Allowability Check operations
+  async getCostAllowabilityChecks(organizationId: number): Promise<CostAllowabilityCheck[]> {
+    return await db.select().from(costAllowabilityChecks)
+      .where(eq(costAllowabilityChecks.organizationId, organizationId))
+      .orderBy(desc(costAllowabilityChecks.createdAt));
+  }
+
+  async getCostAllowabilityCheck(id: number): Promise<CostAllowabilityCheck | undefined> {
+    const [check] = await db.select().from(costAllowabilityChecks).where(eq(costAllowabilityChecks.id, id));
+    return check;
+  }
+
+  async createCostAllowabilityCheck(check: InsertCostAllowabilityCheck): Promise<CostAllowabilityCheck> {
+    const [newCheck] = await db.insert(costAllowabilityChecks).values(check).returning();
+    return newCheck;
+  }
+
+  async updateCostAllowabilityCheck(id: number, updates: Partial<InsertCostAllowabilityCheck>): Promise<CostAllowabilityCheck> {
+    const [updated] = await db.update(costAllowabilityChecks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(costAllowabilityChecks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCostAllowabilityCheck(id: number): Promise<void> {
+    await db.delete(costAllowabilityChecks).where(eq(costAllowabilityChecks.id, id));
+  }
+
+  // Sub Award operations
+  async getSubAwards(organizationId: number): Promise<SubAward[]> {
+    return await db.select().from(subAwards)
+      .where(eq(subAwards.organizationId, organizationId))
+      .orderBy(desc(subAwards.awardDate));
+  }
+
+  async getSubAward(id: number): Promise<SubAward | undefined> {
+    const [award] = await db.select().from(subAwards).where(eq(subAwards.id, id));
+    return award;
+  }
+
+  async createSubAward(award: InsertSubAward): Promise<SubAward> {
+    const [newAward] = await db.insert(subAwards).values(award).returning();
+    return newAward;
+  }
+
+  async updateSubAward(id: number, updates: Partial<InsertSubAward>): Promise<SubAward> {
+    const [updated] = await db.update(subAwards)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subAwards.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSubAward(id: number): Promise<void> {
+    await db.delete(subAwards).where(eq(subAwards.id, id));
+  }
+
+  // Federal Financial Report operations
+  async getFederalFinancialReports(organizationId: number): Promise<FederalFinancialReport[]> {
+    return await db.select().from(federalFinancialReports)
+      .where(eq(federalFinancialReports.organizationId, organizationId))
+      .orderBy(desc(federalFinancialReports.reportingPeriodEnd));
+  }
+
+  async getFederalFinancialReport(id: number): Promise<FederalFinancialReport | undefined> {
+    const [report] = await db.select().from(federalFinancialReports).where(eq(federalFinancialReports.id, id));
+    return report;
+  }
+
+  async createFederalFinancialReport(report: InsertFederalFinancialReport): Promise<FederalFinancialReport> {
+    const [newReport] = await db.insert(federalFinancialReports).values(report).returning();
+    return newReport;
+  }
+
+  async updateFederalFinancialReport(id: number, updates: Partial<InsertFederalFinancialReport>): Promise<FederalFinancialReport> {
+    const [updated] = await db.update(federalFinancialReports)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(federalFinancialReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFederalFinancialReport(id: number): Promise<void> {
+    await db.delete(federalFinancialReports).where(eq(federalFinancialReports.id, id));
+  }
+
+  // Audit Prep Item operations
+  async getAuditPrepItems(organizationId: number): Promise<AuditPrepItem[]> {
+    return await db.select().from(auditPrepItems)
+      .where(eq(auditPrepItems.organizationId, organizationId))
+      .orderBy(desc(auditPrepItems.auditYear), desc(auditPrepItems.createdAt));
+  }
+
+  async getAuditPrepItem(id: number): Promise<AuditPrepItem | undefined> {
+    const [item] = await db.select().from(auditPrepItems).where(eq(auditPrepItems.id, id));
+    return item;
+  }
+
+  async createAuditPrepItem(item: InsertAuditPrepItem): Promise<AuditPrepItem> {
+    const [newItem] = await db.insert(auditPrepItems).values(item).returning();
+    return newItem;
+  }
+
+  async updateAuditPrepItem(id: number, updates: Partial<InsertAuditPrepItem>): Promise<AuditPrepItem> {
+    const [updated] = await db.update(auditPrepItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(auditPrepItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAuditPrepItem(id: number): Promise<void> {
+    await db.delete(auditPrepItems).where(eq(auditPrepItems.id, id));
   }
 }
 

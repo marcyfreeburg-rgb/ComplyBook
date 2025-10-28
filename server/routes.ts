@@ -45,6 +45,12 @@ import {
   insertProjectCostSchema,
   insertTimeEntrySchema,
   insertIndirectCostRateSchema,
+  // Government Grants (Nonprofit) schemas
+  insertTimeEffortReportSchema,
+  insertCostAllowabilityCheckSchema,
+  insertSubAwardSchema,
+  insertFederalFinancialReportSchema,
+  insertAuditPrepItemSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -5676,6 +5682,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting indirect cost rate:", error);
       res.status(500).json({ message: "Failed to delete indirect cost rate" });
+    }
+  });
+
+  // ============================================
+  // GOVERNMENT GRANTS (NONPROFIT) ROUTES
+  // ============================================
+
+  // Time/Effort Reporting Routes
+  app.get("/api/time-effort-reports/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const reports = await storage.getTimeEffortReports(organizationId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching time effort reports:", error);
+      res.status(500).json({ message: "Failed to fetch time effort reports" });
+    }
+  });
+
+  app.post("/api/time-effort-reports", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...reportData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create time effort reports" });
+      }
+
+      const validatedData = insertTimeEffortReportSchema.parse({
+        ...reportData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const report = await storage.createTimeEffortReport(validatedData);
+      await storage.logCreate(organizationId, userId, 'time_effort_report', report.id.toString(), report);
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error("Error creating time effort report:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid report data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create time effort report" });
+    }
+  });
+
+  // Cost Allowability Check Routes
+  app.get("/api/cost-allowability-checks/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const checks = await storage.getCostAllowabilityChecks(organizationId);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching cost allowability checks:", error);
+      res.status(500).json({ message: "Failed to fetch cost allowability checks" });
+    }
+  });
+
+  app.post("/api/cost-allowability-checks", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...checkData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create cost allowability checks" });
+      }
+
+      const validatedData = insertCostAllowabilityCheckSchema.parse({
+        ...checkData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const check = await storage.createCostAllowabilityCheck(validatedData);
+      await storage.logCreate(organizationId, userId, 'cost_allowability_check', check.id.toString(), check);
+      res.status(201).json(check);
+    } catch (error: any) {
+      console.error("Error creating cost allowability check:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid check data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create cost allowability check" });
+    }
+  });
+
+  // Sub Award Routes
+  app.get("/api/sub-awards/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const awards = await storage.getSubAwards(organizationId);
+      res.json(awards);
+    } catch (error) {
+      console.error("Error fetching sub-awards:", error);
+      res.status(500).json({ message: "Failed to fetch sub-awards" });
+    }
+  });
+
+  app.post("/api/sub-awards", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...awardData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create sub-awards" });
+      }
+
+      const validatedData = insertSubAwardSchema.parse({
+        ...awardData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const award = await storage.createSubAward(validatedData);
+      await storage.logCreate(organizationId, userId, 'sub_award', award.id.toString(), award);
+      res.status(201).json(award);
+    } catch (error: any) {
+      console.error("Error creating sub-award:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid award data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create sub-award" });
+    }
+  });
+
+  // Federal Financial Report Routes
+  app.get("/api/federal-financial-reports/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const reports = await storage.getFederalFinancialReports(organizationId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching federal financial reports:", error);
+      res.status(500).json({ message: "Failed to fetch federal financial reports" });
+    }
+  });
+
+  app.post("/api/federal-financial-reports", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...reportData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create federal financial reports" });
+      }
+
+      const validatedData = insertFederalFinancialReportSchema.parse({
+        ...reportData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const report = await storage.createFederalFinancialReport(validatedData);
+      await storage.logCreate(organizationId, userId, 'federal_financial_report', report.id.toString(), report);
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error("Error creating federal financial report:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid report data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create federal financial report" });
+    }
+  });
+
+  // Audit Prep Item Routes
+  app.get("/api/audit-prep-items/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const items = await storage.getAuditPrepItems(organizationId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching audit prep items:", error);
+      res.status(500).json({ message: "Failed to fetch audit prep items" });
+    }
+  });
+
+  app.post("/api/audit-prep-items", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...itemData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create audit prep items" });
+      }
+
+      const validatedData = insertAuditPrepItemSchema.parse({
+        ...itemData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const item = await storage.createAuditPrepItem(validatedData);
+      await storage.logCreate(organizationId, userId, 'audit_prep_item', item.id.toString(), item);
+      res.status(201).json(item);
+    } catch (error: any) {
+      console.error("Error creating audit prep item:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid item data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create audit prep item" });
     }
   });
 
