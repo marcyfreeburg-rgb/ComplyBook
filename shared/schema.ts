@@ -1412,6 +1412,192 @@ export type InsertProjectCost = z.infer<typeof insertProjectCostSchema>;
 export type ProjectCost = typeof projectCosts.$inferSelect;
 
 // ============================================
+// GOVERNMENT GRANTS (NONPROFIT)
+// ============================================
+
+// Time/Effort Reporting table
+export const timeEffortReports = pgTable("time_effort_reports", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  grantId: integer("grant_id").notNull().references(() => grants.id),
+  reportingPeriodStart: timestamp("reporting_period_start").notNull(),
+  reportingPeriodEnd: timestamp("reporting_period_end").notNull(),
+  totalHours: numeric("total_hours", { precision: 10, scale: 2 }).notNull(),
+  grantHours: numeric("grant_hours", { precision: 10, scale: 2 }).notNull(),
+  otherActivitiesHours: numeric("other_activities_hours", { precision: 10, scale: 2 }),
+  percentageEffort: numeric("percentage_effort", { precision: 5, scale: 2 }).notNull(),
+  certificationDate: timestamp("certification_date"),
+  certifiedBy: varchar("certified_by"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTimeEffortReportSchema = createInsertSchema(timeEffortReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  reportingPeriodStart: z.coerce.date(),
+  reportingPeriodEnd: z.coerce.date(),
+  totalHours: z.string().or(z.number()).transform(val => String(val)),
+  grantHours: z.string().or(z.number()).transform(val => String(val)),
+  otherActivitiesHours: z.string().or(z.number()).transform(val => String(val)).optional(),
+  percentageEffort: z.string().or(z.number()).transform(val => String(val)),
+  certificationDate: z.coerce.date().optional(),
+});
+
+export type InsertTimeEffortReport = z.infer<typeof insertTimeEffortReportSchema>;
+export type TimeEffortReport = typeof timeEffortReports.$inferSelect;
+
+// Cost Allowability Checks table
+export const costAllowabilityChecks = pgTable("cost_allowability_checks", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  transactionId: integer("transaction_id").references(() => transactions.id),
+  grantId: integer("grant_id").notNull().references(() => grants.id),
+  costCategory: varchar("cost_category", { length: 255 }).notNull(),
+  amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
+  allowabilityStatus: varchar("allowability_status", { length: 50 }).notNull().default('pending'),
+  reviewedBy: varchar("reviewed_by"),
+  reviewDate: timestamp("review_date"),
+  justification: text("justification"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCostAllowabilityCheckSchema = createInsertSchema(costAllowabilityChecks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  reviewDate: z.coerce.date().optional(),
+});
+
+export type InsertCostAllowabilityCheck = z.infer<typeof insertCostAllowabilityCheckSchema>;
+export type CostAllowabilityCheck = typeof costAllowabilityChecks.$inferSelect;
+
+// Sub Awards Monitoring table
+export const subAwards = pgTable("sub_awards", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  grantId: integer("grant_id").notNull().references(() => grants.id),
+  subrecipientName: varchar("subrecipient_name", { length: 255 }).notNull(),
+  subrecipientEIN: varchar("subrecipient_ein", { length: 50 }),
+  awardAmount: numeric("award_amount", { precision: 15, scale: 2 }).notNull(),
+  awardDate: timestamp("award_date").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  purpose: text("purpose"),
+  status: varchar("status", { length: 50 }).notNull().default('active'),
+  complianceStatus: varchar("compliance_status", { length: 50 }).notNull().default('compliant'),
+  lastMonitoringDate: timestamp("last_monitoring_date"),
+  nextMonitoringDate: timestamp("next_monitoring_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSubAwardSchema = createInsertSchema(subAwards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  awardAmount: z.string().or(z.number()).transform(val => String(val)),
+  awardDate: z.coerce.date(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional(),
+  lastMonitoringDate: z.coerce.date().optional(),
+  nextMonitoringDate: z.coerce.date().optional(),
+});
+
+export type InsertSubAward = z.infer<typeof insertSubAwardSchema>;
+export type SubAward = typeof subAwards.$inferSelect;
+
+// Federal Financial Reports table
+export const federalFinancialReports = pgTable("federal_financial_reports", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  grantId: integer("grant_id").notNull().references(() => grants.id),
+  reportingPeriodStart: timestamp("reporting_period_start").notNull(),
+  reportingPeriodEnd: timestamp("reporting_period_end").notNull(),
+  federalShareExpenditure: numeric("federal_share_expenditure", { precision: 15, scale: 2 }),
+  recipientShareExpenditure: numeric("recipient_share_expenditure", { precision: 15, scale: 2 }),
+  totalExpenditure: numeric("total_expenditure", { precision: 15, scale: 2 }),
+  unliquidatedObligations: numeric("unliquidated_obligations", { precision: 15, scale: 2 }),
+  recipientShareUnliquidated: numeric("recipient_share_unliquidated", { precision: 15, scale: 2 }),
+  programIncomeEarned: numeric("program_income_earned", { precision: 15, scale: 2 }),
+  programIncomeExpended: numeric("program_income_expended", { precision: 15, scale: 2 }),
+  status: varchar("status", { length: 50 }).notNull().default('draft'),
+  submittedDate: timestamp("submitted_date"),
+  approvedDate: timestamp("approved_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertFederalFinancialReportSchema = createInsertSchema(federalFinancialReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  reportingPeriodStart: z.coerce.date(),
+  reportingPeriodEnd: z.coerce.date(),
+  federalShareExpenditure: z.string().or(z.number()).transform(val => String(val)).optional(),
+  recipientShareExpenditure: z.string().or(z.number()).transform(val => String(val)).optional(),
+  totalExpenditure: z.string().or(z.number()).transform(val => String(val)).optional(),
+  unliquidatedObligations: z.string().or(z.number()).transform(val => String(val)).optional(),
+  recipientShareUnliquidated: z.string().or(z.number()).transform(val => String(val)).optional(),
+  programIncomeEarned: z.string().or(z.number()).transform(val => String(val)).optional(),
+  programIncomeExpended: z.string().or(z.number()).transform(val => String(val)).optional(),
+  submittedDate: z.coerce.date().optional(),
+  approvedDate: z.coerce.date().optional(),
+});
+
+export type InsertFederalFinancialReport = z.infer<typeof insertFederalFinancialReportSchema>;
+export type FederalFinancialReport = typeof federalFinancialReports.$inferSelect;
+
+// Audit Prep Items table
+export const auditPrepItems = pgTable("audit_prep_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  auditYear: varchar("audit_year", { length: 4 }).notNull(),
+  itemType: varchar("item_type", { length: 100 }).notNull(),
+  description: text("description").notNull(),
+  grantId: integer("grant_id").references(() => grants.id),
+  amount: numeric("amount", { precision: 15, scale: 2 }),
+  completionStatus: varchar("completion_status", { length: 50 }).notNull().default('not_started'),
+  assignedTo: varchar("assigned_to"),
+  dueDate: timestamp("due_date"),
+  completedDate: timestamp("completed_date"),
+  findings: text("findings"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAuditPrepItemSchema = createInsertSchema(auditPrepItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)).optional(),
+  dueDate: z.coerce.date().optional(),
+  completedDate: z.coerce.date().optional(),
+});
+
+export type InsertAuditPrepItem = z.infer<typeof insertAuditPrepItemSchema>;
+export type AuditPrepItem = typeof auditPrepItems.$inferSelect;
+
+// ============================================
 // RELATIONS
 // ============================================
 
