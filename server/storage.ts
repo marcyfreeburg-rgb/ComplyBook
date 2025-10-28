@@ -90,6 +90,21 @@ import {
   auditLogs,
   type AuditLog,
   type InsertAuditLog,
+  employees,
+  type Employee,
+  type InsertEmployee,
+  deductions,
+  type Deduction,
+  type InsertDeduction,
+  payrollRuns,
+  type PayrollRun,
+  type InsertPayrollRun,
+  payrollItems,
+  type PayrollItem,
+  type InsertPayrollItem,
+  payrollItemDeductions,
+  type PayrollItemDeduction,
+  type InsertPayrollItemDeduction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -348,6 +363,40 @@ export interface IStorage {
   logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void>;
   logUpdate(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any, newValues: any): Promise<void>;
   logDelete(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any): Promise<void>;
+
+  // Employee operations
+  getEmployees(organizationId: number): Promise<Employee[]>;
+  getEmployee(id: number): Promise<Employee | undefined>;
+  getActiveEmployees(organizationId: number): Promise<Employee[]>;
+  createEmployee(employee: InsertEmployee): Promise<Employee>;
+  updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee>;
+  deleteEmployee(id: number): Promise<void>;
+
+  // Deduction operations
+  getDeductions(organizationId: number): Promise<Deduction[]>;
+  getDeduction(id: number): Promise<Deduction | undefined>;
+  getActiveDeductions(organizationId: number): Promise<Deduction[]>;
+  createDeduction(deduction: InsertDeduction): Promise<Deduction>;
+  updateDeduction(id: number, updates: Partial<InsertDeduction>): Promise<Deduction>;
+  deleteDeduction(id: number): Promise<void>;
+
+  // Payroll run operations
+  getPayrollRuns(organizationId: number): Promise<PayrollRun[]>;
+  getPayrollRun(id: number): Promise<PayrollRun | undefined>;
+  createPayrollRun(payrollRun: InsertPayrollRun): Promise<PayrollRun>;
+  updatePayrollRun(id: number, updates: Partial<InsertPayrollRun>): Promise<PayrollRun>;
+  deletePayrollRun(id: number): Promise<void>;
+  processPayrollRun(id: number, userId: string): Promise<PayrollRun>;
+
+  // Payroll item operations
+  getPayrollItems(payrollRunId: number): Promise<Array<PayrollItem & { employeeName: string; employeeNumber: string | null }>>;
+  getPayrollItem(id: number): Promise<PayrollItem | undefined>;
+  createPayrollItem(payrollItem: InsertPayrollItem): Promise<PayrollItem>;
+  updatePayrollItem(id: number, updates: Partial<InsertPayrollItem>): Promise<PayrollItem>;
+  deletePayrollItem(id: number): Promise<void>;
+  getPayrollItemDeductions(payrollItemId: number): Promise<Array<PayrollItemDeduction & { deductionName: string }>>;
+  createPayrollItemDeduction(deduction: InsertPayrollItemDeduction): Promise<PayrollItemDeduction>;
+  deletePayrollItemDeduction(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2557,6 +2606,185 @@ export class DatabaseStorage implements IStorage {
       oldValues,
       changes: `Deleted ${entityType} #${entityId}`,
     });
+  }
+
+  // Employee operations
+  async getEmployees(organizationId: number): Promise<Employee[]> {
+    return await db.select().from(employees).where(eq(employees.organizationId, organizationId)).orderBy(desc(employees.createdAt));
+  }
+
+  async getEmployee(id: number): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+    return employee;
+  }
+
+  async getActiveEmployees(organizationId: number): Promise<Employee[]> {
+    return await db.select().from(employees).where(
+      and(eq(employees.organizationId, organizationId), eq(employees.isActive, 1))
+    ).orderBy(employees.lastName, employees.firstName);
+  }
+
+  async createEmployee(employee: InsertEmployee): Promise<Employee> {
+    const [newEmployee] = await db.insert(employees).values(employee).returning();
+    return newEmployee;
+  }
+
+  async updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee> {
+    const [updated] = await db.update(employees)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(employees.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteEmployee(id: number): Promise<void> {
+    await db.delete(employees).where(eq(employees.id, id));
+  }
+
+  // Deduction operations
+  async getDeductions(organizationId: number): Promise<Deduction[]> {
+    return await db.select().from(deductions).where(eq(deductions.organizationId, organizationId)).orderBy(deductions.name);
+  }
+
+  async getDeduction(id: number): Promise<Deduction | undefined> {
+    const [deduction] = await db.select().from(deductions).where(eq(deductions.id, id));
+    return deduction;
+  }
+
+  async getActiveDeductions(organizationId: number): Promise<Deduction[]> {
+    return await db.select().from(deductions).where(
+      and(eq(deductions.organizationId, organizationId), eq(deductions.isActive, 1))
+    ).orderBy(deductions.name);
+  }
+
+  async createDeduction(deduction: InsertDeduction): Promise<Deduction> {
+    const [newDeduction] = await db.insert(deductions).values(deduction).returning();
+    return newDeduction;
+  }
+
+  async updateDeduction(id: number, updates: Partial<InsertDeduction>): Promise<Deduction> {
+    const [updated] = await db.update(deductions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(deductions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDeduction(id: number): Promise<void> {
+    await db.delete(deductions).where(eq(deductions.id, id));
+  }
+
+  // Payroll run operations
+  async getPayrollRuns(organizationId: number): Promise<PayrollRun[]> {
+    return await db.select().from(payrollRuns).where(eq(payrollRuns.organizationId, organizationId)).orderBy(desc(payrollRuns.payDate));
+  }
+
+  async getPayrollRun(id: number): Promise<PayrollRun | undefined> {
+    const [payrollRun] = await db.select().from(payrollRuns).where(eq(payrollRuns.id, id));
+    return payrollRun;
+  }
+
+  async createPayrollRun(payrollRun: InsertPayrollRun): Promise<PayrollRun> {
+    const [newPayrollRun] = await db.insert(payrollRuns).values(payrollRun).returning();
+    return newPayrollRun;
+  }
+
+  async updatePayrollRun(id: number, updates: Partial<InsertPayrollRun>): Promise<PayrollRun> {
+    const [updated] = await db.update(payrollRuns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(payrollRuns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePayrollRun(id: number): Promise<void> {
+    await db.delete(payrollRuns).where(eq(payrollRuns.id, id));
+  }
+
+  async processPayrollRun(id: number, userId: string): Promise<PayrollRun> {
+    // Update the payroll run to processed status
+    const [updated] = await db.update(payrollRuns)
+      .set({ 
+        status: 'processed',
+        processedBy: userId,
+        processedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(payrollRuns.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  // Payroll item operations
+  async getPayrollItems(payrollRunId: number): Promise<Array<PayrollItem & { employeeName: string; employeeNumber: string | null }>> {
+    const items = await db.select({
+      id: payrollItems.id,
+      payrollRunId: payrollItems.payrollRunId,
+      employeeId: payrollItems.employeeId,
+      hoursWorked: payrollItems.hoursWorked,
+      grossPay: payrollItems.grossPay,
+      totalDeductions: payrollItems.totalDeductions,
+      netPay: payrollItems.netPay,
+      notes: payrollItems.notes,
+      createdAt: payrollItems.createdAt,
+      employeeName: sql<string>`CONCAT(${employees.firstName}, ' ', ${employees.lastName})`,
+      employeeNumber: employees.employeeNumber,
+    })
+    .from(payrollItems)
+    .innerJoin(employees, eq(payrollItems.employeeId, employees.id))
+    .where(eq(payrollItems.payrollRunId, payrollRunId))
+    .orderBy(employees.lastName, employees.firstName);
+
+    return items;
+  }
+
+  async getPayrollItem(id: number): Promise<PayrollItem | undefined> {
+    const [item] = await db.select().from(payrollItems).where(eq(payrollItems.id, id));
+    return item;
+  }
+
+  async createPayrollItem(payrollItem: InsertPayrollItem): Promise<PayrollItem> {
+    const [newItem] = await db.insert(payrollItems).values(payrollItem).returning();
+    return newItem;
+  }
+
+  async updatePayrollItem(id: number, updates: Partial<InsertPayrollItem>): Promise<PayrollItem> {
+    const [updated] = await db.update(payrollItems)
+      .set(updates)
+      .where(eq(payrollItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePayrollItem(id: number): Promise<void> {
+    await db.delete(payrollItems).where(eq(payrollItems.id, id));
+  }
+
+  async getPayrollItemDeductions(payrollItemId: number): Promise<Array<PayrollItemDeduction & { deductionName: string }>> {
+    const itemDeductions = await db.select({
+      id: payrollItemDeductions.id,
+      payrollItemId: payrollItemDeductions.payrollItemId,
+      deductionId: payrollItemDeductions.deductionId,
+      amount: payrollItemDeductions.amount,
+      createdAt: payrollItemDeductions.createdAt,
+      deductionName: deductions.name,
+    })
+    .from(payrollItemDeductions)
+    .innerJoin(deductions, eq(payrollItemDeductions.deductionId, deductions.id))
+    .where(eq(payrollItemDeductions.payrollItemId, payrollItemId))
+    .orderBy(deductions.name);
+
+    return itemDeductions;
+  }
+
+  async createPayrollItemDeduction(deduction: InsertPayrollItemDeduction): Promise<PayrollItemDeduction> {
+    const [newDeduction] = await db.insert(payrollItemDeductions).values(deduction).returning();
+    return newDeduction;
+  }
+
+  async deletePayrollItemDeduction(id: number): Promise<void> {
+    await db.delete(payrollItemDeductions).where(eq(payrollItemDeductions.id, id));
   }
 }
 

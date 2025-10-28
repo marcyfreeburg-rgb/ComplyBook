@@ -19,6 +19,9 @@ import Vendors from "@/pages/vendors";
 import Clients from "@/pages/clients";
 import Donors from "@/pages/donors";
 import DonationLetters from "@/pages/donation-letters";
+import Employees from "@/pages/employees";
+import Deductions from "@/pages/deductions";
+import Payroll from "@/pages/payroll";
 import Invoices from "@/pages/invoices";
 import Bills from "@/pages/bills";
 import BrandSettings from "@/pages/brand-settings";
@@ -170,6 +173,24 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/clients">
                 <Clients 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/employees">
+                <Employees 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/deductions">
+                <Deductions 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/payroll">
+                <Payroll 
                   currentOrganization={currentOrganization}
                   userId={user?.id || ''}
                 />

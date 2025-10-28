@@ -41,6 +41,12 @@ export const taxFormTypeEnum = pgEnum('tax_form_type', ['1099_nec', '1099_misc',
 export const cashFlowScenarioTypeEnum = pgEnum('cash_flow_scenario_type', ['optimistic', 'realistic', 'pessimistic', 'custom']);
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete']);
 export const reconciliationStatusEnum = pgEnum('reconciliation_status', ['unreconciled', 'reconciled', 'pending']);
+export const employmentTypeEnum = pgEnum('employment_type', ['full_time', 'part_time', 'contractor']);
+export const payTypeEnum = pgEnum('pay_type', ['salary', 'hourly']);
+export const payScheduleEnum = pgEnum('pay_schedule', ['weekly', 'biweekly', 'semimonthly', 'monthly']);
+export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'processed', 'paid']);
+export const deductionTypeEnum = pgEnum('deduction_type', ['tax', 'insurance', 'retirement', 'garnishment', 'other']);
+export const deductionCalculationTypeEnum = pgEnum('deduction_calculation_type', ['percentage', 'fixed_amount']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -895,6 +901,142 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ============================================
+// PAYROLL
+// ============================================
+
+export const employees = pgTable("employees", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  employeeNumber: varchar("employee_number", { length: 50 }),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  employmentType: employmentTypeEnum("employment_type").notNull().default('full_time'),
+  payType: payTypeEnum("pay_type").notNull().default('salary'),
+  payRate: numeric("pay_rate", { precision: 12, scale: 2 }).notNull(), // annual salary or hourly rate
+  paySchedule: payScheduleEnum("pay_schedule").notNull().default('biweekly'),
+  hireDate: timestamp("hire_date"),
+  terminationDate: timestamp("termination_date"),
+  bankAccountNumber: varchar("bank_account_number", { length: 100 }), // encrypted in real app
+  bankRoutingNumber: varchar("bank_routing_number", { length: 20 }),
+  taxWithholdingInfo: jsonb("tax_withholding_info"), // W4 information, state tax, etc.
+  notes: text("notes"),
+  isActive: integer("is_active").notNull().default(1), // 1 = active, 0 = inactive
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_employees_org_id").on(table.organizationId),
+  index("idx_employees_active").on(table.isActive),
+]);
+
+export const insertEmployeeSchema = createInsertSchema(employees).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type Employee = typeof employees.$inferSelect;
+
+export const deductions = pgTable("deductions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  type: deductionTypeEnum("type").notNull(),
+  calculationType: deductionCalculationTypeEnum("calculation_type").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // percentage (e.g., 15.00 for 15%) or fixed amount
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_deductions_org_id").on(table.organizationId),
+]);
+
+export const insertDeductionSchema = createInsertSchema(deductions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDeduction = z.infer<typeof insertDeductionSchema>;
+export type Deduction = typeof deductions.$inferSelect;
+
+export const payrollRuns = pgTable("payroll_runs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  payPeriodStart: timestamp("pay_period_start").notNull(),
+  payPeriodEnd: timestamp("pay_period_end").notNull(),
+  payDate: timestamp("pay_date").notNull(),
+  status: payrollStatusEnum("status").notNull().default('draft'),
+  totalGross: numeric("total_gross", { precision: 12, scale: 2 }).notNull().default('0'),
+  totalDeductions: numeric("total_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
+  totalNet: numeric("total_net", { precision: 12, scale: 2 }).notNull().default('0'),
+  notes: text("notes"),
+  processedBy: varchar("processed_by").references(() => users.id),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_payroll_runs_org_id").on(table.organizationId),
+  index("idx_payroll_runs_status").on(table.status),
+  index("idx_payroll_runs_pay_date").on(table.payDate),
+]);
+
+export const insertPayrollRunSchema = createInsertSchema(payrollRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayrollRun = z.infer<typeof insertPayrollRunSchema>;
+export type PayrollRun = typeof payrollRuns.$inferSelect;
+
+export const payrollItems = pgTable("payroll_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  payrollRunId: integer("payroll_run_id").notNull().references(() => payrollRuns.id, { onDelete: 'cascade' }),
+  employeeId: integer("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  hoursWorked: numeric("hours_worked", { precision: 8, scale: 2 }), // for hourly employees
+  grossPay: numeric("gross_pay", { precision: 12, scale: 2 }).notNull(),
+  totalDeductions: numeric("total_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
+  netPay: numeric("net_pay", { precision: 12, scale: 2 }).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_payroll_items_run_id").on(table.payrollRunId),
+  index("idx_payroll_items_employee_id").on(table.employeeId),
+]);
+
+export const insertPayrollItemSchema = createInsertSchema(payrollItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPayrollItem = z.infer<typeof insertPayrollItemSchema>;
+export type PayrollItem = typeof payrollItems.$inferSelect;
+
+export const payrollItemDeductions = pgTable("payroll_item_deductions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  payrollItemId: integer("payroll_item_id").notNull().references(() => payrollItems.id, { onDelete: 'cascade' }),
+  deductionId: integer("deduction_id").notNull().references(() => deductions.id, { onDelete: 'cascade' }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_payroll_item_deductions_item_id").on(table.payrollItemId),
+  index("idx_payroll_item_deductions_deduction_id").on(table.deductionId),
+]);
+
+export const insertPayrollItemDeductionSchema = createInsertSchema(payrollItemDeductions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPayrollItemDeduction = z.infer<typeof insertPayrollItemDeductionSchema>;
+export type PayrollItemDeduction = typeof payrollItemDeductions.$inferSelect;
 
 // ============================================
 // RELATIONS

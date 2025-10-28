@@ -1,0 +1,625 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus } from "lucide-react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { PayrollRun, PayrollItem, Employee, Deduction, Organization } from "@shared/schema";
+
+interface PayrollProps {
+  currentOrganization: Organization;
+  userId: string;
+}
+
+export default function Payroll({ currentOrganization, userId }: PayrollProps) {
+  const { toast } = useToast();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
+  const [selectedPayrollRun, setSelectedPayrollRun] = useState<PayrollRun | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [hoursWorked, setHoursWorked] = useState<string>("");
+  
+  const [formData, setFormData] = useState({
+    payPeriodStart: "",
+    payPeriodEnd: "",
+    payDate: "",
+    notes: "",
+  });
+
+  const { data: payrollRuns = [], isLoading } = useQuery<PayrollRun[]>({
+    queryKey: [`/api/payroll-runs/${currentOrganization.id}`],
+  });
+
+  const { data: employees = [] } = useQuery<Employee[]>({
+    queryKey: [`/api/employees/${currentOrganization.id}/active`],
+  });
+
+  const { data: deductions = [] } = useQuery<Deduction[]>({
+    queryKey: [`/api/deductions/${currentOrganization.id}/active`],
+  });
+
+  const { data: payrollItems = [], isLoading: isLoadingItems } = useQuery<Array<PayrollItem & { employeeName: string; employeeNumber: string | null }>>({
+    queryKey: [`/api/payroll-items/${selectedPayrollRun?.id}`],
+    enabled: !!selectedPayrollRun,
+  });
+
+  const resetForm = () => {
+    setFormData({
+      payPeriodStart: "",
+      payPeriodEnd: "",
+      payDate: "",
+      notes: "",
+    });
+  };
+
+  const createPayrollRunMutation = useMutation({
+    mutationFn: async () => {
+      if (!formData.payPeriodStart || !formData.payPeriodEnd || !formData.payDate) {
+        throw new Error("Pay period and pay date are required");
+      }
+      return await apiRequest('POST', '/api/payroll-runs', {
+        organizationId: currentOrganization.id,
+        payPeriodStart: formData.payPeriodStart,
+        payPeriodEnd: formData.payPeriodEnd,
+        payDate: formData.payDate,
+        status: 'draft',
+        totalGross: '0',
+        totalDeductions: '0',
+        totalNet: '0',
+        notes: formData.notes,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/payroll-runs/${currentOrganization.id}`] });
+      toast({
+        title: "Payroll run created",
+        description: "Payroll run has been created successfully.",
+      });
+      setIsCreateDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create payroll run. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const processPayrollRunMutation = useMutation({
+    mutationFn: async (payrollRunId: number) => {
+      return await apiRequest('POST', `/api/payroll-runs/${payrollRunId}/process`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/payroll-runs/${currentOrganization.id}`] });
+      toast({
+        title: "Payroll processed",
+        description: "Payroll run has been processed successfully.",
+      });
+      if (selectedPayrollRun) {
+        setSelectedPayrollRun({ ...selectedPayrollRun, status: 'processed' as any });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process payroll run.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePayrollRunMutation = useMutation({
+    mutationFn: async (payrollRunId: number) => {
+      return await apiRequest('DELETE', `/api/payroll-runs/${payrollRunId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/payroll-runs/${currentOrganization.id}`] });
+      toast({
+        title: "Payroll run deleted",
+        description: "The payroll run has been removed successfully.",
+      });
+      if (selectedPayrollRun && isViewDialogOpen) {
+        setIsViewDialogOpen(false);
+        setSelectedPayrollRun(null);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete payroll run.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addEmployeeToPayrollMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedPayrollRun || !selectedEmployeeId) {
+        throw new Error("Please select an employee");
+      }
+      
+      const employee = employees.find(e => e.id === parseInt(selectedEmployeeId));
+      if (!employee) {
+        throw new Error("Employee not found");
+      }
+
+      // Validate hours for hourly employees (client-side only for UX)
+      if (employee.payType === 'hourly') {
+        if (!hoursWorked || parseFloat(hoursWorked) <= 0) {
+          throw new Error("Hours worked is required for hourly employees");
+        }
+      }
+
+      // Send only minimal data - server will calculate everything
+      const payload: any = {
+        payrollRunId: selectedPayrollRun.id,
+        employeeId: employee.id,
+      };
+
+      // Include hours only if provided (for hourly employees)
+      if (hoursWorked && parseFloat(hoursWorked) > 0) {
+        payload.hoursWorked = parseFloat(hoursWorked);
+      }
+
+      return await apiRequest('POST', '/api/payroll-items', payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/payroll-items/${selectedPayrollRun?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/payroll-runs/${currentOrganization.id}`] });
+      toast({
+        title: "Employee added",
+        description: "Employee has been added to the payroll run successfully.",
+      });
+      setIsAddEmployeeDialogOpen(false);
+      setSelectedEmployeeId("");
+      setHoursWorked("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add employee to payroll run.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleViewPayrollRun = (payrollRun: PayrollRun) => {
+    setSelectedPayrollRun(payrollRun);
+    setIsViewDialogOpen(true);
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'secondary';
+      case 'processed':
+        return 'default';
+      case 'paid':
+        return 'default';
+      default:
+        return 'secondary';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'text-yellow-600 dark:text-yellow-400';
+      case 'processed':
+        return 'text-blue-600 dark:text-blue-400';
+      case 'paid':
+        return 'text-green-600 dark:text-green-400';
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">Payroll</h1>
+          <p className="text-muted-foreground">Manage payroll runs and employee payments</p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-payroll-run">
+              <Plus className="w-4 h-4 mr-2" />
+              New Payroll Run
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create Payroll Run</DialogTitle>
+              <DialogDescription>
+                Create a new payroll run for a pay period
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pay-period-start">Pay Period Start *</Label>
+                  <Input
+                    id="pay-period-start"
+                    type="date"
+                    value={formData.payPeriodStart}
+                    onChange={(e) => setFormData({ ...formData, payPeriodStart: e.target.value })}
+                    data-testid="input-pay-period-start"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pay-period-end">Pay Period End *</Label>
+                  <Input
+                    id="pay-period-end"
+                    type="date"
+                    value={formData.payPeriodEnd}
+                    onChange={(e) => setFormData({ ...formData, payPeriodEnd: e.target.value })}
+                    data-testid="input-pay-period-end"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pay-date">Pay Date *</Label>
+                <Input
+                  id="pay-date"
+                  type="date"
+                  value={formData.payDate}
+                  onChange={(e) => setFormData({ ...formData, payDate: e.target.value })}
+                  data-testid="input-pay-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Additional information about this payroll run"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  data-testid="input-notes"
+                  rows={3}
+                />
+              </div>
+              <Button
+                onClick={() => createPayrollRunMutation.mutate()}
+                disabled={
+                  createPayrollRunMutation.isPending ||
+                  !formData.payPeriodStart ||
+                  !formData.payPeriodEnd ||
+                  !formData.payDate
+                }
+                className="w-full"
+                data-testid="button-create-payroll-run-submit"
+              >
+                {createPayrollRunMutation.isPending ? "Creating..." : "Create Payroll Run"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {employees.length === 0 && (
+        <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100">No Active Employees</h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
+                  You need to add active employees before creating payroll runs. Go to the Employees page to add employees.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Payroll Run Details</DialogTitle>
+            <DialogDescription>
+              View payroll items and process payroll
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPayrollRun && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-md">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pay Period</p>
+                  <p className="font-semibold">
+                    {new Date(selectedPayrollRun.payPeriodStart).toLocaleDateString()} - {new Date(selectedPayrollRun.payPeriodEnd).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pay Date</p>
+                  <p className="font-semibold">{new Date(selectedPayrollRun.payDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge variant={getStatusBadgeVariant(selectedPayrollRun.status)} className="mt-1">
+                    <span className={getStatusColor(selectedPayrollRun.status)}>
+                      {selectedPayrollRun.status.charAt(0).toUpperCase() + selectedPayrollRun.status.slice(1)}
+                    </span>
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Net Pay</p>
+                  <p className="font-semibold text-lg">${parseFloat(selectedPayrollRun.totalNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <CardTitle>Payroll Items</CardTitle>
+                      <CardDescription>
+                        Employees included in this payroll run
+                      </CardDescription>
+                    </div>
+                    {selectedPayrollRun.status === 'draft' && (
+                      <Button
+                        size="sm"
+                        onClick={() => setIsAddEmployeeDialogOpen(true)}
+                        data-testid="button-add-employee-to-payroll"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add Employee
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingItems ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading payroll items...</div>
+                  ) : payrollItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                      <p className="text-sm text-muted-foreground">No payroll items yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Add employees to this payroll run to continue
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Hours</TableHead>
+                          <TableHead>Gross Pay</TableHead>
+                          <TableHead>Deductions</TableHead>
+                          <TableHead>Net Pay</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {payrollItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.employeeName}</p>
+                                {item.employeeNumber && (
+                                  <p className="text-xs text-muted-foreground">#{item.employeeNumber}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{item.hoursWorked || '-'}</TableCell>
+                            <TableCell>${parseFloat(item.grossPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>${parseFloat(item.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="font-semibold">${parseFloat(item.netPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="flex gap-2 justify-end">
+                {selectedPayrollRun.status === 'draft' && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => deletePayrollRunMutation.mutate(selectedPayrollRun.id)}
+                      disabled={deletePayrollRunMutation.isPending}
+                      data-testid="button-delete-payroll-run"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                    <Button
+                      onClick={() => processPayrollRunMutation.mutate(selectedPayrollRun.id)}
+                      disabled={processPayrollRunMutation.isPending || payrollItems.length === 0}
+                      data-testid="button-process-payroll-run"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Process Payroll
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Employee to Payroll</DialogTitle>
+            <DialogDescription>
+              Select an employee to add to this payroll run. Pay will be calculated automatically based on their rate and any active deductions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="employee-select">Employee *</Label>
+              <Select
+                value={selectedEmployeeId}
+                onValueChange={(value) => setSelectedEmployeeId(value)}
+              >
+                <SelectTrigger id="employee-select" data-testid="select-employee">
+                  <SelectValue placeholder="Select an employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees
+                    .filter(emp => !payrollItems.find(item => item.employeeId === emp.id))
+                    .map((employee) => (
+                      <SelectItem key={employee.id} value={String(employee.id)}>
+                        {employee.firstName} {employee.lastName}
+                        {employee.employeeNumber && ` (${employee.employeeNumber})`}
+                        {' - '}
+                        {employee.payType === 'hourly' 
+                          ? `$${parseFloat(employee.payRate).toFixed(2)}/hr`
+                          : `$${parseFloat(employee.payRate).toLocaleString()}/year`
+                        }
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedEmployeeId && employees.find(e => e.id === parseInt(selectedEmployeeId))?.payType === 'hourly' && (
+              <div className="space-y-2">
+                <Label htmlFor="hours-worked">Hours Worked *</Label>
+                <Input
+                  id="hours-worked"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="40.00"
+                  value={hoursWorked}
+                  onChange={(e) => setHoursWorked(e.target.value)}
+                  data-testid="input-hours-worked"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter the total hours worked during this pay period
+                </p>
+              </div>
+            )}
+            {deductions.length > 0 && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm font-semibold mb-2">Active Deductions:</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {deductions.map((deduction) => (
+                    <li key={deduction.id}>
+                      • {deduction.name}: {deduction.calculationType === 'percentage' 
+                        ? `${parseFloat(deduction.amount).toFixed(2)}%` 
+                        : `$${parseFloat(deduction.amount).toFixed(2)}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddEmployeeDialogOpen(false);
+                  setSelectedEmployeeId("");
+                  setHoursWorked("");
+                }}
+                data-testid="button-add-employee-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => addEmployeeToPayrollMutation.mutate()}
+                disabled={
+                  addEmployeeToPayrollMutation.isPending ||
+                  !selectedEmployeeId ||
+                  (employees.find(e => e.id === parseInt(selectedEmployeeId))?.payType === 'hourly' && !hoursWorked)
+                }
+                data-testid="button-add-employee-submit"
+              >
+                {addEmployeeToPayrollMutation.isPending ? "Adding..." : "Add to Payroll"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Payroll Runs</CardTitle>
+          <CardDescription>
+            All payroll runs for your organization
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading payroll runs...</div>
+          ) : payrollRuns.length === 0 ? (
+            <div className="text-center py-8">
+              <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground">No payroll runs yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Create your first payroll run to start processing payroll
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pay Period</TableHead>
+                  <TableHead>Pay Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total Gross</TableHead>
+                  <TableHead>Total Deductions</TableHead>
+                  <TableHead>Total Net</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payrollRuns.map((payrollRun) => (
+                  <TableRow key={payrollRun.id} data-testid={`payroll-run-${payrollRun.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {new Date(payrollRun.payPeriodStart).toLocaleDateString()} - {new Date(payrollRun.payPeriodEnd).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{new Date(payrollRun.payDate).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(payrollRun.status)}>
+                        <span className={getStatusColor(payrollRun.status)}>
+                          {payrollRun.status.charAt(0).toUpperCase() + payrollRun.status.slice(1)}
+                        </span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>${parseFloat(payrollRun.totalGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>${parseFloat(payrollRun.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="font-semibold">${parseFloat(payrollRun.totalNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewPayrollRun(payrollRun)}
+                        data-testid={`button-view-payroll-run-${payrollRun.id}`}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

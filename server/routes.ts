@@ -29,6 +29,10 @@ import {
   insertTaxReportSchema,
   insertTaxForm1099Schema,
   insertCustomReportSchema,
+  insertEmployeeSchema,
+  insertDeductionSchema,
+  insertPayrollRunSchema,
+  insertPayrollItemSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -982,6 +986,694 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching donation data:", error);
       res.status(500).json({ message: "Failed to fetch donation data" });
+    }
+  });
+
+  // Employee routes
+  app.get('/api/employees/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const employees = await storage.getEmployees(organizationId);
+      res.json(employees);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      res.status(500).json({ message: "Failed to fetch employees" });
+    }
+  });
+
+  app.get('/api/employees/:organizationId/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const employees = await storage.getActiveEmployees(organizationId);
+      res.json(employees);
+    } catch (error) {
+      console.error("Error fetching active employees:", error);
+      res.status(500).json({ message: "Failed to fetch active employees" });
+    }
+  });
+
+  app.post('/api/employees', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertEmployeeSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage employees" });
+      }
+
+      const employee = await storage.createEmployee(data);
+      await storage.logCreate(data.organizationId, userId, 'employee', String(employee.id), employee);
+      res.status(201).json(employee);
+    } catch (error) {
+      console.error("Error creating employee:", error);
+      res.status(400).json({ message: "Failed to create employee" });
+    }
+  });
+
+  app.patch('/api/employees/:employeeId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const employeeId = parseInt(req.params.employeeId);
+      const updates = req.body;
+      
+      const employee = await storage.getEmployee(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, employee.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage employees" });
+      }
+
+      const updatedEmployee = await storage.updateEmployee(employeeId, updates);
+      await storage.logUpdate(employee.organizationId, userId, 'employee', String(employeeId), employee, updatedEmployee);
+      res.status(200).json(updatedEmployee);
+    } catch (error) {
+      console.error("Error updating employee:", error);
+      res.status(400).json({ message: "Failed to update employee" });
+    }
+  });
+
+  app.delete('/api/employees/:employeeId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const employeeId = parseInt(req.params.employeeId);
+      
+      const employee = await storage.getEmployee(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, employee.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage employees" });
+      }
+
+      await storage.deleteEmployee(employeeId);
+      await storage.logDelete(employee.organizationId, userId, 'employee', String(employeeId), employee);
+      res.status(200).json({ message: "Employee deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+      res.status(400).json({ message: "Failed to delete employee" });
+    }
+  });
+
+  // Deduction routes
+  app.get('/api/deductions/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const deductions = await storage.getDeductions(organizationId);
+      res.json(deductions);
+    } catch (error) {
+      console.error("Error fetching deductions:", error);
+      res.status(500).json({ message: "Failed to fetch deductions" });
+    }
+  });
+
+  app.get('/api/deductions/:organizationId/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const deductions = await storage.getActiveDeductions(organizationId);
+      res.json(deductions);
+    } catch (error) {
+      console.error("Error fetching active deductions:", error);
+      res.status(500).json({ message: "Failed to fetch active deductions" });
+    }
+  });
+
+  app.post('/api/deductions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertDeductionSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage deductions" });
+      }
+
+      const deduction = await storage.createDeduction(data);
+      await storage.logCreate(data.organizationId, userId, 'deduction', String(deduction.id), deduction);
+      res.status(201).json(deduction);
+    } catch (error) {
+      console.error("Error creating deduction:", error);
+      res.status(400).json({ message: "Failed to create deduction" });
+    }
+  });
+
+  app.patch('/api/deductions/:deductionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deductionId = parseInt(req.params.deductionId);
+      const updates = req.body;
+      
+      const deduction = await storage.getDeduction(deductionId);
+      if (!deduction) {
+        return res.status(404).json({ message: "Deduction not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, deduction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage deductions" });
+      }
+
+      const updatedDeduction = await storage.updateDeduction(deductionId, updates);
+      await storage.logUpdate(deduction.organizationId, userId, 'deduction', String(deductionId), deduction, updatedDeduction);
+      res.status(200).json(updatedDeduction);
+    } catch (error) {
+      console.error("Error updating deduction:", error);
+      res.status(400).json({ message: "Failed to update deduction" });
+    }
+  });
+
+  app.delete('/api/deductions/:deductionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deductionId = parseInt(req.params.deductionId);
+      
+      const deduction = await storage.getDeduction(deductionId);
+      if (!deduction) {
+        return res.status(404).json({ message: "Deduction not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, deduction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage deductions" });
+      }
+
+      await storage.deleteDeduction(deductionId);
+      await storage.logDelete(deduction.organizationId, userId, 'deduction', String(deductionId), deduction);
+      res.status(200).json({ message: "Deduction deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting deduction:", error);
+      res.status(400).json({ message: "Failed to delete deduction" });
+    }
+  });
+
+  // Payroll run routes
+  app.get('/api/payroll-runs/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const payrollRuns = await storage.getPayrollRuns(organizationId);
+      res.json(payrollRuns);
+    } catch (error) {
+      console.error("Error fetching payroll runs:", error);
+      res.status(500).json({ message: "Failed to fetch payroll runs" });
+    }
+  });
+
+  app.post('/api/payroll-runs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertPayrollRunSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payroll" });
+      }
+
+      const payrollRun = await storage.createPayrollRun(data);
+      await storage.logCreate(data.organizationId, userId, 'payroll_run', String(payrollRun.id), payrollRun);
+      res.status(201).json(payrollRun);
+    } catch (error) {
+      console.error("Error creating payroll run:", error);
+      res.status(400).json({ message: "Failed to create payroll run" });
+    }
+  });
+
+  app.patch('/api/payroll-runs/:payrollRunId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollRunId = parseInt(req.params.payrollRunId);
+      const updates = req.body;
+      
+      const payrollRun = await storage.getPayrollRun(payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payroll" });
+      }
+
+      const updatedPayrollRun = await storage.updatePayrollRun(payrollRunId, updates);
+      await storage.logUpdate(payrollRun.organizationId, userId, 'payroll_run', String(payrollRunId), payrollRun, updatedPayrollRun);
+      res.status(200).json(updatedPayrollRun);
+    } catch (error) {
+      console.error("Error updating payroll run:", error);
+      res.status(400).json({ message: "Failed to update payroll run" });
+    }
+  });
+
+  app.delete('/api/payroll-runs/:payrollRunId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollRunId = parseInt(req.params.payrollRunId);
+      
+      const payrollRun = await storage.getPayrollRun(payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payroll" });
+      }
+
+      await storage.deletePayrollRun(payrollRunId);
+      await storage.logDelete(payrollRun.organizationId, userId, 'payroll_run', String(payrollRunId), payrollRun);
+      res.status(200).json({ message: "Payroll run deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting payroll run:", error);
+      res.status(400).json({ message: "Failed to delete payroll run" });
+    }
+  });
+
+  app.post('/api/payroll-runs/:payrollRunId/process', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollRunId = parseInt(req.params.payrollRunId);
+      
+      const payrollRun = await storage.getPayrollRun(payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to process payroll" });
+      }
+
+      if (payrollRun.status !== 'draft') {
+        return res.status(400).json({ message: "Only draft payroll runs can be processed" });
+      }
+
+      const processedPayrollRun = await storage.processPayrollRun(payrollRunId, userId);
+      await storage.logUpdate(payrollRun.organizationId, userId, 'payroll_run', String(payrollRunId), payrollRun, processedPayrollRun);
+      res.status(200).json(processedPayrollRun);
+    } catch (error) {
+      console.error("Error processing payroll run:", error);
+      res.status(400).json({ message: "Failed to process payroll run" });
+    }
+  });
+
+  // Payroll item routes
+  app.get('/api/payroll-items/:payrollRunId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollRunId = parseInt(req.params.payrollRunId);
+      
+      const payrollRun = await storage.getPayrollRun(payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const payrollItems = await storage.getPayrollItems(payrollRunId);
+      res.json(payrollItems);
+    } catch (error) {
+      console.error("Error fetching payroll items:", error);
+      res.status(500).json({ message: "Failed to fetch payroll items" });
+    }
+  });
+
+  app.post('/api/payroll-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request payload - only accept minimal data
+      const requestSchema = z.object({
+        payrollRunId: z.number().int().positive(),
+        employeeId: z.number().int().positive(),
+        hoursWorked: z.number().positive().optional(),
+      });
+      const { payrollRunId, employeeId, hoursWorked } = requestSchema.parse(req.body);
+      
+      // Fetch payroll run
+      const payrollRun = await storage.getPayrollRun(payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      // Check permissions
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payroll" });
+      }
+
+      // Check if payroll run is in draft status
+      if (payrollRun.status !== 'draft') {
+        return res.status(400).json({ message: "Cannot add employees to a processed payroll run" });
+      }
+
+      // Fetch employee
+      const employee = await storage.getEmployee(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      // Verify employee belongs to the same organization
+      if (employee.organizationId !== payrollRun.organizationId) {
+        return res.status(400).json({ message: "Employee does not belong to this organization" });
+      }
+
+      // Check for duplicate employee in this payroll run
+      const existingItems = await storage.getPayrollItems(payrollRunId);
+      if (existingItems.find((item: any) => item.employeeId === employeeId)) {
+        return res.status(400).json({ message: "Employee is already in this payroll run" });
+      }
+
+      // Validate hours for hourly employees
+      if (employee.payType === 'hourly') {
+        if (!hoursWorked || hoursWorked <= 0) {
+          return res.status(400).json({ message: "Hours worked is required for hourly employees" });
+        }
+      }
+
+      // Calculate gross pay SERVER-SIDE
+      let grossPay = 0;
+      if (employee.payType === 'hourly') {
+        grossPay = parseFloat(employee.payRate) * hoursWorked!;
+      } else {
+        // Salary - calculate based on pay schedule
+        const annualSalary = parseFloat(employee.payRate);
+        if (employee.paySchedule === 'weekly') {
+          grossPay = annualSalary / 52;
+        } else if (employee.paySchedule === 'biweekly') {
+          grossPay = annualSalary / 26;
+        } else if (employee.paySchedule === 'semimonthly') {
+          grossPay = annualSalary / 24;
+        } else {
+          grossPay = annualSalary / 12;
+        }
+      }
+
+      // Fetch active deductions and calculate SERVER-SIDE
+      const deductions = await storage.getActiveDeductions(payrollRun.organizationId);
+      let totalDeductions = 0;
+      const deductionDetails: Record<string, string> = {};
+      
+      for (const deduction of deductions) {
+        let deductionAmount = 0;
+        if (deduction.calculationType === 'percentage') {
+          deductionAmount = (grossPay * parseFloat(deduction.amount)) / 100;
+        } else {
+          deductionAmount = parseFloat(deduction.amount);
+        }
+        totalDeductions += deductionAmount;
+        deductionDetails[deduction.name] = deductionAmount.toFixed(2);
+      }
+
+      const netPay = grossPay - totalDeductions;
+
+      // Validate all amounts are positive
+      if (grossPay <= 0 || netPay < 0) {
+        return res.status(400).json({ message: "Invalid pay calculation" });
+      }
+
+      // Create payroll item with server-calculated amounts
+      const payrollItemData = {
+        payrollRunId,
+        employeeId,
+        hoursWorked: employee.payType === 'hourly' ? hoursWorked! : null,
+        grossPay: grossPay.toFixed(2),
+        totalDeductions: totalDeductions.toFixed(2),
+        netPay: netPay.toFixed(2),
+        deductionDetails: JSON.stringify(deductionDetails),
+      };
+
+      const payrollItem = await storage.createPayrollItem(payrollItemData);
+
+      // Update payroll run totals
+      const updatedItems = await storage.getPayrollItems(payrollRunId);
+      const totalGross = updatedItems.reduce((sum: number, item: any) => sum + parseFloat(item.grossPay), 0);
+      const totalDeds = updatedItems.reduce((sum: number, item: any) => sum + parseFloat(item.totalDeductions), 0);
+      const totalNet = updatedItems.reduce((sum: number, item: any) => sum + parseFloat(item.netPay), 0);
+
+      await storage.updatePayrollRun(payrollRunId, {
+        totalGross: totalGross.toFixed(2),
+        totalDeductions: totalDeds.toFixed(2),
+        totalNet: totalNet.toFixed(2),
+      });
+
+      res.status(201).json(payrollItem);
+    } catch (error) {
+      console.error("Error creating payroll item:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      }
+      res.status(400).json({ message: "Failed to create payroll item" });
+    }
+  });
+
+  app.patch('/api/payroll-items/:payrollItemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollItemId = parseInt(req.params.payrollItemId);
+      
+      // Only allow hoursWorked to be updated - validate request
+      const updateSchema = z.object({
+        hoursWorked: z.number().positive(),
+      });
+      const { hoursWorked } = updateSchema.parse(req.body);
+      
+      // Fetch payroll item
+      const payrollItem = await storage.getPayrollItem(payrollItemId);
+      if (!payrollItem) {
+        return res.status(404).json({ message: "Payroll item not found" });
+      }
+      
+      // Fetch payroll run
+      const payrollRun = await storage.getPayrollRun(payrollItem.payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+
+      // Check if payroll run is in draft status
+      if (payrollRun.status !== 'draft') {
+        return res.status(400).json({ message: "Cannot update payroll items in a processed payroll run" });
+      }
+      
+      // Check permissions
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payroll" });
+      }
+
+      // Fetch employee to recalculate
+      const employee = await storage.getEmployee(payrollItem.employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+
+      // Ensure employee is hourly (only hourly employees have hours)
+      if (employee.payType !== 'hourly') {
+        return res.status(400).json({ message: "Cannot update hours for salary employees" });
+      }
+
+      // Recalculate gross pay SERVER-SIDE
+      const grossPay = parseFloat(employee.payRate) * hoursWorked;
+
+      // Fetch active deductions and recalculate SERVER-SIDE
+      const deductions = await storage.getActiveDeductions(payrollRun.organizationId);
+      let totalDeductions = 0;
+      const deductionDetails: Record<string, string> = {};
+      
+      for (const deduction of deductions) {
+        let deductionAmount = 0;
+        if (deduction.calculationType === 'percentage') {
+          deductionAmount = (grossPay * parseFloat(deduction.amount)) / 100;
+        } else {
+          deductionAmount = parseFloat(deduction.amount);
+        }
+        totalDeductions += deductionAmount;
+        deductionDetails[deduction.name] = deductionAmount.toFixed(2);
+      }
+
+      const netPay = grossPay - totalDeductions;
+
+      // Validate all amounts are positive
+      if (grossPay <= 0 || netPay < 0) {
+        return res.status(400).json({ message: "Invalid pay calculation" });
+      }
+
+      // Update payroll item with recalculated amounts
+      const updatedPayrollItem = await storage.updatePayrollItem(payrollItemId, {
+        hoursWorked,
+        grossPay: grossPay.toFixed(2),
+        totalDeductions: totalDeductions.toFixed(2),
+        netPay: netPay.toFixed(2),
+        deductionDetails: JSON.stringify(deductionDetails),
+      });
+
+      // Update payroll run totals
+      const updatedItems = await storage.getPayrollItems(payrollRun.id);
+      const totalGross = updatedItems.reduce((sum: number, item: any) => sum + parseFloat(item.grossPay), 0);
+      const totalDeds = updatedItems.reduce((sum: number, item: any) => sum + parseFloat(item.totalDeductions), 0);
+      const totalNet = updatedItems.reduce((sum: number, item: any) => sum + parseFloat(item.netPay), 0);
+
+      await storage.updatePayrollRun(payrollRun.id, {
+        totalGross: totalGross.toFixed(2),
+        totalDeductions: totalDeds.toFixed(2),
+        totalNet: totalNet.toFixed(2),
+      });
+
+      res.status(200).json(updatedPayrollItem);
+    } catch (error) {
+      console.error("Error updating payroll item:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      }
+      res.status(400).json({ message: "Failed to update payroll item" });
+    }
+  });
+
+  app.delete('/api/payroll-items/:payrollItemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollItemId = parseInt(req.params.payrollItemId);
+      
+      const payrollItem = await storage.getPayrollItem(payrollItemId);
+      if (!payrollItem) {
+        return res.status(404).json({ message: "Payroll item not found" });
+      }
+      
+      const payrollRun = await storage.getPayrollRun(payrollItem.payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payroll" });
+      }
+
+      await storage.deletePayrollItem(payrollItemId);
+      res.status(200).json({ message: "Payroll item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting payroll item:", error);
+      res.status(400).json({ message: "Failed to delete payroll item" });
+    }
+  });
+
+  app.get('/api/payroll-item-deductions/:payrollItemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollItemId = parseInt(req.params.payrollItemId);
+      
+      const payrollItem = await storage.getPayrollItem(payrollItemId);
+      if (!payrollItem) {
+        return res.status(404).json({ message: "Payroll item not found" });
+      }
+      
+      const payrollRun = await storage.getPayrollRun(payrollItem.payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const deductions = await storage.getPayrollItemDeductions(payrollItemId);
+      res.json(deductions);
+    } catch (error) {
+      console.error("Error fetching payroll item deductions:", error);
+      res.status(500).json({ message: "Failed to fetch payroll item deductions" });
     }
   });
 
