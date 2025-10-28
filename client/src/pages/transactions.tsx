@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor } from "@shared/schema";
+import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
 interface CategorySuggestion {
@@ -51,6 +51,9 @@ interface TransactionFormData {
   vendorId?: number;
   clientId?: number;
   donorId?: number;
+  fundId?: number;
+  programId?: number;
+  functionalCategory?: 'program' | 'administrative' | 'fundraising' | null;
   createdBy: string;
 }
 
@@ -84,6 +87,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     vendorId: undefined,
     clientId: undefined,
     donorId: undefined,
+    fundId: undefined,
+    programId: undefined,
+    functionalCategory: null,
     createdBy: userId,
   });
 
@@ -109,6 +115,18 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const { data: donors } = useQuery<Donor[]>({
     queryKey: [`/api/donors/${currentOrganization.id}`],
+    enabled: currentOrganization.type === 'nonprofit',
+    retry: false,
+  });
+
+  const { data: funds } = useQuery<Fund[]>({
+    queryKey: ['/api/funds'],
+    enabled: currentOrganization.type === 'nonprofit',
+    retry: false,
+  });
+
+  const { data: programs } = useQuery<Program[]>({
+    queryKey: ['/api/programs'],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
   });
@@ -156,6 +174,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         vendorId: undefined,
         clientId: undefined,
         donorId: undefined,
+        fundId: undefined,
+        programId: undefined,
+        functionalCategory: null,
         createdBy: userId,
       });
     },
@@ -622,6 +643,73 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           {donor.name}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Fund selection - nonprofits only */}
+              {currentOrganization.type === 'nonprofit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="fund">Fund (Optional)</Label>
+                  <Select
+                    value={formData.fundId?.toString() || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, fundId: value === "none" ? undefined : parseInt(value) })}
+                  >
+                    <SelectTrigger id="fund" data-testid="select-transaction-fund">
+                      <SelectValue placeholder="Select a fund" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No fund</SelectItem>
+                      {funds?.map((fund) => (
+                        <SelectItem key={fund.id} value={fund.id.toString()}>
+                          {fund.name} ({fund.fundType})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Program selection for expenses - nonprofits only */}
+              {formData.type === 'expense' && currentOrganization.type === 'nonprofit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="program">Program (Optional)</Label>
+                  <Select
+                    value={formData.programId?.toString() || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, programId: value === "none" ? undefined : parseInt(value) })}
+                  >
+                    <SelectTrigger id="program" data-testid="select-transaction-program">
+                      <SelectValue placeholder="Select a program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No program</SelectItem>
+                      {programs?.map((program) => (
+                        <SelectItem key={program.id} value={program.id.toString()}>
+                          {program.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Functional category for expenses - nonprofits only */}
+              {formData.type === 'expense' && currentOrganization.type === 'nonprofit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="functionalCategory">Functional Category (Optional)</Label>
+                  <Select
+                    value={formData.functionalCategory || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, functionalCategory: value === "none" ? null : value as 'program' | 'administrative' | 'fundraising' })}
+                  >
+                    <SelectTrigger id="functionalCategory" data-testid="select-transaction-functional-category">
+                      <SelectValue placeholder="Select functional category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No category</SelectItem>
+                      <SelectItem value="program">Program</SelectItem>
+                      <SelectItem value="administrative">Administrative</SelectItem>
+                      <SelectItem value="fundraising">Fundraising</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

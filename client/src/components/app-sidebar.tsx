@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -114,6 +114,31 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Grants",
       url: "/grants",
       icon: Gift,
+    }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Funds",
+      url: "/funds",
+      icon: PiggyBank,
+    }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Pledges",
+      url: "/pledges",
+      icon: CalendarCheck,
+    }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Programs",
+      url: "/programs",
+      icon: Folder,
+    }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Functional Expense Report",
+      url: "/functional-expense-report",
+      icon: FileBarChart,
+    }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Form 990 Report",
+      url: "/form-990-report",
+      icon: FileCheck,
     }] : []),
     {
       title: "Budgets",

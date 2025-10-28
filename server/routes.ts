@@ -33,6 +33,11 @@ import {
   insertDeductionSchema,
   insertPayrollRunSchema,
   insertPayrollItemSchema,
+  // Nonprofit-specific schemas
+  insertFundSchema,
+  insertProgramSchema,
+  insertPledgeSchema,
+  insertPledgePaymentSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -4362,6 +4367,673 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching audit logs:", error);
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // ============================================
+  // NONPROFIT-SPECIFIC ROUTES
+  // ============================================
+
+  // Fund routes
+  app.get("/api/funds", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const funds = await storage.getFunds(organizationId);
+      res.json(funds);
+    } catch (error) {
+      console.error("Error fetching funds:", error);
+      res.status(500).json({ message: "Failed to fetch funds" });
+    }
+  });
+
+  app.get("/api/funds/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const fund = await storage.getFund(parseInt(id));
+
+      if (!fund) {
+        return res.status(404).json({ message: "Fund not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (fund.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this fund" });
+      }
+
+      res.json(fund);
+    } catch (error) {
+      console.error("Error fetching fund:", error);
+      res.status(500).json({ message: "Failed to fetch fund" });
+    }
+  });
+
+  app.post("/api/funds", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can create funds" });
+      }
+
+      const validatedData = insertFundSchema.parse({
+        ...req.body,
+        organizationId,
+      });
+
+      const fund = await storage.createFund(validatedData);
+      await storage.logCreate(organizationId, req.user!.id, 'fund', fund.id.toString(), fund);
+      res.status(201).json(fund);
+    } catch (error: any) {
+      console.error("Error creating fund:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid fund data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create fund" });
+    }
+  });
+
+  app.put("/api/funds/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const fund = await storage.getFund(parseInt(id));
+
+      if (!fund) {
+        return res.status(404).json({ message: "Fund not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (fund.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this fund" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can update funds" });
+      }
+
+      const updatedFund = await storage.updateFund(parseInt(id), req.body);
+      await storage.logUpdate(organizationId, req.user!.id, 'fund', id, fund, updatedFund);
+      res.json(updatedFund);
+    } catch (error) {
+      console.error("Error updating fund:", error);
+      res.status(500).json({ message: "Failed to update fund" });
+    }
+  });
+
+  app.delete("/api/funds/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const fund = await storage.getFund(parseInt(id));
+
+      if (!fund) {
+        return res.status(404).json({ message: "Fund not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (fund.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this fund" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can delete funds" });
+      }
+
+      await storage.deleteFund(parseInt(id));
+      await storage.logDelete(organizationId, req.user!.id, 'fund', id, fund);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting fund:", error);
+      res.status(500).json({ message: "Failed to delete fund" });
+    }
+  });
+
+  app.get("/api/funds/:id/transactions", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const fund = await storage.getFund(parseInt(id));
+
+      if (!fund) {
+        return res.status(404).json({ message: "Fund not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (fund.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this fund" });
+      }
+
+      const transactions = await storage.getFundTransactions(parseInt(id));
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching fund transactions:", error);
+      res.status(500).json({ message: "Failed to fetch fund transactions" });
+    }
+  });
+
+  // Program routes
+  app.get("/api/programs", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const programs = await storage.getPrograms(organizationId);
+      res.json(programs);
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+      res.status(500).json({ message: "Failed to fetch programs" });
+    }
+  });
+
+  app.get("/api/programs/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const program = await storage.getProgram(parseInt(id));
+
+      if (!program) {
+        return res.status(404).json({ message: "Program not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (program.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this program" });
+      }
+
+      res.json(program);
+    } catch (error) {
+      console.error("Error fetching program:", error);
+      res.status(500).json({ message: "Failed to fetch program" });
+    }
+  });
+
+  app.post("/api/programs", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can create programs" });
+      }
+
+      const validatedData = insertProgramSchema.parse({
+        ...req.body,
+        organizationId,
+      });
+
+      const program = await storage.createProgram(validatedData);
+      await storage.logCreate(organizationId, req.user!.id, 'program', program.id.toString(), program);
+      res.status(201).json(program);
+    } catch (error: any) {
+      console.error("Error creating program:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid program data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create program" });
+    }
+  });
+
+  app.put("/api/programs/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const program = await storage.getProgram(parseInt(id));
+
+      if (!program) {
+        return res.status(404).json({ message: "Program not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (program.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this program" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can update programs" });
+      }
+
+      const updatedProgram = await storage.updateProgram(parseInt(id), req.body);
+      await storage.logUpdate(organizationId, req.user!.id, 'program', id, program, updatedProgram);
+      res.json(updatedProgram);
+    } catch (error) {
+      console.error("Error updating program:", error);
+      res.status(500).json({ message: "Failed to update program" });
+    }
+  });
+
+  app.delete("/api/programs/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const program = await storage.getProgram(parseInt(id));
+
+      if (!program) {
+        return res.status(404).json({ message: "Program not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (program.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this program" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can delete programs" });
+      }
+
+      await storage.deleteProgram(parseInt(id));
+      await storage.logDelete(organizationId, req.user!.id, 'program', id, program);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting program:", error);
+      res.status(500).json({ message: "Failed to delete program" });
+    }
+  });
+
+  app.get("/api/programs/:id/expenses", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { startDate, endDate } = req.query;
+      const program = await storage.getProgram(parseInt(id));
+
+      if (!program) {
+        return res.status(404).json({ message: "Program not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (program.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this program" });
+      }
+
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const expenses = await storage.getProgramExpenses(parseInt(id), start, end);
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching program expenses:", error);
+      res.status(500).json({ message: "Failed to fetch program expenses" });
+    }
+  });
+
+  // Pledge routes
+  app.get("/api/pledges", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const pledges = await storage.getPledges(organizationId);
+      res.json(pledges);
+    } catch (error) {
+      console.error("Error fetching pledges:", error);
+      res.status(500).json({ message: "Failed to fetch pledges" });
+    }
+  });
+
+  app.get("/api/pledges/overdue", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const overduePledges = await storage.getOverduePledges(organizationId);
+      res.json(overduePledges);
+    } catch (error) {
+      console.error("Error fetching overdue pledges:", error);
+      res.status(500).json({ message: "Failed to fetch overdue pledges" });
+    }
+  });
+
+  app.get("/api/pledges/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const pledge = await storage.getPledge(parseInt(id));
+
+      if (!pledge) {
+        return res.status(404).json({ message: "Pledge not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (pledge.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this pledge" });
+      }
+
+      res.json(pledge);
+    } catch (error) {
+      console.error("Error fetching pledge:", error);
+      res.status(500).json({ message: "Failed to fetch pledge" });
+    }
+  });
+
+  app.post("/api/pledges", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      if (userRole.role === 'viewer') {
+        return res.status(403).json({ message: "Viewers cannot create pledges" });
+      }
+
+      const validatedData = insertPledgeSchema.parse({
+        ...req.body,
+        organizationId,
+      });
+
+      const pledge = await storage.createPledge(validatedData);
+      await storage.logCreate(organizationId, req.user!.id, 'pledge', pledge.id.toString(), pledge);
+      res.status(201).json(pledge);
+    } catch (error: any) {
+      console.error("Error creating pledge:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid pledge data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create pledge" });
+    }
+  });
+
+  app.put("/api/pledges/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const pledge = await storage.getPledge(parseInt(id));
+
+      if (!pledge) {
+        return res.status(404).json({ message: "Pledge not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (pledge.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this pledge" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role === 'viewer') {
+        return res.status(403).json({ message: "Viewers cannot update pledges" });
+      }
+
+      const updatedPledge = await storage.updatePledge(parseInt(id), req.body);
+      await storage.logUpdate(organizationId, req.user!.id, 'pledge', id, pledge, updatedPledge);
+      res.json(updatedPledge);
+    } catch (error) {
+      console.error("Error updating pledge:", error);
+      res.status(500).json({ message: "Failed to update pledge" });
+    }
+  });
+
+  app.delete("/api/pledges/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const pledge = await storage.getPledge(parseInt(id));
+
+      if (!pledge) {
+        return res.status(404).json({ message: "Pledge not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (pledge.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this pledge" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can delete pledges" });
+      }
+
+      await storage.deletePledge(parseInt(id));
+      await storage.logDelete(organizationId, req.user!.id, 'pledge', id, pledge);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting pledge:", error);
+      res.status(500).json({ message: "Failed to delete pledge" });
+    }
+  });
+
+  app.post("/api/pledges/:id/payments", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const pledge = await storage.getPledge(parseInt(id));
+
+      if (!pledge) {
+        return res.status(404).json({ message: "Pledge not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (pledge.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this pledge" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role === 'viewer') {
+        return res.status(403).json({ message: "Viewers cannot record pledge payments" });
+      }
+
+      const validatedData = insertPledgePaymentSchema.parse({
+        ...req.body,
+        pledgeId: parseInt(id),
+      });
+
+      const result = await storage.recordPledgePayment(parseInt(id), validatedData);
+      await storage.logCreate(organizationId, req.user!.id, 'pledge_payment', result.payment.id.toString(), result.payment);
+      res.status(201).json(result);
+    } catch (error: any) {
+      console.error("Error recording pledge payment:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid payment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to record pledge payment" });
+    }
+  });
+
+  app.get("/api/pledges/:id/payments", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const pledge = await storage.getPledge(parseInt(id));
+
+      if (!pledge) {
+        return res.status(404).json({ message: "Pledge not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (pledge.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this pledge" });
+      }
+
+      const payments = await storage.getPledgePayments(parseInt(id));
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching pledge payments:", error);
+      res.status(500).json({ message: "Failed to fetch pledge payments" });
+    }
+  });
+
+  app.delete("/api/pledge-payments/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPledgePayment(parseInt(id));
+
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      const pledge = await storage.getPledge(payment.pledgeId);
+      if (!pledge) {
+        return res.status(404).json({ message: "Associated pledge not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (pledge.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this payment" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only admins and owners can delete payments" });
+      }
+
+      await storage.deletePledgePayment(parseInt(id));
+      await storage.logDelete(organizationId, req.user!.id, 'pledge_payment', id, payment);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting pledge payment:", error);
+      res.status(500).json({ message: "Failed to delete pledge payment" });
+    }
+  });
+
+  // Enhanced grant routes
+  app.get("/api/grants/upcoming-deadlines", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const daysAhead = parseInt(req.query.days as string) || 30;
+      const grants = await storage.getGrantsWithUpcomingDeadlines(organizationId, daysAhead);
+      res.json(grants);
+    } catch (error) {
+      console.error("Error fetching grants with upcoming deadlines:", error);
+      res.status(500).json({ message: "Failed to fetch grants" });
+    }
+  });
+
+  app.put("/api/grants/:id/compliance", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+
+      if (!['compliant', 'at_risk', 'non_compliant', 'pending_review'].includes(status)) {
+        return res.status(400).json({ message: "Invalid compliance status" });
+      }
+
+      const grant = await storage.getGrant(parseInt(id));
+      if (!grant) {
+        return res.status(404).json({ message: "Grant not found" });
+      }
+
+      const organizationId = req.session?.organizationId;
+      if (grant.organizationId !== organizationId) {
+        return res.status(403).json({ message: "You don't have access to this grant" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (userRole.role === 'viewer') {
+        return res.status(403).json({ message: "Viewers cannot update grant compliance" });
+      }
+
+      const updatedGrant = await storage.updateGrantCompliance(parseInt(id), status, notes);
+      await storage.logUpdate(organizationId, req.user!.id, 'grant', id, grant, updatedGrant);
+      res.json(updatedGrant);
+    } catch (error) {
+      console.error("Error updating grant compliance:", error);
+      res.status(500).json({ message: "Failed to update grant compliance" });
+    }
+  });
+
+  // Functional expense report routes
+  app.get("/api/reports/functional-expenses", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      const report = await storage.getFunctionalExpenseReport(organizationId, start, end);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating functional expense report:", error);
+      res.status(500).json({ message: "Failed to generate functional expense report" });
+    }
+  });
+
+  // Form 990 report routes
+  app.get("/api/reports/form-990", async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.session?.organizationId;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const { taxYear } = req.query;
+      if (!taxYear) {
+        return res.status(400).json({ message: "Tax year is required" });
+      }
+
+      const year = parseInt(taxYear as string);
+      const report = await storage.getForm990Data(organizationId, year);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating Form 990 report:", error);
+      res.status(500).json({ message: "Failed to generate Form 990 report" });
     }
   });
 

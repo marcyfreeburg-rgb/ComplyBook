@@ -29,6 +29,11 @@ import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
 import Budgets from "@/pages/budgets";
 import BankAccounts from "@/pages/bank-accounts";
+import Funds from "@/pages/funds";
+import Pledges from "@/pages/pledges";
+import Programs from "@/pages/programs";
+import FunctionalExpenseReport from "@/pages/functional-expense-report";
+import Form990Report from "@/pages/form-990-report";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
 import AcceptInvitation from "@/pages/accept-invitation";
@@ -229,6 +234,46 @@ function AuthenticatedApp() {
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/grants">
                   <Grants currentOrganization={currentOrganization} />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/funds">
+                  <Funds 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/pledges">
+                  <Pledges 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/programs">
+                  <Programs 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/functional-expense-report">
+                  <FunctionalExpenseReport 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/form-990-report">
+                  <Form990Report 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
                 </Route>
               )}
               <Route path="/budgets">
