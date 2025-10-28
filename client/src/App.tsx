@@ -17,6 +17,8 @@ import RecurringTransactions from "@/pages/recurring-transactions";
 import Categories from "@/pages/categories";
 import Vendors from "@/pages/vendors";
 import Clients from "@/pages/clients";
+import Donors from "@/pages/donors";
+import DonationLetters from "@/pages/donation-letters";
 import Invoices from "@/pages/invoices";
 import Bills from "@/pages/bills";
 import BrandSettings from "@/pages/brand-settings";
@@ -172,6 +174,22 @@ function AuthenticatedApp() {
                   userId={user?.id || ''}
                 />
               </Route>
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/donors">
+                  <Donors 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/donation-letters">
+                  <DonationLetters 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
               <Route path="/invoices">
                 <Invoices currentOrganization={currentOrganization} />
               </Route>

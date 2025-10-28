@@ -237,6 +237,32 @@ export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
 // ============================================
+// DONORS (For Non-Profits)
+// ============================================
+
+export const donors = pgTable("donors", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  taxId: varchar("tax_id", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDonorSchema = createInsertSchema(donors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDonor = z.infer<typeof insertDonorSchema>;
+export type Donor = typeof donors.$inferSelect;
+
+// ============================================
 // INVOICES (Sent to Clients)
 // ============================================
 
@@ -381,6 +407,7 @@ export const transactions = pgTable("transactions", {
   grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
   vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
   clientId: integer("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  donorId: integer("donor_id").references(() => donors.id, { onDelete: 'set null' }),
   reconciliationStatus: reconciliationStatusEnum("reconciliation_status").notNull().default('unreconciled'),
   reconciledDate: timestamp("reconciled_date"),
   reconciledBy: varchar("reconciled_by").references(() => users.id),

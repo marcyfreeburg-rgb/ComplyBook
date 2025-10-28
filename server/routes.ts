@@ -845,6 +845,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Donor routes
+  app.get('/api/donors/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor tracking is only available for nonprofit organizations" });
+      }
+
+      const donors = await storage.getDonors(organizationId);
+      res.json(donors);
+    } catch (error) {
+      console.error("Error fetching donors:", error);
+      res.status(500).json({ message: "Failed to fetch donors" });
+    }
+  });
+
+  app.post('/api/donors', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = req.body;
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(data.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor tracking is only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage donors" });
+      }
+
+      const donor = await storage.createDonor(data);
+      res.status(201).json(donor);
+    } catch (error) {
+      console.error("Error creating donor:", error);
+      res.status(400).json({ message: "Failed to create donor" });
+    }
+  });
+
+  app.patch('/api/donors/:donorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donorId = parseInt(req.params.donorId);
+      const updates = req.body;
+      
+      const donor = await storage.getDonor(donorId);
+      if (!donor) {
+        return res.status(404).json({ message: "Donor not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, donor.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(donor.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor tracking is only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage donors" });
+      }
+
+      const updatedDonor = await storage.updateDonor(donorId, updates);
+      res.status(200).json(updatedDonor);
+    } catch (error) {
+      console.error("Error updating donor:", error);
+      res.status(400).json({ message: "Failed to update donor" });
+    }
+  });
+
+  app.delete('/api/donors/:donorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donorId = parseInt(req.params.donorId);
+      
+      const donor = await storage.getDonor(donorId);
+      if (!donor) {
+        return res.status(404).json({ message: "Donor not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, donor.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(donor.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor tracking is only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage donors" });
+      }
+
+      await storage.deleteDonor(donorId);
+      res.status(200).json({ message: "Donor deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting donor:", error);
+      res.status(400).json({ message: "Failed to delete donor" });
+    }
+  });
+
+  app.get('/api/donation-letters/:organizationId/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const year = parseInt(req.params.year);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donation letters are only available for nonprofit organizations" });
+      }
+
+      const donationData = await storage.getDonationsByYear(organizationId, year);
+      res.json(donationData);
+    } catch (error) {
+      console.error("Error fetching donation data:", error);
+      res.status(500).json({ message: "Failed to fetch donation data" });
+    }
+  });
+
   // Transaction routes
   app.get('/api/transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

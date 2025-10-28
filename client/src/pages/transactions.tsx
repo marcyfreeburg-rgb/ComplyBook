@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client } from "@shared/schema";
+import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
 interface CategorySuggestion {
@@ -50,6 +50,7 @@ interface TransactionFormData {
   grantId?: number;
   vendorId?: number;
   clientId?: number;
+  donorId?: number;
   createdBy: string;
 }
 
@@ -82,6 +83,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     grantId: undefined,
     vendorId: undefined,
     clientId: undefined,
+    donorId: undefined,
     createdBy: userId,
   });
 
@@ -102,6 +104,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: [`/api/clients/${currentOrganization.id}`],
+    retry: false,
+  });
+
+  const { data: donors } = useQuery<Donor[]>({
+    queryKey: [`/api/donors/${currentOrganization.id}`],
+    enabled: currentOrganization.type === 'nonprofit',
     retry: false,
   });
 
@@ -147,6 +155,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         grantId: undefined,
         vendorId: undefined,
         clientId: undefined,
+        donorId: undefined,
         createdBy: userId,
       });
     },
@@ -588,6 +597,29 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                       {clients?.map((client) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Donor selection for income (donations) - nonprofits only */}
+              {formData.type === 'income' && currentOrganization.type === 'nonprofit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="donor">Donor (Optional)</Label>
+                  <Select
+                    value={formData.donorId?.toString() || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, donorId: value === "none" ? undefined : parseInt(value) })}
+                  >
+                    <SelectTrigger id="donor" data-testid="select-transaction-donor">
+                      <SelectValue placeholder="Select a donor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No donor</SelectItem>
+                      {donors?.map((donor) => (
+                        <SelectItem key={donor.id} value={donor.id.toString()}>
+                          {donor.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

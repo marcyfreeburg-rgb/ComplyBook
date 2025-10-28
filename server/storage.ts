@@ -27,6 +27,9 @@ import {
   type InsertVendor,
   type Client,
   type InsertClient,
+  donors,
+  type Donor,
+  type InsertDonor,
   type Transaction,
   type InsertTransaction,
   type Grant,
@@ -129,6 +132,15 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, updates: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
+
+  // Donor operations
+  getDonors(organizationId: number): Promise<Donor[]>;
+  getDonor(id: number): Promise<Donor | undefined>;
+  createDonor(donor: InsertDonor): Promise<Donor>;
+  updateDonor(id: number, updates: Partial<InsertDonor>): Promise<Donor>;
+  deleteDonor(id: number): Promise<void>;
+  getDonorDonations(donorId: number, year?: number): Promise<Array<Transaction & { donorName: string }>>;
+  getDonationsByYear(organizationId: number, year: number): Promise<Array<{ donor: Donor; totalAmount: string; donations: Transaction[] }>>;
 
   // Transaction operations
   getTransaction(id: number): Promise<Transaction | undefined>;
@@ -552,6 +564,114 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClient(id: number): Promise<void> {
     await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  // Donor operations
+  async getDonors(organizationId: number): Promise<Donor[]> {
+    return await db
+      .select()
+      .from(donors)
+      .where(eq(donors.organizationId, organizationId))
+      .orderBy(donors.name);
+  }
+
+  async getDonor(id: number): Promise<Donor | undefined> {
+    const [donor] = await db
+      .select()
+      .from(donors)
+      .where(eq(donors.id, id));
+    return donor;
+  }
+
+  async createDonor(donor: InsertDonor): Promise<Donor> {
+    const [newDonor] = await db
+      .insert(donors)
+      .values(donor)
+      .returning();
+    return newDonor;
+  }
+
+  async updateDonor(id: number, updates: Partial<InsertDonor>): Promise<Donor> {
+    const [donor] = await db
+      .update(donors)
+      .set(updates)
+      .where(eq(donors.id, id))
+      .returning();
+    return donor;
+  }
+
+  async deleteDonor(id: number): Promise<void> {
+    await db.delete(donors).where(eq(donors.id, id));
+  }
+
+  async getDonorDonations(donorId: number, year?: number): Promise<Array<Transaction & { donorName: string }>> {
+    const conditions = [eq(transactions.donorId, donorId)];
+    
+    if (year) {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59);
+      conditions.push(gte(transactions.date, startDate));
+      conditions.push(lte(transactions.date, endDate));
+    }
+
+    const results = await db
+      .select({
+        transaction: transactions,
+        donorName: donors.name,
+      })
+      .from(transactions)
+      .innerJoin(donors, eq(transactions.donorId, donors.id))
+      .where(and(...conditions))
+      .orderBy(transactions.date);
+
+    return results.map(r => ({
+      ...r.transaction,
+      donorName: r.donorName,
+    }));
+  }
+
+  async getDonationsByYear(organizationId: number, year: number): Promise<Array<{ donor: Donor; totalAmount: string; donations: Transaction[] }>> {
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31, 23, 59, 59);
+
+    // Get all donations for the year
+    const donationsData = await db
+      .select({
+        transaction: transactions,
+        donor: donors,
+      })
+      .from(transactions)
+      .innerJoin(donors, eq(transactions.donorId, donors.id))
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.type, 'income'),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate)
+        )
+      )
+      .orderBy(donors.name, transactions.date);
+
+    // Group by donor and calculate totals
+    const donorMap = new Map<number, { donor: Donor; totalAmount: number; donations: Transaction[] }>();
+    
+    donationsData.forEach(({ transaction, donor }) => {
+      if (!donorMap.has(donor.id)) {
+        donorMap.set(donor.id, {
+          donor,
+          totalAmount: 0,
+          donations: [],
+        });
+      }
+      const entry = donorMap.get(donor.id)!;
+      entry.totalAmount += parseFloat(transaction.amount);
+      entry.donations.push(transaction);
+    });
+
+    return Array.from(donorMap.values()).map(entry => ({
+      ...entry,
+      totalAmount: entry.totalAmount.toFixed(2),
+    }));
   }
 
   // Transaction operations
