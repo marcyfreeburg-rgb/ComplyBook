@@ -1227,7 +1227,13 @@ export const insertContractSchema = createInsertSchema(contracts).omit({
   endDate: z.coerce.date().optional(),
 });
 
+export const updateContractSchema = insertContractSchema.partial().omit({
+  organizationId: true,
+  createdBy: true,
+});
+
 export type InsertContract = z.infer<typeof insertContractSchema>;
+export type UpdateContract = z.infer<typeof updateContractSchema>;
 export type Contract = typeof contracts.$inferSelect;
 
 // Contract Milestones table

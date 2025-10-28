@@ -38,6 +38,13 @@ import {
   insertProgramSchema,
   insertPledgeSchema,
   insertPledgePaymentSchema,
+  // Government Contracts (For-profit) schemas
+  insertContractSchema,
+  insertContractMilestoneSchema,
+  insertProjectSchema,
+  insertProjectCostSchema,
+  insertTimeEntrySchema,
+  insertIndirectCostRateSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -4968,6 +4975,702 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating Form 990 report:", error);
       res.status(500).json({ message: "Failed to generate Form 990 report" });
+    }
+  });
+
+  // ===================================================================
+  // GOVERNMENT CONTRACTS ROUTES (For-Profit)
+  // ===================================================================
+
+  // Contract routes
+  app.get("/api/contracts/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const contracts = await storage.getContracts(organizationId);
+      res.json(contracts);
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      res.status(500).json({ message: "Failed to fetch contracts" });
+    }
+  });
+
+  app.post("/api/contracts", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...contractData } = req.body;
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create contracts" });
+      }
+
+      const validatedData = insertContractSchema.parse({
+        ...contractData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const contract = await storage.createContract(validatedData);
+      await storage.logCreate(organizationId, userId, 'contract', contract.id.toString(), contract);
+      res.status(201).json(contract);
+    } catch (error: any) {
+      console.error("Error creating contract:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid contract data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create contract" });
+    }
+  });
+
+  app.put("/api/contracts/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contractId = parseInt(req.params.id);
+      
+      const contract = await storage.getContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, contract.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update contracts" });
+      }
+
+      const { updateContractSchema } = await import("@shared/schema");
+      const validatedData = updateContractSchema.parse(req.body);
+
+      const oldData = JSON.stringify(contract);
+      const updated = await storage.updateContract(contractId, validatedData);
+      await storage.logUpdate(contract.organizationId, userId, 'contract', contractId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating contract:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid contract data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update contract" });
+    }
+  });
+
+  app.delete("/api/contracts/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contractId = parseInt(req.params.id);
+      
+      const contract = await storage.getContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, contract.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to delete contracts" });
+      }
+
+      await storage.logDelete(contract.organizationId, userId, 'contract', contractId.toString(), contract);
+      await storage.deleteContract(contractId);
+      res.json({ message: "Contract deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contract:", error);
+      res.status(500).json({ message: "Failed to delete contract" });
+    }
+  });
+
+  // Contract milestone routes
+  app.get("/api/contracts/:contractId/milestones", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const contractId = parseInt(req.params.contractId);
+      
+      const contract = await storage.getContract(contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, contract.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const milestones = await storage.getContractMilestones(contractId);
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching milestones:", error);
+      res.status(500).json({ message: "Failed to fetch milestones" });
+    }
+  });
+
+  app.post("/api/milestones", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, contractId, ...milestoneData } = req.body;
+      
+      if (!organizationId || !contractId) {
+        return res.status(400).json({ message: "Organization and contract are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create milestones" });
+      }
+
+      const validatedData = insertContractMilestoneSchema.parse({
+        ...milestoneData,
+        organizationId,
+        contractId,
+        createdBy: userId,
+      });
+
+      const milestone = await storage.createContractMilestone(validatedData);
+      await storage.logCreate(organizationId, userId, 'milestone', milestone.id.toString(), milestone);
+      res.status(201).json(milestone);
+    } catch (error: any) {
+      console.error("Error creating milestone:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid milestone data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create milestone" });
+    }
+  });
+
+  app.put("/api/milestones/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const milestoneId = parseInt(req.params.id);
+      
+      const milestone = await storage.getContractMilestone(milestoneId);
+      if (!milestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, milestone.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update milestones" });
+      }
+
+      const oldData = JSON.stringify(milestone);
+      const updated = await storage.updateContractMilestone(milestoneId, req.body);
+      await storage.logUpdate(milestone.organizationId, userId, 'milestone', milestoneId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating milestone:", error);
+      res.status(500).json({ message: "Failed to update milestone" });
+    }
+  });
+
+  app.delete("/api/milestones/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const milestoneId = parseInt(req.params.id);
+      
+      const milestone = await storage.getContractMilestone(milestoneId);
+      if (!milestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, milestone.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to delete milestones" });
+      }
+
+      await storage.logDelete(milestone.organizationId, userId, 'milestone', milestoneId.toString(), milestone);
+      await storage.deleteContractMilestone(milestoneId);
+      res.json({ message: "Milestone deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting milestone:", error);
+      res.status(500).json({ message: "Failed to delete milestone" });
+    }
+  });
+
+  // Project (Job Costing) routes
+  app.get("/api/projects/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const projects = await storage.getProjects(organizationId);
+      res.json(projects);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
+  app.post("/api/projects", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...projectData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create projects" });
+      }
+
+      const validatedData = insertProjectSchema.parse({
+        ...projectData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const project = await storage.createProject(validatedData);
+      await storage.logCreate(organizationId, userId, 'project', project.id.toString(), project);
+      res.status(201).json(project);
+    } catch (error: any) {
+      console.error("Error creating project:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid project data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create project" });
+    }
+  });
+
+  app.put("/api/projects/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, project.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update projects" });
+      }
+
+      const oldData = JSON.stringify(project);
+      const updated = await storage.updateProject(projectId, req.body);
+      await storage.logUpdate(project.organizationId, userId, 'project', projectId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating project:", error);
+      res.status(500).json({ message: "Failed to update project" });
+    }
+  });
+
+  app.delete("/api/projects/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.id);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, project.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to delete projects" });
+      }
+
+      await storage.logDelete(project.organizationId, userId, 'project', projectId.toString(), project);
+      await storage.deleteProject(projectId);
+      res.json({ message: "Project deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      res.status(500).json({ message: "Failed to delete project" });
+    }
+  });
+
+  // Project cost routes
+  app.get("/api/projects/:projectId/costs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.projectId);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, project.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const costs = await storage.getProjectCosts(projectId);
+      res.json(costs);
+    } catch (error) {
+      console.error("Error fetching project costs:", error);
+      res.status(500).json({ message: "Failed to fetch project costs" });
+    }
+  });
+
+  app.post("/api/project-costs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, projectId, ...costData } = req.body;
+      
+      if (!organizationId || !projectId) {
+        return res.status(400).json({ message: "Organization and project are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create project costs" });
+      }
+
+      const validatedData = insertProjectCostSchema.parse({
+        ...costData,
+        organizationId,
+        projectId,
+        createdBy: userId,
+      });
+
+      const cost = await storage.createProjectCost(validatedData);
+      await storage.logCreate(organizationId, userId, 'project_cost', cost.id.toString(), cost);
+      res.status(201).json(cost);
+    } catch (error: any) {
+      console.error("Error creating project cost:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid cost data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create project cost" });
+    }
+  });
+
+  app.put("/api/project-costs/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const costId = parseInt(req.params.id);
+      
+      const cost = await storage.getProjectCost(costId);
+      if (!cost) {
+        return res.status(404).json({ message: "Project cost not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, cost.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update project costs" });
+      }
+
+      const oldData = JSON.stringify(cost);
+      const updated = await storage.updateProjectCost(costId, req.body);
+      await storage.logUpdate(cost.organizationId, userId, 'project_cost', costId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating project cost:", error);
+      res.status(500).json({ message: "Failed to update project cost" });
+    }
+  });
+
+  app.delete("/api/project-costs/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const costId = parseInt(req.params.id);
+      
+      const cost = await storage.getProjectCost(costId);
+      if (!cost) {
+        return res.status(404).json({ message: "Project cost not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, cost.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to delete project costs" });
+      }
+
+      await storage.logDelete(cost.organizationId, userId, 'project_cost', costId.toString(), cost);
+      await storage.deleteProjectCost(costId);
+      res.json({ message: "Project cost deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project cost:", error);
+      res.status(500).json({ message: "Failed to delete project cost" });
+    }
+  });
+
+  // Time entry routes
+  app.get("/api/time-entries/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const timeEntries = await storage.getTimeEntries(organizationId, start, end);
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching time entries:", error);
+      res.status(500).json({ message: "Failed to fetch time entries" });
+    }
+  });
+
+  app.get("/api/time-entries/user/:userId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const targetUserId = req.params.userId;
+      const organizationId = req.session?.organizationId;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      // Users can only see their own time entries unless they're admin/owner
+      if (userId !== targetUserId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "You can only view your own time entries" });
+      }
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const timeEntries = await storage.getTimeEntriesByUser(targetUserId, organizationId, start, end);
+      res.json(timeEntries);
+    } catch (error) {
+      console.error("Error fetching user time entries:", error);
+      res.status(500).json({ message: "Failed to fetch user time entries" });
+    }
+  });
+
+  app.post("/api/time-entries", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...entryData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const validatedData = insertTimeEntrySchema.parse({
+        ...entryData,
+        organizationId,
+        userId: entryData.userId || userId, // Allow creating for self or others if admin
+      });
+
+      // Check if user can create time entries for others
+      if (validatedData.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "You can only create time entries for yourself" });
+      }
+
+      const timeEntry = await storage.createTimeEntry(validatedData);
+      await storage.logCreate(organizationId, userId, 'time_entry', timeEntry.id.toString(), timeEntry);
+      res.status(201).json(timeEntry);
+    } catch (error: any) {
+      console.error("Error creating time entry:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid time entry data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create time entry" });
+    }
+  });
+
+  app.put("/api/time-entries/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getTimeEntry(entryId);
+      if (!entry) {
+        return res.status(404).json({ message: "Time entry not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, entry.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      // Users can only edit their own time entries unless they're admin/owner
+      if (entry.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "You can only edit your own time entries" });
+      }
+
+      const oldData = JSON.stringify(entry);
+      const updated = await storage.updateTimeEntry(entryId, req.body);
+      await storage.logUpdate(entry.organizationId, userId, 'time_entry', entryId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating time entry:", error);
+      res.status(500).json({ message: "Failed to update time entry" });
+    }
+  });
+
+  app.post("/api/time-entries/:id/clock-out", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getTimeEntry(entryId);
+      if (!entry) {
+        return res.status(404).json({ message: "Time entry not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, entry.organizationId);
+      if (!userRole || entry.userId !== userId) {
+        return res.status(403).json({ message: "You can only clock out your own time entries" });
+      }
+
+      const clockOutTime = req.body.clockOutTime ? new Date(req.body.clockOutTime) : new Date();
+      const updated = await storage.clockOut(entryId, clockOutTime);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error clocking out:", error);
+      res.status(500).json({ message: "Failed to clock out" });
+    }
+  });
+
+  app.delete("/api/time-entries/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getTimeEntry(entryId);
+      if (!entry) {
+        return res.status(404).json({ message: "Time entry not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, entry.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      // Users can only delete their own time entries unless they're admin/owner
+      if (entry.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "You can only delete your own time entries" });
+      }
+
+      await storage.logDelete(entry.organizationId, userId, 'time_entry', entryId.toString(), entry);
+      await storage.deleteTimeEntry(entryId);
+      res.json({ message: "Time entry deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting time entry:", error);
+      res.status(500).json({ message: "Failed to delete time entry" });
+    }
+  });
+
+  // Indirect cost rate routes
+  app.get("/api/indirect-cost-rates/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const rates = await storage.getIndirectCostRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching indirect cost rates:", error);
+      res.status(500).json({ message: "Failed to fetch indirect cost rates" });
+    }
+  });
+
+  app.post("/api/indirect-cost-rates", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...rateData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to create cost rates" });
+      }
+
+      const validatedData = insertIndirectCostRateSchema.parse({
+        ...rateData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const rate = await storage.createIndirectCostRate(validatedData);
+      await storage.logCreate(organizationId, userId, 'cost_rate', rate.id.toString(), rate);
+      res.status(201).json(rate);
+    } catch (error: any) {
+      console.error("Error creating indirect cost rate:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid cost rate data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create indirect cost rate" });
+    }
+  });
+
+  app.put("/api/indirect-cost-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      
+      const rate = await storage.getIndirectCostRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Indirect cost rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to update cost rates" });
+      }
+
+      const oldData = JSON.stringify(rate);
+      const updated = await storage.updateIndirectCostRate(rateId, req.body);
+      await storage.logUpdate(rate.organizationId, userId, 'cost_rate', rateId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating indirect cost rate:", error);
+      res.status(500).json({ message: "Failed to update indirect cost rate" });
+    }
+  });
+
+  app.delete("/api/indirect-cost-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      
+      const rate = await storage.getIndirectCostRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Indirect cost rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to delete cost rates" });
+      }
+
+      await storage.logDelete(rate.organizationId, userId, 'cost_rate', rateId.toString(), rate);
+      await storage.deleteIndirectCostRate(rateId);
+      res.json({ message: "Indirect cost rate deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting indirect cost rate:", error);
+      res.status(500).json({ message: "Failed to delete indirect cost rate" });
     }
   });
 

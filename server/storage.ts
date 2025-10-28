@@ -118,6 +118,25 @@ import {
   pledgePayments,
   type PledgePayment,
   type InsertPledgePayment,
+  // Government Contracts (For-profit)
+  contracts,
+  type Contract,
+  type InsertContract,
+  contractMilestones,
+  type ContractMilestone,
+  type InsertContractMilestone,
+  projects,
+  type Project,
+  type InsertProject,
+  timeEntries,
+  type TimeEntry,
+  type InsertTimeEntry,
+  indirectCostRates,
+  type IndirectCostRate,
+  type InsertIndirectCostRate,
+  projectCosts,
+  type ProjectCost,
+  type InsertProjectCost,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -477,6 +496,60 @@ export interface IStorage {
     expensesByFunction: Array<{ function: string; amount: string }>;
     grants: Array<{ grantorName: string; amount: string; purpose: string }>;
   }>;
+
+  // For-profit: Contract operations
+  getContracts(organizationId: number): Promise<Contract[]>;
+  getContract(id: number): Promise<Contract | undefined>;
+  createContract(contract: InsertContract): Promise<Contract>;
+  updateContract(id: number, updates: Partial<InsertContract>): Promise<Contract>;
+  deleteContract(id: number): Promise<void>;
+  updateContractBilledAmount(id: number, amount: string): Promise<Contract>;
+
+  // For-profit: Contract milestone operations
+  getContractMilestones(contractId: number): Promise<ContractMilestone[]>;
+  getContractMilestone(id: number): Promise<ContractMilestone | undefined>;
+  createContractMilestone(milestone: InsertContractMilestone): Promise<ContractMilestone>;
+  updateContractMilestone(id: number, updates: Partial<InsertContractMilestone>): Promise<ContractMilestone>;
+  deleteContractMilestone(id: number): Promise<void>;
+  completeMilestone(id: number, completedDate: Date): Promise<ContractMilestone>;
+
+  // For-profit: Project (Job Costing) operations
+  getProjects(organizationId: number): Promise<Array<Project & { contractName?: string | null }>>;
+  getProject(id: number): Promise<Project | undefined>;
+  getProjectsByContract(contractId: number): Promise<Project[]>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: number, updates: Partial<InsertProject>): Promise<Project>;
+  deleteProject(id: number): Promise<void>;
+  updateProjectActualCost(id: number, amount: string): Promise<Project>;
+
+  // For-profit: Project cost operations
+  getProjectCosts(projectId: number): Promise<ProjectCost[]>;
+  getProjectCost(id: number): Promise<ProjectCost | undefined>;
+  createProjectCost(cost: InsertProjectCost): Promise<ProjectCost>;
+  updateProjectCost(id: number, updates: Partial<InsertProjectCost>): Promise<ProjectCost>;
+  deleteProjectCost(id: number): Promise<void>;
+  getProjectCostsByType(projectId: number): Promise<Array<{ costType: string; totalAmount: string }>>;
+
+  // For-profit: Time entry operations
+  getTimeEntries(organizationId: number, startDate?: Date, endDate?: Date): Promise<Array<TimeEntry & { userName: string; projectName?: string | null; contractName?: string | null }>>;
+  getTimeEntry(id: number): Promise<TimeEntry | undefined>;
+  getTimeEntriesByUser(userId: string, organizationId: number, startDate?: Date, endDate?: Date): Promise<TimeEntry[]>;
+  getTimeEntriesByProject(projectId: number): Promise<TimeEntry[]>;
+  getTimeEntriesByContract(contractId: number): Promise<TimeEntry[]>;
+  createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry>;
+  updateTimeEntry(id: number, updates: Partial<InsertTimeEntry>): Promise<TimeEntry>;
+  deleteTimeEntry(id: number): Promise<void>;
+  clockOut(id: number, clockOutTime: Date): Promise<TimeEntry>;
+  submitTimeEntry(id: number): Promise<TimeEntry>;
+  approveTimeEntry(id: number): Promise<TimeEntry>;
+
+  // For-profit: Indirect cost rate operations
+  getIndirectCostRates(organizationId: number): Promise<IndirectCostRate[]>;
+  getActiveIndirectCostRates(organizationId: number): Promise<IndirectCostRate[]>;
+  getIndirectCostRate(id: number): Promise<IndirectCostRate | undefined>;
+  createIndirectCostRate(rate: InsertIndirectCostRate): Promise<IndirectCostRate>;
+  updateIndirectCostRate(id: number, updates: Partial<InsertIndirectCostRate>): Promise<IndirectCostRate>;
+  deleteIndirectCostRate(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3338,6 +3411,399 @@ export class DatabaseStorage implements IStorage {
         purpose: g.restrictions || 'General support',
       })),
     };
+  }
+
+  // ===================================================================
+  // GOVERNMENT CONTRACTS (For-Profit)
+  // ===================================================================
+
+  // Contract operations
+  async getContracts(organizationId: number): Promise<Contract[]> {
+    return await db.select().from(contracts)
+      .where(eq(contracts.organizationId, organizationId))
+      .orderBy(desc(contracts.createdAt));
+  }
+
+  async getContract(id: number): Promise<Contract | undefined> {
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
+    return contract;
+  }
+
+  async createContract(contract: InsertContract): Promise<Contract> {
+    const [newContract] = await db.insert(contracts).values(contract).returning();
+    return newContract;
+  }
+
+  async updateContract(id: number, updates: Partial<InsertContract>): Promise<Contract> {
+    const [updated] = await db.update(contracts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(contracts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteContract(id: number): Promise<void> {
+    await db.delete(contracts).where(eq(contracts.id, id));
+  }
+
+  async updateContractBilledAmount(id: number, amount: string): Promise<Contract> {
+    const [updated] = await db.update(contracts)
+      .set({ billedAmount: amount, updatedAt: new Date() })
+      .where(eq(contracts.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Contract milestone operations
+  async getContractMilestones(contractId: number): Promise<ContractMilestone[]> {
+    return await db.select().from(contractMilestones)
+      .where(eq(contractMilestones.contractId, contractId))
+      .orderBy(contractMilestones.dueDate);
+  }
+
+  async getContractMilestone(id: number): Promise<ContractMilestone | undefined> {
+    const [milestone] = await db.select().from(contractMilestones).where(eq(contractMilestones.id, id));
+    return milestone;
+  }
+
+  async createContractMilestone(milestone: InsertContractMilestone): Promise<ContractMilestone> {
+    const [newMilestone] = await db.insert(contractMilestones).values(milestone).returning();
+    return newMilestone;
+  }
+
+  async updateContractMilestone(id: number, updates: Partial<InsertContractMilestone>): Promise<ContractMilestone> {
+    const [updated] = await db.update(contractMilestones)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(contractMilestones.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteContractMilestone(id: number): Promise<void> {
+    await db.delete(contractMilestones).where(eq(contractMilestones.id, id));
+  }
+
+  async completeMilestone(id: number, completedDate: Date): Promise<ContractMilestone> {
+    const [updated] = await db.update(contractMilestones)
+      .set({ status: 'completed', completedDate, updatedAt: new Date() })
+      .where(eq(contractMilestones.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Project (Job Costing) operations
+  async getProjects(organizationId: number): Promise<Array<Project & { contractName?: string | null }>> {
+    const projectList = await db.select({
+      id: projects.id,
+      organizationId: projects.organizationId,
+      contractId: projects.contractId,
+      projectNumber: projects.projectNumber,
+      projectName: projects.projectName,
+      description: projects.description,
+      startDate: projects.startDate,
+      endDate: projects.endDate,
+      budget: projects.budget,
+      actualCost: projects.actualCost,
+      status: projects.status,
+      projectManager: projects.projectManager,
+      notes: projects.notes,
+      createdBy: projects.createdBy,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      contractName: contracts.contractName,
+    })
+    .from(projects)
+    .leftJoin(contracts, eq(projects.contractId, contracts.id))
+    .where(eq(projects.organizationId, organizationId))
+    .orderBy(desc(projects.createdAt));
+
+    return projectList;
+  }
+
+  async getProject(id: number): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+
+  async getProjectsByContract(contractId: number): Promise<Project[]> {
+    return await db.select().from(projects)
+      .where(eq(projects.contractId, contractId))
+      .orderBy(desc(projects.createdAt));
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [newProject] = await db.insert(projects).values(project).returning();
+    return newProject;
+  }
+
+  async updateProject(id: number, updates: Partial<InsertProject>): Promise<Project> {
+    const [updated] = await db.update(projects)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProject(id: number): Promise<void> {
+    await db.delete(projects).where(eq(projects.id, id));
+  }
+
+  async updateProjectActualCost(id: number, amount: string): Promise<Project> {
+    const [updated] = await db.update(projects)
+      .set({ actualCost: amount, updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Project cost operations
+  async getProjectCosts(projectId: number): Promise<ProjectCost[]> {
+    return await db.select().from(projectCosts)
+      .where(eq(projectCosts.projectId, projectId))
+      .orderBy(desc(projectCosts.costDate));
+  }
+
+  async getProjectCost(id: number): Promise<ProjectCost | undefined> {
+    const [cost] = await db.select().from(projectCosts).where(eq(projectCosts.id, id));
+    return cost;
+  }
+
+  async createProjectCost(cost: InsertProjectCost): Promise<ProjectCost> {
+    const [newCost] = await db.insert(projectCosts).values(cost).returning();
+    
+    // Update project actual cost
+    const totalCosts = await db.select({
+      total: sql<string>`COALESCE(SUM(${projectCosts.amount}), 0)`,
+    })
+    .from(projectCosts)
+    .where(eq(projectCosts.projectId, cost.projectId));
+    
+    if (totalCosts[0]) {
+      await this.updateProjectActualCost(cost.projectId, totalCosts[0].total);
+    }
+    
+    return newCost;
+  }
+
+  async updateProjectCost(id: number, updates: Partial<InsertProjectCost>): Promise<ProjectCost> {
+    const [updated] = await db.update(projectCosts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(projectCosts.id, id))
+      .returning();
+    
+    // Recalculate project actual cost
+    const totalCosts = await db.select({
+      total: sql<string>`COALESCE(SUM(${projectCosts.amount}), 0)`,
+    })
+    .from(projectCosts)
+    .where(eq(projectCosts.projectId, updated.projectId));
+    
+    if (totalCosts[0]) {
+      await this.updateProjectActualCost(updated.projectId, totalCosts[0].total);
+    }
+    
+    return updated;
+  }
+
+  async deleteProjectCost(id: number): Promise<void> {
+    const cost = await this.getProjectCost(id);
+    await db.delete(projectCosts).where(eq(projectCosts.id, id));
+    
+    // Recalculate project actual cost
+    if (cost) {
+      const totalCosts = await db.select({
+        total: sql<string>`COALESCE(SUM(${projectCosts.amount}), 0)`,
+      })
+      .from(projectCosts)
+      .where(eq(projectCosts.projectId, cost.projectId));
+      
+      if (totalCosts[0]) {
+        await this.updateProjectActualCost(cost.projectId, totalCosts[0].total);
+      }
+    }
+  }
+
+  async getProjectCostsByType(projectId: number): Promise<Array<{ costType: string; totalAmount: string }>> {
+    return await db.select({
+      costType: projectCosts.costType,
+      totalAmount: sql<string>`SUM(${projectCosts.amount})`,
+    })
+    .from(projectCosts)
+    .where(eq(projectCosts.projectId, projectId))
+    .groupBy(projectCosts.costType);
+  }
+
+  // Time entry operations
+  async getTimeEntries(organizationId: number, startDate?: Date, endDate?: Date): Promise<Array<TimeEntry & { userName: string; projectName?: string | null; contractName?: string | null }>> {
+    let query = db.select({
+      id: timeEntries.id,
+      organizationId: timeEntries.organizationId,
+      userId: timeEntries.userId,
+      projectId: timeEntries.projectId,
+      contractId: timeEntries.contractId,
+      taskDescription: timeEntries.taskDescription,
+      clockInTime: timeEntries.clockInTime,
+      clockOutTime: timeEntries.clockOutTime,
+      totalHours: timeEntries.totalHours,
+      hourlyRate: timeEntries.hourlyRate,
+      laborCost: timeEntries.laborCost,
+      status: timeEntries.status,
+      location: timeEntries.location,
+      notes: timeEntries.notes,
+      createdAt: timeEntries.createdAt,
+      updatedAt: timeEntries.updatedAt,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+      projectName: projects.projectName,
+      contractName: contracts.contractName,
+    })
+    .from(timeEntries)
+    .leftJoin(users, eq(timeEntries.userId, users.id))
+    .leftJoin(projects, eq(timeEntries.projectId, projects.id))
+    .leftJoin(contracts, eq(timeEntries.contractId, contracts.id))
+    .where(eq(timeEntries.organizationId, organizationId));
+
+    if (startDate) {
+      query = query.where(gte(timeEntries.clockInTime, startDate)) as any;
+    }
+    if (endDate) {
+      query = query.where(lte(timeEntries.clockInTime, endDate)) as any;
+    }
+
+    const results = await query.orderBy(desc(timeEntries.clockInTime));
+    return results;
+  }
+
+  async getTimeEntry(id: number): Promise<TimeEntry | undefined> {
+    const [entry] = await db.select().from(timeEntries).where(eq(timeEntries.id, id));
+    return entry;
+  }
+
+  async getTimeEntriesByUser(userId: string, organizationId: number, startDate?: Date, endDate?: Date): Promise<TimeEntry[]> {
+    let conditions = [
+      eq(timeEntries.userId, userId),
+      eq(timeEntries.organizationId, organizationId)
+    ];
+    
+    if (startDate) {
+      conditions.push(gte(timeEntries.clockInTime, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(timeEntries.clockInTime, endDate));
+    }
+
+    return await db.select().from(timeEntries)
+      .where(and(...conditions))
+      .orderBy(desc(timeEntries.clockInTime));
+  }
+
+  async getTimeEntriesByProject(projectId: number): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries)
+      .where(eq(timeEntries.projectId, projectId))
+      .orderBy(desc(timeEntries.clockInTime));
+  }
+
+  async getTimeEntriesByContract(contractId: number): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries)
+      .where(eq(timeEntries.contractId, contractId))
+      .orderBy(desc(timeEntries.clockInTime));
+  }
+
+  async createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry> {
+    const [newEntry] = await db.insert(timeEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async updateTimeEntry(id: number, updates: Partial<InsertTimeEntry>): Promise<TimeEntry> {
+    const [updated] = await db.update(timeEntries)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTimeEntry(id: number): Promise<void> {
+    await db.delete(timeEntries).where(eq(timeEntries.id, id));
+  }
+
+  async clockOut(id: number, clockOutTime: Date): Promise<TimeEntry> {
+    const entry = await this.getTimeEntry(id);
+    if (!entry) throw new Error('Time entry not found');
+    
+    const clockInTime = new Date(entry.clockInTime);
+    const hours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+    const totalHours = hours.toFixed(2);
+    
+    let laborCost = '0';
+    if (entry.hourlyRate) {
+      laborCost = (parseFloat(totalHours) * parseFloat(entry.hourlyRate)).toFixed(2);
+    }
+
+    const [updated] = await db.update(timeEntries)
+      .set({ 
+        clockOutTime, 
+        totalHours, 
+        laborCost,
+        updatedAt: new Date() 
+      })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async submitTimeEntry(id: number): Promise<TimeEntry> {
+    const [updated] = await db.update(timeEntries)
+      .set({ status: 'submitted', updatedAt: new Date() })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approveTimeEntry(id: number): Promise<TimeEntry> {
+    const [updated] = await db.update(timeEntries)
+      .set({ status: 'approved', updatedAt: new Date() })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Indirect cost rate operations
+  async getIndirectCostRates(organizationId: number): Promise<IndirectCostRate[]> {
+    return await db.select().from(indirectCostRates)
+      .where(eq(indirectCostRates.organizationId, organizationId))
+      .orderBy(desc(indirectCostRates.effectiveStartDate));
+  }
+
+  async getActiveIndirectCostRates(organizationId: number): Promise<IndirectCostRate[]> {
+    const now = new Date();
+    return await db.select().from(indirectCostRates)
+      .where(and(
+        eq(indirectCostRates.organizationId, organizationId),
+        eq(indirectCostRates.isActive, 1),
+        lte(indirectCostRates.effectiveStartDate, now)
+      ))
+      .orderBy(desc(indirectCostRates.effectiveStartDate));
+  }
+
+  async getIndirectCostRate(id: number): Promise<IndirectCostRate | undefined> {
+    const [rate] = await db.select().from(indirectCostRates).where(eq(indirectCostRates.id, id));
+    return rate;
+  }
+
+  async createIndirectCostRate(rate: InsertIndirectCostRate): Promise<IndirectCostRate> {
+    const [newRate] = await db.insert(indirectCostRates).values(rate).returning();
+    return newRate;
+  }
+
+  async updateIndirectCostRate(id: number, updates: Partial<InsertIndirectCostRate>): Promise<IndirectCostRate> {
+    const [updated] = await db.update(indirectCostRates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(indirectCostRates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteIndirectCostRate(id: number): Promise<void> {
+    await db.delete(indirectCostRates).where(eq(indirectCostRates.id, id));
   }
 }
 

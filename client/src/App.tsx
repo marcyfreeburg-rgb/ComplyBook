@@ -34,6 +34,7 @@ import Pledges from "@/pages/pledges";
 import Programs from "@/pages/programs";
 import FunctionalExpenseReport from "@/pages/functional-expense-report";
 import Form990Report from "@/pages/form-990-report";
+import GovernmentContracts from "@/pages/government-contracts";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
 import AcceptInvitation from "@/pages/accept-invitation";
@@ -271,6 +272,14 @@ function AuthenticatedApp() {
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/form-990-report">
                   <Form990Report 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'forprofit' && (
+                <Route path="/government-contracts">
+                  <GovernmentContracts 
                     currentOrganization={currentOrganization}
                     userId={user?.id || ''}
                   />

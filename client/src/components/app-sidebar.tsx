@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -139,6 +139,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Form 990 Report",
       url: "/form-990-report",
       icon: FileCheck,
+    }] : []),
+    ...(currentOrganization?.type === 'forprofit' ? [{
+      title: "Government Contracts",
+      url: "/government-contracts",
+      icon: Briefcase,
     }] : []),
     {
       title: "Budgets",
