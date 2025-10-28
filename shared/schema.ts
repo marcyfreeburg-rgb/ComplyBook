@@ -61,6 +61,21 @@ export const milestoneStatusEnum = pgEnum('milestone_status', ['pending', 'in_pr
 export const timeEntryStatusEnum = pgEnum('time_entry_status', ['draft', 'submitted', 'approved', 'billed']);
 export const costTypeEnum = pgEnum('cost_type', ['direct_labor', 'direct_materials', 'direct_other', 'indirect', 'overhead']);
 
+// Notification enums
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'grant_deadline',
+  'approval_request',
+  'approval_decision',
+  'payment_due',
+  'payment_received',
+  'expense_submitted',
+  'report_due',
+  'low_budget',
+  'user_invited',
+  'role_changed',
+  'general'
+]);
+
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
 // ============================================
@@ -930,6 +945,36 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+export const notifications = pgTable("notifications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: notificationTypeEnum("type").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  relatedEntityType: varchar("related_entity_type", { length: 100 }), // 'grant', 'invoice', 'bill', etc.
+  relatedEntityId: varchar("related_entity_id", { length: 100 }), // ID of related entity
+  isRead: integer("is_read").notNull().default(0), // 0 = unread, 1 = read
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_notifications_user_id").on(table.userId),
+  index("idx_notifications_org_id").on(table.organizationId),
+  index("idx_notifications_is_read").on(table.isRead),
+  index("idx_notifications_created_at").on(table.createdAt),
+]);
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
 
 // ============================================
 // PAYROLL

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { OrganizationSwitcher } from "@/components/organization-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationsBell } from "@/components/notifications-bell";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -146,7 +147,10 @@ function AuthenticatedApp() {
                 onCreateNew={handleCreateOrganization}
               />
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <NotificationsBell organizationId={currentOrgId || 0} />
+              <ThemeToggle />
+            </div>
           </header>
           
           <main className="flex-1 overflow-auto p-8">
