@@ -6,6 +6,16 @@ Budget Manager is a web-based financial management platform designed for small n
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### October 28, 2025 - Government Contracts Bug Fixes
+Fixed critical bugs across all Government Contracts features:
+- **Time Entry Calculations:** Implemented automatic server-side calculation of totalHours and laborCost from clock in/out times and hourly rates
+- **Data Validation:** Added Zod preprocessing for optional datetime and numeric fields to handle empty strings properly
+- **Type Conversions:** Fixed string-to-number conversions for all ID fields (contractId, projectId) across create and update mutations
+- **Backend Validation:** Added missing Zod validation to PUT /api/time-entries/:id route
+- All features now working correctly with proper data persistence and calculations verified through end-to-end testing
+
 ## System Architecture
 
 ### UI/UX Decisions
