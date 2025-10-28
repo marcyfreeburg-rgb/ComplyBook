@@ -148,6 +148,190 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     queryKey: [`/api/audit-prep-items/${currentOrganization.id}`],
   });
 
+  // Create Time/Effort Report Mutation
+  const createTimeEffortMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/time-effort-reports/${currentOrganization.id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/time-effort-reports/${currentOrganization.id}`] });
+      toast({ title: "Time & effort report created successfully" });
+      setIsCreateTimeEffortOpen(false);
+      resetTimeEffortForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create time & effort report", variant: "destructive" });
+    },
+  });
+
+  // Create Cost Allowability Check Mutation
+  const createCostCheckMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/cost-allowability-checks/${currentOrganization.id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cost-allowability-checks/${currentOrganization.id}`] });
+      toast({ title: "Cost allowability check created successfully" });
+      setIsCreateCostCheckOpen(false);
+      resetCostCheckForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create cost allowability check", variant: "destructive" });
+    },
+  });
+
+  // Create Sub Award Mutation
+  const createSubAwardMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/sub-awards/${currentOrganization.id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/sub-awards/${currentOrganization.id}`] });
+      toast({ title: "Sub-award created successfully" });
+      setIsCreateSubAwardOpen(false);
+      resetSubAwardForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create sub-award", variant: "destructive" });
+    },
+  });
+
+  // Create Federal Financial Report Mutation
+  const createFFRMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/federal-financial-reports/${currentOrganization.id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/federal-financial-reports/${currentOrganization.id}`] });
+      toast({ title: "Federal financial report created successfully" });
+      setIsCreateFFROpen(false);
+      resetFFRForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create federal financial report", variant: "destructive" });
+    },
+  });
+
+  // Create Audit Prep Item Mutation
+  const createAuditItemMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest(`/api/audit-prep-items/${currentOrganization.id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/audit-prep-items/${currentOrganization.id}`] });
+      toast({ title: "Audit prep item created successfully" });
+      setIsCreateAuditItemOpen(false);
+      resetAuditItemForm();
+    },
+    onError: () => {
+      toast({ title: "Failed to create audit prep item", variant: "destructive" });
+    },
+  });
+
+  // Form Handlers
+  const handleCreateTimeEffort = () => {
+    const payload = {
+      employeeId: parseInt(timeEffortFormData.employeeId),
+      grantId: parseInt(timeEffortFormData.grantId),
+      reportingPeriodStart: timeEffortFormData.reportingPeriodStart,
+      reportingPeriodEnd: timeEffortFormData.reportingPeriodEnd,
+      totalHours: parseFloat(timeEffortFormData.totalHours),
+      grantHours: parseFloat(timeEffortFormData.grantHours),
+      otherActivitiesHours: timeEffortFormData.otherActivitiesHours ? parseFloat(timeEffortFormData.otherActivitiesHours) : undefined,
+      percentageEffort: parseFloat(timeEffortFormData.percentageEffort),
+      certificationDate: timeEffortFormData.certificationDate || undefined,
+      certifiedBy: timeEffortFormData.certifiedBy || undefined,
+      notes: timeEffortFormData.notes || undefined,
+    };
+    createTimeEffortMutation.mutate(payload);
+  };
+
+  const handleCreateCostCheck = () => {
+    const payload = {
+      transactionId: costCheckFormData.transactionId ? parseInt(costCheckFormData.transactionId) : undefined,
+      grantId: parseInt(costCheckFormData.grantId),
+      costCategory: costCheckFormData.costCategory,
+      amount: costCheckFormData.amount,
+      allowabilityStatus: costCheckFormData.allowabilityStatus,
+      reviewedBy: costCheckFormData.reviewedBy || undefined,
+      reviewDate: costCheckFormData.reviewDate || undefined,
+      justification: costCheckFormData.justification || undefined,
+      notes: costCheckFormData.notes || undefined,
+    };
+    createCostCheckMutation.mutate(payload);
+  };
+
+  const handleCreateSubAward = () => {
+    const payload = {
+      grantId: parseInt(subAwardFormData.grantId),
+      subrecipientName: subAwardFormData.subrecipientName,
+      subrecipientEIN: subAwardFormData.subrecipientEIN,
+      awardAmount: subAwardFormData.awardAmount,
+      awardDate: subAwardFormData.awardDate,
+      startDate: subAwardFormData.startDate,
+      endDate: subAwardFormData.endDate,
+      purpose: subAwardFormData.purpose,
+      status: subAwardFormData.status,
+      complianceStatus: subAwardFormData.complianceStatus,
+      lastMonitoringDate: subAwardFormData.lastMonitoringDate || undefined,
+      nextMonitoringDate: subAwardFormData.nextMonitoringDate || undefined,
+      notes: subAwardFormData.notes || undefined,
+    };
+    createSubAwardMutation.mutate(payload);
+  };
+
+  const handleCreateFFR = () => {
+    const payload = {
+      grantId: parseInt(ffrFormData.grantId),
+      reportingPeriodStart: ffrFormData.reportingPeriodStart,
+      reportingPeriodEnd: ffrFormData.reportingPeriodEnd,
+      federalShareExpenditure: ffrFormData.federalShareExpenditure,
+      recipientShareExpenditure: ffrFormData.recipientShareExpenditure,
+      totalExpenditure: ffrFormData.totalExpenditure,
+      unliquidatedObligations: ffrFormData.unliquidatedObligations,
+      recipientShareUnliquidated: ffrFormData.recipientShareUnliquidated,
+      programIncomeEarned: ffrFormData.programIncomeEarned,
+      programIncomeExpended: ffrFormData.programIncomeExpended,
+      status: ffrFormData.status,
+      submittedDate: ffrFormData.submittedDate || undefined,
+      approvedDate: ffrFormData.approvedDate || undefined,
+      notes: ffrFormData.notes || undefined,
+    };
+    createFFRMutation.mutate(payload);
+  };
+
+  const handleCreateAuditItem = () => {
+    const payload = {
+      auditYear: parseInt(auditItemFormData.auditYear),
+      itemType: auditItemFormData.itemType,
+      description: auditItemFormData.description,
+      grantId: auditItemFormData.grantId ? parseInt(auditItemFormData.grantId) : undefined,
+      amount: auditItemFormData.amount || undefined,
+      completionStatus: auditItemFormData.completionStatus,
+      assignedTo: auditItemFormData.assignedTo || undefined,
+      dueDate: auditItemFormData.dueDate || undefined,
+      completedDate: auditItemFormData.completedDate || undefined,
+      findings: auditItemFormData.findings || undefined,
+      notes: auditItemFormData.notes || undefined,
+    };
+    createAuditItemMutation.mutate(payload);
+  };
+
   // Reset forms
   const resetTimeEffortForm = () => {
     setTimeEffortFormData({
@@ -619,6 +803,483 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Time/Effort Report Dialog */}
+      <Dialog open={isCreateTimeEffortOpen} onOpenChange={setIsCreateTimeEffortOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-time-effort">
+          <DialogHeader>
+            <DialogTitle>Create Time & Effort Report</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="employeeId">Employee *</Label>
+                <Select value={timeEffortFormData.employeeId} onValueChange={(value) => setTimeEffortFormData({...timeEffortFormData, employeeId: value})}>
+                  <SelectTrigger data-testid="select-employee">
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((emp: any) => (
+                      <SelectItem key={emp.id} value={emp.id.toString()}>{emp.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="grantId">Grant *</Label>
+                <Select value={timeEffortFormData.grantId} onValueChange={(value) => setTimeEffortFormData({...timeEffortFormData, grantId: value})}>
+                  <SelectTrigger data-testid="select-grant">
+                    <SelectValue placeholder="Select grant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {grants.map((grant: any) => (
+                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="reportingPeriodStart">Period Start *</Label>
+                <Input type="date" value={timeEffortFormData.reportingPeriodStart} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, reportingPeriodStart: e.target.value})} data-testid="input-period-start" />
+              </div>
+              <div>
+                <Label htmlFor="reportingPeriodEnd">Period End *</Label>
+                <Input type="date" value={timeEffortFormData.reportingPeriodEnd} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, reportingPeriodEnd: e.target.value})} data-testid="input-period-end" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="totalHours">Total Hours *</Label>
+                <Input type="number" step="0.01" value={timeEffortFormData.totalHours} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, totalHours: e.target.value})} data-testid="input-total-hours" />
+              </div>
+              <div>
+                <Label htmlFor="grantHours">Grant Hours *</Label>
+                <Input type="number" step="0.01" value={timeEffortFormData.grantHours} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, grantHours: e.target.value})} data-testid="input-grant-hours" />
+              </div>
+              <div>
+                <Label htmlFor="percentageEffort">Effort % *</Label>
+                <Input type="number" step="0.01" value={timeEffortFormData.percentageEffort} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, percentageEffort: e.target.value})} data-testid="input-percentage-effort" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="otherActivitiesHours">Other Activities Hours</Label>
+              <Input type="number" step="0.01" value={timeEffortFormData.otherActivitiesHours} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, otherActivitiesHours: e.target.value})} data-testid="input-other-hours" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="certifiedBy">Certified By</Label>
+                <Input value={timeEffortFormData.certifiedBy} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, certifiedBy: e.target.value})} data-testid="input-certified-by" />
+              </div>
+              <div>
+                <Label htmlFor="certificationDate">Certification Date</Label>
+                <Input type="date" value={timeEffortFormData.certificationDate} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, certificationDate: e.target.value})} data-testid="input-certification-date" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea value={timeEffortFormData.notes} onChange={(e) => setTimeEffortFormData({...timeEffortFormData, notes: e.target.value})} data-testid="input-notes" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateTimeEffortOpen(false)} data-testid="button-cancel">Cancel</Button>
+              <Button onClick={handleCreateTimeEffort} disabled={createTimeEffortMutation.isPending} data-testid="button-submit">
+                {createTimeEffortMutation.isPending ? "Creating..." : "Create Report"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cost Allowability Check Dialog */}
+      <Dialog open={isCreateCostCheckOpen} onOpenChange={setIsCreateCostCheckOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-cost-check">
+          <DialogHeader>
+            <DialogTitle>Create Cost Allowability Check</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="grantId">Grant *</Label>
+                <Select value={costCheckFormData.grantId} onValueChange={(value) => setCostCheckFormData({...costCheckFormData, grantId: value})}>
+                  <SelectTrigger data-testid="select-grant">
+                    <SelectValue placeholder="Select grant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {grants.map((grant: any) => (
+                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="transactionId">Transaction (optional)</Label>
+                <Select value={costCheckFormData.transactionId} onValueChange={(value) => setCostCheckFormData({...costCheckFormData, transactionId: value})}>
+                  <SelectTrigger data-testid="select-transaction">
+                    <SelectValue placeholder="Select transaction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transactions.map((txn: any) => (
+                      <SelectItem key={txn.id} value={txn.id.toString()}>{txn.description} - ${txn.amount}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="costCategory">Cost Category *</Label>
+                <Input value={costCheckFormData.costCategory} onChange={(e) => setCostCheckFormData({...costCheckFormData, costCategory: e.target.value})} data-testid="input-cost-category" />
+              </div>
+              <div>
+                <Label htmlFor="amount">Amount *</Label>
+                <Input type="number" step="0.01" value={costCheckFormData.amount} onChange={(e) => setCostCheckFormData({...costCheckFormData, amount: e.target.value})} data-testid="input-amount" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="allowabilityStatus">Allowability Status *</Label>
+                <Select value={costCheckFormData.allowabilityStatus} onValueChange={(value: any) => setCostCheckFormData({...costCheckFormData, allowabilityStatus: value})}>
+                  <SelectTrigger data-testid="select-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="allowable">Allowable</SelectItem>
+                    <SelectItem value="unallowable">Unallowable</SelectItem>
+                    <SelectItem value="questionable">Questionable</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="reviewDate">Review Date</Label>
+                <Input type="date" value={costCheckFormData.reviewDate} onChange={(e) => setCostCheckFormData({...costCheckFormData, reviewDate: e.target.value})} data-testid="input-review-date" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="reviewedBy">Reviewed By</Label>
+              <Input value={costCheckFormData.reviewedBy} onChange={(e) => setCostCheckFormData({...costCheckFormData, reviewedBy: e.target.value})} data-testid="input-reviewed-by" />
+            </div>
+            <div>
+              <Label htmlFor="justification">Justification</Label>
+              <Textarea value={costCheckFormData.justification} onChange={(e) => setCostCheckFormData({...costCheckFormData, justification: e.target.value})} data-testid="input-justification" />
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea value={costCheckFormData.notes} onChange={(e) => setCostCheckFormData({...costCheckFormData, notes: e.target.value})} data-testid="input-notes" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateCostCheckOpen(false)} data-testid="button-cancel">Cancel</Button>
+              <Button onClick={handleCreateCostCheck} disabled={createCostCheckMutation.isPending} data-testid="button-submit">
+                {createCostCheckMutation.isPending ? "Creating..." : "Create Check"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sub Award Dialog */}
+      <Dialog open={isCreateSubAwardOpen} onOpenChange={setIsCreateSubAwardOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-sub-award">
+          <DialogHeader>
+            <DialogTitle>Create Sub-Recipient Award</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label htmlFor="grantId">Grant *</Label>
+              <Select value={subAwardFormData.grantId} onValueChange={(value) => setSubAwardFormData({...subAwardFormData, grantId: value})}>
+                <SelectTrigger data-testid="select-grant">
+                  <SelectValue placeholder="Select grant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grants.map((grant: any) => (
+                    <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="subrecipientName">Subrecipient Name *</Label>
+                <Input value={subAwardFormData.subrecipientName} onChange={(e) => setSubAwardFormData({...subAwardFormData, subrecipientName: e.target.value})} data-testid="input-subrecipient-name" />
+              </div>
+              <div>
+                <Label htmlFor="subrecipientEIN">EIN *</Label>
+                <Input value={subAwardFormData.subrecipientEIN} onChange={(e) => setSubAwardFormData({...subAwardFormData, subrecipientEIN: e.target.value})} data-testid="input-ein" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="awardAmount">Award Amount *</Label>
+                <Input type="number" step="0.01" value={subAwardFormData.awardAmount} onChange={(e) => setSubAwardFormData({...subAwardFormData, awardAmount: e.target.value})} data-testid="input-award-amount" />
+              </div>
+              <div>
+                <Label htmlFor="awardDate">Award Date *</Label>
+                <Input type="date" value={subAwardFormData.awardDate} onChange={(e) => setSubAwardFormData({...subAwardFormData, awardDate: e.target.value})} data-testid="input-award-date" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate">Start Date *</Label>
+                <Input type="date" value={subAwardFormData.startDate} onChange={(e) => setSubAwardFormData({...subAwardFormData, startDate: e.target.value})} data-testid="input-start-date" />
+              </div>
+              <div>
+                <Label htmlFor="endDate">End Date *</Label>
+                <Input type="date" value={subAwardFormData.endDate} onChange={(e) => setSubAwardFormData({...subAwardFormData, endDate: e.target.value})} data-testid="input-end-date" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="purpose">Purpose *</Label>
+              <Textarea value={subAwardFormData.purpose} onChange={(e) => setSubAwardFormData({...subAwardFormData, purpose: e.target.value})} data-testid="input-purpose" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status">Status *</Label>
+                <Select value={subAwardFormData.status} onValueChange={(value: any) => setSubAwardFormData({...subAwardFormData, status: value})}>
+                  <SelectTrigger data-testid="select-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="terminated">Terminated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="complianceStatus">Compliance Status *</Label>
+                <Select value={subAwardFormData.complianceStatus} onValueChange={(value: any) => setSubAwardFormData({...subAwardFormData, complianceStatus: value})}>
+                  <SelectTrigger data-testid="select-compliance">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="compliant">Compliant</SelectItem>
+                    <SelectItem value="non_compliant">Non-Compliant</SelectItem>
+                    <SelectItem value="under_review">Under Review</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="lastMonitoringDate">Last Monitoring Date</Label>
+                <Input type="date" value={subAwardFormData.lastMonitoringDate} onChange={(e) => setSubAwardFormData({...subAwardFormData, lastMonitoringDate: e.target.value})} data-testid="input-last-monitoring" />
+              </div>
+              <div>
+                <Label htmlFor="nextMonitoringDate">Next Monitoring Date</Label>
+                <Input type="date" value={subAwardFormData.nextMonitoringDate} onChange={(e) => setSubAwardFormData({...subAwardFormData, nextMonitoringDate: e.target.value})} data-testid="input-next-monitoring" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea value={subAwardFormData.notes} onChange={(e) => setSubAwardFormData({...subAwardFormData, notes: e.target.value})} data-testid="input-notes" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateSubAwardOpen(false)} data-testid="button-cancel">Cancel</Button>
+              <Button onClick={handleCreateSubAward} disabled={createSubAwardMutation.isPending} data-testid="button-submit">
+                {createSubAwardMutation.isPending ? "Creating..." : "Create Sub-Award"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Federal Financial Report Dialog */}
+      <Dialog open={isCreateFFROpen} onOpenChange={setIsCreateFFROpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-ffr">
+          <DialogHeader>
+            <DialogTitle>Create Federal Financial Report (SF-425)</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label htmlFor="grantId">Grant *</Label>
+              <Select value={ffrFormData.grantId} onValueChange={(value) => setFFRFormData({...ffrFormData, grantId: value})}>
+                <SelectTrigger data-testid="select-grant">
+                  <SelectValue placeholder="Select grant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grants.map((grant: any) => (
+                    <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="reportingPeriodStart">Period Start *</Label>
+                <Input type="date" value={ffrFormData.reportingPeriodStart} onChange={(e) => setFFRFormData({...ffrFormData, reportingPeriodStart: e.target.value})} data-testid="input-period-start" />
+              </div>
+              <div>
+                <Label htmlFor="reportingPeriodEnd">Period End *</Label>
+                <Input type="date" value={ffrFormData.reportingPeriodEnd} onChange={(e) => setFFRFormData({...ffrFormData, reportingPeriodEnd: e.target.value})} data-testid="input-period-end" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="federalShareExpenditure">Federal Share *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.federalShareExpenditure} onChange={(e) => setFFRFormData({...ffrFormData, federalShareExpenditure: e.target.value})} data-testid="input-federal-share" />
+              </div>
+              <div>
+                <Label htmlFor="recipientShareExpenditure">Recipient Share *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.recipientShareExpenditure} onChange={(e) => setFFRFormData({...ffrFormData, recipientShareExpenditure: e.target.value})} data-testid="input-recipient-share" />
+              </div>
+              <div>
+                <Label htmlFor="totalExpenditure">Total Expenditure *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.totalExpenditure} onChange={(e) => setFFRFormData({...ffrFormData, totalExpenditure: e.target.value})} data-testid="input-total-expenditure" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="unliquidatedObligations">Unliquidated Obligations *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.unliquidatedObligations} onChange={(e) => setFFRFormData({...ffrFormData, unliquidatedObligations: e.target.value})} data-testid="input-unliquidated" />
+              </div>
+              <div>
+                <Label htmlFor="recipientShareUnliquidated">Recipient Share Unliquidated *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.recipientShareUnliquidated} onChange={(e) => setFFRFormData({...ffrFormData, recipientShareUnliquidated: e.target.value})} data-testid="input-recipient-unliquidated" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="programIncomeEarned">Program Income Earned *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.programIncomeEarned} onChange={(e) => setFFRFormData({...ffrFormData, programIncomeEarned: e.target.value})} data-testid="input-income-earned" />
+              </div>
+              <div>
+                <Label htmlFor="programIncomeExpended">Program Income Expended *</Label>
+                <Input type="number" step="0.01" value={ffrFormData.programIncomeExpended} onChange={(e) => setFFRFormData({...ffrFormData, programIncomeExpended: e.target.value})} data-testid="input-income-expended" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="status">Status *</Label>
+                <Select value={ffrFormData.status} onValueChange={(value: any) => setFFRFormData({...ffrFormData, status: value})}>
+                  <SelectTrigger data-testid="select-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="submittedDate">Submitted Date</Label>
+                <Input type="date" value={ffrFormData.submittedDate} onChange={(e) => setFFRFormData({...ffrFormData, submittedDate: e.target.value})} data-testid="input-submitted-date" />
+              </div>
+              <div>
+                <Label htmlFor="approvedDate">Approved Date</Label>
+                <Input type="date" value={ffrFormData.approvedDate} onChange={(e) => setFFRFormData({...ffrFormData, approvedDate: e.target.value})} data-testid="input-approved-date" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea value={ffrFormData.notes} onChange={(e) => setFFRFormData({...ffrFormData, notes: e.target.value})} data-testid="input-notes" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateFFROpen(false)} data-testid="button-cancel">Cancel</Button>
+              <Button onClick={handleCreateFFR} disabled={createFFRMutation.isPending} data-testid="button-submit">
+                {createFFRMutation.isPending ? "Creating..." : "Create Report"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Audit Prep Item Dialog */}
+      <Dialog open={isCreateAuditItemOpen} onOpenChange={setIsCreateAuditItemOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-audit-item">
+          <DialogHeader>
+            <DialogTitle>Create Audit Prep Item</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="auditYear">Audit Year *</Label>
+                <Input type="number" value={auditItemFormData.auditYear} onChange={(e) => setAuditItemFormData({...auditItemFormData, auditYear: e.target.value})} data-testid="input-audit-year" />
+              </div>
+              <div>
+                <Label htmlFor="itemType">Type *</Label>
+                <Select value={auditItemFormData.itemType} onValueChange={(value: any) => setAuditItemFormData({...auditItemFormData, itemType: value})}>
+                  <SelectTrigger data-testid="select-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single_audit">Single Audit</SelectItem>
+                    <SelectItem value="form_990">Form 990</SelectItem>
+                    <SelectItem value="schedule_of_expenditures">Schedule of Expenditures</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="description">Description *</Label>
+              <Textarea value={auditItemFormData.description} onChange={(e) => setAuditItemFormData({...auditItemFormData, description: e.target.value})} data-testid="input-description" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="grantId">Grant (optional)</Label>
+                <Select value={auditItemFormData.grantId} onValueChange={(value) => setAuditItemFormData({...auditItemFormData, grantId: value})}>
+                  <SelectTrigger data-testid="select-grant">
+                    <SelectValue placeholder="Select grant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {grants.map((grant: any) => (
+                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="amount">Amount</Label>
+                <Input type="number" step="0.01" value={auditItemFormData.amount} onChange={(e) => setAuditItemFormData({...auditItemFormData, amount: e.target.value})} data-testid="input-amount" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="completionStatus">Completion Status *</Label>
+                <Select value={auditItemFormData.completionStatus} onValueChange={(value: any) => setAuditItemFormData({...auditItemFormData, completionStatus: value})}>
+                  <SelectTrigger data-testid="select-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_started">Not Started</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="assignedTo">Assigned To</Label>
+                <Input value={auditItemFormData.assignedTo} onChange={(e) => setAuditItemFormData({...auditItemFormData, assignedTo: e.target.value})} data-testid="input-assigned-to" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="dueDate">Due Date</Label>
+                <Input type="date" value={auditItemFormData.dueDate} onChange={(e) => setAuditItemFormData({...auditItemFormData, dueDate: e.target.value})} data-testid="input-due-date" />
+              </div>
+              <div>
+                <Label htmlFor="completedDate">Completed Date</Label>
+                <Input type="date" value={auditItemFormData.completedDate} onChange={(e) => setAuditItemFormData({...auditItemFormData, completedDate: e.target.value})} data-testid="input-completed-date" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="findings">Findings</Label>
+              <Textarea value={auditItemFormData.findings} onChange={(e) => setAuditItemFormData({...auditItemFormData, findings: e.target.value})} data-testid="input-findings" />
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea value={auditItemFormData.notes} onChange={(e) => setAuditItemFormData({...auditItemFormData, notes: e.target.value})} data-testid="input-notes" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateAuditItemOpen(false)} data-testid="button-cancel">Cancel</Button>
+              <Button onClick={handleCreateAuditItem} disabled={createAuditItemMutation.isPending} data-testid="button-submit">
+                {createAuditItemMutation.isPending ? "Creating..." : "Create Item"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
