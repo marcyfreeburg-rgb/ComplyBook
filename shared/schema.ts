@@ -48,6 +48,13 @@ export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'processed',
 export const deductionTypeEnum = pgEnum('deduction_type', ['tax', 'insurance', 'retirement', 'garnishment', 'other']);
 export const deductionCalculationTypeEnum = pgEnum('deduction_calculation_type', ['percentage', 'fixed_amount']);
 
+// Nonprofit-specific enums
+export const fundTypeEnum = pgEnum('fund_type', ['restricted', 'unrestricted']);
+export const pledgeStatusEnum = pgEnum('pledge_status', ['pending', 'partial', 'fulfilled', 'cancelled', 'overdue']);
+export const functionalCategoryEnum = pgEnum('functional_category', ['program', 'administrative', 'fundraising']);
+export const complianceStatusEnum = pgEnum('compliance_status', ['compliant', 'at_risk', 'non_compliant', 'pending_review']);
+export const programStatusEnum = pgEnum('program_status', ['active', 'completed', 'on_hold', 'planned']);
+
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
 // ============================================
@@ -414,6 +421,10 @@ export const transactions = pgTable("transactions", {
   vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
   clientId: integer("client_id").references(() => clients.id, { onDelete: 'set null' }),
   donorId: integer("donor_id").references(() => donors.id, { onDelete: 'set null' }),
+  // Nonprofit-specific fields
+  fundId: integer("fund_id").references(() => funds.id, { onDelete: 'set null' }),
+  programId: integer("program_id").references(() => programs.id, { onDelete: 'set null' }),
+  functionalCategory: functionalCategoryEnum("functional_category"),
   reconciliationStatus: reconciliationStatusEnum("reconciliation_status").notNull().default('unreconciled'),
   reconciledDate: timestamp("reconciled_date"),
   reconciledBy: varchar("reconciled_by").references(() => users.id),
@@ -471,6 +482,16 @@ export const grants = pgTable("grants", {
   status: grantStatusEnum("status").notNull().default('active'),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
+  // Grant lifecycle fields
+  reportingRequirements: text("reporting_requirements"), // What reports are required
+  reportingFrequency: varchar("reporting_frequency", { length: 50 }), // Monthly, Quarterly, etc.
+  nextReportDueDate: timestamp("next_report_due_date"),
+  lastReportSubmittedDate: timestamp("last_report_submitted_date"),
+  complianceStatus: complianceStatusEnum("compliance_status").default('compliant'),
+  complianceNotes: text("compliance_notes"), // Any compliance concerns
+  grantorContact: varchar("grantor_contact", { length: 255 }), // Primary contact at funding org
+  grantorEmail: varchar("grantor_email", { length: 255 }),
+  grantorPhone: varchar("grantor_phone", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -483,6 +504,8 @@ export const insertGrantSchema = createInsertSchema(grants).omit({
   amount: z.string().or(z.number()).transform(val => String(val)),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
+  nextReportDueDate: z.coerce.date().optional().nullable(),
+  lastReportSubmittedDate: z.coerce.date().optional().nullable(),
 });
 
 export type InsertGrant = z.infer<typeof insertGrantSchema>;
@@ -1037,6 +1060,125 @@ export const insertPayrollItemDeductionSchema = createInsertSchema(payrollItemDe
 
 export type InsertPayrollItemDeduction = z.infer<typeof insertPayrollItemDeductionSchema>;
 export type PayrollItemDeduction = typeof payrollItemDeductions.$inferSelect;
+
+// ============================================
+// NONPROFIT-SPECIFIC FEATURES
+// ============================================
+
+// FUNDS (Restricted vs Unrestricted)
+export const funds = pgTable("funds", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  fundType: fundTypeEnum("fund_type").notNull().default('unrestricted'),
+  description: text("description"),
+  restrictions: text("restrictions"), // Details about restrictions if applicable
+  currentBalance: numeric("current_balance", { precision: 12, scale: 2 }).notNull().default('0'),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_funds_organization_id").on(table.organizationId),
+]);
+
+export const insertFundSchema = createInsertSchema(funds).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  currentBalance: z.string().or(z.number()).transform(val => String(val)).optional(),
+});
+
+export type InsertFund = z.infer<typeof insertFundSchema>;
+export type Fund = typeof funds.$inferSelect;
+
+// PROGRAMS (For expense allocation)
+export const programs = pgTable("programs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  status: programStatusEnum("status").notNull().default('active'),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  budget: numeric("budget", { precision: 12, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_programs_organization_id").on(table.organizationId),
+]);
+
+export const insertProgramSchema = createInsertSchema(programs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  budget: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  startDate: z.coerce.date().optional().nullable(),
+  endDate: z.coerce.date().optional().nullable(),
+});
+
+export type InsertProgram = z.infer<typeof insertProgramSchema>;
+export type Program = typeof programs.$inferSelect;
+
+// PLEDGES (Donor commitments)
+export const pledges = pgTable("pledges", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  donorId: integer("donor_id").notNull().references(() => donors.id, { onDelete: 'cascade' }),
+  fundId: integer("fund_id").references(() => funds.id, { onDelete: 'set null' }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  pledgeDate: timestamp("pledge_date").notNull(),
+  dueDate: timestamp("due_date"),
+  status: pledgeStatusEnum("status").notNull().default('pending'),
+  amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default('0'),
+  notes: text("notes"),
+  paymentSchedule: text("payment_schedule"), // e.g., "Monthly, $100 for 10 months"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_pledges_organization_id").on(table.organizationId),
+  index("idx_pledges_donor_id").on(table.donorId),
+  index("idx_pledges_fund_id").on(table.fundId),
+]);
+
+export const insertPledgeSchema = createInsertSchema(pledges).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  amountPaid: z.string().or(z.number()).transform(val => String(val)).optional(),
+  pledgeDate: z.coerce.date(),
+  dueDate: z.coerce.date().optional().nullable(),
+});
+
+export type InsertPledge = z.infer<typeof insertPledgeSchema>;
+export type Pledge = typeof pledges.$inferSelect;
+
+// PLEDGE PAYMENTS (Track payments against pledges)
+export const pledgePayments = pgTable("pledge_payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  pledgeId: integer("pledge_id").notNull().references(() => pledges.id, { onDelete: 'cascade' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_pledge_payments_pledge_id").on(table.pledgeId),
+  index("idx_pledge_payments_transaction_id").on(table.transactionId),
+]);
+
+export const insertPledgePaymentSchema = createInsertSchema(pledgePayments).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  paymentDate: z.coerce.date(),
+});
+
+export type InsertPledgePayment = z.infer<typeof insertPledgePaymentSchema>;
+export type PledgePayment = typeof pledgePayments.$inferSelect;
 
 // ============================================
 // RELATIONS
