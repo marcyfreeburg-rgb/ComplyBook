@@ -963,6 +963,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bank Reconciliation routes
+  app.get('/api/reconciliation/unreconciled/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const unreconciledTransactions = await storage.getUnreconciledTransactions(organizationId);
+      res.json(unreconciledTransactions);
+    } catch (error) {
+      console.error("Error fetching unreconciled transactions:", error);
+      res.status(500).json({ message: "Failed to fetch unreconciled transactions" });
+    }
+  });
+
+  app.post('/api/reconciliation/reconcile/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+
+      // Get the transaction
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, transaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to reconcile transactions" });
+      }
+
+      const reconciledTransaction = await storage.reconcileTransaction(transactionId, userId);
+      res.json(reconciledTransaction);
+    } catch (error) {
+      console.error("Error reconciling transaction:", error);
+      res.status(500).json({ message: "Failed to reconcile transaction" });
+    }
+  });
+
+  app.post('/api/reconciliation/unreconcile/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+
+      // Get the transaction
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, transaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to unreconcile transactions" });
+      }
+
+      const unreconciledTransaction = await storage.unreconcileTransaction(transactionId);
+      res.json(unreconciledTransaction);
+    } catch (error) {
+      console.error("Error unreconciling transaction:", error);
+      res.status(500).json({ message: "Failed to unreconcile transaction" });
+    }
+  });
+
+  app.post('/api/reconciliation/bulk-reconcile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, transactionIds } = req.body;
+
+      if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        return res.status(400).json({ message: "Invalid transaction IDs" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to reconcile transactions" });
+      }
+
+      const count = await storage.bulkReconcileTransactions(transactionIds, userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error bulk reconciling transactions:", error);
+      res.status(500).json({ message: "Failed to reconcile transactions" });
+    }
+  });
+
+  app.post('/api/reconciliation/auto-reconcile/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to auto-reconcile transactions" });
+      }
+
+      const result = await storage.autoReconcileTransactions(organizationId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error auto-reconciling transactions:", error);
+      res.status(500).json({ message: "Failed to auto-reconcile transactions" });
+    }
+  });
+
   // Recurring Transaction routes
   app.get('/api/recurring-transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

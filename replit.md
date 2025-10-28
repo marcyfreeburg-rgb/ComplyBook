@@ -1,93 +1,70 @@
 # Budget Manager - Multi-Tenant Financial Management Application
 
 ## Overview
-Budget Manager is a web-based financial management platform for small non-profits and for-profit organizations. It enables users to manage multiple organizations, track income and expenses, categorize transactions (with AI assistance), manage grants, plan budgets, and generate financial reports. The application provides a clean, professional, mobile-responsive interface inspired by leading financial dashboards.
+Budget Manager is a web-based financial management platform designed for small non-profit and for-profit organizations. It offers multi-tenant capabilities, allowing users to manage multiple organizations. The application facilitates tracking income and expenses, AI-assisted transaction categorization, grant management, budget planning, and comprehensive financial reporting. Its design prioritizes a clean, professional, and mobile-responsive user experience. The business vision is to provide an accessible and powerful financial tool that streamlines operations for small organizations, enabling better financial oversight and strategic planning.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend
-- **Framework:** React 18 with TypeScript.
-- **Build:** Vite for fast development and HMR.
-- **Routing:** Wouter for lightweight client-side routing.
-- **State Management:** TanStack Query for server state and caching; React hooks for local UI state.
-- **UI:** shadcn/ui (New York style) based on Radix UI, styled with Tailwind CSS, custom CSS variables for theming (light/dark mode).
-- **Design Principles:** Emphasizes clarity, professional financial data presentation, minimal cognitive load, responsive design, and modern typography (Inter, JetBrains Mono).
+### UI/UX Decisions
+The application utilizes React 18 with TypeScript and Vite for a fast and responsive frontend. UI components are built with `shadcn/ui` (New York style) based on Radix UI, styled using Tailwind CSS and custom CSS variables for themable light/dark modes. Design principles emphasize clarity, professional financial data presentation, minimal cognitive load, responsive design, and modern typography (Inter, JetBrains Mono).
 
-### Backend
-- **Framework:** Express.js with TypeScript.
-- **API:** RESTful design pattern, `/api/*` prefix.
-- **Authentication:** Replit Auth (OpenID Connect) via Passport.js, session-based with secure HTTP-only cookies, stored in PostgreSQL.
-- **Authorization:** Role-based access control (owner, admin, accountant, viewer) per organization, multi-tenant.
-- **API Design:** Consistent error handling, request/response logging, Zod validation.
+### Technical Implementations
+The backend is built with Express.js and TypeScript, exposing a RESTful API. Authentication is handled via Replit Auth (OpenID Connect) using Passport.js, with session-based, secure HTTP-only cookies stored in PostgreSQL. Authorization employs a multi-tenant, role-based access control system (owner, admin, accountant, viewer) per organization. Data validation is performed using Zod.
 
-### Data Storage
-- **Database:** PostgreSQL (Neon Serverless) as the primary relational database.
-- **ORM:** Drizzle ORM for type-safe queries and schema management, Drizzle Kit for migrations.
-- **Schema Design:** Multi-tenant with organization-scoped data; tables for users, organizations, user-organization roles, categories, transactions, grants, budgets, budget items, Plaid items, Plaid accounts, vendors, clients, categorization history, cash flow projections, cash flow assumptions, tax categories, tax reports, tax 1099 forms, expense approvals, and recurring transactions.
-- **Data Access:** Repository pattern with an IStorage interface, reusable query methods, support for filtering, pagination, and aggregations.
+### Feature Specifications
+Key features include:
+- **Plaid Bank Integration:** Automatic bank account connectivity, transaction import, and balance syncing.
+- **AI-Powered Transaction Categorization:** AI suggestions with confidence scores and bulk categorization.
+- **Budget Planning & Forecasting:** Customizable budgets, visual comparison of budget vs. actuals.
+- **Team Collaboration & Invitations:** Role-based invitations with granular permissions via SendGrid.
+- **Recurring Transactions:** Automated transaction templates with various frequencies.
+- **Vendor & Client Management:** CRUD operations for vendors and clients, linking transactions for relationship tracking.
+- **Invoice & Bill Management:** Comprehensive tracking system with line items, status workflows, and optional tax tracking.
+- **Universal Branding System:** Customizable visual identity (logo, colors, fonts, payment info, footer) applied across documents, reports, and emails.
+- **Cash Flow Forecasting:** Advanced projection system with scenario modeling and customizable growth assumptions.
+- **Tax Reporting & Preparation:** Management of tax categories, 1099 form generation, and year-end tax reports for both for-profit and non-profit organizations.
+- **Expense Approval Workflows:** Role-based pre-approval system for purchases with multi-status tracking.
+- **Custom Report Builder:** Flexible system for creating tailored financial reports with dynamic field selection, filtering, grouping, and CSV export.
+- **Responsive Design:** Mobile-first design ensures usability across all device sizes, adapting layouts and navigation.
+- **Audit Trail System:** Comprehensive logging of critical create/update/delete operations with user attribution, timestamps, and detailed change history for compliance and accountability.
+- **Bank Reconciliation:** System for matching transactions with bank statements, supporting manual, bulk, and automatic reconciliation with status tracking and audit trails.
 
-### Key Features Implemented
-- **Plaid Bank Integration:** Automatic bank account connectivity, transaction import, balance syncing, and secure credential storage.
-- **AI-Powered Transaction Categorization:** AI suggestions with confidence scores, bulk categorization UI, user feedback system, and history tracking. Integrates with OpenAI GPT-4.
-- **Budget Planning & Forecasting:** Customizable budgets (monthly, quarterly, yearly), budget item definition, visual budget vs. actual comparison, and dashboard integration.
-- **Team Collaboration & Invitations:** Role-based team member invitations with email notifications via SendGrid, granular permission control (view_only, make_reports, edit_transactions, view_make_reports, full_access), invitation lifecycle management (accept, decline, cancel), and automatic duplicate member detection.
-- **Recurring Transactions:** Automatic transaction templates with multiple frequencies (daily, weekly, biweekly, monthly, quarterly, yearly), manual generation via "Generate Now" button, active/inactive status toggle, start/end date support, and optional day-of-month scheduling for monthly transactions. Integrates with permission system requiring edit_transactions access.
-- **Vendor & Client Management:** Full CRUD operations for vendors (suppliers/service providers) and clients (customers), with contact information tracking (name, contact person, email, phone, address, notes). Transactions can be linked to vendors for expenses and clients for income, enabling better relationship tracking and reporting. Requires admin/owner permissions for creating, updating, or deleting vendor/client records.
-- **Invoice & Bill Management:** Complete invoice and bill tracking system with line item support. Invoices track money owed to the organization by clients, while bills track money owed by the organization to vendors. Features include: status workflow (draft, sent, paid, partial, overdue, cancelled for invoices; draft, received, paid, partial, overdue, cancelled for bills), line item management with quantity/rate/amount calculations, automatic subtotal and total computation, optional tax tracking, date tracking (issue date, due date), notes field, and optional linkage to clients/vendors. Multi-tenant architecture ensures organization isolation. Server-side security automatically sets createdBy from authenticated user. Requires edit_transactions permission for all create/update/delete operations.
-- **Universal Branding System:** Comprehensive brand management system enabling organizations to customize the visual identity across ALL documents, reports, emails, and exports. Accessed through the "Brand Settings" page (owner/admin only), organizations can configure:
-  - **Visual Identity:** Logo upload, primary color (headings, totals, buttons), accent color (section headings, highlights), font family (Inter, Georgia, Arial, Times New Roman, Courier New)
-  - **Payment Information:** Payment terms (Net 30, Net 60, custom), payment methods (wire transfer, check, credit card details)
-  - **Footer Text:** Custom footer for branding, contact information, legal disclaimers
-  - **Applied Universally To:**
-    - **Invoices:** Branded headers, totals, payment sections, and footers with organization colors and fonts
-    - **Bills:** Matching branding to invoices for consistency in vendor communications
-    - **PDF Reports:** All financial reports (Profit & Loss, Balance Sheet, Transaction History) include logo, colors, fonts, and footer
-    - **Email Templates:** Team invitation emails use gradient headers with organization colors, logo, and branded CTA buttons
-    - **CSV Exports:** Custom reports include branded header rows with organization name, report title, date range, generation timestamp, and footer
-  - **Database Design:** Settings stored in organization table with `invoice*` prefix fields (invoicePrimaryColor, invoiceAccentColor, etc.) for backward compatibility, but understood and applied universally across all features
-  - **Helper Functions:** Reusable branding utilities (getBrandedPDFStyles, getBrandedHeader, getBrandedFooter) ensure consistency and DRY principles
-  - **Developer Guidelines:** When adding new documents, reports, emails, or exports, ALWAYS fetch organization branding settings and apply them. Use existing helper functions where possible or create new reusable utilities following established patterns.
-- **Cash Flow Forecasting:** Advanced financial projection system with multiple scenario modeling (optimistic, realistic, pessimistic, custom). Features include: monthly cash flow projections with starting balance, projected income, projected expenses, and ending balance calculations; customizable growth assumptions with percentage-based income/expense growth rates and one-time adjustments; scenario comparison with visual charts; 12-month projection timeline; and organization-specific assumption templates. Enables organizations to plan for future cash positions and identify potential shortfalls. Requires admin/owner permissions for creating and managing projections.
-- **Tax Reporting & Preparation:** Comprehensive tax management system supporting both for-profit and non-profit organizations. Features include: tax category management with deductible expense tracking; 1099 form generation and tracking (1099-NEC, 1099-MISC, 1099-INT, 1099-DIV, 1099-K) with recipient information (name, TIN, address), filing status tracking, and optional vendor linkage; year-end tax report generation with total income, total deductible expenses, and tax liability estimates; year-based filtering and reporting; and automatic expense categorization by tax deductibility. Serves both Form 1099 requirements for for-profits and Form 990 preparation needs for non-profits. Requires admin/owner permissions for all tax-related operations.
-- **Expense Approval Workflows:** Role-based expense approval system enabling organizations to require pre-approval for purchases. Features include: expense approval request submission with description, amount, category, vendor, and justification notes; multi-status workflow (pending, approved, rejected); approval/rejection interface for admins and owners with review notes; request history tracking with timestamps and reviewer information; dashboard integration showing pending approval counts; and permission-based access (team members can submit requests, admins/owners can approve/reject). Streamlines expense control and ensures budget compliance before purchases are made.
-- **Custom Report Builder:** Flexible report creation system allowing users to build custom financial reports tailored to their specific needs. Features include: multiple data source support (transactions, invoices, bills, grants); dynamic field selection with checkboxes; advanced filtering capabilities with condition builders (equals, contains, greater than, less than, etc.); date range filtering for time-based analysis; grouping and sorting options; report saving and management (create, update, delete); on-demand report execution with dynamic date parameters; CSV export functionality for data analysis in external tools; and organization-scoped report storage ensuring multi-tenant data isolation. Provides an alternative to pre-built reports, enabling users to analyze exactly the data they need without custom development.
-- **Responsive Design:** Fully responsive mobile-first design ensuring usability across all device sizes. Features include: Shadcn sidebar with automatic mobile Sheet drawer on small screens; responsive grid layouts throughout (dashboard cards stack from 3 columns to 1 column on mobile); horizontal scrolling tables with overflow-x-auto for transaction lists, invoices, and bills; flexible header with flex-wrap for organization switcher and controls; touch-friendly button sizes and spacing; category cards that adapt from 3-column to 1-column layout; and consistent breakpoint usage (sm, md, lg) across all pages. Navigation remains accessible via hamburger menu on mobile, and all forms maintain proper vertical stacking on small screens.
-- **Audit Trail System:** Comprehensive activity tracking system for compliance and accountability. Features include: automatic logging of all create/update/delete operations on critical entities (transactions, invoices, bills); detailed change history with before/after snapshots stored as JSON; user attribution with email and name tracking; timestamp tracking with precise date and time; IP address and user agent tracking for security; multi-tenant isolation ensuring organizations only see their own audit logs; advanced filtering by entity type (transaction, invoice, bill), action (create, update, delete), user, and date range; searchable audit log table displaying entity type, action, user, timestamp, and change details with human-readable identifiers (invoice/bill numbers); admin/owner-only access control enforced at both UI (sidebar visibility) and API levels; and extensible architecture for adding audit logging to additional entities. Enables organizations to track who changed what and when for regulatory compliance, dispute resolution, and accountability. **Security:** The Audit Trail link in the sidebar is conditionally rendered based on user role (userRole field from OrganizationWithRole type), ensuring only admin/owner users see the menu item. Backend API enforces the same role restriction with 403 responses for unauthorized access.
+### System Design Choices
+PostgreSQL (Neon Serverless) is the primary relational database, managed with Drizzle ORM for type-safe queries and schema migrations. The schema is multi-tenant, with organization-scoped data for users, organizations, transactions, categories, grants, budgets, and more. A repository pattern with an `IStorage` interface is used for data access, supporting filtering, pagination, and aggregations.
 
 ## External Dependencies
 
 ### Authentication
-- **Replit Auth:** Primary OpenID Connect provider.
+- **Replit Auth:** OpenID Connect provider.
 
 ### Database
-- **Neon Serverless PostgreSQL:** Cloud-hosted PostgreSQL.
+- **Neon Serverless PostgreSQL:** Cloud-hosted relational database.
 
 ### Bank Integration
-- **Plaid API:** For bank account connectivity and transaction data, using Plaid Link and Plaid Node SDK.
+- **Plaid API:** For connecting to bank accounts and retrieving financial data.
 
 ### Email Service
-- **SendGrid:** For transactional emails including team invitations. Uses Replit's SendGrid connector for secure API key management.
+- **SendGrid:** For sending transactional emails, including team invitations.
 
 ### UI Libraries
-- **Radix UI:** Headless components.
-- **shadcn/ui:** Component library built on Radix.
+- **Radix UI:** Headless UI components.
+- **shadcn/ui:** Component library built on Radix UI.
 - **Lucide React:** Icon library.
-- **date-fns:** Date manipulation.
 
 ### Development Tools
 - **Vite:** Frontend build tool.
 - **PostCSS:** With Tailwind CSS and Autoprefixer.
-- **TSX:** For running TypeScript server in development.
+- **TSX:** For TypeScript execution in development.
 - **esbuild:** For production server bundling.
 
 ### Fonts
 - **Google Fonts:** Inter and JetBrains Mono.
 
 ### Other Key Dependencies
-- **React Hook Form** with Zod resolver.
-- **Class Variance Authority (CVA)**, **clsx**, **tailwind-merge**.
-- **Drizzle ORM** and **Drizzle Zod**.
-- **react-plaid-link**.
+- **React Hook Form:** For form management with Zod resolver.
+- **Class Variance Authority (CVA), clsx, tailwind-merge:** For managing CSS classes.
+- **Drizzle ORM & Drizzle Zod:** For ORM and Zod integration.
+- **react-plaid-link:** React component for Plaid Link.

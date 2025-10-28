@@ -32,6 +32,7 @@ import TaxReporting from "@/pages/tax-reporting";
 import ExpenseApprovals from "@/pages/expense-approvals";
 import CustomReports from "@/pages/custom-reports";
 import AuditTrail from "@/pages/audit-trail";
+import BankReconciliation from "@/pages/bank-reconciliation";
 import type { Organization } from "@shared/schema";
 
 // Organization with user role
@@ -196,6 +197,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/bank-accounts">
                 <BankAccounts currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/bank-reconciliation">
+                <BankReconciliation currentOrganization={currentOrganization} />
               </Route>
               <Route path="/cash-flow">
                 <CashFlow currentOrganization={currentOrganization} />

@@ -933,6 +933,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -960,6 +961,14 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           ) : (
                             <span className="text-xs text-muted-foreground">Uncategorized</span>
                           )}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          <Badge 
+                            variant={transaction.reconciliationStatus === 'reconciled' ? 'default' : 'outline'}
+                            className="text-xs"
+                          >
+                            {transaction.reconciliationStatus === 'reconciled' ? 'Reconciled' : 'Unreconciled'}
+                          </Badge>
                         </td>
                         <td className={`py-3 px-4 text-sm font-mono text-right ${
                           transaction.type === 'income' ? 'text-chart-2' : 'text-chart-3'

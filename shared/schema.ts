@@ -40,6 +40,7 @@ export const approvalStatusEnum = pgEnum('approval_status', ['pending', 'approve
 export const taxFormTypeEnum = pgEnum('tax_form_type', ['1099_nec', '1099_misc', '1099_int', 'w2', '990', '1040_schedule_c']);
 export const cashFlowScenarioTypeEnum = pgEnum('cash_flow_scenario_type', ['optimistic', 'realistic', 'pessimistic', 'custom']);
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete']);
+export const reconciliationStatusEnum = pgEnum('reconciliation_status', ['unreconciled', 'reconciled', 'pending']);
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
@@ -380,6 +381,9 @@ export const transactions = pgTable("transactions", {
   grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
   vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
   clientId: integer("client_id").references(() => clients.id, { onDelete: 'set null' }),
+  reconciliationStatus: reconciliationStatusEnum("reconciliation_status").notNull().default('unreconciled'),
+  reconciledDate: timestamp("reconciled_date"),
+  reconciledBy: varchar("reconciled_by").references(() => users.id),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

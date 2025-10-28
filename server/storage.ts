@@ -89,7 +89,7 @@ import {
   type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import memoize from "memoizee";
 
 // Interface for storage operations
@@ -138,6 +138,13 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
   deleteTransaction(id: number): Promise<void>;
+
+  // Reconciliation operations
+  getUnreconciledTransactions(organizationId: number, plaidAccountId?: string): Promise<Transaction[]>;
+  reconcileTransaction(id: number, userId: string): Promise<Transaction>;
+  unreconcileTransaction(id: number): Promise<Transaction>;
+  bulkReconcileTransactions(ids: number[], userId: string): Promise<number>;
+  autoReconcileTransactions(organizationId: number): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }>;
 
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
@@ -616,6 +623,120 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(transactions)
       .where(eq(transactions.id, id));
+  }
+
+  // Reconciliation operations
+  async getUnreconciledTransactions(organizationId: number, plaidAccountId?: string): Promise<Transaction[]> {
+    const conditions = [
+      eq(transactions.organizationId, organizationId),
+      eq(transactions.reconciliationStatus, 'unreconciled')
+    ];
+    
+    if (plaidAccountId) {
+      conditions.push(eq(transactions.plaidAccountId, plaidAccountId));
+    }
+    
+    return await db
+      .select()
+      .from(transactions)
+      .where(and(...conditions))
+      .orderBy(desc(transactions.date));
+  }
+
+  async reconcileTransaction(id: number, userId: string): Promise<Transaction> {
+    const [transaction] = await db
+      .update(transactions)
+      .set({
+        reconciliationStatus: 'reconciled',
+        reconciledDate: new Date(),
+        reconciledBy: userId,
+      })
+      .where(eq(transactions.id, id))
+      .returning();
+    return transaction;
+  }
+
+  async unreconcileTransaction(id: number): Promise<Transaction> {
+    const [transaction] = await db
+      .update(transactions)
+      .set({
+        reconciliationStatus: 'unreconciled',
+        reconciledDate: null,
+        reconciledBy: null,
+      })
+      .where(eq(transactions.id, id))
+      .returning();
+    return transaction;
+  }
+
+  async bulkReconcileTransactions(ids: number[], userId: string): Promise<number> {
+    const result = await db
+      .update(transactions)
+      .set({
+        reconciliationStatus: 'reconciled',
+        reconciledDate: new Date(),
+        reconciledBy: userId,
+      })
+      .where(inArray(transactions.id, ids))
+      .returning({ id: transactions.id });
+    
+    return result.length;
+  }
+
+  async autoReconcileTransactions(organizationId: number): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }> {
+    // Get all unreconciled transactions
+    const unreconciledTxns = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.reconciliationStatus, 'unreconciled')
+        )
+      );
+
+    // Group by date and amount to find potential duplicates (Plaid import vs manual entry)
+    const matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> = [];
+    const grouped = new Map<string, Transaction[]>();
+    
+    unreconciledTxns.forEach(txn => {
+      const key = `${txn.date.toISOString().split('T')[0]}_${txn.amount}_${txn.type}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(txn);
+    });
+
+    // Find groups with exactly 2 transactions (likely duplicates)
+    const idsToReconcile: number[] = [];
+    grouped.forEach((txns, key) => {
+      if (txns.length === 2) {
+        // Both transactions are likely the same (one from Plaid, one manual)
+        // Mark both as reconciled
+        idsToReconcile.push(txns[0].id, txns[1].id);
+        matchedTransactions.push({
+          transactionId: txns[0].id,
+          plaidTransactionId: txns[1].id.toString(),
+        });
+      }
+    });
+
+    // Reconcile the matched transactions
+    if (idsToReconcile.length > 0) {
+      await db
+        .update(transactions)
+        .set({
+          reconciliationStatus: 'reconciled',
+          reconciledDate: new Date(),
+          reconciledBy: 'auto-reconcile',
+        })
+        .where(inArray(transactions.id, idsToReconcile));
+    }
+
+    return {
+      reconciledCount: idsToReconcile.length,
+      matchedTransactions,
+    };
   }
 
   // Grant operations
