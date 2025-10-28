@@ -4393,27 +4393,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/funds/:id", async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const fund = await storage.getFund(parseInt(id));
-
-      if (!fund) {
-        return res.status(404).json({ message: "Fund not found" });
-      }
-
-      const organizationId = req.session?.organizationId;
-      if (fund.organizationId !== organizationId) {
-        return res.status(403).json({ message: "You don't have access to this fund" });
-      }
-
-      res.json(fund);
-    } catch (error) {
-      console.error("Error fetching fund:", error);
-      res.status(500).json({ message: "Failed to fetch fund" });
-    }
-  });
-
   app.post("/api/funds", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -4527,14 +4506,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Program routes
-  app.get("/api/programs", async (req: Request, res: Response) => {
+  app.get("/api/programs/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -4544,27 +4521,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching programs:", error);
       res.status(500).json({ message: "Failed to fetch programs" });
-    }
-  });
-
-  app.get("/api/programs/:id", async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const program = await storage.getProgram(parseInt(id));
-
-      if (!program) {
-        return res.status(404).json({ message: "Program not found" });
-      }
-
-      const organizationId = req.session?.organizationId;
-      if (program.organizationId !== organizationId) {
-        return res.status(403).json({ message: "You don't have access to this program" });
-      }
-
-      res.json(program);
-    } catch (error) {
-      console.error("Error fetching program:", error);
-      res.status(500).json({ message: "Failed to fetch program" });
     }
   });
 
@@ -4685,14 +4641,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Pledge routes
-  app.get("/api/pledges", async (req: Request, res: Response) => {
+  app.get("/api/pledges/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -4722,27 +4676,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching overdue pledges:", error);
       res.status(500).json({ message: "Failed to fetch overdue pledges" });
-    }
-  });
-
-  app.get("/api/pledges/:id", async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const pledge = await storage.getPledge(parseInt(id));
-
-      if (!pledge) {
-        return res.status(404).json({ message: "Pledge not found" });
-      }
-
-      const organizationId = req.session?.organizationId;
-      if (pledge.organizationId !== organizationId) {
-        return res.status(403).json({ message: "You don't have access to this pledge" });
-      }
-
-      res.json(pledge);
-    } catch (error) {
-      console.error("Error fetching pledge:", error);
-      res.status(500).json({ message: "Failed to fetch pledge" });
     }
   });
 

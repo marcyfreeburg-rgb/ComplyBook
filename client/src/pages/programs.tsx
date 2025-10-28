@@ -40,7 +40,7 @@ export default function Programs({ currentOrganization, userId }: ProgramsProps)
   });
 
   const { data: programs = [], isLoading } = useQuery<Program[]>({
-    queryKey: [`/api/programs`],
+    queryKey: [`/api/programs`, currentOrganization.id],
   });
 
   const { data: programExpenses = [], isLoading: isLoadingExpenses } = useQuery<Transaction[]>({
@@ -75,7 +75,7 @@ export default function Programs({ currentOrganization, userId }: ProgramsProps)
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/programs`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/programs`, currentOrganization.id] });
       toast({
         title: "Program created",
         description: `${formData.name} has been added successfully.`,
@@ -108,7 +108,7 @@ export default function Programs({ currentOrganization, userId }: ProgramsProps)
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/programs`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/programs`, currentOrganization.id] });
       toast({
         title: "Program updated",
         description: "Program information has been updated successfully.",
@@ -131,7 +131,7 @@ export default function Programs({ currentOrganization, userId }: ProgramsProps)
       return await apiRequest('DELETE', `/api/programs/${programId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/programs`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/programs`, currentOrganization.id] });
       toast({
         title: "Program deleted",
         description: "The program has been removed successfully.",

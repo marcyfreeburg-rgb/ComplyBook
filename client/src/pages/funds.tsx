@@ -65,7 +65,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/funds`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/funds`, currentOrganization.id] });
       toast({
         title: "Fund created",
         description: `${formData.name} has been added successfully.`,
@@ -91,7 +91,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
       return await apiRequest('PUT', `/api/funds/${editingFund.id}`, formData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/funds`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/funds`, currentOrganization.id] });
       toast({
         title: "Fund updated",
         description: "Fund information has been updated successfully.",
@@ -114,7 +114,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
       return await apiRequest('DELETE', `/api/funds/${fundId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/funds`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/funds`, currentOrganization.id] });
       toast({
         title: "Fund deleted",
         description: "The fund has been removed successfully.",

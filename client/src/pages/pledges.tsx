@@ -53,7 +53,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
   });
 
   const { data: pledges = [], isLoading } = useQuery<PledgeWithDonor[]>({
-    queryKey: [`/api/pledges`],
+    queryKey: [`/api/pledges`, currentOrganization.id],
   });
 
   const { data: donors = [] } = useQuery<Donor[]>({
@@ -61,7 +61,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
   });
 
   const { data: funds = [] } = useQuery<Fund[]>({
-    queryKey: [`/api/funds`],
+    queryKey: [`/api/funds`, currentOrganization.id],
   });
 
   const { data: pledgePayments = [], isLoading: isLoadingPayments } = useQuery<PledgePayment[]>({
@@ -100,7 +100,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       return await apiRequest('POST', '/api/pledges', {
         organizationId: currentOrganization.id,
         donorId: parseInt(formData.donorId),
-        fundId: formData.fundId ? parseInt(formData.fundId) : null,
+        fundId: formData.fundId && formData.fundId !== "none" ? parseInt(formData.fundId) : null,
         amount: formData.amount,
         pledgeDate: new Date(formData.pledgeDate),
         dueDate: new Date(formData.dueDate),
@@ -111,7 +111,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pledges`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/pledges`, currentOrganization.id] });
       toast({
         title: "Pledge created",
         description: "The pledge has been added successfully.",
@@ -136,7 +136,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       }
       return await apiRequest('PATCH', `/api/pledges/${editingPledge.id}`, {
         donorId: parseInt(formData.donorId),
-        fundId: formData.fundId ? parseInt(formData.fundId) : null,
+        fundId: formData.fundId && formData.fundId !== "none" ? parseInt(formData.fundId) : null,
         amount: formData.amount,
         pledgeDate: new Date(formData.pledgeDate),
         dueDate: new Date(formData.dueDate),
@@ -146,7 +146,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pledges`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/pledges`, currentOrganization.id] });
       toast({
         title: "Pledge updated",
         description: "Pledge information has been updated successfully.",
@@ -169,7 +169,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       return await apiRequest('DELETE', `/api/pledges/${pledgeId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pledges`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/pledges`, currentOrganization.id] });
       toast({
         title: "Pledge deleted",
         description: "The pledge has been removed successfully.",
@@ -199,7 +199,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pledges`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/pledges`, currentOrganization.id] });
       queryClient.invalidateQueries({ queryKey: [`/api/pledges/${recordingPaymentFor?.id}/payments`] });
       toast({
         title: "Payment recorded",
@@ -347,7 +347,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
                     <SelectValue placeholder="Select fund (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {funds.map((fund) => (
                       <SelectItem key={fund.id} value={fund.id.toString()}>
                         {fund.name}

@@ -120,13 +120,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   });
 
   const { data: funds } = useQuery<Fund[]>({
-    queryKey: ['/api/funds'],
+    queryKey: ['/api/funds', currentOrganization.id],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
   });
 
   const { data: programs } = useQuery<Program[]>({
-    queryKey: ['/api/programs'],
+    queryKey: ['/api/programs', currentOrganization.id],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
   });
