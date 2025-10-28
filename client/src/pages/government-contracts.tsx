@@ -279,6 +279,7 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
         organizationId: currentOrganization.id,
         createdBy: userId,
         ...projectFormData,
+        contractId: projectFormData.contractId === 'none' || !projectFormData.contractId ? null : parseInt(projectFormData.contractId),
       });
     },
     onSuccess: () => {
@@ -295,7 +296,10 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
   const updateProjectMutation = useMutation({
     mutationFn: async () => {
       if (!editingProject) throw new Error("No project selected");
-      return await apiRequest('PUT', `/api/projects/${editingProject.id}`, projectFormData);
+      return await apiRequest('PUT', `/api/projects/${editingProject.id}`, {
+        ...projectFormData,
+        contractId: projectFormData.contractId === 'none' || !projectFormData.contractId ? null : parseInt(projectFormData.contractId),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${currentOrganization.id}`] });
@@ -331,6 +335,7 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
         organizationId: currentOrganization.id,
         createdBy: userId,
         ...costFormData,
+        projectId: parseInt(costFormData.projectId),
       });
     },
     onSuccess: () => {
@@ -420,6 +425,7 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
       return await apiRequest('POST', '/api/milestones', {
         organizationId: currentOrganization.id,
         ...milestoneFormData,
+        contractId: parseInt(milestoneFormData.contractId),
       });
     },
     onSuccess: () => {
@@ -436,7 +442,10 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
   const updateMilestoneMutation = useMutation({
     mutationFn: async () => {
       if (!editingMilestone) throw new Error("No milestone selected");
-      return await apiRequest('PUT', `/api/milestones/${editingMilestone.id}`, milestoneFormData);
+      return await apiRequest('PUT', `/api/milestones/${editingMilestone.id}`, {
+        ...milestoneFormData,
+        contractId: parseInt(milestoneFormData.contractId),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/milestones/${currentOrganization.id}`] });
