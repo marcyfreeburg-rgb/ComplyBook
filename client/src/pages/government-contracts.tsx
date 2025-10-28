@@ -216,6 +216,8 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
         contractId: timeEntryFormData.contractId === 'none' || !timeEntryFormData.contractId ? null : parseInt(timeEntryFormData.contractId),
       };
       
+      console.log('Frontend creating time entry with payload:', payload);
+      console.log('Form data:', timeEntryFormData);
       return await apiRequest('POST', '/api/time-entries', payload);
     },
     onSuccess: () => {
@@ -239,6 +241,8 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
         contractId: timeEntryFormData.contractId === 'none' || !timeEntryFormData.contractId ? null : parseInt(timeEntryFormData.contractId),
       };
       
+      console.log('Frontend updating time entry with payload:', payload);
+      console.log('Form data:', timeEntryFormData);
       return await apiRequest('PUT', `/api/time-entries/${editingTimeEntry.id}`, payload);
     },
     onSuccess: () => {
