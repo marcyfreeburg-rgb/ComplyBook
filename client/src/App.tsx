@@ -291,6 +291,13 @@ function AuthenticatedApp() {
                 </Route>
               )}
               {currentOrganization.type === 'nonprofit' && (
+                <Route path="/compliance">
+                  <ComplianceDashboard 
+                    currentOrganization={currentOrganization}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
                 <Route path="/government-grants">
                   <GovernmentGrants 
                     currentOrganization={currentOrganization}

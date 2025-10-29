@@ -79,7 +79,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   const [isCreateFFROpen, setIsCreateFFROpen] = useState(false);
   const [editingFFR, setEditingFFR] = useState<any | null>(null);
   const [ffrFormData, setFFRFormData] = useState({
-    grantId: "",
+    grantId: undefined as string | undefined,
     reportingPeriodStart: new Date().toISOString().split('T')[0],
     reportingPeriodEnd: new Date().toISOString().split('T')[0],
     federalShareExpenditure: "",
@@ -102,7 +102,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     auditYear: new Date().getFullYear().toString(),
     itemType: "single_audit" as "single_audit" | "form_990" | "schedule_of_expenditures",
     description: "",
-    grantId: "",
+    grantId: undefined as string | undefined,
     amount: "",
     completionStatus: "not_started" as "not_started" | "in_progress" | "completed",
     assignedTo: "",
@@ -868,7 +868,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const resetFFRForm = () => {
     setFFRFormData({
-      grantId: "",
+      grantId: undefined,
       reportingPeriodStart: new Date().toISOString().split('T')[0],
       reportingPeriodEnd: new Date().toISOString().split('T')[0],
       federalShareExpenditure: "",
@@ -891,7 +891,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       auditYear: new Date().getFullYear().toString(),
       itemType: "single_audit",
       description: "",
-      grantId: "",
+      grantId: undefined,
       amount: "",
       completionStatus: "not_started",
       assignedTo: "",
