@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock, Plus, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Plus, AlertCircle, Check, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Organization, ExpenseApproval, Category, Vendor, InsertExpenseApproval } from "@shared/schema";
 import { insertExpenseApprovalSchema } from "@shared/schema";
 import { format } from "date-fns";
@@ -29,6 +30,8 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<ExpenseApproval & { requestedByName: string } | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [selectedApprovalIds, setSelectedApprovalIds] = useState<Set<number>>(new Set());
+  const [bulkReviewNotes, setBulkReviewNotes] = useState("");
 
   const form = useForm<InsertExpenseApproval>({
     resolver: zodResolver(insertExpenseApprovalSchema.omit({ organizationId: true, requestedBy: true })),
@@ -103,6 +106,44 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
     },
   });
 
+  const bulkApproveMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/expense-approvals/bulk-action', {
+        approvalIds: Array.from(selectedApprovalIds),
+        action: 'approve',
+        note: bulkReviewNotes,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
+      setSelectedApprovalIds(new Set());
+      setBulkReviewNotes("");
+      toast({ title: "Bulk approval completed", description: `${selectedApprovalIds.size} expenses approved` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Bulk approval failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/expense-approvals/bulk-action', {
+        approvalIds: Array.from(selectedApprovalIds),
+        action: 'reject',
+        note: bulkReviewNotes,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
+      setSelectedApprovalIds(new Set());
+      setBulkReviewNotes("");
+      toast({ title: "Bulk rejection completed", description: `${selectedApprovalIds.size} expenses rejected` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Bulk rejection failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const onSubmit = (data: InsertExpenseApproval) => {
     createApprovalMutation.mutate(data);
   };
@@ -122,6 +163,24 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
     if (selectedApproval) {
       rejectMutation.mutate({ id: selectedApproval.id, notes: reviewNotes });
     }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedApprovalIds.size === pendingApprovals.length) {
+      setSelectedApprovalIds(new Set());
+    } else {
+      setSelectedApprovalIds(new Set(pendingApprovals.map(a => a.id)));
+    }
+  };
+
+  const toggleSelectApproval = (id: number) => {
+    const newSet = new Set(selectedApprovalIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedApprovalIds(newSet);
   };
 
   const pendingApprovals = approvals?.filter(a => a.status === 'pending') || [];
@@ -382,10 +441,72 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
+          {selectedApprovalIds.size > 0 && (
+            <Card className="bg-muted/50">
+              <CardContent className="py-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" data-testid="badge-selected-approval-count">
+                      {selectedApprovalIds.size} selected
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedApprovalIds(new Set())}
+                      data-testid="button-clear-approval-selection"
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      placeholder="Optional notes for all..."
+                      value={bulkReviewNotes}
+                      onChange={(e) => setBulkReviewNotes(e.target.value)}
+                      className="w-48"
+                      data-testid="input-bulk-notes"
+                    />
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => bulkApproveMutation.mutate()}
+                      disabled={bulkApproveMutation.isPending}
+                      data-testid="button-bulk-approve"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      {bulkApproveMutation.isPending ? "Approving..." : "Approve All"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkRejectMutation.mutate()}
+                      disabled={bulkRejectMutation.isPending}
+                      data-testid="button-bulk-reject"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      {bulkRejectMutation.isPending ? "Rejecting..." : "Reject All"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
-            <CardHeader>
-              <CardTitle>Pending Approvals</CardTitle>
-              <CardDescription>Expense requests awaiting review</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+              <div>
+                <CardTitle>Pending Approvals</CardTitle>
+                <CardDescription>Expense requests awaiting review</CardDescription>
+              </div>
+              {pendingApprovals.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectAll}
+                  data-testid="button-select-all-approvals"
+                >
+                  {selectedApprovalIds.size === pendingApprovals.length ? "Deselect All" : "Select All"}
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -398,7 +519,13 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                       className="p-4 border rounded-md"
                       data-testid={`approval-card-${approval.id}`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedApprovalIds.has(approval.id)}
+                          onCheckedChange={() => toggleSelectApproval(approval.id)}
+                          data-testid={`checkbox-approval-${approval.id}`}
+                          className="mt-1"
+                        />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-medium">{approval.description}</h3>
@@ -428,14 +555,16 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                             <p className="text-sm text-muted-foreground mt-2">{approval.notes}</p>
                           )}
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReview(approval)}
-                          data-testid={`button-review-${approval.id}`}
-                        >
-                          Review
-                        </Button>
+                        <div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReview(approval)}
+                            data-testid={`button-review-${approval.id}`}
+                          >
+                            Review
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))
