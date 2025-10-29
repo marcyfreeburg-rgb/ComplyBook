@@ -1420,6 +1420,186 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
+  async getComplianceMetrics(organizationId: number): Promise<{
+    totalGrants: number;
+    activeGrants: number;
+    upcomingDeadlines: number;
+    overdueItems: number;
+    completedReports: number;
+    pendingReports: number;
+  }> {
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now);
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+    // Count total and active grants
+    const [grantsCount] = await db
+      .select({
+        total: sql<number>`COUNT(*)::int`,
+        active: sql<number>`COUNT(CASE WHEN ${grants.status} = 'active' THEN 1 END)::int`,
+      })
+      .from(grants)
+      .where(eq(grants.organizationId, organizationId));
+
+    // Count upcoming deadlines (grants ending within 30 days)
+    const [deadlinesCount] = await db
+      .select({
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(grants)
+      .where(
+        and(
+          eq(grants.organizationId, organizationId),
+          eq(grants.status, 'active'),
+          gte(grants.endDate, now),
+          lte(grants.endDate, thirtyDaysFromNow)
+        )
+      );
+
+    // Count overdue federal reports
+    const [overdueCount] = await db
+      .select({
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(federalFinancialReports)
+      .innerJoin(grants, eq(federalFinancialReports.grantId, grants.id))
+      .where(
+        and(
+          eq(grants.organizationId, organizationId),
+          eq(federalFinancialReports.status, 'draft'),
+          lt(federalFinancialReports.reportingPeriodEnd, now)
+        )
+      );
+
+    // Count completed and pending reports
+    const [reportsCount] = await db
+      .select({
+        completed: sql<number>`COUNT(CASE WHEN ${federalFinancialReports.status} = 'submitted' THEN 1 END)::int`,
+        pending: sql<number>`COUNT(CASE WHEN ${federalFinancialReports.status} IN ('draft', 'under_review') THEN 1 END)::int`,
+      })
+      .from(federalFinancialReports)
+      .innerJoin(grants, eq(federalFinancialReports.grantId, grants.id))
+      .where(eq(grants.organizationId, organizationId));
+
+    return {
+      totalGrants: grantsCount?.total || 0,
+      activeGrants: grantsCount?.active || 0,
+      upcomingDeadlines: deadlinesCount?.count || 0,
+      overdueItems: overdueCount?.count || 0,
+      completedReports: reportsCount?.completed || 0,
+      pendingReports: reportsCount?.pending || 0,
+    };
+  }
+
+  async getGrantCompliance(organizationId: number): Promise<Array<{
+    grant: Grant;
+    timeEffortReports: { total: number; pending: number; certified: number };
+    costAllowabilityChecks: { total: number; pending: number; approved: number };
+    federalReports: { total: number; pending: number; submitted: number };
+    auditPrepItems: { total: number; pending: number; completed: number };
+    nextDeadline: Date | null;
+    complianceScore: number;
+  }>> {
+    const activeGrants = await db
+      .select()
+      .from(grants)
+      .where(
+        and(
+          eq(grants.organizationId, organizationId),
+          eq(grants.status, 'active')
+        )
+      );
+
+    const results = [];
+    
+    for (const grant of activeGrants) {
+      // Time/Effort Reports
+      const [timeEffortStats] = await db
+        .select({
+          total: sql<number>`COUNT(*)::int`,
+          pending: sql<number>`COUNT(CASE WHEN ${timeEffortReports.certificationStatus} = 'pending' THEN 1 END)::int`,
+          certified: sql<number>`COUNT(CASE WHEN ${timeEffortReports.certificationStatus} = 'certified' THEN 1 END)::int`,
+        })
+        .from(timeEffortReports)
+        .where(eq(timeEffortReports.grantId, grant.id));
+
+      // Cost Allowability Checks
+      const [costStats] = await db
+        .select({
+          total: sql<number>`COUNT(*)::int`,
+          pending: sql<number>`COUNT(CASE WHEN ${costAllowabilityChecks.allowabilityStatus} = 'pending' THEN 1 END)::int`,
+          approved: sql<number>`COUNT(CASE WHEN ${costAllowabilityChecks.allowabilityStatus} = 'allowable' THEN 1 END)::int`,
+        })
+        .from(costAllowabilityChecks)
+        .where(eq(costAllowabilityChecks.grantId, grant.id));
+
+      // Federal Reports
+      const [reportsStats] = await db
+        .select({
+          total: sql<number>`COUNT(*)::int`,
+          pending: sql<number>`COUNT(CASE WHEN ${federalFinancialReports.status} IN ('draft', 'under_review') THEN 1 END)::int`,
+          submitted: sql<number>`COUNT(CASE WHEN ${federalFinancialReports.status} = 'submitted' THEN 1 END)::int`,
+        })
+        .from(federalFinancialReports)
+        .where(eq(federalFinancialReports.grantId, grant.id));
+
+      // Audit Prep Items
+      const [auditStats] = await db
+        .select({
+          total: sql<number>`COUNT(*)::int`,
+          pending: sql<number>`COUNT(CASE WHEN ${auditPrepItems.status} IN ('not_started', 'in_progress') THEN 1 END)::int`,
+          completed: sql<number>`COUNT(CASE WHEN ${auditPrepItems.status} = 'completed' THEN 1 END)::int`,
+        })
+        .from(auditPrepItems)
+        .where(eq(auditPrepItems.grantId, grant.id));
+
+      // Calculate compliance score
+      const totalItems = 
+        (timeEffortStats?.total || 0) +
+        (costStats?.total || 0) +
+        (reportsStats?.total || 0) +
+        (auditStats?.total || 0);
+
+      const completedItems = 
+        (timeEffortStats?.certified || 0) +
+        (costStats?.approved || 0) +
+        (reportsStats?.submitted || 0) +
+        (auditStats?.completed || 0);
+
+      const complianceScore = totalItems > 0 
+        ? Math.round((completedItems / totalItems) * 100)
+        : 100;
+
+      results.push({
+        grant,
+        timeEffortReports: {
+          total: timeEffortStats?.total || 0,
+          pending: timeEffortStats?.pending || 0,
+          certified: timeEffortStats?.certified || 0,
+        },
+        costAllowabilityChecks: {
+          total: costStats?.total || 0,
+          pending: costStats?.pending || 0,
+          approved: costStats?.approved || 0,
+        },
+        federalReports: {
+          total: reportsStats?.total || 0,
+          pending: reportsStats?.pending || 0,
+          submitted: reportsStats?.submitted || 0,
+        },
+        auditPrepItems: {
+          total: auditStats?.total || 0,
+          pending: auditStats?.pending || 0,
+          completed: auditStats?.completed || 0,
+        },
+        nextDeadline: grant.endDate,
+        complianceScore,
+      });
+    }
+
+    return results;
+  }
+
   async getProfitLossReport(
     organizationId: number,
     startDate: Date,

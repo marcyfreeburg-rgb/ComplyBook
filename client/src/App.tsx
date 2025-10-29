@@ -37,6 +37,7 @@ import FunctionalExpenseReport from "@/pages/functional-expense-report";
 import Form990Report from "@/pages/form-990-report";
 import GovernmentGrants from "@/pages/government-grants";
 import GovernmentContracts from "@/pages/government-contracts";
+import ComplianceDashboard from "@/pages/compliance-dashboard";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
 import AcceptInvitation from "@/pages/accept-invitation";
@@ -279,6 +280,13 @@ function AuthenticatedApp() {
                   <Form990Report 
                     currentOrganization={currentOrganization}
                     userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/compliance-dashboard">
+                  <ComplianceDashboard 
+                    currentOrganization={currentOrganization}
                   />
                 </Route>
               )}

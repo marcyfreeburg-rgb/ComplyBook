@@ -2907,6 +2907,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Compliance routes
+  app.get('/api/compliance/:organizationId/metrics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const metrics = await storage.getComplianceMetrics(organizationId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching compliance metrics:", error);
+      res.status(500).json({ message: "Failed to fetch compliance metrics" });
+    }
+  });
+
+  app.get('/api/compliance/:organizationId/grants', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const grantCompliance = await storage.getGrantCompliance(organizationId);
+      res.json(grantCompliance);
+    } catch (error) {
+      console.error("Error fetching grant compliance:", error);
+      res.status(500).json({ message: "Failed to fetch grant compliance" });
+    }
+  });
+
   // Report routes
   app.get('/api/reports/profit-loss/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

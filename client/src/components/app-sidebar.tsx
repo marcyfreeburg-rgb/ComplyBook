@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -144,6 +144,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Government Grants",
       url: "/government-grants",
       icon: Award,
+    }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Compliance",
+      url: "/compliance-dashboard",
+      icon: ShieldCheck,
     }] : []),
     ...(currentOrganization?.type === 'forprofit' ? [{
       title: "Government Contracts",
