@@ -8,6 +8,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 29, 2025 - Bulk Operations Backend API
+Completed secure backend implementation for bulk operations with multi-tenant data isolation:
+- **CSV Transaction Import:** POST endpoint with file upload (multer), CSV parsing (papaparse), Zod validation, and error summary reporting - supports bulk importing transactions from external systems
+- **Bulk Categorize:** POST endpoint to update category/fund/program/functionalCategory for multiple transactions simultaneously with permission checking and audit logging
+- **Bulk Delete:** POST endpoint to safely delete multiple transactions with validation and audit trail
+- **CSV Export:** GET endpoint to export transactions to CSV format with all fields for external analysis
+- **Bulk Approvals:** POST endpoint for batch approve/reject of expense approvals (admin/owner only)
+- **Security:** All endpoints load and validate every record before operations, enforce single-organization constraint, verify user permissions, and log detailed audit trails
+- **Bug Fix:** Corrected critical multi-tenant security vulnerability where bulk operations could manipulate cross-tenant data by implementing record-level organization validation
+
 ### October 29, 2025 - Compliance Dashboard & PDF Exports
 Completed comprehensive nonprofit compliance and reporting features:
 - **Compliance Dashboard:** Real-time grant compliance tracking with metrics (active grants, upcoming deadlines, overdue items), individual grant compliance scores, visual compliance indicators, and quick action buttons for common compliance tasks
@@ -49,6 +59,7 @@ Key features include:
 -   **AI & Automation:** Plaid bank integration for transaction import, AI-powered transaction categorization.
 -   **Reporting & Compliance:** Cash flow forecasting, tax reporting (including 1099 generation), custom report builder, audit trail system, bank reconciliation.
 -   **Organizational Management:** Team collaboration & invitations, universal branding system, expense approval workflows.
+-   **Bulk Operations:** CSV transaction import/export, bulk categorization, bulk delete, bulk expense approvals - all with multi-tenant security validation.
 -   **Nonprofit Specific:** Donor tracking, fund accounting, pledge management, program management, functional expense reporting, Form 990 reporting, enhanced transaction forms for fund/program/functional allocation, government grants compliance (time/effort reporting, cost allowability, sub-awards, federal financial reports, audit prep).
 -   **For-Profit Government Contracts Specific (DCAA Compliant):** Contract management, contract milestones, DCAA time keeping, job/project costing, indirect cost rate management.
 -   **Payroll Management System:** Employee compensation management (salary/hourly), customizable deductions, payroll run processing with server-side validation.
