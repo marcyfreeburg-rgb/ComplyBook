@@ -160,10 +160,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // Create Time/Effort Report Mutation
   const createTimeEffortMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/time-effort-reports/${currentOrganization.id}`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/time-effort-reports/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/time-effort-reports/${currentOrganization.id}`] });
@@ -179,10 +176,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // Create Cost Allowability Check Mutation
   const createCostCheckMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/cost-allowability-checks/${currentOrganization.id}`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/cost-allowability-checks/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/cost-allowability-checks/${currentOrganization.id}`] });
@@ -198,10 +192,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // Create Sub Award Mutation
   const createSubAwardMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/sub-awards/${currentOrganization.id}`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/sub-awards/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/sub-awards/${currentOrganization.id}`] });
@@ -217,10 +208,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // Create Federal Financial Report Mutation
   const createFFRMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/federal-financial-reports/${currentOrganization.id}`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/federal-financial-reports/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/federal-financial-reports/${currentOrganization.id}`] });
@@ -236,10 +224,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // Create Audit Prep Item Mutation
   const createAuditItemMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/audit-prep-items/${currentOrganization.id}`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/audit-prep-items/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/audit-prep-items/${currentOrganization.id}`] });
@@ -255,10 +240,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // UPDATE Mutations
   const updateTimeEffortMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/time-effort-reports/${currentOrganization.id}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/time-effort-reports/${currentOrganization.id}/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/time-effort-reports/${currentOrganization.id}`] });
@@ -274,10 +256,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const updateCostCheckMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/cost-allowability-checks/${currentOrganization.id}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/cost-allowability-checks/${currentOrganization.id}/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/cost-allowability-checks/${currentOrganization.id}`] });
@@ -293,10 +272,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const updateSubAwardMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/sub-awards/${currentOrganization.id}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/sub-awards/${currentOrganization.id}/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/sub-awards/${currentOrganization.id}`] });
@@ -312,10 +288,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const updateFFRMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/federal-financial-reports/${currentOrganization.id}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/federal-financial-reports/${currentOrganization.id}/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/federal-financial-reports/${currentOrganization.id}`] });
@@ -331,10 +304,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const updateAuditItemMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/audit-prep-items/${currentOrganization.id}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/audit-prep-items/${currentOrganization.id}/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/audit-prep-items/${currentOrganization.id}`] });
@@ -351,9 +321,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   // DELETE Mutations
   const deleteTimeEffortMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/time-effort-reports/${currentOrganization.id}/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/time-effort-reports/${currentOrganization.id}/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/time-effort-reports/${currentOrganization.id}`] });
@@ -367,9 +335,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const deleteCostCheckMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/cost-allowability-checks/${currentOrganization.id}/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/cost-allowability-checks/${currentOrganization.id}/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/cost-allowability-checks/${currentOrganization.id}`] });
@@ -383,9 +349,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const deleteSubAwardMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/sub-awards/${currentOrganization.id}/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/sub-awards/${currentOrganization.id}/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/sub-awards/${currentOrganization.id}`] });
@@ -399,9 +363,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const deleteFFRMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/federal-financial-reports/${currentOrganization.id}/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/federal-financial-reports/${currentOrganization.id}/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/federal-financial-reports/${currentOrganization.id}`] });
@@ -415,9 +377,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const deleteAuditItemMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/audit-prep-items/${currentOrganization.id}/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/audit-prep-items/${currentOrganization.id}/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/audit-prep-items/${currentOrganization.id}`] });
@@ -732,7 +692,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     const opt = {
       margin: 0.5,
       filename: `SF-425_${grant?.name || report.id}_${new Date(report.reportingPeriodEnd).toISOString().split('T')[0]}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };

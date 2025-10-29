@@ -15,11 +15,14 @@ import {
   Target, 
   TrendingUp,
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  Download,
+  FileBarChart
 } from "lucide-react";
 import { format, differenceInDays, isBefore, parseISO } from "date-fns";
 import type { Organization, Grant } from "@shared/schema";
 import { useLocation } from "wouter";
+import html2pdf from "html2pdf.js";
 
 interface ComplianceDashboardProps {
   currentOrganization: Organization;
@@ -86,6 +89,181 @@ export default function ComplianceDashboard({ currentOrganization }: ComplianceD
   const getDaysUntil = (date: Date | null) => {
     if (!date) return null;
     return differenceInDays(date, new Date());
+  };
+
+  const generateForm990PDF = async () => {
+    try {
+      const currentYear = new Date().getFullYear() - 1;
+      const startDate = `${currentYear}-01-01`;
+      const endDate = `${currentYear}-12-31`;
+      
+      const response = await fetch(`/api/transactions/${currentOrganization.id}?startDate=${startDate}&endDate=${endDate}`);
+      const transactions = response.ok ? await response.json() : [];
+      
+      const revenue = transactions.filter((t: any) => t.type === 'income').reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      const expenses = transactions.filter((t: any) => t.type === 'expense').reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      
+      const programExpenses = transactions.filter((t: any) => t.type === 'expense' && t.functionalCategory === 'program').reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      const managementExpenses = transactions.filter((t: any) => t.type === 'expense' && t.functionalCategory === 'management').reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      const fundraisingExpenses = transactions.filter((t: any) => t.type === 'expense' && t.functionalCategory === 'fundraising').reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+      const pdfContent = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; font-size: 11px; line-height: 1.4;">
+          <div style="text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+            <div style="font-size: 18px; font-weight: bold;">Form 990</div>
+            <div style="font-size: 14px; margin-top: 5px;">Return of Organization Exempt From Income Tax</div>
+            <div style="font-size: 11px; margin-top: 5px;">Under section 501(c), 527, or 4947(a)(1) of the Internal Revenue Code (except private foundations)</div>
+            <div style="font-size: 10px; margin-top: 10px; color: #666;">OMB No. 1545-0047 | Tax Year: ${currentYear}</div>
+          </div>
+
+          <div style="background: #f0f0f0; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">PREPARATION WORKSHEET</div>
+            <div style="font-size: 10px; color: #666;">This worksheet provides a starting point based on your recorded financial data. Consult with a tax professional to complete and file your official Form 990.</div>
+          </div>
+
+          <div style="background: #fff; border: 2px solid #000; padding: 15px; margin-bottom: 20px;">
+            <div style="font-weight: bold; font-size: 13px; margin-bottom: 10px;">Organization Information</div>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 5px;"><strong>Name:</strong></td>
+                <td style="padding: 5px;">${currentOrganization.name}</td>
+              </tr>
+              <tr style="background: #fef9e7;">
+                <td style="padding: 5px;"><strong>EIN:</strong></td>
+                <td style="padding: 5px; font-style: italic; color: #666;">[Complete this field]</td>
+              </tr>
+              <tr>
+                <td style="padding: 5px;"><strong>Tax Year:</strong></td>
+                <td style="padding: 5px;">${currentYear} (January 1 - December 31)</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="border: 2px solid #000; padding: 15px; margin-bottom: 20px;">
+            <div style="font-weight: bold; font-size: 13px; background: #000; color: #fff; padding: 5px; margin: -15px -15px 10px -15px;">Part I: Summary</div>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px; width: 60px;">1</td>
+                <td style="padding: 8px;">Brief description of organization's mission:</td>
+                <td style="padding: 8px; background: #fef9e7; font-style: italic;">[Enter mission statement]</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">6</td>
+                <td style="padding: 8px;">Number of voting members of governing body:</td>
+                <td style="padding: 8px; background: #fef9e7; font-style: italic;">[Complete]</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">7a</td>
+                <td style="padding: 8px;">Number of employees:</td>
+                <td style="padding: 8px; background: #fef9e7; font-style: italic;">[Complete]</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">8</td>
+                <td style="padding: 8px;">Total gross revenue (from financial records):</td>
+                <td style="padding: 8px; font-weight: bold;">$${revenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">9</td>
+                <td style="padding: 8px;">Total program service expenses:</td>
+                <td style="padding: 8px; font-weight: bold;">$${programExpenses.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">19</td>
+                <td style="padding: 8px;">Total revenue:</td>
+                <td style="padding: 8px; font-weight: bold;">$${revenue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px;">20</td>
+                <td style="padding: 8px;">Total expenses:</td>
+                <td style="padding: 8px; font-weight: bold;">$${expenses.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="border: 2px solid #000; padding: 15px; margin-bottom: 20px;">
+            <div style="font-weight: bold; font-size: 13px; background: #000; color: #fff; padding: 5px; margin: -15px -15px 10px -15px;">Part IX: Statement of Functional Expenses</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+              <thead>
+                <tr style="background: #e0e0e0; font-weight: bold;">
+                  <th style="padding: 6px; border: 1px solid #999; text-align: left;">Expense Category</th>
+                  <th style="padding: 6px; border: 1px solid #999; text-align: right;">Total</th>
+                  <th style="padding: 6px; border: 1px solid #999; text-align: right;">Program Services</th>
+                  <th style="padding: 6px; border: 1px solid #999; text-align: right;">Management</th>
+                  <th style="padding: 6px; border: 1px solid #999; text-align: right;">Fundraising</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding: 6px; border: 1px solid #ddd;">Total functional expenses</td>
+                  <td style="padding: 6px; border: 1px solid #ddd; text-align: right; font-weight: bold;">$${expenses.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                  <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">$${programExpenses.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                  <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">$${managementExpenses.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                  <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">$${fundraisingExpenses.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top: 10px; font-size: 10px; color: #666;">
+              <strong>Note:</strong> Detailed expense breakdown by line item (compensation, supplies, occupancy, etc.) should be completed with your accountant.
+            </div>
+          </div>
+
+          <div style="background: #fffacd; border: 2px solid #f0ad4e; padding: 12px; border-radius: 4px; margin-top: 20px;">
+            <div style="font-weight: bold; margin-bottom: 8px;">Additional Sections Required:</div>
+            <ul style="margin: 5px 0; padding-left: 20px; font-size: 10px;">
+              <li>Part II: Signature Block (must be signed by officer)</li>
+              <li>Part III: Statement of Program Service Accomplishments</li>
+              <li>Part IV: Checklist of Required Schedules</li>
+              <li>Part V: Statements Regarding Other IRS Filings</li>
+              <li>Part VI: Governance, Management, and Disclosure</li>
+              <li>Part VII: Compensation of Officers, Directors, etc.</li>
+              <li>Part VIII: Statement of Revenue</li>
+              <li>Part X: Balance Sheet</li>
+              <li>Part XI: Reconciliation of Net Assets</li>
+              <li>Part XII: Financial Statements and Reporting</li>
+              <li>Applicable Schedules (A, B, C, D, etc. as required)</li>
+            </ul>
+          </div>
+
+          <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 4px solid #5bc0de; font-size: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Important:</div>
+            <p style="margin: 0;">This worksheet is generated from your Budget Manager financial data for tax year ${currentYear}. It provides a starting point for Form 990 preparation but is NOT a complete filing. Work with a qualified CPA or tax professional to:</p>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              <li>Complete all required fields marked with yellow highlighting</li>
+              <li>Verify accuracy of all financial figures</li>
+              <li>Complete all applicable schedules</li>
+              <li>Ensure compliance with IRS requirements</li>
+              <li>Sign and file the official Form 990</li>
+            </ul>
+          </div>
+
+          <div style="margin-top: 20px; text-align: center; font-size: 10px; color: #999;">
+            Generated ${format(new Date(), 'MMMM d, yyyy')} | ${currentOrganization.name}
+          </div>
+        </div>
+      `;
+
+      const opt = {
+        margin: 0.5,
+        filename: `Form-990-Worksheet_${currentOrganization.name.replace(/[^a-z0-9]/gi, '_')}_${currentYear}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(pdfContent).save();
+      
+      toast({ 
+        title: "Form 990 Worksheet Generated", 
+        description: `Tax year ${currentYear} preparation worksheet has been downloaded.`
+      });
+    } catch (err) {
+      console.error('Form 990 generation error:', err);
+      toast({ 
+        title: "Error generating Form 990", 
+        description: "Please try again or contact support.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   if (grantsLoading || metricsLoading || complianceLoading) {
@@ -310,6 +488,41 @@ export default function ComplianceDashboard({ currentOrganization }: ComplianceD
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Form 990 Tools */}
+      <Card data-testid="card-form-990-tools">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileBarChart className="h-5 w-5" />
+                IRS Form 990 Tools
+              </CardTitle>
+              <CardDescription>Annual tax return preparation for nonprofit organizations</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-4">
+                Form 990 is the annual tax return for tax-exempt organizations. Generate a preparation worksheet pre-filled with your organization's financial data to assist with filing.
+              </p>
+              <Button 
+                onClick={generateForm990PDF}
+                data-testid="button-generate-form-990"
+                className="w-full sm:w-auto"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Generate Form 990 Preparation Worksheet
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <p><strong>Note:</strong> This worksheet provides a starting point based on your recorded financial data. Consult with a tax professional or CPA to complete and file your official Form 990.</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
