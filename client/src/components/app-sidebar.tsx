@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck, Sparkles, Database } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -85,6 +85,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       url: "/donation-letters",
       icon: FileDown,
     }] : []),
+    ...(currentOrganization?.type === 'nonprofit' ? [{
+      title: "Fundraising Hub",
+      url: "/fundraising-hub",
+      icon: Sparkles,
+    }] : []),
     {
       title: "Invoices",
       url: "/invoices",
@@ -160,6 +165,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       url: "/government-contracts",
       icon: Briefcase,
     }] : []),
+    ...(currentOrganization?.type === 'forprofit' ? [{
+      title: "Contracts Hub",
+      url: "/government-contracts-hub",
+      icon: Sparkles,
+    }] : []),
     {
       title: "Budgets",
       url: "/budgets",
@@ -169,6 +179,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Bank Accounts",
       url: "/bank-accounts",
       icon: Landmark,
+    },
+    {
+      title: "Operations Hub",
+      url: "/operations-hub",
+      icon: Database,
     },
     {
       title: "Bank Reconciliation",

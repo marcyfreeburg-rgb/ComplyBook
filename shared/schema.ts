@@ -61,6 +61,16 @@ export const milestoneStatusEnum = pgEnum('milestone_status', ['pending', 'in_pr
 export const timeEntryStatusEnum = pgEnum('time_entry_status', ['draft', 'submitted', 'approved', 'billed']);
 export const costTypeEnum = pgEnum('cost_type', ['direct_labor', 'direct_materials', 'direct_other', 'indirect', 'overhead']);
 
+// New feature enums
+export const inKindDonationTypeEnum = pgEnum('in_kind_donation_type', ['goods', 'services', 'volunteer_hours']);
+export const campaignStatusEnum = pgEnum('campaign_status', ['active', 'completed', 'cancelled']);
+export const donorTierEnum = pgEnum('donor_tier', ['bronze', 'silver', 'gold', 'platinum', 'none']);
+export const proposalStatusEnum = pgEnum('proposal_status', ['draft', 'submitted', 'under_review', 'won', 'lost', 'cancelled']);
+export const subcontractorComplianceEnum = pgEnum('subcontractor_compliance', ['compliant', 'expiring_soon', 'non_compliant']);
+export const changeOrderStatusEnum = pgEnum('change_order_status', ['requested', 'under_review', 'approved', 'rejected', 'implemented']);
+export const documentTypeEnum = pgEnum('document_type', ['contract', 'invoice', 'receipt', 'report', 'certificate', 'grant_document', 'compliance', 'other']);
+export const complianceEventTypeEnum = pgEnum('compliance_event_type', ['deadline', 'renewal', 'audit', 'filing', 'review', 'certification']);
+
 // Notification enums
 export const notificationTypeEnum = pgEnum('notification_type', [
   'grant_deadline',
@@ -1666,6 +1676,474 @@ export const insertAuditPrepItemSchema = createInsertSchema(auditPrepItems).omit
 
 export type InsertAuditPrepItem = z.infer<typeof insertAuditPrepItemSchema>;
 export type AuditPrepItem = typeof auditPrepItems.$inferSelect;
+
+// ============================================
+// NON-PROFIT: IN-KIND DONATIONS
+// ============================================
+
+export const inKindDonations = pgTable("in_kind_donations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  donorId: integer("donor_id").references(() => donors.id, { onDelete: 'set null' }),
+  donationType: inKindDonationTypeEnum("donation_type").notNull(),
+  description: text("description").notNull(),
+  fairMarketValue: numeric("fair_market_value", { precision: 12, scale: 2 }).notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }),
+  unitOfMeasure: varchar("unit_of_measure", { length: 50 }),
+  volunteerHours: numeric("volunteer_hours", { precision: 8, scale: 2 }),
+  hourlyRate: numeric("hourly_rate", { precision: 8, scale: 2 }),
+  donationDate: timestamp("donation_date").notNull(),
+  programId: integer("program_id").references(() => programs.id, { onDelete: 'set null' }),
+  receiptIssued: integer("receipt_issued").notNull().default(0),
+  receiptNumber: varchar("receipt_number", { length: 100 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_in_kind_donations_org_id").on(table.organizationId),
+  index("idx_in_kind_donations_donor_id").on(table.donorId),
+]);
+
+export const insertInKindDonationSchema = createInsertSchema(inKindDonations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  fairMarketValue: z.string().or(z.number()).transform(val => String(val)),
+  quantity: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  volunteerHours: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  hourlyRate: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  donationDate: z.coerce.date(),
+  receiptIssued: z.number().default(0),
+});
+
+export type InsertInKindDonation = z.infer<typeof insertInKindDonationSchema>;
+export type InKindDonation = typeof inKindDonations.$inferSelect;
+
+// ============================================
+// NON-PROFIT: FUNDRAISING CAMPAIGNS
+// ============================================
+
+export const fundraisingCampaigns = pgTable("fundraising_campaigns", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  goalAmount: numeric("goal_amount", { precision: 12, scale: 2 }).notNull(),
+  raisedAmount: numeric("raised_amount", { precision: 12, scale: 2 }).notNull().default('0'),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  status: campaignStatusEnum("status").notNull().default('active'),
+  fundId: integer("fund_id").references(() => funds.id, { onDelete: 'set null' }),
+  programId: integer("program_id").references(() => programs.id, { onDelete: 'set null' }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_campaigns_org_id").on(table.organizationId),
+  index("idx_campaigns_status").on(table.status),
+]);
+
+export const insertFundraisingCampaignSchema = createInsertSchema(fundraisingCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  raisedAmount: true,
+}).extend({
+  goalAmount: z.string().or(z.number()).transform(val => String(val)),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
+  status: z.enum(['active', 'completed', 'cancelled']).default('active'),
+});
+
+export type InsertFundraisingCampaign = z.infer<typeof insertFundraisingCampaignSchema>;
+export type FundraisingCampaign = typeof fundraisingCampaigns.$inferSelect;
+
+export const campaignDonations = pgTable("campaign_donations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  campaignId: integer("campaign_id").notNull().references(() => fundraisingCampaigns.id, { onDelete: 'cascade' }),
+  donorId: integer("donor_id").references(() => donors.id, { onDelete: 'set null' }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  donationDate: timestamp("donation_date").notNull(),
+  channel: varchar("channel", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_campaign_donations_campaign_id").on(table.campaignId),
+  index("idx_campaign_donations_donor_id").on(table.donorId),
+]);
+
+export const insertCampaignDonationSchema = createInsertSchema(campaignDonations).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  donationDate: z.coerce.date(),
+});
+
+export type InsertCampaignDonation = z.infer<typeof insertCampaignDonationSchema>;
+export type CampaignDonation = typeof campaignDonations.$inferSelect;
+
+// ============================================
+// NON-PROFIT: DONOR STEWARDSHIP
+// ============================================
+
+export const donorTiers = pgTable("donor_tiers", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  donorId: integer("donor_id").notNull().references(() => donors.id, { onDelete: 'cascade' }),
+  tier: donorTierEnum("tier").notNull().default('none'),
+  lifetimeGiving: numeric("lifetime_giving", { precision: 12, scale: 2 }).notNull().default('0'),
+  lastDonationDate: timestamp("last_donation_date"),
+  lastContactDate: timestamp("last_contact_date"),
+  isRecurring: integer("is_recurring").notNull().default(0),
+  notes: text("notes"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_donor_tiers_org_id").on(table.organizationId),
+  index("idx_donor_tiers_donor_id").on(table.donorId),
+  index("idx_donor_tiers_tier").on(table.tier),
+]);
+
+export const insertDonorTierSchema = createInsertSchema(donorTiers).omit({
+  id: true,
+  updatedAt: true,
+}).extend({
+  lifetimeGiving: z.string().or(z.number()).transform(val => String(val)).default('0'),
+  lastDonationDate: z.coerce.date().optional().nullable(),
+  lastContactDate: z.coerce.date().optional().nullable(),
+  tier: z.enum(['bronze', 'silver', 'gold', 'platinum', 'none']).default('none'),
+  isRecurring: z.number().default(0),
+});
+
+export type InsertDonorTier = z.infer<typeof insertDonorTierSchema>;
+export type DonorTier = typeof donorTiers.$inferSelect;
+
+export const thankYouLetters = pgTable("thank_you_letters", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  donorId: integer("donor_id").notNull().references(() => donors.id, { onDelete: 'cascade' }),
+  templateName: varchar("template_name", { length: 255 }),
+  letterContent: text("letter_content").notNull(),
+  sentDate: timestamp("sent_date"),
+  sentBy: varchar("sent_by").references(() => users.id),
+  relatedDonationAmount: numeric("related_donation_amount", { precision: 12, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_thank_you_letters_org_id").on(table.organizationId),
+  index("idx_thank_you_letters_donor_id").on(table.donorId),
+]);
+
+export const insertThankYouLetterSchema = createInsertSchema(thankYouLetters).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  sentDate: z.coerce.date().optional().nullable(),
+  relatedDonationAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+});
+
+export type InsertThankYouLetter = z.infer<typeof insertThankYouLetterSchema>;
+export type ThankYouLetter = typeof thankYouLetters.$inferSelect;
+
+// ============================================
+// FOR-PROFIT: PROPOSAL/BID MANAGEMENT
+// ============================================
+
+export const proposals = pgTable("proposals", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  rfpNumber: varchar("rfp_number", { length: 100 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  clientName: varchar("client_name", { length: 255 }).notNull(),
+  description: text("description"),
+  proposedValue: numeric("proposed_value", { precision: 15, scale: 2 }),
+  estimatedCost: numeric("estimated_cost", { precision: 15, scale: 2 }),
+  submissionDeadline: timestamp("submission_deadline"),
+  submittedDate: timestamp("submitted_date"),
+  decisionDate: timestamp("decision_date"),
+  status: proposalStatusEnum("status").notNull().default('draft'),
+  winProbability: integer("win_probability"),
+  lossReason: text("loss_reason"),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_proposals_org_id").on(table.organizationId),
+  index("idx_proposals_status").on(table.status),
+]);
+
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  proposedValue: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  estimatedCost: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  submissionDeadline: z.coerce.date().optional().nullable(),
+  submittedDate: z.coerce.date().optional().nullable(),
+  decisionDate: z.coerce.date().optional().nullable(),
+  status: z.enum(['draft', 'submitted', 'under_review', 'won', 'lost', 'cancelled']).default('draft'),
+  winProbability: z.number().min(0).max(100).optional().nullable(),
+});
+
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
+export type Proposal = typeof proposals.$inferSelect;
+
+// ============================================
+// FOR-PROFIT: SUBCONTRACTOR MANAGEMENT
+// ============================================
+
+export const subcontractors = pgTable("subcontractors", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  companyName: varchar("company_name", { length: 255 }).notNull(),
+  contactName: varchar("contact_name", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  taxId: varchar("tax_id", { length: 50 }),
+  insuranceExpiration: timestamp("insurance_expiration"),
+  certificationsExpiration: timestamp("certifications_expiration"),
+  complianceStatus: subcontractorComplianceEnum("compliance_status").notNull().default('compliant'),
+  totalPaid: numeric("total_paid", { precision: 15, scale: 2 }).notNull().default('0'),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_subcontractors_org_id").on(table.organizationId),
+  index("idx_subcontractors_compliance").on(table.complianceStatus),
+]);
+
+export const insertSubcontractorSchema = createInsertSchema(subcontractors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalPaid: true,
+}).extend({
+  insuranceExpiration: z.coerce.date().optional().nullable(),
+  certificationsExpiration: z.coerce.date().optional().nullable(),
+  complianceStatus: z.enum(['compliant', 'expiring_soon', 'non_compliant']).default('compliant'),
+});
+
+export type InsertSubcontractor = z.infer<typeof insertSubcontractorSchema>;
+export type Subcontractor = typeof subcontractors.$inferSelect;
+
+export const subcontractorPayments = pgTable("subcontractor_payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  subcontractorId: integer("subcontractor_id").notNull().references(() => subcontractors.id, { onDelete: 'cascade' }),
+  contractId: integer("contract_id").references(() => contracts.id, { onDelete: 'set null' }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  description: text("description"),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_subcontractor_payments_sub_id").on(table.subcontractorId),
+]);
+
+export const insertSubcontractorPaymentSchema = createInsertSchema(subcontractorPayments).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  paymentDate: z.coerce.date(),
+});
+
+export type InsertSubcontractorPayment = z.infer<typeof insertSubcontractorPaymentSchema>;
+export type SubcontractorPayment = typeof subcontractorPayments.$inferSelect;
+
+// ============================================
+// FOR-PROFIT: CHANGE ORDER MANAGEMENT
+// ============================================
+
+export const changeOrders = pgTable("change_orders", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  contractId: integer("contract_id").notNull().references(() => contracts.id, { onDelete: 'cascade' }),
+  changeOrderNumber: varchar("change_order_number", { length: 100 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  requestedBy: varchar("requested_by").notNull(),
+  requestDate: timestamp("request_date").notNull(),
+  originalContractValue: numeric("original_contract_value", { precision: 15, scale: 2 }),
+  changeAmount: numeric("change_amount", { precision: 15, scale: 2 }).notNull(),
+  newContractValue: numeric("new_contract_value", { precision: 15, scale: 2 }),
+  status: changeOrderStatusEnum("status").notNull().default('requested'),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedDate: timestamp("approved_date"),
+  implementedDate: timestamp("implemented_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_change_orders_org_id").on(table.organizationId),
+  index("idx_change_orders_contract_id").on(table.contractId),
+  index("idx_change_orders_status").on(table.status),
+]);
+
+export const insertChangeOrderSchema = createInsertSchema(changeOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  originalContractValue: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  changeAmount: z.string().or(z.number()).transform(val => String(val)),
+  newContractValue: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  requestDate: z.coerce.date(),
+  approvedDate: z.coerce.date().optional().nullable(),
+  implementedDate: z.coerce.date().optional().nullable(),
+  status: z.enum(['requested', 'under_review', 'approved', 'rejected', 'implemented']).default('requested'),
+});
+
+export type InsertChangeOrder = z.infer<typeof insertChangeOrderSchema>;
+export type ChangeOrder = typeof changeOrders.$inferSelect;
+
+// ============================================
+// UNIVERSAL: BANK RECONCILIATION
+// ============================================
+
+export const bankReconciliations = pgTable("bank_reconciliations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  accountName: varchar("account_name", { length: 255 }).notNull(),
+  statementDate: timestamp("statement_date").notNull(),
+  statementBalance: numeric("statement_balance", { precision: 15, scale: 2 }).notNull(),
+  bookBalance: numeric("book_balance", { precision: 15, scale: 2 }).notNull(),
+  difference: numeric("difference", { precision: 15, scale: 2 }).notNull(),
+  status: reconciliationStatusEnum("status").notNull().default('unreconciled'),
+  reconciledBy: varchar("reconciled_by").references(() => users.id),
+  reconciledDate: timestamp("reconciled_date"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_bank_reconciliations_org_id").on(table.organizationId),
+  index("idx_bank_reconciliations_status").on(table.status),
+]);
+
+export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  statementDate: z.coerce.date(),
+  statementBalance: z.string().or(z.number()).transform(val => String(val)),
+  bookBalance: z.string().or(z.number()).transform(val => String(val)),
+  difference: z.string().or(z.number()).transform(val => String(val)),
+  reconciledDate: z.coerce.date().optional().nullable(),
+  status: z.enum(['unreconciled', 'reconciled', 'pending']).default('unreconciled'),
+});
+
+export type InsertBankReconciliation = z.infer<typeof insertBankReconciliationSchema>;
+export type BankReconciliation = typeof bankReconciliations.$inferSelect;
+
+export const reconciliationMatches = pgTable("reconciliation_matches", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  reconciliationId: integer("reconciliation_id").notNull().references(() => bankReconciliations.id, { onDelete: 'cascade' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  statementDescription: text("statement_description"),
+  statementAmount: numeric("statement_amount", { precision: 12, scale: 2 }),
+  isMatched: integer("is_matched").notNull().default(0),
+  matchedAt: timestamp("matched_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_reconciliation_matches_recon_id").on(table.reconciliationId),
+  index("idx_reconciliation_matches_transaction_id").on(table.transactionId),
+]);
+
+export const insertReconciliationMatchSchema = createInsertSchema(reconciliationMatches).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  statementAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  matchedAt: z.coerce.date().optional().nullable(),
+  isMatched: z.number().default(0),
+});
+
+export type InsertReconciliationMatch = z.infer<typeof insertReconciliationMatchSchema>;
+export type ReconciliationMatch = typeof reconciliationMatches.$inferSelect;
+
+// ============================================
+// UNIVERSAL: DOCUMENT MANAGEMENT
+// ============================================
+
+export const documents = pgTable("documents", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileUrl: varchar("file_url", { length: 500 }).notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  documentType: documentTypeEnum("document_type").notNull(),
+  relatedEntityType: varchar("related_entity_type", { length: 100 }),
+  relatedEntityId: integer("related_entity_id"),
+  version: integer("version").notNull().default(1),
+  description: text("description"),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_documents_org_id").on(table.organizationId),
+  index("idx_documents_entity").on(table.relatedEntityType, table.relatedEntityId),
+]);
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  documentType: z.enum(['contract', 'invoice', 'receipt', 'report', 'certificate', 'grant_document', 'compliance', 'other']),
+  version: z.number().default(1),
+});
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
+
+// ============================================
+// UNIVERSAL: COMPLIANCE CALENDAR
+// ============================================
+
+export const complianceEvents = pgTable("compliance_events", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  eventType: complianceEventTypeEnum("event_type").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  relatedEntityType: varchar("related_entity_type", { length: 100 }),
+  relatedEntityId: integer("related_entity_id"),
+  reminderDays: integer("reminder_days").default(7),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  isCompleted: integer("is_completed").notNull().default(0),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_compliance_events_org_id").on(table.organizationId),
+  index("idx_compliance_events_due_date").on(table.dueDate),
+  index("idx_compliance_events_completed").on(table.isCompleted),
+]);
+
+export const insertComplianceEventSchema = createInsertSchema(complianceEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  eventType: z.enum(['deadline', 'renewal', 'audit', 'filing', 'review', 'certification']),
+  dueDate: z.coerce.date(),
+  completedDate: z.coerce.date().optional().nullable(),
+  reminderDays: z.number().default(7),
+  isCompleted: z.number().default(0),
+});
+
+export type InsertComplianceEvent = z.infer<typeof insertComplianceEventSchema>;
+export type ComplianceEvent = typeof complianceEvents.$inferSelect;
 
 // ============================================
 // RELATIONS

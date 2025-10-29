@@ -48,6 +48,9 @@ import ExpenseApprovals from "@/pages/expense-approvals";
 import CustomReports from "@/pages/custom-reports";
 import AuditTrail from "@/pages/audit-trail";
 import BankReconciliation from "@/pages/bank-reconciliation";
+import FundraisingHub from "@/pages/fundraising-hub";
+import GovernmentContractsHub from "@/pages/government-contracts-hub";
+import OperationsHub from "@/pages/operations-hub";
 import type { Organization } from "@shared/schema";
 
 // Organization with user role
@@ -340,6 +343,28 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/audit-trail">
                 <AuditTrail currentOrganization={currentOrganization} />
+              </Route>
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/fundraising-hub">
+                  <FundraisingHub 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'forprofit' && (
+                <Route path="/government-contracts-hub">
+                  <GovernmentContractsHub 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              <Route path="/operations-hub">
+                <OperationsHub 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
               </Route>
               <Route path="/settings">
                 <Settings 
