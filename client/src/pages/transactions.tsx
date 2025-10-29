@@ -93,6 +93,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isBulkCategorizeDialogOpen, setIsBulkCategorizeDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState<number | undefined>(undefined);
   const [bulkFundId, setBulkFundId] = useState<number | undefined>(undefined);
   const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
@@ -1349,12 +1350,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => bulkDeleteMutation.mutate()}
+                  onClick={() => setIsBulkDeleteDialogOpen(true)}
                   disabled={bulkDeleteMutation.isPending}
                   data-testid="button-bulk-delete"
                 >
                   <Trash className="h-4 w-4 mr-2" />
-                  {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+                  Delete
                 </Button>
               </div>
             </div>
@@ -1508,6 +1509,30 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               data-testid="button-confirm-delete"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-confirm-bulk-delete">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedTransactionIds.size} Transactions</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedTransactionIds.size} selected transaction(s)? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                bulkDeleteMutation.mutate();
+                setIsBulkDeleteDialogOpen(false);
+              }}
+              data-testid="button-confirm-bulk-delete"
+            >
+              Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
