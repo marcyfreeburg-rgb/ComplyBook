@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Clock, DollarSign, Users, FileText, CheckCircle, AlertCircle, Plus, Edit, Trash2, FileCheck, AlertTriangle, UserCheck } from "lucide-react";
+import { Clock, DollarSign, Users, FileText, CheckCircle, AlertCircle, Plus, Edit, Trash2, FileCheck, AlertTriangle, UserCheck, Download } from "lucide-react";
+import html2pdf from "html2pdf.js";
 import type { Organization } from "@shared/schema";
 
 interface GovernmentGrantsProps {
@@ -427,6 +428,250 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       toast({ title: "Failed to delete audit prep item", variant: "destructive" });
     },
   });
+
+  // PDF Generation for SF-425
+  const downloadSF425PDF = (report: any) => {
+    const grant = grants.find((g: any) => g.id === report.grantId);
+    
+    // Helper to format currency safely
+    const formatCurrency = (value: any) => {
+      if (!value || value === '' || value === null || value === undefined) return '$0.00';
+      const num = parseFloat(value);
+      if (isNaN(num)) return '$0.00';
+      return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Helper to format date safely
+    const formatDate = (value: any) => {
+      if (!value || value === '' || value === null || value === undefined) return 'Not provided';
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch {
+        return 'Invalid date';
+      }
+    };
+    
+    const pdfContent = `
+      <div style="font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px;">
+          <h1 style="font-size: 20px; margin: 0 0 10px 0;">FEDERAL FINANCIAL REPORT (SF-425)</h1>
+          <h2 style="font-size: 14px; margin: 0; font-weight: bold; color: #c00;">DRAFT - INTERNAL REPORT</h2>
+          <p style="margin: 5px 0; font-size: 13px; color: #666;">Based on OMB Form 0348-0061</p>
+          <p style="margin: 5px 0; font-size: 11px; font-style: italic; color: #666;">
+            This is an internal summary report. Complete official SF-425 submission requires additional<br/>
+            fields and certifying official information not captured in this export.
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">1. Federal Agency and Organizational Element</h3>
+          <p style="margin-left: 20px; font-size: 13px;">${currentOrganization.name}</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">2. Federal Grant or Award Identification Number (FAIN)</h3>
+          <p style="margin-left: 20px; font-size: 13px;">${grant?.name || 'N/A'}</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">3. Recipient Organization Information</h3>
+          <p style="margin-left: 20px; font-size: 13px;">
+            <strong>Organization Name:</strong> ${currentOrganization.name}<br/>
+            <strong>UEI/DUNS Number:</strong> <em style="color: #999;">Not captured in system - complete manually</em><br/>
+            <strong>EIN (Tax ID):</strong> <em style="color: #999;">Not captured in system - complete manually</em>
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">4. Reporting Period</h3>
+          <p style="margin-left: 20px; font-size: 13px;">
+            <strong>Start Date:</strong> ${formatDate(report.reportingPeriodStart)}<br/>
+            <strong>End Date:</strong> ${formatDate(report.reportingPeriodEnd)}
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">10. Transactions</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-left: 20px; font-size: 12px;">
+            <tr style="background-color: #f9f9f9;">
+              <th style="text-align: left; padding: 6px; border: 1px solid #ddd; width: 50%;"></th>
+              <th style="text-align: right; padding: 6px; border: 1px solid #ddd;">Federal</th>
+              <th style="text-align: right; padding: 6px; border: 1px solid #ddd;">Non-Federal</th>
+              <th style="text-align: right; padding: 6px; border: 1px solid #ddd;">Total</th>
+            </tr>
+            <tr>
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>a. Total Outlays/Expenses</strong></td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.federalShareExpenditure)}</td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.recipientShareExpenditure)}</td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.totalExpenditure)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>b. Total Unliquidated Obligations</strong></td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.unliquidatedObligations)}</td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.recipientShareUnliquidated)}</td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(
+                (parseFloat(report.unliquidatedObligations || 0) + parseFloat(report.recipientShareUnliquidated || 0))
+              )}</td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>c. Cash Receipts</strong></td>
+              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>d. Cash Disbursements</strong></td>
+              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>e. Cash on Hand (beginning of period)</strong></td>
+              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>f. Cash on Hand (end of period)</strong></td>
+              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>g. Federal Share of Expenditures</strong></td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;" colspan="3">${formatCurrency(report.federalShareExpenditure)}</td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>h. Federal Share of Unliquidated Obligations</strong></td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;" colspan="3">${formatCurrency(report.unliquidatedObligations)}</td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>i. Total Federal Share</strong></td>
+              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;" colspan="3">${formatCurrency(
+                (parseFloat(report.federalShareExpenditure || 0) + parseFloat(report.unliquidatedObligations || 0))
+              )}</td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>j. Unobligated Balance of Federal Funds</strong></td>
+              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            </tr>
+            <tr style="background-color: #fff9e6;">
+              <td style="padding: 6px; border: 1px solid #ddd;"><strong>k-o. Additional Transaction Lines</strong></td>
+              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            </tr>
+          </table>
+          <p style="margin-left: 20px; margin-top: 8px; font-size: 11px; color: #666; font-style: italic;">
+            Note: Highlighted rows indicate fields not captured in the system. Complete these manually when preparing official submission.
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">11. Program Income</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-left: 20px; font-size: 13px;">
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd; width: 70%;"><strong>a. Total Income Earned</strong></td>
+              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${formatCurrency(report.programIncomeEarned)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;"><strong>b. Total Income Expended</strong></td>
+              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${formatCurrency(report.programIncomeExpended)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">Report Status</h3>
+          <p style="margin-left: 20px; font-size: 13px;">
+            <strong>Report Status:</strong> ${report.status.charAt(0).toUpperCase() + report.status.slice(1)}<br/>
+            <strong>Submitted Date:</strong> ${formatDate(report.submittedDate)}<br/>
+            <strong>Approved Date:</strong> ${formatDate(report.approvedDate)}
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">13. Certification</h3>
+          <p style="margin-left: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 15px;">
+            I certify to the best of my knowledge and belief that this report is correct and complete for 
+            performance of activities for the purposes set forth in the award documents.
+          </p>
+          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
+            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
+              <strong>13a. Typed or Printed Name and Title of Authorized Certifying Official:</strong><br/>
+              <em style="color: #999;">Not captured in system - complete manually before submission</em>
+            </p>
+          </div>
+          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
+            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
+              <strong>13b. Signature of Authorized Certifying Official:</strong><br/>
+              <em style="color: #999;">Signature required - complete manually before submission</em>
+            </p>
+          </div>
+          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
+            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
+              <strong>13c. Telephone (Area code, number, and extension):</strong><br/>
+              <em style="color: #999;">Not captured in system - complete manually before submission</em>
+            </p>
+          </div>
+          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
+            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
+              <strong>13d. Email Address:</strong><br/>
+              <em style="color: #999;">Not captured in system - complete manually before submission</em>
+            </p>
+          </div>
+          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
+            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
+              <strong>13e. Date Report Submitted:</strong><br/>
+              <em style="color: #999;">${formatDate(report.submittedDate)}</em>
+            </p>
+          </div>
+        </div>
+
+        ${report.notes ? `
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">12. Remarks</h3>
+          <p style="margin-left: 20px; font-size: 13px; white-space: pre-wrap;">${report.notes}</p>
+        </div>
+        ` : ''}
+
+        <div style="margin-bottom: 20px; background-color: #fffacd; border: 1px solid #f0e68c; padding: 15px; border-radius: 4px;">
+          <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #856404;">
+            ⚠️ Additional Information Required for Official Submission
+          </h3>
+          <p style="font-size: 12px; color: #856404; margin: 0; line-height: 1.5;">
+            This internal report contains the core financial data from your records. A complete SF-425 submission to federal agencies requires:<br/>
+            • Detailed transaction breakdowns (lines 10c-10o)<br/>
+            • Recipient organization details (DUNS/UEI, EIN)<br/>
+            • Certifying official information (name, title, signature, contact details)<br/>
+            • Additional compliance fields specific to your grant terms<br/><br/>
+            <strong>Use official SF-425 form and instructions when preparing final federal submissions.</strong>
+          </p>
+        </div>
+
+        <div style="margin-top: 40px; border-top: 1px solid #999; padding-top: 20px;">
+          <p style="font-size: 10px; color: #666; line-height: 1.6;">
+            <strong>Note:</strong> This internal report summarizes key financial data for grant ${grant?.name || 'N/A'}.
+            For official federal submission, complete all required SF-425 sections using the official form and consult 
+            with your grants administrator or fiscal officer.
+          </p>
+        </div>
+
+        <div style="margin-top: 20px; border-top: 2px solid #000; padding-top: 20px;">
+          <p style="font-size: 11px; text-align: center; color: #666;">
+            Internal Financial Summary Report (Based on SF-425 Format)<br/>
+            Generated ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br/>
+            ${currentOrganization.name}
+          </p>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 0.5,
+      filename: `SF-425_${grant?.name || report.id}_${new Date(report.reportingPeriodEnd).toISOString().split('T')[0]}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(pdfContent).save();
+    
+    toast({ 
+      title: "PDF Generated",
+      description: "Your SF-425 report has been downloaded"
+    });
+  };
 
   // Form Handlers
   const handleCreateTimeEffort = () => {
@@ -1037,6 +1282,15 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                           </div>
                         </div>
                         <div className="flex gap-2 ml-4">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => downloadSF425PDF(report)}
+                            data-testid={`button-download-${report.id}`}
+                            title="Download SF-425 PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           <Button 
                             size="icon" 
                             variant="ghost" 
