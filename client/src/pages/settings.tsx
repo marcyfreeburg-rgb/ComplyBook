@@ -52,7 +52,7 @@ interface Invitation {
 }
 
 interface SettingsProps {
-  currentOrganization: Organization;
+  currentOrganization: Organization & { userRole: string };
   user: User;
 }
 
@@ -73,6 +73,9 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
     email: "",
     permissions: "view_only",
   });
+  const [isEditRoleDialogOpen, setIsEditRoleDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [newRole, setNewRole] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
@@ -279,6 +282,41 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
       });
     },
   });
+
+  const updateUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      return await apiRequest('PATCH', `/api/team/${currentOrganization.id}/${userId}/role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/team/${currentOrganization.id}`] });
+      toast({
+        title: "Role updated",
+        description: "The team member's role has been updated successfully.",
+      });
+      setIsEditRoleDialogOpen(false);
+      setEditingMember(null);
+      setNewRole("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update role. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditRole = (member: TeamMember) => {
+    setEditingMember(member);
+    setNewRole(member.role);
+    setIsEditRoleDialogOpen(true);
+  };
+
+  const handleUpdateRole = () => {
+    if (editingMember && newRole) {
+      updateUserRoleMutation.mutate({ userId: editingMember.userId, role: newRole });
+    }
+  };
 
   // Handle successful Plaid Link
   const onPlaidSuccess = useCallback(async (public_token: string, metadata: any) => {
@@ -566,24 +604,110 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
                       )}
                     </div>
                   </div>
-                  {member.userId !== user.id && member.role !== 'owner' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeTeamMemberMutation.mutate(member.userId)}
-                      disabled={removeTeamMemberMutation.isPending}
-                      className="ml-2"
-                      data-testid={`button-remove-member-${member.userId}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {member.userId !== user.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditRole(member)}
+                        disabled={member.role === 'owner' && currentOrganization.userRole !== 'owner'}
+                        data-testid={`button-edit-role-${member.userId}`}
+                        title={member.role === 'owner' && currentOrganization.userRole !== 'owner' ? 'Only owners can modify owner roles' : undefined}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit Role
+                      </Button>
+                    )}
+                    {member.userId !== user.id && member.role !== 'owner' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeTeamMemberMutation.mutate(member.userId)}
+                        disabled={removeTeamMemberMutation.isPending}
+                        data-testid={`button-remove-member-${member.userId}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Role Dialog */}
+      <Dialog open={isEditRoleDialogOpen} onOpenChange={setIsEditRoleDialogOpen}>
+        <DialogContent data-testid="dialog-edit-role">
+          <DialogHeader>
+            <DialogTitle>Edit Team Member Role</DialogTitle>
+            <DialogDescription>
+              Change the role for {editingMember?.firstName} {editingMember?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role-select">Role</Label>
+              <Select value={newRole} onValueChange={setNewRole}>
+                <SelectTrigger id="role-select" data-testid="select-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                  <SelectItem value="accountant">Accountant</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="owner" disabled={currentOrganization.userRole !== 'owner'}>
+                    Owner {currentOrganization.userRole !== 'owner' ? '(Only owners can assign)' : ''}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                {newRole === 'viewer' && (
+                  <p>• Can view data but cannot make changes</p>
+                )}
+                {newRole === 'accountant' && (
+                  <>
+                    <p>• Can view and edit transactions</p>
+                    <p>• Can create invoices and bills</p>
+                    <p>• Cannot manage team or organization settings</p>
+                  </>
+                )}
+                {newRole === 'admin' && (
+                  <>
+                    <p>• Full access to all features</p>
+                    <p>• Can manage team members and invitations</p>
+                    <p>• Cannot delete the organization</p>
+                  </>
+                )}
+                {newRole === 'owner' && (
+                  <>
+                    <p>• Full control over the organization</p>
+                    <p>• Can delete the organization</p>
+                    <p>• Can transfer ownership to another member</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditRoleDialogOpen(false)}
+              data-testid="button-cancel-edit-role"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateRole}
+              disabled={updateUserRoleMutation.isPending || !newRole || newRole === editingMember?.role}
+              data-testid="button-save-role"
+            >
+              {updateUserRoleMutation.isPending ? "Updating..." : "Update Role"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Pending Invitations */}
       <Card>

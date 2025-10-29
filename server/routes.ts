@@ -560,6 +560,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/team/:organizationId/:userId/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const targetUserId = req.params.userId;
+      
+      // Check user is owner or admin
+      const userRole = await storage.getUserRole(currentUserId, organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Only owners and admins can update roles" });
+      }
+
+      const { role } = req.body;
+      
+      // Validate role
+      const validRoles = ['owner', 'admin', 'accountant', 'viewer'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      // Get target user's current role
+      const targetUserRole = await storage.getUserRole(targetUserId, organizationId);
+      if (!targetUserRole) {
+        return res.status(404).json({ message: "User not found in this organization" });
+      }
+
+      // SECURITY: Only owners can modify owner roles (promote to owner or demote from owner)
+      if ((role === 'owner' || targetUserRole.role === 'owner') && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only owners can modify owner roles" });
+      }
+
+      // SECURITY: Prevent changing your own role if you're the owner
+      if (currentUserId === targetUserId && userRole.role === 'owner') {
+        return res.status(400).json({ message: "Cannot change your own role as owner" });
+      }
+
+      // SECURITY: If demoting an owner, ensure at least one owner remains
+      if (targetUserRole.role === 'owner' && role !== 'owner') {
+        const allMembers = await storage.getTeamMembers(organizationId);
+        const ownerCount = allMembers.filter(m => m.role === 'owner').length;
+        
+        if (ownerCount <= 1) {
+          return res.status(400).json({ message: "Cannot demote the last owner. Promote another member to owner first." });
+        }
+      }
+
+      // Log role change for audit trail
+      await storage.createAuditLog({
+        organizationId,
+        userId: currentUserId,
+        action: 'update',
+        entityType: 'user_role',
+        entityId: targetUserId,
+        changes: { role: { from: targetUserRole.role, to: role } },
+        ipAddress: req.ip || 'unknown',
+      });
+
+      await storage.updateUserRole(targetUserId, organizationId, role);
+      res.json({ message: "Role updated successfully" });
+    } catch (error) {
+      console.error("Error updating role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
   app.delete('/api/team/:organizationId/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;

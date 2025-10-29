@@ -1783,6 +1783,18 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
+  async updateUserRole(userId: string, organizationId: number, role: string): Promise<void> {
+    await db
+      .update(userOrganizationRoles)
+      .set({ role: role as any })
+      .where(
+        and(
+          eq(userOrganizationRoles.userId, userId),
+          eq(userOrganizationRoles.organizationId, organizationId)
+        )
+      );
+  }
+
   async removeTeamMember(userId: string, organizationId: number): Promise<void> {
     await db
       .delete(userOrganizationRoles)
