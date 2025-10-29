@@ -2,14 +2,15 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart } from "lucide-react";
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { useLocation } from "wouter";
 import type { Organization, Transaction, Budget } from "@shared/schema";
+import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface DashboardProps {
   currentOrganization: Organization;
@@ -55,6 +56,22 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
   }>>({
     queryKey: ["/api/budgets", activeBudget?.id, "vs-actual"],
     enabled: !!activeBudget,
+  });
+
+  const { data: monthlyTrends = [] } = useQuery<Array<{
+    month: string;
+    income: string;
+    expenses: string;
+    netIncome: string;
+  }>>({
+    queryKey: [`/api/dashboard/${currentOrganization.id}/monthly-trends`],
+  });
+
+  const { data: categoryBreakdown } = useQuery<{
+    incomeByCategory: Array<{ categoryName: string; amount: string }>;
+    expensesByCategory: Array<{ categoryName: string; amount: string }>;
+  }>({
+    queryKey: [`/api/dashboard/${currentOrganization.id}/category-breakdown`],
   });
 
   useEffect(() => {
@@ -339,6 +356,121 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Trends Chart */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-chart-1" />
+              <CardTitle>Income vs Expenses Trend</CardTitle>
+            </div>
+            <CardDescription>Last 6 months comparison</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {monthlyTrends.length === 0 ? (
+              <div className="h-80 flex items-center justify-center text-sm text-muted-foreground">
+                Not enough data to display trends
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyTrends.map(t => ({
+                  month: t.month,
+                  Income: parseFloat(t.income),
+                  Expenses: parseFloat(t.expenses),
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="month" 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
+                    formatter={(value: any) => `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="Income" 
+                    stroke="hsl(var(--chart-2))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--chart-2))' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="Expenses" 
+                    stroke="hsl(var(--chart-3))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--chart-3))' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Expense Category Breakdown */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-chart-1" />
+              <CardTitle>Expense Breakdown</CardTitle>
+            </div>
+            <CardDescription>Current month by category</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!categoryBreakdown || categoryBreakdown.expensesByCategory.length === 0 ? (
+              <div className="h-80 flex items-center justify-center text-sm text-muted-foreground">
+                No expense categories to display
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPie>
+                  <Pie
+                    data={categoryBreakdown.expensesByCategory.map(cat => ({
+                      name: cat.categoryName,
+                      value: parseFloat(cat.amount),
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: $${entry.value.toFixed(0)}`}
+                    outerRadius={100}
+                    fill="hsl(var(--chart-1))"
+                    dataKey="value"
+                  >
+                    {categoryBreakdown.expensesByCategory.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={`hsl(var(--chart-${(index % 5) + 1}))`}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
+                    formatter={(value: any) => `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  />
+                </RechartsPie>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1361,6 +1361,65 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getMonthlyTrends(organizationId: number, months: number = 6): Promise<Array<{
+    month: string;
+    income: string;
+    expenses: string;
+    netIncome: string;
+  }>> {
+    const results = [];
+    const now = new Date();
+    
+    for (let i = months - 1; i >= 0; i--) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+      
+      // Get income for this month
+      const [incomeResult] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.organizationId, organizationId),
+            eq(transactions.type, 'income'),
+            gte(transactions.date, startOfMonth),
+            lte(transactions.date, endOfMonth)
+          )
+        );
+      
+      // Get expenses for this month
+      const [expenseResult] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.organizationId, organizationId),
+            eq(transactions.type, 'expense'),
+            gte(transactions.date, startOfMonth),
+            lte(transactions.date, endOfMonth)
+          )
+        );
+      
+      const income = incomeResult?.total || '0';
+      const expenses = expenseResult?.total || '0';
+      const netIncome = (parseFloat(income) - parseFloat(expenses)).toFixed(2);
+      
+      results.push({
+        month: targetDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        income,
+        expenses,
+        netIncome,
+      });
+    }
+    
+    return results;
+  }
+
   async getProfitLossReport(
     organizationId: number,
     startDate: Date,

@@ -2860,6 +2860,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/dashboard/:organizationId/monthly-trends', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const months = parseInt(req.query.months as string) || 6;
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const trends = await storage.getMonthlyTrends(organizationId, months);
+      res.json(trends);
+    } catch (error) {
+      console.error("Error fetching monthly trends:", error);
+      res.status(500).json({ message: "Failed to fetch monthly trends" });
+    }
+  });
+
+  app.get('/api/dashboard/:organizationId/category-breakdown', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Get current month's category breakdown
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      const report = await storage.getProfitLossReport(organizationId, startOfMonth, endOfMonth);
+      res.json({
+        incomeByCategory: report.incomeByCategory,
+        expensesByCategory: report.expensesByCategory,
+      });
+    } catch (error) {
+      console.error("Error fetching category breakdown:", error);
+      res.status(500).json({ message: "Failed to fetch category breakdown" });
+    }
+  });
+
   // Report routes
   app.get('/api/reports/profit-loss/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
