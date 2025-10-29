@@ -35,11 +35,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CategorySuggestion {
   categoryId: number;
@@ -86,6 +87,16 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [showBulkCategorization, setShowBulkCategorization] = useState(false);
   const [isAttachmentsDialogOpen, setIsAttachmentsDialogOpen] = useState(false);
   const [selectedTransactionForAttachments, setSelectedTransactionForAttachments] = useState<Transaction | null>(null);
+  
+  // Bulk operations state
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<number>>(new Set());
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isBulkCategorizeDialogOpen, setIsBulkCategorizeDialogOpen] = useState(false);
+  const [bulkCategoryId, setBulkCategoryId] = useState<number | undefined>(undefined);
+  const [bulkFundId, setBulkFundId] = useState<number | undefined>(undefined);
+  const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
+  const [bulkFunctionalCategory, setBulkFunctionalCategory] = useState<'program' | 'administrative' | 'fundraising' | undefined>(undefined);
   const [formData, setFormData] = useState<TransactionFormData>({
     organizationId: currentOrganization.id,
     type: 'expense',
@@ -418,6 +429,97 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
   });
 
+  const csvImportMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`/api/transactions/import-csv/${currentOrganization.id}`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to import CSV');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      setIsImportDialogOpen(false);
+      setImportFile(null);
+      toast({
+        title: "Import Complete",
+        description: `Successfully imported ${data.imported} transaction(s). ${data.errors?.length || 0} error(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import CSV file.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkUpdateCategoriesMutation = useMutation({
+    mutationFn: async () => {
+      const updates: any = {};
+      if (bulkCategoryId !== undefined) updates.categoryId = bulkCategoryId;
+      if (bulkFundId !== undefined) updates.fundId = bulkFundId;
+      if (bulkProgramId !== undefined) updates.programId = bulkProgramId;
+      if (bulkFunctionalCategory !== undefined) updates.functionalCategory = bulkFunctionalCategory;
+
+      return await apiRequest('POST', '/api/transactions/bulk-categorize', {
+        transactionIds: Array.from(selectedTransactionIds),
+        ...updates,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      setIsBulkCategorizeDialogOpen(false);
+      setSelectedTransactionIds(new Set());
+      setBulkCategoryId(undefined);
+      setBulkFundId(undefined);
+      setBulkProgramId(undefined);
+      setBulkFunctionalCategory(undefined);
+      toast({
+        title: "Bulk Update Complete",
+        description: `Successfully updated ${selectedTransactionIds.size} transaction(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Bulk Update Failed",
+        description: error.message || "Failed to update transactions.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/transactions/bulk-delete', {
+        transactionIds: Array.from(selectedTransactionIds),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      setSelectedTransactionIds(new Set());
+      toast({
+        title: "Bulk Delete Complete",
+        description: `Successfully deleted ${selectedTransactionIds.size} transaction(s).`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Bulk Delete Failed",
+        description: error.message || "Failed to delete transactions.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingTransaction(null);
@@ -498,6 +600,68 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  // Bulk operations handlers
+  const toggleSelectAll = () => {
+    if (selectedTransactionIds.size === filteredTransactions.length) {
+      setSelectedTransactionIds(new Set());
+    } else {
+      setSelectedTransactionIds(new Set(filteredTransactions.map(t => t.id)));
+    }
+  };
+
+  const toggleSelectTransaction = (id: number) => {
+    const newSet = new Set(selectedTransactionIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedTransactionIds(newSet);
+  };
+
+  const handleExport = async () => {
+    try {
+      const response = await fetch(`/api/transactions/export/${currentOrganization.id}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transactions-${currentOrganization.name}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Export Complete",
+        description: "Transactions exported successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export transactions.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImportCSV = () => {
+    if (!importFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a CSV file to import.",
+        variant: "destructive",
+      });
+      return;
+    }
+    csvImportMutation.mutate(importFile);
+  };
+
   const uncategorizedTransactions = transactions?.filter(t => !t.categoryId) || [];
 
   if (transactionsLoading) {
@@ -522,13 +686,60 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             {currentOrganization.name}
           </p>
         </div>
-        <Link href="/">
-          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/">
+            <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <Button 
+            variant="outline" 
+            onClick={handleExport}
+            data-testid="button-export-csv"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Export CSV
           </Button>
-        </Link>
-        <div className="flex items-center gap-2">
+          <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-import-csv">
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Import Transactions from CSV</DialogTitle>
+                <DialogDescription>
+                  Upload a CSV file with transaction data. Required columns: date, description, amount, type (income/expense)
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="csv-file">CSV File</Label>
+                  <Input
+                    id="csv-file"
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    data-testid="input-csv-file"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum file size: 5MB
+                  </p>
+                </div>
+                <Button
+                  onClick={handleImportCSV}
+                  disabled={csvImportMutation.isPending || !importFile}
+                  className="w-full"
+                  data-testid="button-import-submit"
+                >
+                  {csvImportMutation.isPending ? "Importing..." : "Import Transactions"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-manage-categories">
@@ -1107,6 +1318,50 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         </Card>
       )}
 
+      {/* Bulk Action Toolbar */}
+      {selectedTransactionIds.size > 0 && (
+        <Card className="bg-muted/50">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" data-testid="badge-selected-count">
+                  {selectedTransactionIds.size} selected
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedTransactionIds(new Set())}
+                  data-testid="button-clear-selection"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkCategorizeDialogOpen(true)}
+                  data-testid="button-bulk-categorize"
+                >
+                  <Tag className="h-4 w-4 mr-2" />
+                  Categorize
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => bulkDeleteMutation.mutate()}
+                  disabled={bulkDeleteMutation.isPending}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Check Register */}
       <Card>
         <CardHeader>
@@ -1133,6 +1388,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 px-4 w-12">
+                      <Checkbox
+                        checked={selectedTransactionIds.size === filteredTransactions.length && filteredTransactions.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
@@ -1150,6 +1412,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                         className="border-b hover-elevate"
                         data-testid={`transaction-row-${transaction.id}`}
                       >
+                        <td className="py-3 px-4">
+                          <Checkbox
+                            checked={selectedTransactionIds.has(transaction.id)}
+                            onCheckedChange={() => toggleSelectTransaction(transaction.id)}
+                            data-testid={`checkbox-transaction-${transaction.id}`}
+                          />
+                        </td>
                         <td className="py-3 px-4 text-sm">
                           {format(new Date(transaction.date), 'MM/dd/yyyy')}
                         </td>
@@ -1327,6 +1596,110 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Categorize Dialog */}
+      <Dialog open={isBulkCategorizeDialogOpen} onOpenChange={setIsBulkCategorizeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Categorize Transactions</DialogTitle>
+            <DialogDescription>
+              Update category, fund, program, or functional category for {selectedTransactionIds.size} selected transaction(s)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-category">Category (Optional)</Label>
+              <Select
+                value={bulkCategoryId?.toString() || "none"}
+                onValueChange={(value) => setBulkCategoryId(value === "none" ? undefined : parseInt(value))}
+              >
+                <SelectTrigger id="bulk-category" data-testid="select-bulk-category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No change</SelectItem>
+                  {categories?.filter(c => c.type === 'expense').map(category => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {currentOrganization.type === 'nonprofit' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-fund">Fund (Optional)</Label>
+                  <Select
+                    value={bulkFundId?.toString() || "none"}
+                    onValueChange={(value) => setBulkFundId(value === "none" ? undefined : parseInt(value))}
+                  >
+                    <SelectTrigger id="bulk-fund" data-testid="select-bulk-fund">
+                      <SelectValue placeholder="Select fund" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No change</SelectItem>
+                      {funds?.map(fund => (
+                        <SelectItem key={fund.id} value={fund.id.toString()}>
+                          {fund.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-program">Program (Optional)</Label>
+                  <Select
+                    value={bulkProgramId?.toString() || "none"}
+                    onValueChange={(value) => setBulkProgramId(value === "none" ? undefined : parseInt(value))}
+                  >
+                    <SelectTrigger id="bulk-program" data-testid="select-bulk-program">
+                      <SelectValue placeholder="Select program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No change</SelectItem>
+                      {programs?.map(program => (
+                        <SelectItem key={program.id} value={program.id.toString()}>
+                          {program.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-functional">Functional Category (Optional)</Label>
+                  <Select
+                    value={bulkFunctionalCategory || "none"}
+                    onValueChange={(value: any) => setBulkFunctionalCategory(value === "none" ? undefined : value)}
+                  >
+                    <SelectTrigger id="bulk-functional" data-testid="select-bulk-functional">
+                      <SelectValue placeholder="Select functional category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No change</SelectItem>
+                      <SelectItem value="program">Program Services</SelectItem>
+                      <SelectItem value="administrative">Management & General</SelectItem>
+                      <SelectItem value="fundraising">Fundraising</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            <Button
+              onClick={() => bulkUpdateCategoriesMutation.mutate()}
+              disabled={bulkUpdateCategoriesMutation.isPending}
+              className="w-full"
+              data-testid="button-bulk-categorize-submit"
+            >
+              {bulkUpdateCategoriesMutation.isPending ? "Updating..." : "Update Transactions"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
