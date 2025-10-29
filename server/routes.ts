@@ -1890,13 +1890,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "transactionIds must be a non-empty array" });
       }
 
-      // Get first transaction to check permissions
-      const firstTransaction = await storage.getTransaction(transactionIds[0]);
-      if (!firstTransaction) {
-        return res.status(404).json({ message: "Transaction not found" });
+      // Load ALL transactions and validate they belong to the same organization
+      const transactions = [];
+      const invalidIds = [];
+      
+      for (const id of transactionIds) {
+        const transaction = await storage.getTransaction(id);
+        if (!transaction) {
+          invalidIds.push(id);
+        } else {
+          transactions.push(transaction);
+        }
       }
 
-      const userRole = await storage.getUserRole(userId, firstTransaction.organizationId);
+      if (invalidIds.length > 0) {
+        return res.status(404).json({ 
+          message: `Transaction(s) not found`,
+          invalidIds 
+        });
+      }
+
+      // Verify all transactions belong to the same organization
+      const organizationIds = [...new Set(transactions.map(t => t.organizationId))];
+      if (organizationIds.length !== 1) {
+        return res.status(400).json({ 
+          message: "All transactions must belong to the same organization" 
+        });
+      }
+
+      const organizationId = organizationIds[0];
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
@@ -1921,7 +1946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Log audit trail
       await storage.logCreate(
-        firstTransaction.organizationId,
+        organizationId,
         userId,
         'bulk_operation',
         'bulk_categorize',
@@ -1947,13 +1972,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "transactionIds must be a non-empty array" });
       }
 
-      // Get first transaction to check permissions
-      const firstTransaction = await storage.getTransaction(transactionIds[0]);
-      if (!firstTransaction) {
-        return res.status(404).json({ message: "Transaction not found" });
+      // Load ALL transactions and validate they belong to the same organization
+      const transactions = [];
+      const invalidIds = [];
+      
+      for (const id of transactionIds) {
+        const transaction = await storage.getTransaction(id);
+        if (!transaction) {
+          invalidIds.push(id);
+        } else {
+          transactions.push(transaction);
+        }
       }
 
-      const userRole = await storage.getUserRole(userId, firstTransaction.organizationId);
+      if (invalidIds.length > 0) {
+        return res.status(404).json({ 
+          message: `Transaction(s) not found`,
+          invalidIds 
+        });
+      }
+
+      // Verify all transactions belong to the same organization
+      const organizationIds = [...new Set(transactions.map(t => t.organizationId))];
+      if (organizationIds.length !== 1) {
+        return res.status(400).json({ 
+          message: "All transactions must belong to the same organization" 
+        });
+      }
+
+      const organizationId = organizationIds[0];
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
@@ -1969,7 +2019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Log audit trail
       await storage.logCreate(
-        firstTransaction.organizationId,
+        organizationId,
         userId,
         'bulk_operation',
         'bulk_delete',
@@ -2143,13 +2193,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "action must be 'approve' or 'reject'" });
       }
 
-      // Get first approval to check permissions
-      const firstApproval = await storage.getExpenseApproval(approvalIds[0]);
-      if (!firstApproval) {
-        return res.status(404).json({ message: "Expense approval not found" });
+      // Load ALL approvals and validate they belong to the same organization
+      const approvals = [];
+      const invalidIds = [];
+      
+      for (const id of approvalIds) {
+        const approval = await storage.getExpenseApproval(id);
+        if (!approval) {
+          invalidIds.push(id);
+        } else {
+          approvals.push(approval);
+        }
       }
 
-      const userRole = await storage.getUserRole(userId, firstApproval.organizationId);
+      if (invalidIds.length > 0) {
+        return res.status(404).json({ 
+          message: `Expense approval(s) not found`,
+          invalidIds 
+        });
+      }
+
+      // Verify all approvals belong to the same organization
+      const organizationIds = [...new Set(approvals.map(a => a.organizationId))];
+      if (organizationIds.length !== 1) {
+        return res.status(400).json({ 
+          message: "All expense approvals must belong to the same organization" 
+        });
+      }
+
+      const organizationId = organizationIds[0];
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
@@ -2172,7 +2247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Log audit trail
       await storage.logCreate(
-        firstApproval.organizationId,
+        organizationId,
         userId,
         'bulk_operation',
         'bulk_approval',
