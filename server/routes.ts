@@ -8,6 +8,8 @@ import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
 import memoize from "memoizee";
+import multer from "multer";
+import Papa from "papaparse";
 import {
   insertOrganizationSchema,
   insertCategorySchema,
@@ -1875,6 +1877,315 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting transaction:", error);
       res.status(500).json({ message: "Failed to delete transaction" });
+    }
+  });
+
+  // Bulk Operations for Transactions
+  app.post('/api/transactions/bulk-categorize', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { transactionIds, categoryId, fundId, programId, functionalCategory } = req.body;
+
+      if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        return res.status(400).json({ message: "transactionIds must be a non-empty array" });
+      }
+
+      // Get first transaction to check permissions
+      const firstTransaction = await storage.getTransaction(transactionIds[0]);
+      if (!firstTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, firstTransaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit transactions" });
+      }
+
+      // Build updates object
+      const updates: any = {};
+      if (categoryId !== undefined) updates.categoryId = categoryId;
+      if (fundId !== undefined) updates.fundId = fundId;
+      if (programId !== undefined) updates.programId = programId;
+      if (functionalCategory !== undefined) updates.functionalCategory = functionalCategory;
+
+      // Update all transactions
+      const updatedTransactions = [];
+      for (const id of transactionIds) {
+        const updated = await storage.updateTransaction(id, updates);
+        updatedTransactions.push(updated);
+      }
+
+      // Log audit trail
+      await storage.logCreate(
+        firstTransaction.organizationId,
+        userId,
+        'bulk_operation',
+        'bulk_categorize',
+        { transactionIds, updates, count: transactionIds.length }
+      );
+
+      res.json({ 
+        message: `Successfully updated ${updatedTransactions.length} transactions`,
+        updated: updatedTransactions 
+      });
+    } catch (error) {
+      console.error("Error bulk categorizing transactions:", error);
+      res.status(500).json({ message: "Failed to bulk categorize transactions" });
+    }
+  });
+
+  app.post('/api/transactions/bulk-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { transactionIds } = req.body;
+
+      if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        return res.status(400).json({ message: "transactionIds must be a non-empty array" });
+      }
+
+      // Get first transaction to check permissions
+      const firstTransaction = await storage.getTransaction(transactionIds[0]);
+      if (!firstTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, firstTransaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete transactions" });
+      }
+
+      // Delete all transactions
+      for (const id of transactionIds) {
+        await storage.deleteTransaction(id);
+      }
+
+      // Log audit trail
+      await storage.logCreate(
+        firstTransaction.organizationId,
+        userId,
+        'bulk_operation',
+        'bulk_delete',
+        { transactionIds, count: transactionIds.length }
+      );
+
+      res.json({ message: `Successfully deleted ${transactionIds.length} transactions` });
+    } catch (error) {
+      console.error("Error bulk deleting transactions:", error);
+      res.status(500).json({ message: "Failed to bulk delete transactions" });
+    }
+  });
+
+  // Configure multer for CSV file uploads
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only CSV files are allowed'));
+      }
+    }
+  });
+
+  app.post('/api/transactions/import-csv/:organizationId', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to import transactions" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Parse CSV
+      const csvContent = req.file.buffer.toString('utf-8');
+      const parseResult = Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true
+      });
+
+      if (parseResult.errors.length > 0) {
+        return res.status(400).json({ 
+          message: "CSV parsing errors", 
+          errors: parseResult.errors 
+        });
+      }
+
+      // Validate and create transactions
+      const created = [];
+      const errors = [];
+
+      for (let i = 0; i < parseResult.data.length; i++) {
+        const row: any = parseResult.data[i];
+        
+        try {
+          // Map CSV columns to transaction schema
+          const transactionData = {
+            organizationId,
+            date: row.date || row.Date || new Date().toISOString().split('T')[0],
+            type: row.type || row.Type || 'expense',
+            amount: parseFloat(row.amount || row.Amount || 0),
+            description: row.description || row.Description || '',
+            categoryId: row.categoryId || row.CategoryId || null,
+            vendorId: row.vendorId || row.VendorId || null,
+            clientId: row.clientId || row.ClientId || null,
+            fundId: row.fundId || row.FundId || null,
+            programId: row.programId || row.ProgramId || null,
+            functionalCategory: row.functionalCategory || row.FunctionalCategory || null,
+          };
+
+          const validated = insertTransactionSchema.parse(transactionData);
+          const transaction = await storage.createTransaction(validated);
+          created.push(transaction);
+        } catch (error: any) {
+          errors.push({
+            row: i + 1,
+            data: row,
+            error: error.message
+          });
+        }
+      }
+
+      // Log audit trail
+      await storage.logCreate(
+        organizationId,
+        userId,
+        'bulk_operation',
+        'csv_import',
+        { imported: created.length, errors: errors.length, totalRows: parseResult.data.length }
+      );
+
+      res.json({
+        message: `Import complete: ${created.length} transactions created, ${errors.length} errors`,
+        created,
+        errors,
+        summary: {
+          total: parseResult.data.length,
+          success: created.length,
+          failed: errors.length
+        }
+      });
+    } catch (error) {
+      console.error("Error importing CSV:", error);
+      res.status(500).json({ message: "Failed to import CSV" });
+    }
+  });
+
+  app.get('/api/transactions/export/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const transactions = await storage.getTransactions(organizationId);
+      
+      // Convert to CSV format
+      const headers = ['Date', 'Type', 'Amount', 'Category', 'Description', 'Vendor/Client', 'Fund', 'Program', 'Functional Category'];
+      const rows = transactions.map(t => [
+        t.date,
+        t.type,
+        t.amount,
+        t.categoryId || '',
+        t.description || '',
+        t.vendorId || t.clientId || '',
+        t.fundId || '',
+        t.programId || '',
+        t.functionalCategory || ''
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="transactions-${organizationId}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvContent);
+    } catch (error) {
+      console.error("Error exporting transactions:", error);
+      res.status(500).json({ message: "Failed to export transactions" });
+    }
+  });
+
+  // Bulk Approval Operations
+  app.post('/api/expense-approvals/bulk-action', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { approvalIds, action, note } = req.body;
+
+      if (!Array.isArray(approvalIds) || approvalIds.length === 0) {
+        return res.status(400).json({ message: "approvalIds must be a non-empty array" });
+      }
+
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ message: "action must be 'approve' or 'reject'" });
+      }
+
+      // Get first approval to check permissions
+      const firstApproval = await storage.getExpenseApproval(approvalIds[0]);
+      if (!firstApproval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, firstApproval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Only owners and admins can approve/reject expenses" });
+      }
+
+      // Update all approvals
+      const updatedApprovals = [];
+      for (const id of approvalIds) {
+        const updated = await storage.updateExpenseApproval(id, {
+          status: action === 'approve' ? 'approved' : 'rejected',
+          approvedBy: userId,
+          approvedAt: new Date().toISOString(),
+          notes: note || ''
+        });
+        updatedApprovals.push(updated);
+      }
+
+      // Log audit trail
+      await storage.logCreate(
+        firstApproval.organizationId,
+        userId,
+        'bulk_operation',
+        'bulk_approval',
+        { approvalIds, action, count: approvalIds.length }
+      );
+
+      res.json({ 
+        message: `Successfully ${action}d ${updatedApprovals.length} expense approvals`,
+        updated: updatedApprovals 
+      });
+    } catch (error) {
+      console.error("Error bulk processing expense approvals:", error);
+      res.status(500).json({ message: "Failed to bulk process expense approvals" });
     }
   });
 

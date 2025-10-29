@@ -8,6 +8,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 29, 2025 - Compliance Dashboard & PDF Exports
+Completed comprehensive nonprofit compliance and reporting features:
+- **Compliance Dashboard:** Real-time grant compliance tracking with metrics (active grants, upcoming deadlines, overdue items), individual grant compliance scores, visual compliance indicators, and quick action buttons for common compliance tasks
+- **SF-425 PDF Export:** Official Federal Financial Report generation matching OMB 0348-0061 form structure with all 14 sections, proper line items (10a-10o), indirect expense calculations, certification block, and intelligent placeholder handling for missing data
+- **Form 990 PDF Export:** IRS tax return preparation worksheet with Part I Summary (revenue/expenses), Part IX Functional Expenses table (program/management/fundraising breakdown), pre-filled financial data from transactions, and clear guidance for completion with tax professional
+- **Bug Fixes:** Fixed Grant select dropdown initialization (changed from empty string to undefined for proper Shadcn Select rendering), added `/compliance` route alias for better accessibility
+- Routes properly scoped to nonprofit organizations only (`/compliance`, `/compliance-dashboard`, `/government-grants`)
+- PDF generation uses html2pdf.js for client-side generation with proper formatting and official form structures
+
 ### October 28, 2025 - Government Grants Implementation
 Implemented comprehensive Government Grants system for nonprofit organizations with 5 integrated compliance and reporting features:
 - **Time/Effort Reporting:** Employee time allocation tracking to federal grants with percentage effort calculations and certification workflows
@@ -16,8 +25,8 @@ Implemented comprehensive Government Grants system for nonprofit organizations w
 - **Federal Financial Reports (SF-425):** Complete SF-425 reporting with federal/recipient share expenditure tracking and submission workflows
 - **Single Audit & Form 990 Prep:** Audit preparation tools with item tracking and completion status management
 - Database schema: 5 new tables created (`timeEffortReports`, `costAllowabilityChecks`, `subAwards`, `federalFinancialReports`, `auditPrepItems`)
-- Full backend API implementation with GET/POST routes for all 5 features
-- Frontend page with tabbed interface for all features
+- Full backend API implementation with GET/POST/PUT/DELETE routes for all 5 features with proper validation
+- Frontend page with tabbed interface for all features, edit/delete dialogs, and PDF export functionality
 
 ### October 28, 2025 - Government Contracts Bug Fixes
 Fixed critical bugs in Government Contracts features:
