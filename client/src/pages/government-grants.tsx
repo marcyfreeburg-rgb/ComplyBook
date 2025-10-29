@@ -443,215 +443,287 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
     // Helper to format date safely
     const formatDate = (value: any) => {
-      if (!value || value === '' || value === null || value === undefined) return 'Not provided';
+      if (!value || value === '' || value === null || value === undefined) return '';
       try {
         return new Date(value).toLocaleDateString();
       } catch {
-        return 'Invalid date';
+        return '';
       }
     };
     
+    // Helper for placeholder text
+    const placeholder = (text: string = 'Not captured') => `<em style="color: #999; font-size: 11px;">${text}</em>`;
+    
+    // Calculate values per SF-425 formulas
+    const cashOnHand = 0; // 10c = 10a - 10b (we don't track cash receipts/disbursements)
+    const totalFederalShare = (parseFloat(report.federalShareExpenditure || 0) + parseFloat(report.unliquidatedObligations || 0)); // 10g = 10e + 10f
+    const unobligatedBalance = 0; // 10h = 10d - 10g (we don't track total authorized)
+    const remainingRecipientShare = 0; // 10k = 10i - 10j (we don't track required match)
+    const unexpendedProgramIncome = (parseFloat(report.programIncomeEarned || 0) - parseFloat(report.programIncomeExpended || 0)); // 10o
+    
     const pdfContent = `
-      <div style="font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px;">
-          <h1 style="font-size: 20px; margin: 0 0 10px 0;">FEDERAL FINANCIAL REPORT (SF-425)</h1>
-          <h2 style="font-size: 14px; margin: 0; font-weight: bold; color: #c00;">DRAFT - INTERNAL REPORT</h2>
-          <p style="margin: 5px 0; font-size: 13px; color: #666;">Based on OMB Form 0348-0061</p>
-          <p style="margin: 5px 0; font-size: 11px; font-style: italic; color: #666;">
-            This is an internal summary report. Complete official SF-425 submission requires additional<br/>
-            fields and certifying official information not captured in this export.
-          </p>
+      <div style="font-family: Arial, sans-serif; padding: 30px; max-width: 850px; margin: 0 auto; font-size: 11px;">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 20px; border-bottom: 3px solid #000; padding-bottom: 15px;">
+          <h1 style="font-size: 18px; margin: 0 0 5px 0; font-weight: bold;">FEDERAL FINANCIAL REPORT</h1>
+          <p style="margin: 0; font-size: 10px;">(Follow form instructions)</p>
+          <p style="margin: 5px 0 0 0; font-size: 10px;"><strong>OMB Approval Number: 0348-0061</strong></p>
+          <p style="margin: 3px 0 0 0; font-size: 9px; font-style: italic;">Expiration Date: 02/28/2025</p>
         </div>
 
-        <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">1. Federal Agency and Organizational Element</h3>
-          <p style="margin-left: 20px; font-size: 13px;">${currentOrganization.name}</p>
-        </div>
+        <!-- Section 1-9: Identification Information -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px; width: 70%; vertical-align: top;">
+              <strong>1. Federal Agency and Organizational Element to Which Report is Submitted:</strong><br/>
+              ${currentOrganization.name}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+              <strong>2. Federal Grant or Other Identifying Number Assigned by Federal Agency:</strong><br/>
+              ${grant?.name || placeholder()}
+            </td>
+          </tr>
+        </table>
 
-        <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">2. Federal Grant or Award Identification Number (FAIN)</h3>
-          <p style="margin-left: 20px; font-size: 13px;">${grant?.name || 'N/A'}</p>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px; width: 70%; vertical-align: top;">
+              <strong>3. Recipient Organization (Name and complete address including Zip code):</strong><br/>
+              ${currentOrganization.name}<br/>
+              ${placeholder('Address not captured')}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+              <strong>4a. UEI:</strong><br/>
+              ${placeholder('Not captured')}<br/><br/>
+              <strong>4b. EIN:</strong><br/>
+              ${placeholder('Not captured')}
+            </td>
+          </tr>
+        </table>
 
-        <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">3. Recipient Organization Information</h3>
-          <p style="margin-left: 20px; font-size: 13px;">
-            <strong>Organization Name:</strong> ${currentOrganization.name}<br/>
-            <strong>UEI/DUNS Number:</strong> <em style="color: #999;">Not captured in system - complete manually</em><br/>
-            <strong>EIN (Tax ID):</strong> <em style="color: #999;">Not captured in system - complete manually</em>
-          </p>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px; width: 35%; vertical-align: top;">
+              <strong>5. Recipient Account Number or Identifying Number:</strong><br/>
+              ${placeholder('Optional')}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px; width: 30%; vertical-align: top;">
+              <strong>6. Report Type:</strong><br/>
+              ☐ Quarterly<br/>
+              ☐ Semi-Annual<br/>
+              ☐ Annual<br/>
+              ☐ Final
+            </td>
+            <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+              <strong>7. Basis of Accounting:</strong><br/>
+              ☐ Cash<br/>
+              ☐ Accrual
+            </td>
+          </tr>
+        </table>
 
-        <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">4. Reporting Period</h3>
-          <p style="margin-left: 20px; font-size: 13px;">
-            <strong>Start Date:</strong> ${formatDate(report.reportingPeriodStart)}<br/>
-            <strong>End Date:</strong> ${formatDate(report.reportingPeriodEnd)}
-          </p>
-        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px; width: 50%; vertical-align: top;">
+              <strong>8. Project/Grant Period:</strong><br/>
+              From: ${formatDate(grant?.startDate)} &nbsp;&nbsp; To: ${formatDate(grant?.endDate)}
+            </td>
+            <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+              <strong>9. Reporting Period End Date (MM/DD/YYYY):</strong><br/>
+              ${formatDate(report.reportingPeriodEnd)}
+            </td>
+          </tr>
+        </table>
 
+        <!-- Section 10: Transactions (Federal Cash) -->
         <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">10. Transactions</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-left: 20px; font-size: 12px;">
-            <tr style="background-color: #f9f9f9;">
-              <th style="text-align: left; padding: 6px; border: 1px solid #ddd; width: 50%;"></th>
-              <th style="text-align: right; padding: 6px; border: 1px solid #ddd;">Federal</th>
-              <th style="text-align: right; padding: 6px; border: 1px solid #ddd;">Non-Federal</th>
-              <th style="text-align: right; padding: 6px; border: 1px solid #ddd;">Total</th>
+          <h3 style="background-color: #e0e0e0; padding: 8px; margin: 0 0 10px 0; font-size: 12px; font-weight: bold; border: 1px solid #000;">10. TRANSACTIONS</h3>
+          
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            <tr style="background-color: #f5f5f5;">
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 60%;">Description</td>
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; text-align: right;">Amount</td>
+            </tr>
+            
+            <!-- 10a-c: Cash Status -->
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>a.</strong> Cash Receipts:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Not tracked')}</td>
+            </tr>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>b.</strong> Cash Disbursements:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Not tracked')}</td>
+            </tr>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>c.</strong> Cash on Hand (line a minus line b):</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Cannot calculate')}</td>
+            </tr>
+            
+            <!-- 10d-h: Federal Expenditures and Balance -->
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>d.</strong> Total Federal funds authorized:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Not tracked')}</td>
             </tr>
             <tr>
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>a. Total Outlays/Expenses</strong></td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.federalShareExpenditure)}</td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.recipientShareExpenditure)}</td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.totalExpenditure)}</td>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>e.</strong> Federal share of expenditures:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${formatCurrency(report.federalShareExpenditure)}</td>
             </tr>
             <tr>
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>b. Total Unliquidated Obligations</strong></td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.unliquidatedObligations)}</td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(report.recipientShareUnliquidated)}</td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;">${formatCurrency(
-                (parseFloat(report.unliquidatedObligations || 0) + parseFloat(report.recipientShareUnliquidated || 0))
-              )}</td>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>f.</strong> Federal share of unliquidated obligations:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${formatCurrency(report.unliquidatedObligations)}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>c. Cash Receipts</strong></td>
-              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            <tr>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>g.</strong> Total Federal share (sum of lines e and f):</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right; font-weight: bold;">${formatCurrency(totalFederalShare)}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>d. Cash Disbursements</strong></td>
-              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>h.</strong> Unobligated balance of Federal funds (line d minus line g):</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Cannot calculate')}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>e. Cash on Hand (beginning of period)</strong></td>
-              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            
+            <!-- 10i-k: Recipient Share -->
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>i.</strong> Total recipient share required:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Not tracked')}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>f. Cash on Hand (end of period)</strong></td>
-              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            <tr>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>j.</strong> Recipient share of expenditures:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${formatCurrency(report.recipientShareExpenditure)}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>g. Federal Share of Expenditures</strong></td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;" colspan="3">${formatCurrency(report.federalShareExpenditure)}</td>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>k.</strong> Remaining recipient share to be provided (line i minus line j):</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Cannot calculate')}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>h. Federal Share of Unliquidated Obligations</strong></td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;" colspan="3">${formatCurrency(report.unliquidatedObligations)}</td>
+            
+            <!-- 10l-o: Program Income -->
+            <tr>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>l.</strong> Total Federal program income earned:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${formatCurrency(report.programIncomeEarned)}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>i. Total Federal Share</strong></td>
-              <td style="text-align: right; padding: 6px; border: 1px solid #ddd;" colspan="3">${formatCurrency(
-                (parseFloat(report.federalShareExpenditure || 0) + parseFloat(report.unliquidatedObligations || 0))
-              )}</td>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;"><strong>m.</strong> Program income expended in accordance with the deduction alternative:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${placeholder('Not applicable')}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>j. Unobligated Balance of Federal Funds</strong></td>
-              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            <tr>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>n.</strong> Program income expended in accordance with the addition alternative:</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right;">${formatCurrency(report.programIncomeExpended)}</td>
             </tr>
-            <tr style="background-color: #fff9e6;">
-              <td style="padding: 6px; border: 1px solid #ddd;"><strong>k-o. Additional Transaction Lines</strong></td>
-              <td colspan="3" style="text-align: center; padding: 6px; border: 1px solid #ddd;"><em style="color: #999;">Not captured - complete manually</em></td>
+            <tr>
+              <td style="border: 1px solid #000; padding: 6px;"><strong>o.</strong> Unexpended program income (line l minus line m or line n):</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: right; font-weight: bold;">${formatCurrency(unexpendedProgramIncome)}</td>
             </tr>
           </table>
-          <p style="margin-left: 20px; margin-top: 8px; font-size: 11px; color: #666; font-style: italic;">
-            Note: Highlighted rows indicate fields not captured in the system. Complete these manually when preparing official submission.
+          <p style="margin-top: 8px; font-size: 9px; color: #666; font-style: italic;">
+            <span style="background-color: #fffacd; padding: 2px 4px;">Highlighted</span> fields are not captured in system database. Complete manually for official submission.
           </p>
         </div>
 
+        <!-- Section 11: Indirect Expense -->
         <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">11. Program Income</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-left: 20px; font-size: 13px;">
-            <tr>
-              <td style="padding: 8px; border: 1px solid #ddd; width: 70%;"><strong>a. Total Income Earned</strong></td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${formatCurrency(report.programIncomeEarned)}</td>
+          <h3 style="background-color: #e0e0e0; padding: 8px; margin: 0 0 10px 0; font-size: 12px; font-weight: bold; border: 1px solid #000;">11. INDIRECT EXPENSE</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            <tr style="background-color: #f5f5f5;">
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 15%;">a. Type</td>
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 10%;">b. Rate</td>
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 20%;">c. Period (From/To)</td>
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 20%;">d. Base</td>
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 20%;">e. Amount Charged</td>
+              <td style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 15%;">f. Federal Share</td>
             </tr>
-            <tr>
-              <td style="padding: 8px; border: 1px solid #ddd;"><strong>b. Total Income Expended</strong></td>
-              <td style="text-align: right; padding: 8px; border: 1px solid #ddd;">${formatCurrency(report.programIncomeExpended)}</td>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 6px;">${placeholder()}</td>
+              <td style="border: 1px solid #000; padding: 6px;">${placeholder()}</td>
+              <td style="border: 1px solid #000; padding: 6px;">${placeholder()}</td>
+              <td style="border: 1px solid #000; padding: 6px;">${placeholder()}</td>
+              <td style="border: 1px solid #000; padding: 6px;">${placeholder()}</td>
+              <td style="border: 1px solid #000; padding: 6px;">${placeholder()}</td>
             </tr>
           </table>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">Report Status</h3>
-          <p style="margin-left: 20px; font-size: 13px;">
-            <strong>Report Status:</strong> ${report.status.charAt(0).toUpperCase() + report.status.slice(1)}<br/>
-            <strong>Submitted Date:</strong> ${formatDate(report.submittedDate)}<br/>
-            <strong>Approved Date:</strong> ${formatDate(report.approvedDate)}
+          <p style="margin-top: 5px; font-size: 9px; color: #666; font-style: italic;">
+            Indirect expense information not captured in system. Complete manually for official submission.
           </p>
         </div>
 
-        <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">13. Certification</h3>
-          <p style="margin-left: 20px; font-size: 12px; line-height: 1.6; margin-bottom: 15px;">
-            I certify to the best of my knowledge and belief that this report is correct and complete for 
-            performance of activities for the purposes set forth in the award documents.
-          </p>
-          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
-            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
-              <strong>13a. Typed or Printed Name and Title of Authorized Certifying Official:</strong><br/>
-              <em style="color: #999;">Not captured in system - complete manually before submission</em>
-            </p>
-          </div>
-          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
-            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
-              <strong>13b. Signature of Authorized Certifying Official:</strong><br/>
-              <em style="color: #999;">Signature required - complete manually before submission</em>
-            </p>
-          </div>
-          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
-            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
-              <strong>13c. Telephone (Area code, number, and extension):</strong><br/>
-              <em style="color: #999;">Not captured in system - complete manually before submission</em>
-            </p>
-          </div>
-          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
-            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
-              <strong>13d. Email Address:</strong><br/>
-              <em style="color: #999;">Not captured in system - complete manually before submission</em>
-            </p>
-          </div>
-          <div style="margin-left: 20px; margin-bottom: 10px; background-color: #fff9e6; padding: 12px; border: 1px solid #f0e68c; border-radius: 4px;">
-            <p style="font-size: 12px; margin: 0; line-height: 1.8;">
-              <strong>13e. Date Report Submitted:</strong><br/>
-              <em style="color: #999;">${formatDate(report.submittedDate)}</em>
-            </p>
-          </div>
-        </div>
-
+        <!-- Section 12: Remarks -->
         ${report.notes ? `
         <div style="margin-bottom: 20px;">
-          <h3 style="background-color: #f0f0f0; padding: 10px; margin: 20px 0 10px 0; font-size: 14px; border-left: 4px solid #333;">12. Remarks</h3>
-          <p style="margin-left: 20px; font-size: 13px; white-space: pre-wrap;">${report.notes}</p>
+          <h3 style="background-color: #e0e0e0; padding: 8px; margin: 0 0 10px 0; font-size: 12px; font-weight: bold; border: 1px solid #000;">12. REMARKS</h3>
+          <div style="border: 1px solid #000; padding: 10px; min-height: 60px; font-size: 10px;">
+            ${report.notes}
+          </div>
+          <p style="margin-top: 5px; font-size: 9px; color: #666; font-style: italic;">
+            Attach additional documentation as needed to explain unliquidated obligations and other transactions.
+          </p>
         </div>
-        ` : ''}
+        ` : `
+        <div style="margin-bottom: 20px;">
+          <h3 style="background-color: #e0e0e0; padding: 8px; margin: 0 0 10px 0; font-size: 12px; font-weight: bold; border: 1px solid #000;">12. REMARKS</h3>
+          <div style="border: 1px solid #000; padding: 10px; min-height: 60px; font-size: 10px; color: #999;">
+            <em>No remarks provided. Attach additional documentation as needed.</em>
+          </div>
+        </div>
+        `}
 
-        <div style="margin-bottom: 20px; background-color: #fffacd; border: 1px solid #f0e68c; padding: 15px; border-radius: 4px;">
-          <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #856404;">
-            ⚠️ Additional Information Required for Official Submission
-          </h3>
-          <p style="font-size: 12px; color: #856404; margin: 0; line-height: 1.5;">
-            This internal report contains the core financial data from your records. A complete SF-425 submission to federal agencies requires:<br/>
-            • Detailed transaction breakdowns (lines 10c-10o)<br/>
-            • Recipient organization details (DUNS/UEI, EIN)<br/>
-            • Certifying official information (name, title, signature, contact details)<br/>
-            • Additional compliance fields specific to your grant terms<br/><br/>
-            <strong>Use official SF-425 form and instructions when preparing final federal submissions.</strong>
+        <!-- Section 13: Certification -->
+        <div style="margin-bottom: 20px; page-break-inside: avoid;">
+          <h3 style="background-color: #e0e0e0; padding: 8px; margin: 0 0 10px 0; font-size: 12px; font-weight: bold; border: 1px solid #000;">13. CERTIFICATION</h3>
+          <p style="font-size: 10px; line-height: 1.5; margin-bottom: 15px; border: 1px solid #000; padding: 10px; background-color: #f9f9f9;">
+            <strong>By signing this report, I certify to the best of my knowledge and belief that the report is true, complete, and accurate, and the expenditures, disbursements and cash receipts are for the purposes and objectives set forth in the award documents.</strong> I am aware that any false, fictitious, or fraudulent information may subject me to criminal, civil, or administrative penalties. (U.S. Code, Title 18, Section 1001)
+          </p>
+          
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 8px; width: 70%;">
+                <strong>13a. Typed or Printed Name and Title of Authorized Certifying Official:</strong><br/><br/>
+                ${placeholder('Complete manually before submission')}
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <strong>13c. Telephone:</strong><br/><br/>
+                ${placeholder()}
+              </td>
+            </tr>
+            <tr style="background-color: #fffacd;">
+              <td style="border: 1px solid #000; padding: 8px;">
+                <strong>13b. Signature of Authorized Certifying Official:</strong><br/><br/>
+                ${placeholder('Signature required')}
+              </td>
+              <td style="border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <strong>13d. Email Address:</strong><br/><br/>
+                ${placeholder()}
+              </td>
+            </tr>
+            <tr style="background-color: #fffacd;">
+              <td colspan="2" style="border: 1px solid #000; padding: 8px;">
+                <strong>13e. Date Report Submitted (MM/DD/YYYY):</strong><br/><br/>
+                ${formatDate(report.submittedDate) || placeholder('Not yet submitted')}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Section 14: Agency Use Only -->
+        <div style="margin-bottom: 30px;">
+          <h3 style="background-color: #e0e0e0; padding: 8px; margin: 0 0 10px 0; font-size: 12px; font-weight: bold; border: 1px solid #000;">14. AGENCY USE ONLY</h3>
+          <div style="border: 1px solid #000; padding: 10px; min-height: 40px; background-color: #f0f0f0;">
+            <em style="font-size: 9px; color: #666;">Reserved for federal agency use</em>
+          </div>
+        </div>
+
+        <!-- Paperwork Reduction Notice -->
+        <div style="border-top: 2px solid #000; padding-top: 15px; margin-top: 30px;">
+          <p style="font-size: 8px; line-height: 1.4; color: #444; text-align: justify;">
+            <strong>Paperwork Reduction Act Statement:</strong> According to the Paperwork Reduction Act, as amended, no persons are required to respond to a collection of information unless it displays a valid OMB Control Number. The valid OMB control number for this information collection is 0348-0061. Public reporting burden for this collection of information is estimated to average 1.5 hours per response, including time for reviewing instructions, searching existing data sources, gathering and maintaining the data needed, and completing and reviewing the collection of information. Send comments regarding the burden estimate or any other aspect of this collection of information, including suggestions for reducing this burden, to the Office of Management and Budget, Paperwork Reduction Project (0348-0061), Washington, DC 20503.
           </p>
         </div>
 
-        <div style="margin-top: 40px; border-top: 1px solid #999; padding-top: 20px;">
-          <p style="font-size: 10px; color: #666; line-height: 1.6;">
-            <strong>Note:</strong> This internal report summarizes key financial data for grant ${grant?.name || 'N/A'}.
-            For official federal submission, complete all required SF-425 sections using the official form and consult 
-            with your grants administrator or fiscal officer.
-          </p>
-        </div>
-
-        <div style="margin-top: 20px; border-top: 2px solid #000; padding-top: 20px;">
-          <p style="font-size: 11px; text-align: center; color: #666;">
-            Internal Financial Summary Report (Based on SF-425 Format)<br/>
-            Generated ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br/>
-            ${currentOrganization.name}
+        <!-- Generation Footer -->
+        <div style="margin-top: 20px; text-align: center; border-top: 1px solid #ccc; padding-top: 10px;">
+          <p style="font-size: 9px; color: #666;">
+            <strong>SF-425 Federal Financial Report</strong><br/>
+            Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br/>
+            Organization: ${currentOrganization.name}<br/>
+            Report Period Ending: ${formatDate(report.reportingPeriodEnd)}<br/>
+            <em style="font-size: 8px;">This export contains data from the Budget Manager system. Yellow highlighted fields require manual completion before official submission.</em>
           </p>
         </div>
       </div>
