@@ -8,15 +8,20 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### October 29, 2025 - Bulk Operations Backend API
-Completed secure backend implementation for bulk operations with multi-tenant data isolation:
-- **CSV Transaction Import:** POST endpoint with file upload (multer), CSV parsing (papaparse), Zod validation, and error summary reporting - supports bulk importing transactions from external systems
-- **Bulk Categorize:** POST endpoint to update category/fund/program/functionalCategory for multiple transactions simultaneously with permission checking and audit logging
-- **Bulk Delete:** POST endpoint to safely delete multiple transactions with validation and audit trail
-- **CSV Export:** GET endpoint to export transactions to CSV format with all fields for external analysis
-- **Bulk Approvals:** POST endpoint for batch approve/reject of expense approvals (admin/owner only)
-- **Security:** All endpoints load and validate every record before operations, enforce single-organization constraint, verify user permissions, and log detailed audit trails
-- **Bug Fix:** Corrected critical multi-tenant security vulnerability where bulk operations could manipulate cross-tenant data by implementing record-level organization validation
+### October 29, 2025 - Bulk Operations System (Complete)
+Completed comprehensive bulk operations system with secure backend API and intuitive frontend UI:
+- **Backend (5 secure endpoints):**
+  - CSV Transaction Import: POST /api/transactions/import-csv with file upload (multer), CSV parsing (papaparse), Zod validation, and detailed error summary reporting
+  - CSV Export: GET /api/transactions/export-csv to export transactions with all fields for external analysis/backup
+  - Bulk Categorize: POST /api/transactions/bulk-categorize to update category/fund/program/functionalCategory for multiple transactions
+  - Bulk Delete: POST /api/transactions/bulk-delete to safely delete multiple transactions with confirmation
+  - Bulk Expense Approvals: POST /api/expense-approvals/bulk-action for batch approve/reject (admin/owner only)
+- **Frontend UI:**
+  - Transactions Page: Multi-select checkboxes, bulk action toolbar, CSV import/export dialogs, bulk categorize dialog, bulk delete confirmation dialog
+  - Expense Approvals Page: Multi-select checkboxes, bulk action toolbar with optional notes, bulk approve/reject buttons
+  - All operations with proper loading states, success/error toasts, and automatic cache invalidation
+- **Security Pattern:** All endpoints load every record, validate organizationId for each, check user permissions, log audit trails - preventing cross-tenant data manipulation
+- **Testing:** End-to-end tests passed for all bulk operations with database validation confirming proper execution
 
 ### October 29, 2025 - Compliance Dashboard & PDF Exports
 Completed comprehensive nonprofit compliance and reporting features:
