@@ -720,6 +720,31 @@ export const expenseApprovals = pgTable("expense_approvals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Auto-Approval Rules
+export const autoApprovalRules = pgTable("auto_approval_rules", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: text("name").notNull(),
+  isActive: integer("is_active").notNull().default(1),
+  maxAmount: numeric("max_amount", { precision: 12, scale: 2 }).notNull(),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAutoApprovalRuleSchema = createInsertSchema(autoApprovalRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  maxAmount: z.string().or(z.number()).transform(val => String(val)),
+  isActive: z.number().default(1),
+});
+
+export type InsertAutoApprovalRule = z.infer<typeof insertAutoApprovalRuleSchema>;
+export type AutoApprovalRule = typeof autoApprovalRules.$inferSelect;
+
 export const insertExpenseApprovalSchema = createInsertSchema(expenseApprovals).omit({
   id: true,
   createdAt: true,

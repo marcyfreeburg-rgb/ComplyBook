@@ -3293,6 +3293,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced Analytics routes
+  app.get('/api/analytics/:organizationId/year-over-year', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to view analytics" });
+      }
+
+      const analytics = await storage.getYearOverYearAnalytics(organizationId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching year-over-year analytics:", error);
+      res.status(500).json({ message: "Failed to fetch year-over-year analytics" });
+    }
+  });
+
+  app.get('/api/analytics/:organizationId/forecast', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const months = parseInt(req.query.months as string) || 6;
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to view analytics" });
+      }
+
+      const forecast = await storage.getForecastAnalytics(organizationId, months);
+      res.json(forecast);
+    } catch (error) {
+      console.error("Error generating forecast:", error);
+      res.status(500).json({ message: "Failed to generate forecast" });
+    }
+  });
+
+  app.get('/api/analytics/:organizationId/financial-health', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to view analytics" });
+      }
+
+      const health = await storage.getFinancialHealthMetrics(organizationId);
+      res.json(health);
+    } catch (error) {
+      console.error("Error fetching financial health:", error);
+      res.status(500).json({ message: "Failed to fetch financial health metrics" });
+    }
+  });
+
+  app.get('/api/analytics/:organizationId/spending-insights', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to view analytics" });
+      }
+
+      const insights = await storage.getSpendingInsights(organizationId);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching spending insights:", error);
+      res.status(500).json({ message: "Failed to fetch spending insights" });
+    }
+  });
+
   // Compliance routes
   app.get('/api/compliance/:organizationId/metrics', isAuthenticated, async (req: any, res) => {
     try {

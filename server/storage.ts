@@ -272,6 +272,62 @@ export interface IStorage {
     equityByCategory: Array<{ categoryName: string; amount: string }>;
   }>;
 
+  getMonthlyTrends(organizationId: number, months?: number): Promise<Array<{
+    month: string;
+    income: string;
+    expenses: string;
+    netIncome: string;
+  }>>;
+
+  // Enhanced Analytics operations
+  getYearOverYearAnalytics(organizationId: number): Promise<{
+    currentYear: { income: string; expenses: string; netIncome: string };
+    previousYear: { income: string; expenses: string; netIncome: string };
+    change: { income: string; expenses: string; netIncome: string; incomePercent: number; expensesPercent: number; netIncomePercent: number };
+    monthlyComparison: Array<{
+      month: string;
+      currentYearIncome: string;
+      previousYearIncome: string;
+      currentYearExpenses: string;
+      previousYearExpenses: string;
+    }>;
+  }>;
+
+  getForecastAnalytics(organizationId: number, months: number): Promise<{
+    forecast: Array<{
+      month: string;
+      projectedIncome: string;
+      projectedExpenses: string;
+      projectedNetIncome: string;
+      confidence: 'high' | 'medium' | 'low';
+    }>;
+    trendAnalysis: {
+      incomeGrowthRate: number;
+      expenseGrowthRate: number;
+      averageMonthlyIncome: string;
+      averageMonthlyExpenses: string;
+    };
+  }>;
+
+  getFinancialHealthMetrics(organizationId: number): Promise<{
+    burnRate: string;
+    runway: number | null;
+    cashReserves: string;
+    quickRatio: number | null;
+    profitMargin: number;
+    monthlyAvgIncome: string;
+    monthlyAvgExpenses: string;
+    healthScore: number;
+    healthStatus: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  }>;
+
+  getSpendingInsights(organizationId: number): Promise<{
+    topExpenseCategories: Array<{ categoryName: string; amount: string; percentage: number; trend: 'up' | 'down' | 'stable' }>;
+    unusualSpending: Array<{ categoryName: string; currentAmount: string; averageAmount: string; percentDiff: number }>;
+    recurringExpenses: Array<{ description: string; amount: string; frequency: string; nextDate: string }>;
+    savingsOpportunities: Array<{ category: string; potentialSavings: string; recommendation: string }>;
+  }>;
+
   // Plaid operations
   getPlaidItems(organizationId: number): Promise<PlaidItem[]>;
   getPlaidItem(itemId: string): Promise<PlaidItem | undefined>;
@@ -1824,6 +1880,510 @@ export class DatabaseStorage implements IStorage {
       assetsByCategory: assetsByCategory.length > 0 ? assetsByCategory : [],
       liabilitiesByCategory: liabilitiesByCategory.length > 0 ? liabilitiesByCategory : [],
       equityByCategory: equityByCategory.length > 0 ? equityByCategory : [],
+    };
+  }
+
+  // Enhanced Analytics operations
+  async getYearOverYearAnalytics(organizationId: number): Promise<{
+    currentYear: { income: string; expenses: string; netIncome: string };
+    previousYear: { income: string; expenses: string; netIncome: string };
+    change: { income: string; expenses: string; netIncome: string; incomePercent: number; expensesPercent: number; netIncomePercent: number };
+    monthlyComparison: Array<{
+      month: string;
+      currentYearIncome: string;
+      previousYearIncome: string;
+      currentYearExpenses: string;
+      previousYearExpenses: string;
+    }>;
+  }> {
+    const now = new Date();
+    const currentYearStart = new Date(now.getFullYear(), 0, 1);
+    const currentYearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+    const previousYearStart = new Date(now.getFullYear() - 1, 0, 1);
+    const previousYearEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+
+    // Get current year totals
+    const [currentYearIncome] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'income'),
+        gte(transactions.date, currentYearStart),
+        lte(transactions.date, currentYearEnd)
+      ));
+
+    const [currentYearExpenses] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense'),
+        gte(transactions.date, currentYearStart),
+        lte(transactions.date, currentYearEnd)
+      ));
+
+    // Get previous year totals
+    const [previousYearIncome] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'income'),
+        gte(transactions.date, previousYearStart),
+        lte(transactions.date, previousYearEnd)
+      ));
+
+    const [previousYearExpenses] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense'),
+        gte(transactions.date, previousYearStart),
+        lte(transactions.date, previousYearEnd)
+      ));
+
+    const currentIncome = parseFloat(currentYearIncome?.total || '0');
+    const currentExpenses = parseFloat(currentYearExpenses?.total || '0');
+    const previousIncome = parseFloat(previousYearIncome?.total || '0');
+    const previousExpenses = parseFloat(previousYearExpenses?.total || '0');
+
+    const currentNet = currentIncome - currentExpenses;
+    const previousNet = previousIncome - previousExpenses;
+
+    const changeIncome = currentIncome - previousIncome;
+    const changeExpenses = currentExpenses - previousExpenses;
+    const changeNet = currentNet - previousNet;
+
+    const incomePercent = previousIncome > 0 ? (changeIncome / previousIncome) * 100 : 0;
+    const expensesPercent = previousExpenses > 0 ? (changeExpenses / previousExpenses) * 100 : 0;
+    const netIncomePercent = previousNet !== 0 ? (changeNet / Math.abs(previousNet)) * 100 : 0;
+
+    // Get monthly comparison for last 12 months
+    const monthlyComparison: Array<{
+      month: string;
+      currentYearIncome: string;
+      previousYearIncome: string;
+      currentYearExpenses: string;
+      previousYearExpenses: string;
+    }> = [];
+
+    for (let i = 0; i < 12; i++) {
+      const currentMonthStart = new Date(now.getFullYear(), i, 1);
+      const currentMonthEnd = new Date(now.getFullYear(), i + 1, 0, 23, 59, 59);
+      const previousMonthStart = new Date(now.getFullYear() - 1, i, 1);
+      const previousMonthEnd = new Date(now.getFullYear() - 1, i + 1, 0, 23, 59, 59);
+
+      const [currentMonthIncome] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.type, 'income'),
+          gte(transactions.date, currentMonthStart),
+          lte(transactions.date, currentMonthEnd)
+        ));
+
+      const [previousMonthIncome] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.type, 'income'),
+          gte(transactions.date, previousMonthStart),
+          lte(transactions.date, previousMonthEnd)
+        ));
+
+      const [currentMonthExpenses] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.type, 'expense'),
+          gte(transactions.date, currentMonthStart),
+          lte(transactions.date, currentMonthEnd)
+        ));
+
+      const [previousMonthExpenses] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.type, 'expense'),
+          gte(transactions.date, previousMonthStart),
+          lte(transactions.date, previousMonthEnd)
+        ));
+
+      monthlyComparison.push({
+        month: currentMonthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        currentYearIncome: currentMonthIncome?.total || '0',
+        previousYearIncome: previousMonthIncome?.total || '0',
+        currentYearExpenses: currentMonthExpenses?.total || '0',
+        previousYearExpenses: previousMonthExpenses?.total || '0',
+      });
+    }
+
+    return {
+      currentYear: {
+        income: currentIncome.toFixed(2),
+        expenses: currentExpenses.toFixed(2),
+        netIncome: currentNet.toFixed(2),
+      },
+      previousYear: {
+        income: previousIncome.toFixed(2),
+        expenses: previousExpenses.toFixed(2),
+        netIncome: previousNet.toFixed(2),
+      },
+      change: {
+        income: changeIncome.toFixed(2),
+        expenses: changeExpenses.toFixed(2),
+        netIncome: changeNet.toFixed(2),
+        incomePercent: Number(incomePercent.toFixed(2)),
+        expensesPercent: Number(expensesPercent.toFixed(2)),
+        netIncomePercent: Number(netIncomePercent.toFixed(2)),
+      },
+      monthlyComparison,
+    };
+  }
+
+  async getForecastAnalytics(organizationId: number, months: number): Promise<{
+    forecast: Array<{
+      month: string;
+      projectedIncome: string;
+      projectedExpenses: string;
+      projectedNetIncome: string;
+      confidence: 'high' | 'medium' | 'low';
+    }>;
+    trendAnalysis: {
+      incomeGrowthRate: number;
+      expenseGrowthRate: number;
+      averageMonthlyIncome: string;
+      averageMonthlyExpenses: string;
+    };
+  }> {
+    // Get last 12 months of data for trend analysis
+    const trends = await this.getMonthlyTrends(organizationId, 12);
+
+    if (trends.length < 3) {
+      // Not enough data for forecasting
+      return {
+        forecast: [],
+        trendAnalysis: {
+          incomeGrowthRate: 0,
+          expenseGrowthRate: 0,
+          averageMonthlyIncome: '0',
+          averageMonthlyExpenses: '0',
+        },
+      };
+    }
+
+    // Calculate trend analysis
+    const avgIncome = trends.reduce((sum, t) => sum + parseFloat(t.income), 0) / trends.length;
+    const avgExpenses = trends.reduce((sum, t) => sum + parseFloat(t.expenses), 0) / trends.length;
+
+    // Calculate growth rates using linear regression
+    const incomeGrowthRate = this.calculateGrowthRate(trends.map(t => parseFloat(t.income)));
+    const expenseGrowthRate = this.calculateGrowthRate(trends.map(t => parseFloat(t.expenses)));
+
+    // Generate forecast
+    const forecast: Array<{
+      month: string;
+      projectedIncome: string;
+      projectedExpenses: string;
+      projectedNetIncome: string;
+      confidence: 'high' | 'medium' | 'low';
+    }> = [];
+
+    const now = new Date();
+    const lastIncome = parseFloat(trends[trends.length - 1].income);
+    const lastExpenses = parseFloat(trends[trends.length - 1].expenses);
+
+    for (let i = 1; i <= months; i++) {
+      const futureDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const projectedIncome = lastIncome * Math.pow(1 + incomeGrowthRate, i);
+      const projectedExpenses = lastExpenses * Math.pow(1 + expenseGrowthRate, i);
+
+      // Determine confidence based on data consistency
+      const confidence = trends.length >= 12 ? 'high' : trends.length >= 6 ? 'medium' : 'low';
+
+      forecast.push({
+        month: futureDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        projectedIncome: projectedIncome.toFixed(2),
+        projectedExpenses: projectedExpenses.toFixed(2),
+        projectedNetIncome: (projectedIncome - projectedExpenses).toFixed(2),
+        confidence,
+      });
+    }
+
+    return {
+      forecast,
+      trendAnalysis: {
+        incomeGrowthRate: Number((incomeGrowthRate * 100).toFixed(2)),
+        expenseGrowthRate: Number((expenseGrowthRate * 100).toFixed(2)),
+        averageMonthlyIncome: avgIncome.toFixed(2),
+        averageMonthlyExpenses: avgExpenses.toFixed(2),
+      },
+    };
+  }
+
+  private calculateGrowthRate(values: number[]): number {
+    if (values.length < 2) return 0;
+
+    // Simple linear regression
+    const n = values.length;
+    const xSum = (n * (n + 1)) / 2; // Sum of 1,2,3,...,n
+    const ySum = values.reduce((a, b) => a + b, 0);
+    const xySum = values.reduce((sum, y, i) => sum + (i + 1) * y, 0);
+    const xxSum = (n * (n + 1) * (2 * n + 1)) / 6; // Sum of 1²,2²,3²,...,n²
+
+    const slope = (n * xySum - xSum * ySum) / (n * xxSum - xSum * xSum);
+    const avgValue = ySum / n;
+
+    return avgValue > 0 ? slope / avgValue : 0;
+  }
+
+  async getFinancialHealthMetrics(organizationId: number): Promise<{
+    burnRate: string;
+    runway: number | null;
+    cashReserves: string;
+    quickRatio: number | null;
+    profitMargin: number;
+    monthlyAvgIncome: string;
+    monthlyAvgExpenses: string;
+    healthScore: number;
+    healthStatus: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  }> {
+    // Get last 6 months trends
+    const trends = await this.getMonthlyTrends(organizationId, 6);
+
+    const monthlyAvgIncome = trends.length > 0 
+      ? (trends.reduce((sum, t) => sum + parseFloat(t.income), 0) / trends.length).toFixed(2)
+      : '0';
+
+    const monthlyAvgExpenses = trends.length > 0
+      ? (trends.reduce((sum, t) => sum + parseFloat(t.expenses), 0) / trends.length).toFixed(2)
+      : '0';
+
+    const avgIncome = parseFloat(monthlyAvgIncome);
+    const avgExpenses = parseFloat(monthlyAvgExpenses);
+
+    // Calculate burn rate (monthly net loss)
+    const burnRate = avgExpenses > avgIncome ? (avgExpenses - avgIncome).toFixed(2) : '0';
+
+    // Get current cash reserves (sum of all income - expenses)
+    const [totalIncome] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'income')
+      ));
+
+    const [totalExpenses] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense')
+      ));
+
+    const cashReserves = (parseFloat(totalIncome?.total || '0') - parseFloat(totalExpenses?.total || '0')).toFixed(2);
+    const cashReservesNum = parseFloat(cashReserves);
+
+    // Calculate runway (months until cash runs out)
+    const burnRateNum = parseFloat(burnRate);
+    const runway = burnRateNum > 0 && cashReservesNum > 0
+      ? Math.floor(cashReservesNum / burnRateNum)
+      : null;
+
+    // Calculate profit margin
+    const profitMargin = avgIncome > 0 ? ((avgIncome - avgExpenses) / avgIncome) * 100 : 0;
+
+    // Quick ratio (simplified: cash / monthly expenses)
+    const quickRatio = avgExpenses > 0 ? cashReservesNum / avgExpenses : null;
+
+    // Calculate health score (0-100)
+    let healthScore = 50; // Base score
+
+    // Positive factors
+    if (profitMargin > 0) healthScore += 20;
+    if (profitMargin > 20) healthScore += 10;
+    if (cashReservesNum > avgExpenses * 3) healthScore += 10;
+    if (quickRatio && quickRatio > 6) healthScore += 10;
+
+    // Negative factors
+    if (profitMargin < 0) healthScore -= 20;
+    if (cashReservesNum < avgExpenses * 2) healthScore -= 10;
+    if (runway !== null && runway < 3) healthScore -= 20;
+
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    // Determine health status
+    let healthStatus: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+    if (healthScore >= 80) healthStatus = 'excellent';
+    else if (healthScore >= 60) healthStatus = 'good';
+    else if (healthScore >= 40) healthStatus = 'fair';
+    else if (healthScore >= 20) healthStatus = 'poor';
+    else healthStatus = 'critical';
+
+    return {
+      burnRate,
+      runway,
+      cashReserves,
+      quickRatio: quickRatio !== null ? Number(quickRatio.toFixed(2)) : null,
+      profitMargin: Number(profitMargin.toFixed(2)),
+      monthlyAvgIncome,
+      monthlyAvgExpenses,
+      healthScore,
+      healthStatus,
+    };
+  }
+
+  async getSpendingInsights(organizationId: number): Promise<{
+    topExpenseCategories: Array<{ categoryName: string; amount: string; percentage: number; trend: 'up' | 'down' | 'stable' }>;
+    unusualSpending: Array<{ categoryName: string; currentAmount: string; averageAmount: string; percentDiff: number }>;
+    recurringExpenses: Array<{ description: string; amount: string; frequency: string; nextDate: string }>;
+    savingsOpportunities: Array<{ category: string; potentialSavings: string; recommendation: string }>;
+  }> {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    // Get current month expenses by category
+    const currentMonthExpenses = await db
+      .select({
+        categoryName: categories.name,
+        categoryId: categories.id,
+        amount: sql<string>`SUM(${transactions.amount})`,
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense'),
+        gte(transactions.date, currentMonthStart),
+        lte(transactions.date, currentMonthEnd)
+      ))
+      .groupBy(categories.name, categories.id)
+      .orderBy(sql`SUM(${transactions.amount}) DESC`);
+
+    // Get previous month expenses for trend comparison
+    const previousMonthExpenses = await db
+      .select({
+        categoryName: categories.name,
+        categoryId: categories.id,
+        amount: sql<string>`SUM(${transactions.amount})`,
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense'),
+        gte(transactions.date, previousMonthStart),
+        lte(transactions.date, previousMonthEnd)
+      ))
+      .groupBy(categories.name, categories.id);
+
+    // Calculate total expenses for percentage
+    const totalExpenses = currentMonthExpenses.reduce((sum, cat) => sum + parseFloat(cat.amount), 0);
+
+    // Build top expense categories with trends
+    const topExpenseCategories = currentMonthExpenses.slice(0, 10).map(cat => {
+      const percentage = totalExpenses > 0 ? (parseFloat(cat.amount) / totalExpenses) * 100 : 0;
+      const previousAmount = previousMonthExpenses.find(p => p.categoryId === cat.categoryId);
+      const currentAmount = parseFloat(cat.amount);
+      const prevAmount = previousAmount ? parseFloat(previousAmount.amount) : 0;
+
+      let trend: 'up' | 'down' | 'stable' = 'stable';
+      if (prevAmount > 0) {
+        const change = ((currentAmount - prevAmount) / prevAmount) * 100;
+        if (change > 10) trend = 'up';
+        else if (change < -10) trend = 'down';
+      }
+
+      return {
+        categoryName: cat.categoryName || 'Uncategorized',
+        amount: cat.amount,
+        percentage: Number(percentage.toFixed(2)),
+        trend,
+      };
+    });
+
+    // Detect unusual spending (>50% above average for last 6 months)
+    const unusualSpending: Array<{ categoryName: string; currentAmount: string; averageAmount: string; percentDiff: number }> = [];
+
+    for (const cat of currentMonthExpenses) {
+      if (!cat.categoryId) continue;
+
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const [avgResult] = await db
+        .select({
+          avg: sql<string>`AVG(monthly_sum)`,
+        })
+        .from(sql`(
+          SELECT SUM(${transactions.amount}) as monthly_sum
+          FROM ${transactions}
+          WHERE ${transactions.organizationId} = ${organizationId}
+            AND ${transactions.categoryId} = ${cat.categoryId}
+            AND ${transactions.type} = 'expense'
+            AND ${transactions.date} >= ${sixMonthsAgo}
+          GROUP BY DATE_TRUNC('month', ${transactions.date})
+        ) as monthly_totals`);
+
+      const avgAmount = parseFloat(avgResult?.avg || '0');
+      const currentAmount = parseFloat(cat.amount);
+
+      if (avgAmount > 0 && currentAmount > avgAmount * 1.5) {
+        unusualSpending.push({
+          categoryName: cat.categoryName || 'Uncategorized',
+          currentAmount: currentAmount.toFixed(2),
+          averageAmount: avgAmount.toFixed(2),
+          percentDiff: Number((((currentAmount - avgAmount) / avgAmount) * 100).toFixed(2)),
+        });
+      }
+    }
+
+    // Get recurring expenses
+    const recurringTransactions = await db
+      .select()
+      .from(recurringTransactions)
+      .where(and(
+        eq(recurringTransactions.organizationId, organizationId),
+        eq(recurringTransactions.type, 'expense'),
+        eq(recurringTransactions.isActive, true)
+      ))
+      .orderBy(desc(recurringTransactions.amount))
+      .limit(10);
+
+    const recurringExpenses = recurringTransactions.map(rt => ({
+      description: rt.description,
+      amount: rt.amount,
+      frequency: rt.frequency,
+      nextDate: rt.nextDate.toISOString().split('T')[0],
+    }));
+
+    // Identify savings opportunities (high-spending categories with increasing trends)
+    const savingsOpportunities: Array<{ category: string; potentialSavings: string; recommendation: string }> = [];
+
+    for (const cat of topExpenseCategories.slice(0, 5)) {
+      if (cat.trend === 'up' && cat.percentage > 15) {
+        const potentialSavings = (parseFloat(cat.amount) * 0.1).toFixed(2); // Assume 10% savings potential
+        savingsOpportunities.push({
+          category: cat.categoryName,
+          potentialSavings,
+          recommendation: `Consider reviewing ${cat.categoryName} expenses. This category has increased and represents ${cat.percentage.toFixed(1)}% of total spending. Potential 10% reduction could save $${potentialSavings}/month.`,
+        });
+      }
+    }
+
+    return {
+      topExpenseCategories,
+      unusualSpending,
+      recurringExpenses,
+      savingsOpportunities,
     };
   }
 

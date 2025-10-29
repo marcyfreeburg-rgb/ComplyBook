@@ -106,6 +106,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: FileText,
     },
     {
+      title: "Analytics",
+      url: "/analytics",
+      icon: TrendingUp,
+    },
+    {
       title: "Custom Reports",
       url: "/custom-reports",
       icon: FileLineChart,

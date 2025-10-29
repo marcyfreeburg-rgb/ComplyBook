@@ -38,6 +38,7 @@ import Form990Report from "@/pages/form-990-report";
 import GovernmentGrants from "@/pages/government-grants";
 import GovernmentContracts from "@/pages/government-contracts";
 import ComplianceDashboard from "@/pages/compliance-dashboard";
+import Analytics from "@/pages/analytics";
 import Organizations from "@/pages/organizations";
 import Settings from "@/pages/settings";
 import AcceptInvitation from "@/pages/accept-invitation";
@@ -234,6 +235,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/reports">
                 <Reports currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/analytics">
+                <Analytics currentOrganization={currentOrganization} />
               </Route>
               <Route path="/custom-reports">
                 <CustomReports currentOrganization={currentOrganization} />

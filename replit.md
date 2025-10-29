@@ -8,6 +8,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### October 29, 2025 - Enhanced Analytics & Automated Workflows (Tasks 13.1 & 13.2)
+Implemented comprehensive analytics and workflow automation features:
+- **Enhanced Analytics (Task 13.1):** Added 4 new backend endpoints (year-over-year comparison, financial forecasting with linear regression, financial health metrics, spending insights), created comprehensive Analytics page with tabs and visualizations using Recharts, integrated sidebar navigation, and added proper permission checks for report access
+- **Automated Workflows (Task 13.2):** Added auto-approval rules schema to automatically approve expense approvals based on amount thresholds and category rules (recurring transactions already existed in the system)
+- All analytics endpoints properly secured with make_reports permission checks
+- Analytics page features year-over-year charts, 6-month forecasts, financial health dashboard, spending insights, and savings opportunities
+
 ### October 29, 2025 - Bulk Operations System (Complete)
 Completed comprehensive bulk operations system with secure backend API and intuitive frontend UI:
 - **Backend (5 secure endpoints):**
