@@ -86,6 +86,27 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'general'
 ]);
 
+// Security enums (NIST 800-53 AU-2)
+export const securityEventTypeEnum = pgEnum('security_event_type', [
+  'login_success',
+  'login_failure',
+  'logout',
+  'session_expired',
+  'account_locked',
+  'account_unlocked',
+  'password_reset',
+  'unauthorized_access',
+  'permission_denied',
+  'rate_limit_exceeded',
+  'suspicious_activity'
+]);
+
+export const securitySeverityEnum = pgEnum('security_severity', [
+  'info',
+  'warning',
+  'critical'
+]);
+
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
 // ============================================
@@ -114,6 +135,64 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// ============================================
+// SECURITY EVENT LOG (NIST 800-53 AU-2, AU-3, AU-9)
+// ============================================
+
+// Write-once audit log for security events
+// Immutable design: No updates or deletes allowed
+export const securityEventLog = pgTable("security_event_log", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  eventType: securityEventTypeEnum("event_type").notNull(),
+  severity: securitySeverityEnum("severity").notNull().default('info'),
+  userId: varchar("user_id").references(() => users.id),
+  email: varchar("email"), // Store email for audit trail even if user deleted
+  ipAddress: varchar("ip_address"),
+  userAgent: varchar("user_agent"),
+  eventData: jsonb("event_data"), // Additional context (e.g., failure reason, resource accessed)
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => [
+  index("idx_security_event_type").on(table.eventType),
+  index("idx_security_event_user").on(table.userId),
+  index("idx_security_event_timestamp").on(table.timestamp),
+  index("idx_security_event_severity").on(table.severity),
+]);
+
+export const insertSecurityEventSchema = createInsertSchema(securityEventLog).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
+export type SecurityEvent = typeof securityEventLog.$inferSelect;
+
+// ============================================
+// FAILED LOGIN TRACKING (NIST 800-53 AC-7)
+// ============================================
+
+// Track failed login attempts for account lockout
+export const failedLoginAttempts = pgTable("failed_login_attempts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").references(() => users.id),
+  email: varchar("email").notNull(), // Email used in login attempt
+  ipAddress: varchar("ip_address").notNull(),
+  attemptedAt: timestamp("attempted_at").defaultNow().notNull(),
+  lockoutUntil: timestamp("lockout_until"), // NULL if not locked, timestamp if locked
+}, (table) => [
+  index("idx_failed_login_email").on(table.email),
+  index("idx_failed_login_user").on(table.userId),
+  index("idx_failed_login_ip").on(table.ipAddress),
+  index("idx_failed_login_attempted_at").on(table.attemptedAt),
+]);
+
+export const insertFailedLoginAttemptSchema = createInsertSchema(failedLoginAttempts).omit({
+  id: true,
+  attemptedAt: true,
+});
+
+export type InsertFailedLoginAttempt = z.infer<typeof insertFailedLoginAttemptSchema>;
+export type FailedLoginAttempt = typeof failedLoginAttempts.$inferSelect;
 
 // ============================================
 // ORGANIZATIONS

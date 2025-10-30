@@ -89,7 +89,25 @@ export async function setupAuth(app: Express) {
   ) => {
     const user = {};
     updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
+    const claims = tokens.claims();
+    await upsertUser(claims);
+    
+    // NIST 800-53 AU-2: Log successful authentication
+    if (claims) {
+      await storage.logSecurityEvent({
+        eventType: 'login_success',
+        severity: 'info',
+        userId: claims.sub || null,
+        email: claims.email || null,
+        ipAddress: null, // Will be set by callback handler
+        userAgent: null,
+        eventData: {
+          authMethod: 'replit_oidc',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+    
     verified(null, user);
   };
 
@@ -124,7 +142,24 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/logout", (req, res) => {
+  app.get("/api/logout", async (req, res) => {
+    const user = req.user as any;
+    
+    // NIST 800-53 AU-2: Log logout event
+    if (user && user.claims) {
+      await storage.logSecurityEvent({
+        eventType: 'logout',
+        severity: 'info',
+        userId: user.claims.sub,
+        email: user.claims.email,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+    
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
@@ -160,6 +195,21 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   // Check session maximum duration (12 hours)
   if (sessionAge > SESSION_MAX_DURATION) {
+    // NIST 800-53 AU-2: Log session expiration
+    await storage.logSecurityEvent({
+      eventType: 'session_expired',
+      severity: 'info',
+      userId: user.claims?.sub || null,
+      email: user.claims?.email || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+      userAgent: req.get('user-agent') || null,
+      eventData: {
+        reason: 'max_duration_exceeded',
+        sessionAge: sessionAge,
+        maxDuration: SESSION_MAX_DURATION,
+      },
+    });
+    
     req.logout(() => {});
     return res.status(401).json({ 
       message: "Session expired. Maximum session duration exceeded. Please log in again." 
@@ -168,6 +218,21 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   // Check inactivity timeout (30 minutes)
   if (inactivityPeriod > INACTIVITY_TIMEOUT) {
+    // NIST 800-53 AU-2: Log session expiration
+    await storage.logSecurityEvent({
+      eventType: 'session_expired',
+      severity: 'info',
+      userId: user.claims?.sub || null,
+      email: user.claims?.email || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+      userAgent: req.get('user-agent') || null,
+      eventData: {
+        reason: 'inactivity_timeout',
+        inactivityPeriod: inactivityPeriod,
+        timeout: INACTIVITY_TIMEOUT,
+      },
+    });
+    
     req.logout(() => {});
     return res.status(401).json({ 
       message: "Session expired due to inactivity. Please log in again." 

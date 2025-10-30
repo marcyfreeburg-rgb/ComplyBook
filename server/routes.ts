@@ -130,6 +130,30 @@ function hasPermission(
   }
 }
 
+// NIST 800-53 AU-2: Security Event Logging for Authorization Failures
+async function logUnauthorizedAccess(req: any, reason: string, additionalData?: any) {
+  try {
+    const user = req.user?.claims;
+    await storage.logSecurityEvent({
+      eventType: reason === 'no_organization_access' ? 'unauthorized_access' : 'permission_denied',
+      severity: 'warning',
+      userId: user?.sub || null,
+      email: user?.email || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+      userAgent: req.get('user-agent') || null,
+      eventData: {
+        reason,
+        path: req.path,
+        method: req.method,
+        ...additionalData,
+      },
+    });
+  } catch (error) {
+    // Don't let logging failures break the application
+    console.error('Failed to log unauthorized access:', error);
+  }
+}
+
 // Helper function to calculate the next occurrence of a recurring transaction
 function getNextOccurrence(recurring: any, referenceDate: Date): Date | null {
   const lastGenerated = recurring.lastGeneratedDate ? new Date(recurring.lastGeneratedDate) : null;

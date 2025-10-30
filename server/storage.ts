@@ -156,6 +156,13 @@ import {
   auditPrepItems,
   type AuditPrepItem,
   type InsertAuditPrepItem,
+  // Security types
+  securityEventLog,
+  type SecurityEvent,
+  type InsertSecurityEvent,
+  failedLoginAttempts,
+  type FailedLoginAttempt,
+  type InsertFailedLoginAttempt,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -167,6 +174,25 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+
+  // Security event logging (NIST 800-53 AU-2, AC-7)
+  logSecurityEvent(event: InsertSecurityEvent): Promise<SecurityEvent>;
+  getSecurityEvents(filters?: {
+    userId?: string;
+    eventType?: string;
+    startDate?: Date;
+    endDate?: Date;
+    severity?: string;
+    limit?: number;
+  }): Promise<SecurityEvent[]>;
+  
+  // Failed login tracking (NIST 800-53 AC-7)
+  recordFailedLoginAttempt(email: string, ipAddress: string, userId?: string): Promise<void>;
+  getFailedLoginAttempts(email: string, ipAddress: string, minutesAgo: number): Promise<FailedLoginAttempt[]>;
+  lockAccount(email: string, lockoutMinutes: number): Promise<void>;
+  unlockAccount(email: string): Promise<void>;
+  isAccountLocked(email: string): Promise<boolean>;
+  clearFailedLoginAttempts(email: string): Promise<void>;
 
   // Organization operations
   getOrganizations(userId: string): Promise<Array<Organization & { userRole: string }>>;
@@ -719,6 +745,120 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // Security event logging (NIST 800-53 AU-2, AC-7)
+  async logSecurityEvent(event: InsertSecurityEvent): Promise<SecurityEvent> {
+    const [logEntry] = await db
+      .insert(securityEventLog)
+      .values(event)
+      .returning();
+    return logEntry;
+  }
+
+  async getSecurityEvents(filters?: {
+    userId?: string;
+    eventType?: string;
+    startDate?: Date;
+    endDate?: Date;
+    severity?: string;
+    limit?: number;
+  }): Promise<SecurityEvent[]> {
+    let query = db.select().from(securityEventLog);
+    
+    const conditions = [];
+    if (filters?.userId) {
+      conditions.push(eq(securityEventLog.userId, filters.userId));
+    }
+    if (filters?.eventType) {
+      conditions.push(eq(securityEventLog.eventType, filters.eventType as any));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(securityEventLog.severity, filters.severity as any));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(securityEventLog.timestamp, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(securityEventLog.timestamp, filters.endDate));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    query = query.orderBy(desc(securityEventLog.timestamp)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    return await query;
+  }
+
+  // Failed login tracking (NIST 800-53 AC-7)
+  async recordFailedLoginAttempt(email: string, ipAddress: string, userId?: string): Promise<void> {
+    await db.insert(failedLoginAttempts).values({
+      email,
+      ipAddress,
+      userId,
+      lockoutUntil: null,
+    });
+  }
+
+  async getFailedLoginAttempts(email: string, ipAddress: string, minutesAgo: number): Promise<FailedLoginAttempt[]> {
+    const cutoffTime = new Date(Date.now() - minutesAgo * 60 * 1000);
+    
+    return await db
+      .select()
+      .from(failedLoginAttempts)
+      .where(
+        and(
+          eq(failedLoginAttempts.email, email),
+          eq(failedLoginAttempts.ipAddress, ipAddress),
+          gte(failedLoginAttempts.attemptedAt, cutoffTime)
+        )
+      )
+      .orderBy(desc(failedLoginAttempts.attemptedAt));
+  }
+
+  async lockAccount(email: string, lockoutMinutes: number): Promise<void> {
+    const lockoutUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+    
+    await db.insert(failedLoginAttempts).values({
+      email,
+      ipAddress: 'system',
+      lockoutUntil,
+    });
+  }
+
+  async unlockAccount(email: string): Promise<void> {
+    await db
+      .delete(failedLoginAttempts)
+      .where(eq(failedLoginAttempts.email, email));
+  }
+
+  async isAccountLocked(email: string): Promise<boolean> {
+    const [lockRecord] = await db
+      .select()
+      .from(failedLoginAttempts)
+      .where(
+        and(
+          eq(failedLoginAttempts.email, email),
+          sql`${failedLoginAttempts.lockoutUntil} IS NOT NULL`,
+          gte(failedLoginAttempts.lockoutUntil, new Date())
+        )
+      )
+      .orderBy(desc(failedLoginAttempts.lockoutUntil))
+      .limit(1);
+    
+    return !!lockRecord;
+  }
+
+  async clearFailedLoginAttempts(email: string): Promise<void> {
+    await db
+      .delete(failedLoginAttempts)
+      .where(eq(failedLoginAttempts.email, email));
   }
 
   // Organization operations
