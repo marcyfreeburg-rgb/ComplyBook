@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,8 +15,12 @@ import {
   User, 
   Activity,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Package,
+  RefreshCw
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import {
   LineChart,
@@ -65,9 +70,47 @@ interface SecurityMetrics {
   };
 }
 
+interface VulnerabilityScanSummary {
+  lastScan: Date | null;
+  status: string;
+  totalVulnerabilities: number;
+  criticalCount: number;
+  highCount: number;
+  moderateCount: number;
+  lowCount: number;
+  infoCount: number;
+}
+
 export default function SecurityMonitoring({ organizationId }: { organizationId: number }) {
+  const { toast } = useToast();
+  
   const { data: metrics, isLoading } = useQuery<SecurityMetrics>({
     queryKey: ['/api/security/metrics', organizationId],
+  });
+
+  const { data: vulnSummary, isLoading: vulnLoading } = useQuery<VulnerabilityScanSummary>({
+    queryKey: ['/api/security/vulnerability-scan/summary'],
+  });
+
+  const runScanMutation = useMutation({
+    mutationFn: () => apiRequest('/api/security/vulnerability-scan', 'POST', {}),
+    onSuccess: () => {
+      toast({
+        title: "Scan Started",
+        description: "Vulnerability scan is now running. Results will be available shortly.",
+      });
+      // Refetch after a delay to get updated results
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/security/vulnerability-scan/summary'] });
+      }, 5000);
+    },
+    onError: () => {
+      toast({
+        title: "Scan Failed",
+        description: "Failed to start vulnerability scan. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -154,7 +197,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Events</CardTitle>
@@ -210,12 +253,46 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
             <p className="text-xs text-muted-foreground">Permission violations</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vulnerabilities</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {vulnLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : vulnSummary ? (
+              <>
+                <div className="text-2xl font-bold">
+                  {vulnSummary.totalVulnerabilities}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {vulnSummary.criticalCount > 0 || vulnSummary.highCount > 0 ? (
+                    <span className="flex items-center gap-1 text-destructive">
+                      <TrendingUp className="h-3 w-3" />
+                      {vulnSummary.criticalCount}C / {vulnSummary.highCount}H
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-green-600">
+                      <CheckCircle className="h-3 w-3" />
+                      Dependencies secure
+                    </span>
+                  )}
+                </p>
+              </>
+            ) : (
+              <div className="text-xs text-muted-foreground">No scans yet</div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="events" className="space-y-4">
         <TabsList>
           <TabsTrigger value="events" data-testid="tab-events">Recent Events</TabsTrigger>
           <TabsTrigger value="charts" data-testid="tab-charts">Analytics</TabsTrigger>
+          <TabsTrigger value="vulnerabilities" data-testid="tab-vulnerabilities">Vulnerabilities</TabsTrigger>
         </TabsList>
 
         <TabsContent value="events" className="space-y-4">
@@ -309,6 +386,143 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="vulnerabilities" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Dependency Vulnerability Scan</CardTitle>
+                  <CardDescription>
+                    Automated npm audit scanning for security vulnerabilities
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => runScanMutation.mutate()}
+                  disabled={runScanMutation.isPending}
+                  data-testid="button-run-scan"
+                >
+                  {runScanMutation.isPending ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Run Scan
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {vulnLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : !vulnSummary || !vulnSummary.lastScan ? (
+                <div className="text-center py-12">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium mb-2">No Scans Available</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Run your first vulnerability scan to check for security issues in dependencies
+                  </p>
+                  <Button
+                    onClick={() => runScanMutation.mutate()}
+                    disabled={runScanMutation.isPending}
+                  >
+                    Run First Scan
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm font-medium mb-2">Last Scan</div>
+                      <div className="text-lg">
+                        {format(new Date(vulnSummary.lastScan), 'MMM d, yyyy h:mm a')}
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Status: <Badge variant={
+                          vulnSummary.status === 'completed' ? 'secondary' :
+                          vulnSummary.status === 'running' ? 'default' : 'destructive'
+                        } data-testid="badge-scan-status">
+                          {vulnSummary.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Total Vulnerabilities</div>
+                      <div className="text-3xl font-bold">
+                        {vulnSummary.totalVulnerabilities}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-medium mb-3">Vulnerability Breakdown</div>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      <div className="p-3 rounded-lg border">
+                        <div className="text-xs text-muted-foreground mb-1">Critical</div>
+                        <div className="text-2xl font-bold text-destructive">
+                          {vulnSummary.criticalCount}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg border">
+                        <div className="text-xs text-muted-foreground mb-1">High</div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {vulnSummary.highCount}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg border">
+                        <div className="text-xs text-muted-foreground mb-1">Moderate</div>
+                        <div className="text-2xl font-bold text-yellow-600">
+                          {vulnSummary.moderateCount}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg border">
+                        <div className="text-xs text-muted-foreground mb-1">Low</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {vulnSummary.lowCount}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg border">
+                        <div className="text-xs text-muted-foreground mb-1">Info</div>
+                        <div className="text-2xl font-bold text-gray-600">
+                          {vulnSummary.infoCount}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(vulnSummary.criticalCount > 0 || vulnSummary.highCount > 0) && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Action Required</AlertTitle>
+                      <AlertDescription>
+                        Your dependencies have {vulnSummary.criticalCount} critical and {vulnSummary.highCount} high severity vulnerabilities. 
+                        Run <code className="bg-destructive/10 px-1 rounded">npm audit fix</code> to automatically fix compatible issues, 
+                        or review each vulnerability with <code className="bg-destructive/10 px-1 rounded">npm audit</code>.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {vulnSummary.totalVulnerabilities === 0 && (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertTitle>All Clear</AlertTitle>
+                      <AlertDescription>
+                        No known vulnerabilities detected in your dependencies. Keep your packages up to date for continued security.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

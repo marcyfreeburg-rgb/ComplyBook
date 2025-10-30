@@ -107,6 +107,21 @@ export const securitySeverityEnum = pgEnum('security_severity', [
   'critical'
 ]);
 
+// Vulnerability scanning enums (NIST 800-53 RA-5, SI-2)
+export const vulnerabilitySeverityEnum = pgEnum('vulnerability_severity', [
+  'info',
+  'low',
+  'moderate',
+  'high',
+  'critical'
+]);
+
+export const scanStatusEnum = pgEnum('scan_status', [
+  'running',
+  'completed',
+  'failed'
+]);
+
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
 // ============================================
@@ -193,6 +208,37 @@ export const insertFailedLoginAttemptSchema = createInsertSchema(failedLoginAtte
 
 export type InsertFailedLoginAttempt = z.infer<typeof insertFailedLoginAttemptSchema>;
 export type FailedLoginAttempt = typeof failedLoginAttempts.$inferSelect;
+
+// ============================================
+// VULNERABILITY SCANNING (NIST 800-53 RA-5, SI-2)
+// ============================================
+
+// Store vulnerability scan results from npm audit
+export const vulnerabilityScans = pgTable("vulnerability_scans", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  status: scanStatusEnum("status").notNull().default('running'),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  totalVulnerabilities: integer("total_vulnerabilities").default(0),
+  infoCount: integer("info_count").default(0),
+  lowCount: integer("low_count").default(0),
+  moderateCount: integer("moderate_count").default(0),
+  highCount: integer("high_count").default(0),
+  criticalCount: integer("critical_count").default(0),
+  scanData: jsonb("scan_data"), // Full npm audit JSON output
+  errorMessage: text("error_message"), // If scan failed
+}, (table) => [
+  index("idx_vuln_scan_status").on(table.status),
+  index("idx_vuln_scan_started_at").on(table.startedAt),
+]);
+
+export const insertVulnerabilityScanSchema = createInsertSchema(vulnerabilityScans).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type InsertVulnerabilityScan = z.infer<typeof insertVulnerabilityScanSchema>;
+export type VulnerabilityScan = typeof vulnerabilityScans.$inferSelect;
 
 // ============================================
 // ORGANIZATIONS

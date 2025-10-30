@@ -7,6 +7,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
+import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
@@ -5171,6 +5172,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching security metrics:", error);
       res.status(500).json({ message: "Failed to fetch security metrics" });
+    }
+  });
+
+  // Vulnerability scanning routes (NIST 800-53 RA-5, SI-2)
+  // Trigger manual vulnerability scan (admin/owner only)
+  app.post('/api/security/vulnerability-scan', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // For global security operations, we need to verify the user is at least an admin in one organization
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to run vulnerability scans" });
+      }
+      
+      // Start scan asynchronously (don't wait for completion)
+      runVulnerabilityScan(storage).catch(err => {
+        console.error("Vulnerability scan failed:", err);
+      });
+      
+      res.json({ message: "Vulnerability scan started" });
+    } catch (error) {
+      console.error("Error starting vulnerability scan:", error);
+      res.status(500).json({ message: "Failed to start vulnerability scan" });
+    }
+  });
+
+  // Get latest vulnerability scan results
+  app.get('/api/security/vulnerability-scan/latest', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // For global security operations, we need to verify the user is at least an admin in one organization
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to view vulnerability scans" });
+      }
+      
+      const latest = await storage.getLatestVulnerabilityScan();
+      res.json(latest || null);
+    } catch (error) {
+      console.error("Error fetching latest vulnerability scan:", error);
+      res.status(500).json({ message: "Failed to fetch latest vulnerability scan" });
+    }
+  });
+
+  // Get vulnerability scan summary
+  app.get('/api/security/vulnerability-scan/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // For global security operations, we need to verify the user is at least an admin in one organization
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to view vulnerability scans" });
+      }
+      
+      const summary = await getLatestVulnerabilitySummary(storage);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching vulnerability scan summary:", error);
+      res.status(500).json({ message: "Failed to fetch vulnerability scan summary" });
+    }
+  });
+
+  // Get vulnerability scan history
+  app.get('/api/security/vulnerability-scan/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // For global security operations, we need to verify the user is at least an admin in one organization
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to view vulnerability scans" });
+      }
+      
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const history = await storage.getVulnerabilityScans(limit);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching vulnerability scan history:", error);
+      res.status(500).json({ message: "Failed to fetch vulnerability scan history" });
     }
   });
 

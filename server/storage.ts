@@ -163,6 +163,9 @@ import {
   failedLoginAttempts,
   type FailedLoginAttempt,
   type InsertFailedLoginAttempt,
+  vulnerabilityScans,
+  type VulnerabilityScan,
+  type InsertVulnerabilityScan,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -196,6 +199,12 @@ export interface IStorage {
   unlockAccount(email: string): Promise<void>;
   isAccountLocked(email: string): Promise<boolean>;
   clearFailedLoginAttempts(email: string): Promise<void>;
+
+  // Vulnerability scanning (NIST 800-53 RA-5, SI-2)
+  createVulnerabilityScan(scan: InsertVulnerabilityScan): Promise<VulnerabilityScan>;
+  updateVulnerabilityScan(id: number, updates: Partial<InsertVulnerabilityScan>): Promise<VulnerabilityScan>;
+  getLatestVulnerabilityScan(): Promise<VulnerabilityScan | undefined>;
+  getVulnerabilityScans(limit?: number): Promise<VulnerabilityScan[]>;
 
   // Organization operations
   getOrganizations(userId: string): Promise<Array<Organization & { userRole: string }>>;
@@ -873,6 +882,41 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(failedLoginAttempts)
       .where(eq(failedLoginAttempts.email, email));
+  }
+
+  // Vulnerability scanning (NIST 800-53 RA-5, SI-2)
+  async createVulnerabilityScan(scan: InsertVulnerabilityScan): Promise<VulnerabilityScan> {
+    const [result] = await db
+      .insert(vulnerabilityScans)
+      .values(scan)
+      .returning();
+    return result;
+  }
+
+  async updateVulnerabilityScan(id: number, updates: Partial<InsertVulnerabilityScan>): Promise<VulnerabilityScan> {
+    const [result] = await db
+      .update(vulnerabilityScans)
+      .set(updates)
+      .where(eq(vulnerabilityScans.id, id))
+      .returning();
+    return result;
+  }
+
+  async getLatestVulnerabilityScan(): Promise<VulnerabilityScan | undefined> {
+    const [scan] = await db
+      .select()
+      .from(vulnerabilityScans)
+      .orderBy(desc(vulnerabilityScans.startedAt))
+      .limit(1);
+    return scan;
+  }
+
+  async getVulnerabilityScans(limit: number = 10): Promise<VulnerabilityScan[]> {
+    return await db
+      .select()
+      .from(vulnerabilityScans)
+      .orderBy(desc(vulnerabilityScans.startedAt))
+      .limit(limit);
   }
 
   // Organization operations
