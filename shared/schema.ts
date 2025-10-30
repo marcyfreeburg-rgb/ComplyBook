@@ -10,6 +10,7 @@ import {
   timestamp,
   varchar,
   pgEnum,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -146,6 +147,11 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // NIST 800-53 IA-2(1), IA-2(2): MFA enforcement for privileged accounts
+  mfaRequired: boolean("mfa_required").default(false).notNull(),
+  mfaGracePeriodEnd: timestamp("mfa_grace_period_end"),
+  lastMfaNotification: timestamp("last_mfa_notification"),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
@@ -1093,11 +1099,16 @@ export const auditLogs = pgTable("audit_logs", {
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   previousHash: varchar("previous_hash", { length: 64 }), // SHA-256 hash of previous audit log entry
   chainHash: varchar("chain_hash", { length: 64 }), // SHA-256 hash of this entry (for tamper detection)
+  
+  // NIST 800-53 AU-11: Audit log retention (90-day active, 7-year archival)
+  archived: boolean("archived").default(false).notNull(),
+  archivedAt: timestamp("archived_at"),
 }, (table) => [
   index("idx_audit_logs_org_id").on(table.organizationId),
   index("idx_audit_logs_user_id").on(table.userId),
   index("idx_audit_logs_entity").on(table.entityType, table.entityId),
   index("idx_audit_logs_timestamp").on(table.timestamp),
+  index("idx_audit_logs_archived").on(table.archived, table.timestamp),
 ]);
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({

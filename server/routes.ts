@@ -5265,6 +5265,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // MFA enforcement endpoints (NIST 800-53 IA-2(1), IA-2(2))
+  app.get('/api/security/mfa/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const gracePeriodCheck = await storage.checkMfaGracePeriod(userId);
+      
+      res.json({
+        mfaRequired: user.mfaRequired,
+        mfaGracePeriodEnd: user.mfaGracePeriodEnd,
+        gracePeriodExpired: gracePeriodCheck.expired,
+        daysRemaining: gracePeriodCheck.daysRemaining,
+      });
+    } catch (error) {
+      console.error("Error fetching MFA status:", error);
+      res.status(500).json({ message: "Failed to fetch MFA status" });
+    }
+  });
+
+  app.post('/api/security/mfa/set-required', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const { userId, required, gracePeriodDays } = req.body;
+      
+      // Only owners/admins can set MFA requirements
+      const organizations = await storage.getOrganizations(currentUserId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "Only owners and admins can set MFA requirements" });
+      }
+      
+      const updatedUser = await storage.setMfaRequired(userId, required, gracePeriodDays || 30);
+      
+      // Log security event
+      await storage.logSecurityEvent({
+        eventType: 'permission_denied',
+        severity: 'low',
+        userId: userId,
+        email: updatedUser.email,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          action: 'mfa_requirement_updated',
+          updatedBy: currentUserId,
+          required: required,
+          gracePeriodDays: gracePeriodDays || 30,
+        },
+      });
+      
+      res.json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error("Error setting MFA requirement:", error);
+      res.status(500).json({ message: "Failed to set MFA requirement" });
+    }
+  });
+
   // Notification routes
   app.get('/api/notifications/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

@@ -176,3 +176,125 @@ function getPermissionDescription(permissions: string): string {
       return 'Standard access permissions.';
   }
 }
+
+// NIST 800-53 IR-4, IR-5: Security Event Alerting
+interface SecurityAlertEmailParams {
+  to: string;
+  eventType: string;
+  severity: string;
+  timestamp: Date;
+  userEmail?: string | null;
+  ipAddress?: string | null;
+  details?: Record<string, any>;
+}
+
+export async function sendSecurityAlertEmail({
+  to,
+  eventType,
+  severity,
+  timestamp,
+  userEmail,
+  ipAddress,
+  details
+}: SecurityAlertEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const severityColor = severity === 'critical' ? '#dc2626' : 
+                        severity === 'high' ? '#ea580c' : 
+                        severity === 'medium' ? '#f59e0b' : '#3b82f6';
+  
+  const eventTypeDisplay = eventType.replace(/_/g, ' ').toUpperCase();
+  
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `[SECURITY ALERT] ${eventTypeDisplay} - ${severity.toUpperCase()}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Security Alert</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, ${severityColor} 0%, #991b1b 100%); border-radius: 8px; padding: 30px; margin-bottom: 20px; color: white;">
+            <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">SECURITY ALERT</h1>
+            <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">A ${severity} severity security event has been detected</p>
+          </div>
+          
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px; margin-bottom: 20px;">
+            <h2 style="color: #1a1a1a; margin: 0 0 15px 0; font-size: 18px;">Event Details</h2>
+            
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Event Type</p>
+              <p style="color: #1a1a1a; margin: 0; font-size: 16px; font-weight: 500;">${eventTypeDisplay}</p>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Severity</p>
+              <p style="color: ${severityColor}; margin: 0; font-size: 16px; font-weight: 600;">${severity.toUpperCase()}</p>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Timestamp</p>
+              <p style="color: #1a1a1a; margin: 0; font-size: 16px; font-weight: 500;">${timestamp.toLocaleString()}</p>
+            </div>
+            
+            ${userEmail ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">User</p>
+              <p style="color: #1a1a1a; margin: 0; font-size: 16px; font-weight: 500;">${userEmail}</p>
+            </div>
+            ` : ''}
+            
+            ${ipAddress ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">IP Address</p>
+              <p style="color: #1a1a1a; margin: 0; font-size: 16px; font-weight: 500;">${ipAddress}</p>
+            </div>
+            ` : ''}
+            
+            ${details ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Additional Details</p>
+              <pre style="background-color: #f3f4f6; padding: 10px; border-radius: 4px; font-size: 12px; overflow-x: auto;">${JSON.stringify(details, null, 2)}</pre>
+            </div>
+            ` : ''}
+          </div>
+          
+          <div style="background-color: #fef3c7; border: 1px solid #fbbf24; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 14px; color: #92400e;">
+              <strong>Action Required:</strong> Review this security event immediately. Check your security monitoring dashboard for more details and take appropriate action.
+            </p>
+          </div>
+          
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+            <p style="color: #666; font-size: 14px; margin: 0;">
+              This is an automated security alert from your Budget Manager application. If you believe this alert was sent in error, please contact your system administrator.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+SECURITY ALERT - ${severity.toUpperCase()}
+
+A ${severity} severity security event has been detected.
+
+Event Type: ${eventTypeDisplay}
+Severity: ${severity.toUpperCase()}
+Timestamp: ${timestamp.toLocaleString()}
+${userEmail ? `User: ${userEmail}` : ''}
+${ipAddress ? `IP Address: ${ipAddress}` : ''}
+${details ? `\nAdditional Details:\n${JSON.stringify(details, null, 2)}` : ''}
+
+Action Required:
+Review this security event immediately. Check your security monitoring dashboard for more details and take appropriate action.
+
+This is an automated security alert from your Budget Manager application.
+    `.trim()
+  };
+
+  await client.send(msg);
+}

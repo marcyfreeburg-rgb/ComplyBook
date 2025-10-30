@@ -179,6 +179,12 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // MFA enforcement (NIST 800-53 IA-2(1), IA-2(2))
+  setMfaRequired(userId: string, required: boolean, gracePeriodDays?: number): Promise<User>;
+  checkMfaGracePeriod(userId: string): Promise<{ expired: boolean; daysRemaining: number | null }>;
+  updateMfaNotification(userId: string): Promise<User>;
+  getUsersRequiringMfa(): Promise<User[]>;
 
   // Security event logging (NIST 800-53 AU-2, AC-7)
   logSecurityEvent(event: InsertSecurityEvent): Promise<SecurityEvent>;
@@ -765,6 +771,57 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+  
+  // MFA enforcement (NIST 800-53 IA-2(1), IA-2(2))
+  async setMfaRequired(userId: string, required: boolean, gracePeriodDays: number = 30): Promise<User> {
+    const gracePeriodEnd = required 
+      ? new Date(Date.now() + gracePeriodDays * 24 * 60 * 60 * 1000)
+      : null;
+      
+    const [user] = await db
+      .update(users)
+      .set({
+        mfaRequired: required,
+        mfaGracePeriodEnd: gracePeriodEnd,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+  
+  async checkMfaGracePeriod(userId: string): Promise<{ expired: boolean; daysRemaining: number | null }> {
+    const user = await this.getUser(userId);
+    if (!user || !user.mfaRequired || !user.mfaGracePeriodEnd) {
+      return { expired: false, daysRemaining: null };
+    }
+    
+    const now = Date.now();
+    const gracePeriodEnd = user.mfaGracePeriodEnd.getTime();
+    const expired = now > gracePeriodEnd;
+    const daysRemaining = expired ? 0 : Math.ceil((gracePeriodEnd - now) / (24 * 60 * 60 * 1000));
+    
+    return { expired, daysRemaining };
+  }
+  
+  async updateMfaNotification(userId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        lastMfaNotification: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+  
+  async getUsersRequiringMfa(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.mfaRequired, true));
+  }
 
   // Security event logging (NIST 800-53 AU-2, AC-7)
   async logSecurityEvent(event: InsertSecurityEvent): Promise<SecurityEvent> {
@@ -772,6 +829,27 @@ export class DatabaseStorage implements IStorage {
       .insert(securityEventLog)
       .values(event)
       .returning();
+    
+    // NIST 800-53 IR-4, IR-5: Send security alerts for critical/high severity events
+    // Async fire-and-forget to avoid blocking the logging operation
+    if (event.severity === 'critical' || event.severity === 'high') {
+      import('./securityAlerting').then(({ sendSecurityAlertIfNeeded }) => {
+        sendSecurityAlertIfNeeded(this, {
+          eventType: event.eventType,
+          severity: event.severity,
+          userId: event.userId,
+          email: event.email,
+          ipAddress: event.ipAddress,
+          eventData: event.eventData,
+          timestamp: logEntry.timestamp,
+        }, event.organizationId || undefined).catch(err => {
+          console.error('Failed to send security alert:', err);
+        });
+      }).catch(err => {
+        console.error('Failed to import security alerting module:', err);
+      });
+    }
+    
     return logEntry;
   }
 
