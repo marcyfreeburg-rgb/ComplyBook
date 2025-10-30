@@ -1503,6 +1503,11 @@ export const projects = pgTable("projects", {
   actualCost: numeric("actual_cost", { precision: 15, scale: 2 }).notNull().default("0"),
   status: varchar("status", { length: 50 }).notNull().default('active'),
   projectManager: varchar("project_manager", { length: 255 }),
+  projectType: varchar("project_type", { length: 100 }),
+  billingMethod: varchar("billing_method", { length: 100 }),
+  laborRate: numeric("labor_rate", { precision: 10, scale: 2 }),
+  overheadRate: numeric("overhead_rate", { precision: 6, scale: 2 }),
+  clonedFromId: integer("cloned_from_id"),
   notes: text("notes"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1516,6 +1521,8 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
 }).extend({
   budget: z.string().or(z.number()).transform(val => String(val)).optional(),
   actualCost: z.string().or(z.number()).transform(val => String(val)).optional(),
+  laborRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  overheadRate: z.string().or(z.number()).transform(val => String(val)).optional(),
   startDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
 });

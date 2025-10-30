@@ -6378,6 +6378,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/projects/:id/clone", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const sourceProjectId = parseInt(req.params.id);
+      const { projectNumber, projectName, copyCosts, copyMilestones } = req.body;
+      
+      const sourceProject = await storage.getProject(sourceProjectId);
+      if (!sourceProject) {
+        return res.status(404).json({ message: "Source project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, sourceProject.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to clone projects" });
+      }
+
+      const newProjectData = {
+        organizationId: sourceProject.organizationId,
+        contractId: sourceProject.contractId,
+        projectNumber: projectNumber || `${sourceProject.projectNumber}-CLONE`,
+        projectName: projectName || `${sourceProject.projectName} (Copy)`,
+        description: sourceProject.description,
+        startDate: new Date(),
+        endDate: sourceProject.endDate,
+        budget: sourceProject.budget,
+        projectManager: sourceProject.projectManager,
+        projectType: sourceProject.projectType,
+        billingMethod: sourceProject.billingMethod,
+        laborRate: sourceProject.laborRate,
+        overheadRate: sourceProject.overheadRate,
+        status: 'active',
+        notes: `Cloned from project #${sourceProject.id} (${sourceProject.projectNumber})`,
+        clonedFromId: sourceProject.id,
+        createdBy: userId,
+      };
+
+      const validatedData = insertProjectSchema.parse(newProjectData);
+      const newProject = await storage.createProject(validatedData);
+
+      if (copyCosts) {
+        const sourceCosts = await storage.getProjectCosts(sourceProjectId);
+        for (const cost of sourceCosts) {
+          const newCost = {
+            organizationId: cost.organizationId,
+            projectId: newProject.id,
+            costDate: new Date(),
+            costType: cost.costType,
+            description: cost.description,
+            amount: cost.amount,
+            quantity: cost.quantity,
+            unitCost: cost.unitCost,
+            vendorName: cost.vendorName,
+            invoiceNumber: null,
+            notes: `Cloned from project #${sourceProject.id}`,
+            createdBy: userId,
+          };
+          await storage.createProjectCost(newCost);
+        }
+      }
+
+      await storage.logCreate(sourceProject.organizationId, userId, 'project', newProject.id.toString(), newProject);
+      res.status(201).json(newProject);
+    } catch (error: any) {
+      console.error("Error cloning project:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid project data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to clone project" });
+    }
+  });
+
+  app.post("/api/projects/validate-number", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, projectNumber, excludeProjectId } = req.body;
+      
+      if (!organizationId || !projectNumber) {
+        return res.status(400).json({ message: "Organization ID and project number are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const projects = await storage.getProjects(organizationId);
+      const exists = projects.some(p => 
+        p.projectNumber === projectNumber && 
+        (!excludeProjectId || p.id !== excludeProjectId)
+      );
+      
+      res.json({ exists, available: !exists });
+    } catch (error) {
+      console.error("Error validating project number:", error);
+      res.status(500).json({ message: "Failed to validate project number" });
+    }
+  });
+
   // Project cost routes
   app.get("/api/projects/:projectId/costs", isAuthenticated, async (req: any, res: Response) => {
     try {

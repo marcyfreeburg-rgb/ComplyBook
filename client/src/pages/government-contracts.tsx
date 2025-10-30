@@ -68,6 +68,16 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isAddCostOpen, setIsAddCostOpen] = useState(false);
+  const [isCloneProjectOpen, setIsCloneProjectOpen] = useState(false);
+  const [projectToClone, setProjectToClone] = useState<Project | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [projectNumberError, setProjectNumberError] = useState("");
+  const [cloneOptions, setCloneOptions] = useState({
+    projectNumber: "",
+    projectName: "",
+    copyCosts: false,
+    copyMilestones: false,
+  });
   const [projectFormData, setProjectFormData] = useState({
     contractId: "",
     projectNumber: "",
@@ -77,6 +87,10 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
     endDate: "",
     budget: "",
     projectManager: "",
+    projectType: "",
+    billingMethod: "",
+    laborRate: "",
+    overheadRate: "",
     notes: "",
     status: "active",
   });
@@ -321,6 +335,23 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
     },
   });
 
+  const cloneProjectMutation = useMutation({
+    mutationFn: async () => {
+      if (!projectToClone) throw new Error("No project selected for cloning");
+      return await apiRequest('POST', `/api/projects/${projectToClone.id}/clone`, cloneOptions);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${currentOrganization.id}`] });
+      toast({ title: "Project cloned", description: "Project cloned successfully." });
+      setIsCloneProjectOpen(false);
+      setProjectToClone(null);
+      setCloneOptions({ projectNumber: "", projectName: "", copyCosts: false, copyMilestones: false });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to clone project.", variant: "destructive" });
+    },
+  });
+
   // Project Cost Mutations
   const addProjectCostMutation = useMutation({
     mutationFn: async () => {
@@ -512,9 +543,15 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
       endDate: "",
       budget: "",
       projectManager: "",
+      projectType: "",
+      billingMethod: "",
+      laborRate: "",
+      overheadRate: "",
       notes: "",
       status: "active",
     });
+    setSelectedTemplate("");
+    setProjectNumberError("");
   };
 
   const resetCostForm = () => {
@@ -617,10 +654,109 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
       endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : "",
       budget: project.budget || "",
       projectManager: project.projectManager || "",
+      projectType: project.projectType || "",
+      billingMethod: project.billingMethod || "",
+      laborRate: project.laborRate || "",
+      overheadRate: project.overheadRate || "",
       notes: project.notes || "",
       status: project.status,
     });
     setIsCreateProjectOpen(true);
+  };
+
+  const applyProjectTemplate = (templateType: string) => {
+    setSelectedTemplate(templateType);
+    
+    const templates: Record<string, Partial<typeof projectFormData>> = {
+      ffp: {
+        projectType: "Firm Fixed Price",
+        billingMethod: "fixed_fee",
+        description: "Fixed price contract with predetermined deliverables and payment schedule",
+        laborRate: "",
+        overheadRate: "",
+      },
+      cpff: {
+        projectType: "Cost Plus Fixed Fee",
+        billingMethod: "cost_plus",
+        description: "Cost reimbursement contract with fixed fee component",
+        laborRate: "75.00",
+        overheadRate: "35.00",
+      },
+      tm: {
+        projectType: "Time & Materials",
+        billingMethod: "time_and_materials",
+        description: "Hourly billing with materials reimbursement",
+        laborRate: "85.00",
+        overheadRate: "25.00",
+      },
+      cpif: {
+        projectType: "Cost Plus Incentive Fee",
+        billingMethod: "cost_plus",
+        description: "Cost reimbursement with performance-based incentive fees",
+        laborRate: "75.00",
+        overheadRate: "40.00",
+      },
+    };
+
+    if (templates[templateType]) {
+      setProjectFormData(prev => ({
+        ...prev,
+        ...templates[templateType],
+      }));
+    }
+  };
+
+  const handleContractSelection = (contractId: string) => {
+    setProjectFormData(prev => ({ ...prev, contractId }));
+    
+    if (contractId && contractId !== "none") {
+      const contract = contracts.find(c => c.id.toString() === contractId);
+      if (contract) {
+        const contractStart = new Date(contract.startDate);
+        const contractEnd = contract.endDate ? new Date(contract.endDate) : null;
+        
+        setProjectFormData(prev => ({
+          ...prev,
+          startDate: contractStart.toISOString().split('T')[0],
+          endDate: contractEnd ? contractEnd.toISOString().split('T')[0] : "",
+          description: prev.description || `Project under ${contract.contractName}`,
+        }));
+      }
+    }
+  };
+
+  const validateProjectNumber = async (projectNumber: string) => {
+    if (!projectNumber) {
+      setProjectNumberError("");
+      return;
+    }
+    
+    try {
+      const response: any = await apiRequest('POST', '/api/projects/validate-number', {
+        organizationId: currentOrganization.id,
+        projectNumber,
+        excludeProjectId: editingProject?.id,
+      });
+      
+      if (response.exists) {
+        setProjectNumberError("This project number already exists");
+      } else {
+        setProjectNumberError("");
+      }
+    } catch (error) {
+      console.error("Error validating project number:", error);
+    }
+  };
+
+  const handleCloneProject = (project: Project) => {
+    setProjectToClone(project);
+    setCloneOptions({
+      projectNumber: `${project.projectNumber}-COPY`,
+      projectName: `${project.projectName} (Copy)`,
+      copyCosts: false,
+      copyMilestones: false,
+    });
+    setIsCloneProjectOpen(true);
   };
 
   const handleEditRate = (rate: IndirectCostRate) => {
@@ -1338,11 +1474,34 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
+                      {!editingProject && (
+                        <div className="space-y-2">
+                          <Label htmlFor="projectTemplate">Quick Start Template</Label>
+                          <Select 
+                            value={selectedTemplate} 
+                            onValueChange={applyProjectTemplate}
+                          >
+                            <SelectTrigger id="projectTemplate" data-testid="select-project-template">
+                              <SelectValue placeholder="Select a template (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ffp">Firm Fixed Price (FFP)</SelectItem>
+                              <SelectItem value="cpff">Cost Plus Fixed Fee (CPFF)</SelectItem>
+                              <SelectItem value="tm">Time & Materials (T&M)</SelectItem>
+                              <SelectItem value="cpif">Cost Plus Incentive Fee (CPIF)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {selectedTemplate && (
+                            <p className="text-sm text-muted-foreground">Template applied. You can modify any field below.</p>
+                          )}
+                        </div>
+                      )}
+                      
                       <div className="space-y-2">
-                        <Label htmlFor="projectContract">Contract</Label>
+                        <Label htmlFor="projectContract">Parent Contract</Label>
                         <Select 
                           value={projectFormData.contractId} 
-                          onValueChange={(value) => setProjectFormData({ ...projectFormData, contractId: value })}
+                          onValueChange={handleContractSelection}
                         >
                           <SelectTrigger id="projectContract" data-testid="select-project-contract">
                             <SelectValue placeholder="Select contract (optional)" />
@@ -1356,6 +1515,9 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
                             ))}
                           </SelectContent>
                         </Select>
+                        {projectFormData.contractId && projectFormData.contractId !== "none" && (
+                          <p className="text-sm text-muted-foreground">Contract dates auto-populated from parent contract</p>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -1365,9 +1527,17 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
                             id="projectNumber"
                             data-testid="input-project-number"
                             value={projectFormData.projectNumber}
-                            onChange={(e) => setProjectFormData({ ...projectFormData, projectNumber: e.target.value })}
+                            onChange={(e) => {
+                              setProjectFormData({ ...projectFormData, projectNumber: e.target.value });
+                              validateProjectNumber(e.target.value);
+                            }}
+                            onBlur={(e) => validateProjectNumber(e.target.value)}
                             placeholder="PROJ-001"
+                            className={projectNumberError ? "border-destructive" : ""}
                           />
+                          {projectNumberError && (
+                            <p className="text-sm text-destructive">{projectNumberError}</p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="projectName">Project Name *</Label>
@@ -1424,6 +1594,63 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
                             value={projectFormData.budget}
                             onChange={(e) => setProjectFormData({ ...projectFormData, budget: e.target.value })}
                             placeholder="100000.00"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="projectType">Project Type</Label>
+                          <Input
+                            id="projectType"
+                            data-testid="input-project-type"
+                            value={projectFormData.projectType}
+                            onChange={(e) => setProjectFormData({ ...projectFormData, projectType: e.target.value })}
+                            placeholder="FFP, CPFF, T&M, etc."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="billingMethod">Billing Method</Label>
+                          <Select 
+                            value={projectFormData.billingMethod} 
+                            onValueChange={(value) => setProjectFormData({ ...projectFormData, billingMethod: value })}
+                          >
+                            <SelectTrigger id="billingMethod" data-testid="select-billing-method">
+                              <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="hourly">Hourly</SelectItem>
+                              <SelectItem value="fixed_fee">Fixed Fee</SelectItem>
+                              <SelectItem value="cost_plus">Cost Plus</SelectItem>
+                              <SelectItem value="time_and_materials">Time & Materials</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="laborRate">Labor Rate ($/hr)</Label>
+                          <Input
+                            id="laborRate"
+                            data-testid="input-labor-rate"
+                            type="number"
+                            step="0.01"
+                            value={projectFormData.laborRate}
+                            onChange={(e) => setProjectFormData({ ...projectFormData, laborRate: e.target.value })}
+                            placeholder="75.00"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="overheadRate">Overhead Rate (%)</Label>
+                          <Input
+                            id="overheadRate"
+                            data-testid="input-overhead-rate"
+                            type="number"
+                            step="0.01"
+                            value={projectFormData.overheadRate}
+                            onChange={(e) => setProjectFormData({ ...projectFormData, overheadRate: e.target.value })}
+                            placeholder="35.00"
                           />
                         </div>
                       </div>
@@ -1488,6 +1715,92 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
                         data-testid="button-save-project"
                       >
                         {(createProjectMutation.isPending || updateProjectMutation.isPending) ? "Saving..." : (editingProject ? "Update Project" : "Create Project")}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Clone Project Dialog */}
+                <Dialog open={isCloneProjectOpen} onOpenChange={(open) => {
+                  setIsCloneProjectOpen(open);
+                  if (!open) {
+                    setProjectToClone(null);
+                    setCloneOptions({ projectNumber: "", projectName: "", copyCosts: false, copyMilestones: false });
+                  }
+                }}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Clone Project</DialogTitle>
+                      <DialogDescription>
+                        Create a copy of "{projectToClone?.projectName}"
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cloneProjectNumber">New Project Number *</Label>
+                        <Input
+                          id="cloneProjectNumber"
+                          data-testid="input-clone-project-number"
+                          value={cloneOptions.projectNumber}
+                          onChange={(e) => setCloneOptions({ ...cloneOptions, projectNumber: e.target.value })}
+                          placeholder="PROJ-002"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cloneProjectName">New Project Name *</Label>
+                        <Input
+                          id="cloneProjectName"
+                          data-testid="input-clone-project-name"
+                          value={cloneOptions.projectName}
+                          onChange={(e) => setCloneOptions({ ...cloneOptions, projectName: e.target.value })}
+                          placeholder="Project name"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label>Clone Options</Label>
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={cloneOptions.copyCosts}
+                              onChange={(e) => setCloneOptions({ ...cloneOptions, copyCosts: e.target.checked })}
+                              className="h-4 w-4"
+                              data-testid="checkbox-copy-costs"
+                            />
+                            <span className="text-sm">Copy project costs</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={cloneOptions.copyMilestones}
+                              onChange={(e) => setCloneOptions({ ...cloneOptions, copyMilestones: e.target.checked })}
+                              className="h-4 w-4"
+                              data-testid="checkbox-copy-milestones"
+                            />
+                            <span className="text-sm">Copy milestones</span>
+                          </label>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Budget, settings, and configuration will be copied automatically
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsCloneProjectOpen(false)}
+                        data-testid="button-cancel-clone"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => cloneProjectMutation.mutate()}
+                        disabled={cloneProjectMutation.isPending || !cloneOptions.projectNumber || !cloneOptions.projectName}
+                        data-testid="button-confirm-clone"
+                      >
+                        {cloneProjectMutation.isPending ? "Cloning..." : "Clone Project"}
                       </Button>
                     </div>
                   </DialogContent>
@@ -1686,6 +1999,15 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
                                   </div>
                                 </DialogContent>
                               </Dialog>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleCloneProject(project)}
+                                data-testid={`button-clone-project-${project.id}`}
+                                title="Clone project"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="icon"
