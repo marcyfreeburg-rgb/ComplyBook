@@ -7130,16 +7130,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 100;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const ledgerEntries = await storage.getProjectRevenueLedger(projectId);
-      const paginatedEntries = ledgerEntries.slice(offset, offset + limit);
+      const [ledgerEntries, total] = await Promise.all([
+        storage.getProjectRevenueLedger(projectId, limit, offset),
+        storage.getProjectRevenueLedgerCount(projectId)
+      ]);
       
       res.json({
-        entries: paginatedEntries,
+        entries: ledgerEntries,
         pagination: {
-          total: ledgerEntries.length,
+          total,
           limit,
           offset,
-          hasMore: offset + limit < ledgerEntries.length
+          hasMore: offset + limit < total
         }
       });
     } catch (error) {
@@ -7268,16 +7270,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const snapshots = await storage.getProjectFinancialSnapshots(projectId);
-      const paginatedSnapshots = snapshots.slice(offset, offset + limit);
+      const [snapshots, total] = await Promise.all([
+        storage.getProjectFinancialSnapshots(projectId, limit, offset),
+        storage.getProjectFinancialSnapshotsCount(projectId)
+      ]);
       
       res.json({
-        snapshots: paginatedSnapshots,
+        snapshots,
         pagination: {
-          total: snapshots.length,
+          total,
           limit,
           offset,
-          hasMore: offset + limit < snapshots.length
+          hasMore: offset + limit < total
         }
       });
     } catch (error) {

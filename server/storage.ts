@@ -701,14 +701,16 @@ export interface IStorage {
   deleteProjectBudgetBreakdown(id: number): Promise<void>;
 
   // For-profit: Project revenue ledger operations
-  getProjectRevenueLedger(projectId: number): Promise<ProjectRevenueLedger[]>;
+  getProjectRevenueLedger(projectId: number, limit?: number, offset?: number): Promise<ProjectRevenueLedger[]>;
+  getProjectRevenueLedgerCount(projectId: number): Promise<number>;
   getProjectRevenueLedgerEntry(id: number): Promise<ProjectRevenueLedger | undefined>;
   createProjectRevenueLedgerEntry(entry: InsertProjectRevenueLedger): Promise<ProjectRevenueLedger>;
   updateProjectRevenueLedgerEntry(id: number, updates: Partial<InsertProjectRevenueLedger>): Promise<ProjectRevenueLedger>;
   deleteProjectRevenueLedgerEntry(id: number): Promise<void>;
 
   // For-profit: Project financial snapshot operations
-  getProjectFinancialSnapshots(projectId: number): Promise<ProjectFinancialSnapshot[]>;
+  getProjectFinancialSnapshots(projectId: number, limit?: number, offset?: number): Promise<ProjectFinancialSnapshot[]>;
+  getProjectFinancialSnapshotsCount(projectId: number): Promise<number>;
   getLatestProjectFinancialSnapshot(projectId: number): Promise<ProjectFinancialSnapshot | undefined>;
   createProjectFinancialSnapshot(snapshot: InsertProjectFinancialSnapshot): Promise<ProjectFinancialSnapshot>;
   deleteProjectFinancialSnapshot(id: number): Promise<void>;
@@ -5343,10 +5345,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Project revenue ledger operations
-  async getProjectRevenueLedger(projectId: number): Promise<ProjectRevenueLedger[]> {
-    return await db.select().from(projectRevenueLedger)
+  async getProjectRevenueLedger(projectId: number, limit?: number, offset?: number): Promise<ProjectRevenueLedger[]> {
+    let query = db.select().from(projectRevenueLedger)
       .where(eq(projectRevenueLedger.projectId, projectId))
       .orderBy(desc(projectRevenueLedger.revenueDate));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit);
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset);
+    }
+    
+    return await query;
+  }
+
+  async getProjectRevenueLedgerCount(projectId: number): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(projectRevenueLedger)
+      .where(eq(projectRevenueLedger.projectId, projectId));
+    return result[0]?.count || 0;
   }
 
   async getProjectRevenueLedgerEntry(id: number): Promise<ProjectRevenueLedger | undefined> {
@@ -5372,10 +5390,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Project financial snapshot operations
-  async getProjectFinancialSnapshots(projectId: number): Promise<ProjectFinancialSnapshot[]> {
-    return await db.select().from(projectFinancialSnapshots)
+  async getProjectFinancialSnapshots(projectId: number, limit?: number, offset?: number): Promise<ProjectFinancialSnapshot[]> {
+    let query = db.select().from(projectFinancialSnapshots)
       .where(eq(projectFinancialSnapshots.projectId, projectId))
       .orderBy(desc(projectFinancialSnapshots.snapshotDate));
+    
+    if (limit !== undefined) {
+      query = query.limit(limit);
+    }
+    if (offset !== undefined) {
+      query = query.offset(offset);
+    }
+    
+    return await query;
+  }
+
+  async getProjectFinancialSnapshotsCount(projectId: number): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(projectFinancialSnapshots)
+      .where(eq(projectFinancialSnapshots.projectId, projectId));
+    return result[0]?.count || 0;
   }
 
   async getLatestProjectFinancialSnapshot(projectId: number): Promise<ProjectFinancialSnapshot | undefined> {
