@@ -7126,8 +7126,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
 
+      // Add pagination support (default: first 100 entries)
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+
       const ledgerEntries = await storage.getProjectRevenueLedger(projectId);
-      res.json(ledgerEntries);
+      const paginatedEntries = ledgerEntries.slice(offset, offset + limit);
+      
+      res.json({
+        entries: paginatedEntries,
+        pagination: {
+          total: ledgerEntries.length,
+          limit,
+          offset,
+          hasMore: offset + limit < ledgerEntries.length
+        }
+      });
     } catch (error) {
       console.error("Error fetching project revenue ledger:", error);
       res.status(500).json({ message: "Failed to fetch project revenue ledger" });
@@ -7182,6 +7196,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to update revenue ledger entries" });
       }
 
+      // Validate revenue status state transitions: unbilled → billed → recognized (no backward transitions)
+      if (req.body.revenueStatus && req.body.revenueStatus !== entry.revenueStatus) {
+        const currentStatus = entry.revenueStatus;
+        const newStatus = req.body.revenueStatus;
+        const validTransitions: Record<string, string[]> = {
+          'unbilled': ['billed'],
+          'billed': ['recognized'],
+          'recognized': ['written_off'],
+          'written_off': [] // Terminal state
+        };
+
+        if (!validTransitions[currentStatus]?.includes(newStatus)) {
+          return res.status(400).json({ 
+            message: `Invalid revenue status transition from ${currentStatus} to ${newStatus}. Valid transitions from ${currentStatus}: ${validTransitions[currentStatus]?.join(', ') || 'none (terminal state)'}`
+          });
+        }
+      }
+
       const oldData = JSON.stringify(entry);
       const updated = await storage.updateProjectRevenueLedger(entryId, req.body);
       await storage.logUpdate(entry.organizationId, userId, 'project_revenue_ledger', entryId.toString(), oldData, updated);
@@ -7232,8 +7264,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
 
+      // Add pagination support (default: first 50 snapshots, usually fewer needed)
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
       const snapshots = await storage.getProjectFinancialSnapshots(projectId);
-      res.json(snapshots);
+      const paginatedSnapshots = snapshots.slice(offset, offset + limit);
+      
+      res.json({
+        snapshots: paginatedSnapshots,
+        pagination: {
+          total: snapshots.length,
+          limit,
+          offset,
+          hasMore: offset + limit < snapshots.length
+        }
+      });
     } catch (error) {
       console.error("Error fetching project financial snapshots:", error);
       res.status(500).json({ message: "Failed to fetch project financial snapshots" });
