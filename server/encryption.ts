@@ -3,9 +3,16 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
-const SALT_LENGTH = 32;
+
+// Cache the derived key to avoid expensive scrypt on every operation
+let cachedKey: Buffer | null = null;
 
 function getEncryptionKey(): Buffer {
+  // Return cached key if available
+  if (cachedKey) {
+    return cachedKey;
+  }
+  
   const key = process.env.ENCRYPTION_KEY;
   
   if (!key) {
@@ -16,7 +23,9 @@ function getEncryptionKey(): Buffer {
     throw new Error('ENCRYPTION_KEY must be at least 32 characters for AES-256 encryption.');
   }
   
-  return crypto.scryptSync(key, 'budget-manager-salt', 32);
+  // Derive key once and cache it
+  cachedKey = crypto.scryptSync(key, 'budget-manager-salt', 32);
+  return cachedKey;
 }
 
 export function encryptField(plaintext: string | null): string | null {
@@ -27,7 +36,6 @@ export function encryptField(plaintext: string | null): string | null {
   try {
     const key = getEncryptionKey();
     const iv = crypto.randomBytes(IV_LENGTH);
-    const salt = crypto.randomBytes(SALT_LENGTH);
     
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
     
@@ -36,8 +44,8 @@ export function encryptField(plaintext: string | null): string | null {
     
     const authTag = cipher.getAuthTag();
     
+    // Format: [IV][Auth Tag][Ciphertext]
     const result = Buffer.concat([
-      salt,
       iv,
       authTag,
       Buffer.from(encrypted, 'hex')
@@ -59,10 +67,10 @@ export function decryptField(ciphertext: string | null): string | null {
     const key = getEncryptionKey();
     const buffer = Buffer.from(ciphertext, 'base64');
     
-    const salt = buffer.subarray(0, SALT_LENGTH);
-    const iv = buffer.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-    const authTag = buffer.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
-    const encrypted = buffer.subarray(SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+    // Parse format: [IV][Auth Tag][Ciphertext]
+    const iv = buffer.subarray(0, IV_LENGTH);
+    const authTag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
+    const encrypted = buffer.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
     
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);

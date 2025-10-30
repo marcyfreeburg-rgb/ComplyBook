@@ -167,6 +167,7 @@ import {
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import memoize from "memoizee";
+import { encryptField, decryptField } from './encryption';
 
 // Interface for storage operations
 export interface IStorage {
@@ -875,21 +876,34 @@ export class DatabaseStorage implements IStorage {
       )
       .where(eq(userOrganizationRoles.userId, userId));
 
+    // Decrypt sensitive fields
     return result.map(r => ({
       ...r.organization,
+      taxId: r.organization.taxId ? decryptField(r.organization.taxId) : null,
       userRole: r.role,
     }));
   }
 
   async getOrganization(id: number): Promise<Organization | undefined> {
     const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
-    return org;
+    if (!org) return undefined;
+    
+    // Decrypt sensitive fields
+    return {
+      ...org,
+      taxId: org.taxId ? decryptField(org.taxId) : null,
+    };
   }
 
   async createOrganization(orgData: InsertOrganization, userId: string): Promise<Organization> {
+    const encryptedData = {
+      ...orgData,
+      taxId: orgData.taxId ? encryptField(orgData.taxId) : null,
+    };
+    
     const [org] = await db
       .insert(organizations)
-      .values(orgData)
+      .values(encryptedData)
       .returning();
 
     // Create owner role for the user
@@ -899,16 +913,31 @@ export class DatabaseStorage implements IStorage {
       role: 'owner',
     });
 
-    return org;
+    // Decrypt before returning
+    return {
+      ...org,
+      taxId: org.taxId ? decryptField(org.taxId) : null,
+    };
   }
 
   async updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization> {
+    const encryptedUpdates = {
+      ...updates,
+      taxId: updates.taxId !== undefined ? (updates.taxId ? encryptField(updates.taxId) : null) : undefined,
+      updatedAt: new Date(),
+    };
+    
     const [updated] = await db
       .update(organizations)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(encryptedUpdates)
       .where(eq(organizations.id, id))
       .returning();
-    return updated;
+    
+    // Decrypt before returning
+    return {
+      ...updated,
+      taxId: updated.taxId ? decryptField(updated.taxId) : null,
+    };
   }
 
   // User organization role operations
@@ -1048,11 +1077,17 @@ export class DatabaseStorage implements IStorage {
 
   // Donor operations
   async getDonors(organizationId: number): Promise<Donor[]> {
-    return await db
+    const donorList = await db
       .select()
       .from(donors)
       .where(eq(donors.organizationId, organizationId))
       .orderBy(donors.name);
+    
+    // Decrypt sensitive fields
+    return donorList.map(d => ({
+      ...d,
+      taxId: d.taxId ? decryptField(d.taxId) : null,
+    }));
   }
 
   async getDonor(id: number): Promise<Donor | undefined> {
@@ -1060,24 +1095,51 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(donors)
       .where(eq(donors.id, id));
-    return donor;
+    
+    if (!donor) return undefined;
+    
+    // Decrypt sensitive fields
+    return {
+      ...donor,
+      taxId: donor.taxId ? decryptField(donor.taxId) : null,
+    };
   }
 
   async createDonor(donor: InsertDonor): Promise<Donor> {
+    const encryptedData = {
+      ...donor,
+      taxId: donor.taxId ? encryptField(donor.taxId) : null,
+    };
+    
     const [newDonor] = await db
       .insert(donors)
-      .values(donor)
+      .values(encryptedData)
       .returning();
-    return newDonor;
+    
+    // Decrypt before returning
+    return {
+      ...newDonor,
+      taxId: newDonor.taxId ? decryptField(newDonor.taxId) : null,
+    };
   }
 
   async updateDonor(id: number, updates: Partial<InsertDonor>): Promise<Donor> {
+    const encryptedUpdates = {
+      ...updates,
+      taxId: updates.taxId !== undefined ? (updates.taxId ? encryptField(updates.taxId) : null) : undefined,
+    };
+    
     const [donor] = await db
       .update(donors)
-      .set(updates)
+      .set(encryptedUpdates)
       .where(eq(donors.id, id))
       .returning();
-    return donor;
+    
+    // Decrypt before returning
+    return {
+      ...donor,
+      taxId: donor.taxId ? decryptField(donor.taxId) : null,
+    };
   }
 
   async deleteDonor(id: number): Promise<void> {
@@ -3796,31 +3858,79 @@ export class DatabaseStorage implements IStorage {
 
   // Employee operations
   async getEmployees(organizationId: number): Promise<Employee[]> {
-    return await db.select().from(employees).where(eq(employees.organizationId, organizationId)).orderBy(desc(employees.createdAt));
+    const employeeList = await db.select().from(employees).where(eq(employees.organizationId, organizationId)).orderBy(desc(employees.createdAt));
+    
+    // Decrypt sensitive fields
+    return employeeList.map(e => ({
+      ...e,
+      bankAccountNumber: e.bankAccountNumber ? decryptField(e.bankAccountNumber) : null,
+      bankRoutingNumber: e.bankRoutingNumber ? decryptField(e.bankRoutingNumber) : null,
+    }));
   }
 
   async getEmployee(id: number): Promise<Employee | undefined> {
     const [employee] = await db.select().from(employees).where(eq(employees.id, id));
-    return employee;
+    if (!employee) return undefined;
+    
+    // Decrypt sensitive fields
+    return {
+      ...employee,
+      bankAccountNumber: employee.bankAccountNumber ? decryptField(employee.bankAccountNumber) : null,
+      bankRoutingNumber: employee.bankRoutingNumber ? decryptField(employee.bankRoutingNumber) : null,
+    };
   }
 
   async getActiveEmployees(organizationId: number): Promise<Employee[]> {
-    return await db.select().from(employees).where(
+    const employeeList = await db.select().from(employees).where(
       and(eq(employees.organizationId, organizationId), eq(employees.isActive, 1))
     ).orderBy(employees.lastName, employees.firstName);
+    
+    // Decrypt sensitive fields
+    return employeeList.map(e => ({
+      ...e,
+      bankAccountNumber: e.bankAccountNumber ? decryptField(e.bankAccountNumber) : null,
+      bankRoutingNumber: e.bankRoutingNumber ? decryptField(e.bankRoutingNumber) : null,
+    }));
   }
 
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
-    const [newEmployee] = await db.insert(employees).values(employee).returning();
-    return newEmployee;
+    const encryptedData = {
+      ...employee,
+      bankAccountNumber: employee.bankAccountNumber ? encryptField(employee.bankAccountNumber) : null,
+      bankRoutingNumber: employee.bankRoutingNumber ? encryptField(employee.bankRoutingNumber) : null,
+    };
+    
+    const [newEmployee] = await db.insert(employees).values(encryptedData).returning();
+    
+    // Decrypt before returning
+    return {
+      ...newEmployee,
+      bankAccountNumber: newEmployee.bankAccountNumber ? decryptField(newEmployee.bankAccountNumber) : null,
+      bankRoutingNumber: newEmployee.bankRoutingNumber ? decryptField(newEmployee.bankRoutingNumber) : null,
+    };
   }
 
   async updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee> {
+    const encryptedUpdates = {
+      ...updates,
+      bankAccountNumber: updates.bankAccountNumber !== undefined ? 
+        (updates.bankAccountNumber ? encryptField(updates.bankAccountNumber) : null) : undefined,
+      bankRoutingNumber: updates.bankRoutingNumber !== undefined ? 
+        (updates.bankRoutingNumber ? encryptField(updates.bankRoutingNumber) : null) : undefined,
+      updatedAt: new Date(),
+    };
+    
     const [updated] = await db.update(employees)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(encryptedUpdates)
       .where(eq(employees.id, id))
       .returning();
-    return updated;
+    
+    // Decrypt before returning
+    return {
+      ...updated,
+      bankAccountNumber: updated.bankAccountNumber ? decryptField(updated.bankAccountNumber) : null,
+      bankRoutingNumber: updated.bankRoutingNumber ? decryptField(updated.bankRoutingNumber) : null,
+    };
   }
 
   async deleteEmployee(id: number): Promise<void> {
@@ -4936,27 +5046,61 @@ export class DatabaseStorage implements IStorage {
 
   // Sub Award operations
   async getSubAwards(organizationId: number): Promise<SubAward[]> {
-    return await db.select().from(subAwards)
+    const awardList = await db.select().from(subAwards)
       .where(eq(subAwards.organizationId, organizationId))
       .orderBy(desc(subAwards.awardDate));
+    
+    // Decrypt sensitive fields
+    return awardList.map(a => ({
+      ...a,
+      subrecipientEIN: a.subrecipientEIN ? decryptField(a.subrecipientEIN) : null,
+    }));
   }
 
   async getSubAward(id: number): Promise<SubAward | undefined> {
     const [award] = await db.select().from(subAwards).where(eq(subAwards.id, id));
-    return award;
+    if (!award) return undefined;
+    
+    // Decrypt sensitive fields
+    return {
+      ...award,
+      subrecipientEIN: award.subrecipientEIN ? decryptField(award.subrecipientEIN) : null,
+    };
   }
 
   async createSubAward(award: InsertSubAward): Promise<SubAward> {
-    const [newAward] = await db.insert(subAwards).values(award).returning();
-    return newAward;
+    const encryptedData = {
+      ...award,
+      subrecipientEIN: award.subrecipientEIN ? encryptField(award.subrecipientEIN) : null,
+    };
+    
+    const [newAward] = await db.insert(subAwards).values(encryptedData).returning();
+    
+    // Decrypt before returning
+    return {
+      ...newAward,
+      subrecipientEIN: newAward.subrecipientEIN ? decryptField(newAward.subrecipientEIN) : null,
+    };
   }
 
   async updateSubAward(id: number, updates: Partial<InsertSubAward>): Promise<SubAward> {
+    const encryptedUpdates = {
+      ...updates,
+      subrecipientEIN: updates.subrecipientEIN !== undefined ? 
+        (updates.subrecipientEIN ? encryptField(updates.subrecipientEIN) : null) : undefined,
+      updatedAt: new Date(),
+    };
+    
     const [updated] = await db.update(subAwards)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(encryptedUpdates)
       .where(eq(subAwards.id, id))
       .returning();
-    return updated;
+    
+    // Decrypt before returning
+    return {
+      ...updated,
+      subrecipientEIN: updated.subrecipientEIN ? decryptField(updated.subrecipientEIN) : null,
+    };
   }
 
   async deleteSubAward(id: number): Promise<void> {

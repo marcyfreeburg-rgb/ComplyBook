@@ -7,10 +7,9 @@ This document describes the field-level encryption system implemented to protect
 
 ### Algorithm
 - **Cipher:** AES-256-GCM (Galois/Counter Mode)
-- **Key Derivation:** PBKDF2 with scrypt (32-byte key)
+- **Key Derivation:** scrypt with fixed salt (32-byte key, cached for performance)
 - **IV:** 16 bytes (randomly generated per encryption)
 - **Authentication Tag:** 16 bytes (GCM authentication)
-- **Salt:** 32 bytes (randomly generated per encryption)
 
 ### Why AES-256-GCM?
 1. **NIST Approved:** Federal Information Processing Standard (FIPS) 197
@@ -108,13 +107,15 @@ console.log(org.taxId); // "12-3456789" (decrypted)
 
 Encrypted fields are stored as base64-encoded strings containing:
 ```
-[32-byte salt][16-byte IV][16-byte auth tag][variable-length ciphertext]
+[16-byte IV][16-byte auth tag][variable-length ciphertext]
 ```
 
 Example encrypted value:
 ```
 "kQw8Rh3L9pN2cF5xT6vB1jY7mZ8sD4aP0oK3iH2gE5wU9rL7nM4bV6xC8zA2qW5e..."
 ```
+
+**Performance Optimization:** The encryption key is derived once from the `ENCRYPTION_KEY` environment variable using scrypt and then cached in memory. This avoids expensive key derivation on every encrypt/decrypt operation, significantly improving performance for bulk operations.
 
 ## Security Considerations
 
