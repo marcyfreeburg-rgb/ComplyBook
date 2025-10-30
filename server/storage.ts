@@ -180,6 +180,7 @@ export interface IStorage {
   // Security event logging (NIST 800-53 AU-2, AC-7)
   logSecurityEvent(event: InsertSecurityEvent): Promise<SecurityEvent>;
   getSecurityEvents(filters?: {
+    organizationId?: number;
     userId?: string;
     eventType?: string;
     startDate?: Date;
@@ -766,6 +767,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSecurityEvents(filters?: {
+    organizationId?: number;
     userId?: string;
     eventType?: string;
     startDate?: Date;
@@ -776,6 +778,9 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(securityEventLog);
     
     const conditions = [];
+    if (filters?.organizationId !== undefined) {
+      conditions.push(eq(securityEventLog.organizationId, filters.organizationId));
+    }
     if (filters?.userId) {
       conditions.push(eq(securityEventLog.userId, filters.userId));
     }

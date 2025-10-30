@@ -51,6 +51,7 @@ import BankReconciliation from "@/pages/bank-reconciliation";
 import FundraisingHub from "@/pages/fundraising-hub";
 import GovernmentContractsHub from "@/pages/government-contracts-hub";
 import OperationsHub from "@/pages/operations-hub";
+import SecurityMonitoring from "@/pages/security-monitoring";
 import type { Organization } from "@shared/schema";
 
 // Organization with user role
@@ -343,6 +344,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/audit-trail">
                 <AuditTrail currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/security-monitoring">
+                <SecurityMonitoring organizationId={currentOrganization.id} />
               </Route>
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/fundraising-hub">

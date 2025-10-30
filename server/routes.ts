@@ -5084,6 +5084,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security monitoring routes (NIST 800-53 AU-6, SI-4)
+  app.get('/api/security/metrics/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access to this organization and is admin/owner
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      // Only admin and owner can view security metrics
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "You don't have permission to view security metrics" });
+      }
+      
+      // Get security events from last 24 hours for this organization
+      const startDate = new Date();
+      startDate.setHours(startDate.getHours() - 24);
+      
+      const allEvents = await storage.getSecurityEvents({
+        organizationId,
+        startDate,
+        limit: 1000,
+      });
+      
+      // Calculate metrics
+      const totalEvents = allEvents.length;
+      const criticalEvents = allEvents.filter(e => e.severity === 'critical').length;
+      const warningEvents = allEvents.filter(e => e.severity === 'warning').length;
+      const loginFailures = allEvents.filter(e => e.eventType === 'login_failure').length;
+      const unauthorizedAccess = allEvents.filter(e => e.eventType === 'unauthorized_access').length;
+      const permissionDenials = allEvents.filter(e => e.eventType === 'permission_denied').length;
+      const accountLockouts = allEvents.filter(e => e.eventType === 'account_locked').length;
+      
+      // Get recent events (last 50)
+      const recentEvents = allEvents.slice(0, 50);
+      
+      // Events by type
+      const eventTypeCount = new Map<string, number>();
+      allEvents.forEach(e => {
+        const count = eventTypeCount.get(e.eventType) || 0;
+        eventTypeCount.set(e.eventType, count + 1);
+      });
+      const eventsByType = Array.from(eventTypeCount.entries()).map(([eventType, count]) => ({
+        eventType: eventType.replace(/_/g, ' '),
+        count,
+      }));
+      
+      // Events by hour
+      const eventsByHour = new Array(24).fill(0).map((_, i) => {
+        const hour = new Date();
+        hour.setHours(hour.getHours() - (23 - i), 0, 0, 0);
+        const hourEnd = new Date(hour);
+        hourEnd.setHours(hourEnd.getHours() + 1);
+        
+        const count = allEvents.filter(e => {
+          const eventTime = new Date(e.timestamp);
+          return eventTime >= hour && eventTime < hourEnd;
+        }).length;
+        
+        return {
+          hour: hour.getHours().toString().padStart(2, '0') + ':00',
+          count,
+        };
+      });
+      
+      // Verify audit log chain integrity
+      const auditChainStatus = await storage.verifyAuditLogChain(organizationId);
+      
+      res.json({
+        totalEvents,
+        criticalEvents,
+        warningEvents,
+        loginFailures,
+        unauthorizedAccess,
+        permissionDenials,
+        accountLockouts,
+        recentEvents,
+        eventsByType,
+        eventsByHour,
+        auditChainStatus,
+      });
+    } catch (error) {
+      console.error("Error fetching security metrics:", error);
+      res.status(500).json({ message: "Failed to fetch security metrics" });
+    }
+  });
+
   // Notification routes
   app.get('/api/notifications/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

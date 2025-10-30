@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck, Sparkles, Database } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck, Sparkles, Database, Shield } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -209,6 +209,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Audit Trail",
       url: "/audit-trail",
       icon: History,
+    }] : []),
+    ...(isAdminOrOwner ? [{
+      title: "Security Monitoring",
+      url: "/security-monitoring",
+      icon: Shield,
     }] : []),
     {
       title: "Organizations",
