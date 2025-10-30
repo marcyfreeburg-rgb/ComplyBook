@@ -61,6 +61,9 @@ export const contractStatusEnum = pgEnum('contract_status', ['active', 'complete
 export const milestoneStatusEnum = pgEnum('milestone_status', ['pending', 'in_progress', 'completed', 'overdue']);
 export const timeEntryStatusEnum = pgEnum('time_entry_status', ['draft', 'submitted', 'approved', 'billed']);
 export const costTypeEnum = pgEnum('cost_type', ['direct_labor', 'direct_materials', 'direct_other', 'indirect', 'overhead']);
+export const billingMethodEnum = pgEnum('billing_method', ['hourly', 'fixed_fee', 'cost_plus', 'time_and_materials']);
+export const revenueStatusEnum = pgEnum('revenue_status', ['unbilled', 'billed', 'recognized', 'written_off']);
+export const revenueRecognitionMethodEnum = pgEnum('revenue_recognition_method', ['percentage_completion', 'milestone', 'time_and_materials', 'completed_contract']);
 
 // New feature enums
 export const inKindDonationTypeEnum = pgEnum('in_kind_donation_type', ['goods', 'services', 'volunteer_hours']);
@@ -1598,6 +1601,79 @@ export const insertIndirectCostRateSchema = createInsertSchema(indirectCostRates
 export type InsertIndirectCostRate = z.infer<typeof insertIndirectCostRateSchema>;
 export type IndirectCostRate = typeof indirectCostRates.$inferSelect;
 
+// Labor Burden Rates table (for tracking fringe, overhead, G&A)
+export const laborBurdenRates = pgTable("labor_burden_rates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  rateName: varchar("rate_name", { length: 255 }).notNull(),
+  employeeId: integer("employee_id").references(() => employees.id),
+  roleName: varchar("role_name", { length: 100 }),
+  fringePercentage: numeric("fringe_percentage", { precision: 6, scale: 2 }).notNull().default("0"),
+  overheadPercentage: numeric("overhead_percentage", { precision: 6, scale: 2 }).notNull().default("0"),
+  gaPercentage: numeric("ga_percentage", { precision: 6, scale: 2 }).notNull().default("0"),
+  effectiveStartDate: timestamp("effective_start_date").notNull(),
+  effectiveEndDate: timestamp("effective_end_date"),
+  isActive: integer("is_active").notNull().default(1),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("labor_burden_rates_org_start_idx").on(table.organizationId, table.effectiveStartDate),
+]);
+
+export const insertLaborBurdenRateSchema = createInsertSchema(laborBurdenRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  fringePercentage: z.string().or(z.number()).transform(val => String(val)),
+  overheadPercentage: z.string().or(z.number()).transform(val => String(val)),
+  gaPercentage: z.string().or(z.number()).transform(val => String(val)),
+  effectiveStartDate: z.coerce.date(),
+  effectiveEndDate: z.coerce.date().optional(),
+});
+
+export type InsertLaborBurdenRate = z.infer<typeof insertLaborBurdenRateSchema>;
+export type LaborBurdenRate = typeof laborBurdenRates.$inferSelect;
+
+// Billing Rates table (separate from cost rates)
+export const billingRates = pgTable("billing_rates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  rateName: varchar("rate_name", { length: 255 }).notNull(),
+  subjectType: varchar("subject_type", { length: 50 }).notNull(),
+  subjectId: integer("subject_id"),
+  contractId: integer("contract_id").references(() => contracts.id),
+  projectId: integer("project_id").references(() => projects.id),
+  hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }),
+  dailyRate: numeric("daily_rate", { precision: 10, scale: 2 }),
+  billingMethod: billingMethodEnum("billing_method").notNull().default('hourly'),
+  effectiveStartDate: timestamp("effective_start_date").notNull(),
+  effectiveEndDate: timestamp("effective_end_date"),
+  isActive: integer("is_active").notNull().default(1),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("billing_rates_org_start_idx").on(table.organizationId, table.effectiveStartDate),
+]);
+
+export const insertBillingRateSchema = createInsertSchema(billingRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  hourlyRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  dailyRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  effectiveStartDate: z.coerce.date(),
+  effectiveEndDate: z.coerce.date().optional(),
+});
+
+export type InsertBillingRate = z.infer<typeof insertBillingRateSchema>;
+export type BillingRate = typeof billingRates.$inferSelect;
+
 // Project Costs table (for job costing details)
 export const projectCosts = pgTable("project_costs", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -1609,6 +1685,11 @@ export const projectCosts = pgTable("project_costs", {
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
   quantity: numeric("quantity", { precision: 10, scale: 2 }),
   unitCost: numeric("unit_cost", { precision: 15, scale: 2 }),
+  isBillable: integer("is_billable").notNull().default(1),
+  isReimbursable: integer("is_reimbursable").notNull().default(0),
+  laborBurdenRateId: integer("labor_burden_rate_id").references(() => laborBurdenRates.id),
+  billingRateId: integer("billing_rate_id").references(() => billingRates.id),
+  postingSource: varchar("posting_source", { length: 100 }),
   vendorName: varchar("vendor_name", { length: 255 }),
   invoiceNumber: varchar("invoice_number", { length: 100 }),
   notes: text("notes"),
@@ -1630,6 +1711,118 @@ export const insertProjectCostSchema = createInsertSchema(projectCosts).omit({
 
 export type InsertProjectCost = z.infer<typeof insertProjectCostSchema>;
 export type ProjectCost = typeof projectCosts.$inferSelect;
+
+// Project Budget Breakdowns table (for detailed budget planning)
+export const projectBudgetBreakdowns = pgTable("project_budget_breakdowns", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  costType: costTypeEnum("cost_type").notNull(),
+  budgetedAmount: numeric("budgeted_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  description: text("description"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("project_budget_breakdowns_project_idx").on(table.projectId),
+]);
+
+export const insertProjectBudgetBreakdownSchema = createInsertSchema(projectBudgetBreakdowns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  budgetedAmount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertProjectBudgetBreakdown = z.infer<typeof insertProjectBudgetBreakdownSchema>;
+export type ProjectBudgetBreakdown = typeof projectBudgetBreakdowns.$inferSelect;
+
+// Project Revenue Ledger table (for revenue recognition tracking)
+export const projectRevenueLedger = pgTable("project_revenue_ledger", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  contractId: integer("contract_id").references(() => contracts.id),
+  invoiceId: integer("invoice_id").references(() => invoices.id),
+  revenueDate: timestamp("revenue_date").notNull(),
+  revenueStatus: revenueStatusEnum("revenue_status").notNull().default('unbilled'),
+  recognitionMethod: revenueRecognitionMethodEnum("recognition_method").notNull().default('time_and_materials'),
+  billedAmount: numeric("billed_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  recognizedAmount: numeric("recognized_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  deferredAmount: numeric("deferred_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  description: text("description"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("project_revenue_ledger_project_idx").on(table.projectId),
+]);
+
+export const insertProjectRevenueLedgerSchema = createInsertSchema(projectRevenueLedger).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  revenueDate: z.coerce.date(),
+  billedAmount: z.string().or(z.number()).transform(val => String(val)),
+  recognizedAmount: z.string().or(z.number()).transform(val => String(val)),
+  deferredAmount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertProjectRevenueLedger = z.infer<typeof insertProjectRevenueLedgerSchema>;
+export type ProjectRevenueLedger = typeof projectRevenueLedger.$inferSelect;
+
+// Project Financial Snapshots table (materialized view for quick reporting)
+export const projectFinancialSnapshots = pgTable("project_financial_snapshots", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  snapshotDate: timestamp("snapshot_date").notNull(),
+  totalBudget: numeric("total_budget", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalActualCost: numeric("total_actual_cost", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalLaborCost: numeric("total_labor_cost", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalMaterialsCost: numeric("total_materials_cost", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalOverheadCost: numeric("total_overhead_cost", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalBillableAmount: numeric("total_billable_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalBilledAmount: numeric("total_billed_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalRecognizedRevenue: numeric("total_recognized_revenue", { precision: 15, scale: 2 }).notNull().default("0"),
+  budgetVariance: numeric("budget_variance", { precision: 15, scale: 2 }).notNull().default("0"),
+  budgetVariancePercent: numeric("budget_variance_percent", { precision: 6, scale: 2 }).notNull().default("0"),
+  profitMargin: numeric("profit_margin", { precision: 15, scale: 2 }).notNull().default("0"),
+  profitMarginPercent: numeric("profit_margin_percent", { precision: 6, scale: 2 }).notNull().default("0"),
+  burnRate: numeric("burn_rate", { precision: 15, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("project_financial_snapshots_project_idx").on(table.projectId),
+]);
+
+export const insertProjectFinancialSnapshotSchema = createInsertSchema(projectFinancialSnapshots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  snapshotDate: z.coerce.date(),
+  totalBudget: z.string().or(z.number()).transform(val => String(val)),
+  totalActualCost: z.string().or(z.number()).transform(val => String(val)),
+  totalLaborCost: z.string().or(z.number()).transform(val => String(val)),
+  totalMaterialsCost: z.string().or(z.number()).transform(val => String(val)),
+  totalOverheadCost: z.string().or(z.number()).transform(val => String(val)),
+  totalBillableAmount: z.string().or(z.number()).transform(val => String(val)),
+  totalBilledAmount: z.string().or(z.number()).transform(val => String(val)),
+  totalRecognizedRevenue: z.string().or(z.number()).transform(val => String(val)),
+  budgetVariance: z.string().or(z.number()).transform(val => String(val)),
+  budgetVariancePercent: z.string().or(z.number()).transform(val => String(val)),
+  profitMargin: z.string().or(z.number()).transform(val => String(val)),
+  profitMarginPercent: z.string().or(z.number()).transform(val => String(val)),
+  burnRate: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertProjectFinancialSnapshot = z.infer<typeof insertProjectFinancialSnapshotSchema>;
+export type ProjectFinancialSnapshot = typeof projectFinancialSnapshots.$inferSelect;
 
 // ============================================
 // GOVERNMENT GRANTS (NONPROFIT)

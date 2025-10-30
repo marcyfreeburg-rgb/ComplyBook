@@ -677,6 +677,42 @@ export interface IStorage {
   updateIndirectCostRate(id: number, updates: Partial<InsertIndirectCostRate>): Promise<IndirectCostRate>;
   deleteIndirectCostRate(id: number): Promise<void>;
 
+  // For-profit: Labor burden rate operations
+  getLaborBurdenRates(organizationId: number): Promise<LaborBurdenRate[]>;
+  getActiveLaborBurdenRates(organizationId: number): Promise<LaborBurdenRate[]>;
+  getLaborBurdenRate(id: number): Promise<LaborBurdenRate | undefined>;
+  createLaborBurdenRate(rate: InsertLaborBurdenRate): Promise<LaborBurdenRate>;
+  updateLaborBurdenRate(id: number, updates: Partial<InsertLaborBurdenRate>): Promise<LaborBurdenRate>;
+  deleteLaborBurdenRate(id: number): Promise<void>;
+
+  // For-profit: Billing rate operations
+  getBillingRates(organizationId: number): Promise<BillingRate[]>;
+  getActiveBillingRates(organizationId: number): Promise<BillingRate[]>;
+  getBillingRate(id: number): Promise<BillingRate | undefined>;
+  createBillingRate(rate: InsertBillingRate): Promise<BillingRate>;
+  updateBillingRate(id: number, updates: Partial<InsertBillingRate>): Promise<BillingRate>;
+  deleteBillingRate(id: number): Promise<void>;
+
+  // For-profit: Project budget breakdown operations
+  getProjectBudgetBreakdowns(projectId: number): Promise<ProjectBudgetBreakdown[]>;
+  getProjectBudgetBreakdown(id: number): Promise<ProjectBudgetBreakdown | undefined>;
+  createProjectBudgetBreakdown(breakdown: InsertProjectBudgetBreakdown): Promise<ProjectBudgetBreakdown>;
+  updateProjectBudgetBreakdown(id: number, updates: Partial<InsertProjectBudgetBreakdown>): Promise<ProjectBudgetBreakdown>;
+  deleteProjectBudgetBreakdown(id: number): Promise<void>;
+
+  // For-profit: Project revenue ledger operations
+  getProjectRevenueLedger(projectId: number): Promise<ProjectRevenueLedger[]>;
+  getProjectRevenueLedgerEntry(id: number): Promise<ProjectRevenueLedger | undefined>;
+  createProjectRevenueLedgerEntry(entry: InsertProjectRevenueLedger): Promise<ProjectRevenueLedger>;
+  updateProjectRevenueLedgerEntry(id: number, updates: Partial<InsertProjectRevenueLedger>): Promise<ProjectRevenueLedger>;
+  deleteProjectRevenueLedgerEntry(id: number): Promise<void>;
+
+  // For-profit: Project financial snapshot operations
+  getProjectFinancialSnapshots(projectId: number): Promise<ProjectFinancialSnapshot[]>;
+  getLatestProjectFinancialSnapshot(projectId: number): Promise<ProjectFinancialSnapshot | undefined>;
+  createProjectFinancialSnapshot(snapshot: InsertProjectFinancialSnapshot): Promise<ProjectFinancialSnapshot>;
+  deleteProjectFinancialSnapshot(id: number): Promise<void>;
+
   // Nonprofit: Time/Effort Reporting operations
   getTimeEffortReports(organizationId: number): Promise<TimeEffortReport[]>;
   getTimeEffortReport(id: number): Promise<TimeEffortReport | undefined>;
@@ -5187,6 +5223,176 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIndirectCostRate(id: number): Promise<void> {
     await db.delete(indirectCostRates).where(eq(indirectCostRates.id, id));
+  }
+
+  // Labor burden rate operations
+  async getLaborBurdenRates(organizationId: number): Promise<LaborBurdenRate[]> {
+    return await db.select().from(laborBurdenRates)
+      .where(eq(laborBurdenRates.organizationId, organizationId))
+      .orderBy(desc(laborBurdenRates.effectiveStartDate));
+  }
+
+  async getActiveLaborBurdenRates(organizationId: number): Promise<LaborBurdenRate[]> {
+    const now = new Date();
+    return await db.select().from(laborBurdenRates)
+      .where(and(
+        eq(laborBurdenRates.organizationId, organizationId),
+        eq(laborBurdenRates.isActive, 1),
+        lte(laborBurdenRates.effectiveStartDate, now),
+        or(
+          isNull(laborBurdenRates.effectiveEndDate),
+          gte(laborBurdenRates.effectiveEndDate, now)
+        )
+      ))
+      .orderBy(desc(laborBurdenRates.effectiveStartDate));
+  }
+
+  async getLaborBurdenRate(id: number): Promise<LaborBurdenRate | undefined> {
+    const [rate] = await db.select().from(laborBurdenRates).where(eq(laborBurdenRates.id, id));
+    return rate;
+  }
+
+  async createLaborBurdenRate(rate: InsertLaborBurdenRate): Promise<LaborBurdenRate> {
+    const [newRate] = await db.insert(laborBurdenRates).values(rate).returning();
+    return newRate;
+  }
+
+  async updateLaborBurdenRate(id: number, updates: Partial<InsertLaborBurdenRate>): Promise<LaborBurdenRate> {
+    const [updated] = await db.update(laborBurdenRates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(laborBurdenRates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteLaborBurdenRate(id: number): Promise<void> {
+    await db.delete(laborBurdenRates).where(eq(laborBurdenRates.id, id));
+  }
+
+  // Billing rate operations
+  async getBillingRates(organizationId: number): Promise<BillingRate[]> {
+    return await db.select().from(billingRates)
+      .where(eq(billingRates.organizationId, organizationId))
+      .orderBy(desc(billingRates.effectiveStartDate));
+  }
+
+  async getActiveBillingRates(organizationId: number): Promise<BillingRate[]> {
+    const now = new Date();
+    return await db.select().from(billingRates)
+      .where(and(
+        eq(billingRates.organizationId, organizationId),
+        eq(billingRates.isActive, 1),
+        lte(billingRates.effectiveStartDate, now),
+        or(
+          isNull(billingRates.effectiveEndDate),
+          gte(billingRates.effectiveEndDate, now)
+        )
+      ))
+      .orderBy(desc(billingRates.effectiveStartDate));
+  }
+
+  async getBillingRate(id: number): Promise<BillingRate | undefined> {
+    const [rate] = await db.select().from(billingRates).where(eq(billingRates.id, id));
+    return rate;
+  }
+
+  async createBillingRate(rate: InsertBillingRate): Promise<BillingRate> {
+    const [newRate] = await db.insert(billingRates).values(rate).returning();
+    return newRate;
+  }
+
+  async updateBillingRate(id: number, updates: Partial<InsertBillingRate>): Promise<BillingRate> {
+    const [updated] = await db.update(billingRates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(billingRates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBillingRate(id: number): Promise<void> {
+    await db.delete(billingRates).where(eq(billingRates.id, id));
+  }
+
+  // Project budget breakdown operations
+  async getProjectBudgetBreakdowns(projectId: number): Promise<ProjectBudgetBreakdown[]> {
+    return await db.select().from(projectBudgetBreakdowns)
+      .where(eq(projectBudgetBreakdowns.projectId, projectId))
+      .orderBy(projectBudgetBreakdowns.costType);
+  }
+
+  async getProjectBudgetBreakdown(id: number): Promise<ProjectBudgetBreakdown | undefined> {
+    const [breakdown] = await db.select().from(projectBudgetBreakdowns).where(eq(projectBudgetBreakdowns.id, id));
+    return breakdown;
+  }
+
+  async createProjectBudgetBreakdown(breakdown: InsertProjectBudgetBreakdown): Promise<ProjectBudgetBreakdown> {
+    const [newBreakdown] = await db.insert(projectBudgetBreakdowns).values(breakdown).returning();
+    return newBreakdown;
+  }
+
+  async updateProjectBudgetBreakdown(id: number, updates: Partial<InsertProjectBudgetBreakdown>): Promise<ProjectBudgetBreakdown> {
+    const [updated] = await db.update(projectBudgetBreakdowns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(projectBudgetBreakdowns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProjectBudgetBreakdown(id: number): Promise<void> {
+    await db.delete(projectBudgetBreakdowns).where(eq(projectBudgetBreakdowns.id, id));
+  }
+
+  // Project revenue ledger operations
+  async getProjectRevenueLedger(projectId: number): Promise<ProjectRevenueLedger[]> {
+    return await db.select().from(projectRevenueLedger)
+      .where(eq(projectRevenueLedger.projectId, projectId))
+      .orderBy(desc(projectRevenueLedger.revenueDate));
+  }
+
+  async getProjectRevenueLedgerEntry(id: number): Promise<ProjectRevenueLedger | undefined> {
+    const [entry] = await db.select().from(projectRevenueLedger).where(eq(projectRevenueLedger.id, id));
+    return entry;
+  }
+
+  async createProjectRevenueLedgerEntry(entry: InsertProjectRevenueLedger): Promise<ProjectRevenueLedger> {
+    const [newEntry] = await db.insert(projectRevenueLedger).values(entry).returning();
+    return newEntry;
+  }
+
+  async updateProjectRevenueLedgerEntry(id: number, updates: Partial<InsertProjectRevenueLedger>): Promise<ProjectRevenueLedger> {
+    const [updated] = await db.update(projectRevenueLedger)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(projectRevenueLedger.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProjectRevenueLedgerEntry(id: number): Promise<void> {
+    await db.delete(projectRevenueLedger).where(eq(projectRevenueLedger.id, id));
+  }
+
+  // Project financial snapshot operations
+  async getProjectFinancialSnapshots(projectId: number): Promise<ProjectFinancialSnapshot[]> {
+    return await db.select().from(projectFinancialSnapshots)
+      .where(eq(projectFinancialSnapshots.projectId, projectId))
+      .orderBy(desc(projectFinancialSnapshots.snapshotDate));
+  }
+
+  async getLatestProjectFinancialSnapshot(projectId: number): Promise<ProjectFinancialSnapshot | undefined> {
+    const [snapshot] = await db.select().from(projectFinancialSnapshots)
+      .where(eq(projectFinancialSnapshots.projectId, projectId))
+      .orderBy(desc(projectFinancialSnapshots.snapshotDate))
+      .limit(1);
+    return snapshot;
+  }
+
+  async createProjectFinancialSnapshot(snapshot: InsertProjectFinancialSnapshot): Promise<ProjectFinancialSnapshot> {
+    const [newSnapshot] = await db.insert(projectFinancialSnapshots).values(snapshot).returning();
+    return newSnapshot;
+  }
+
+  async deleteProjectFinancialSnapshot(id: number): Promise<void> {
+    await db.delete(projectFinancialSnapshots).where(eq(projectFinancialSnapshots.id, id));
   }
 
   // ============================================
