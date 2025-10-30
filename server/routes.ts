@@ -48,6 +48,12 @@ import {
   insertProjectCostSchema,
   insertTimeEntrySchema,
   insertIndirectCostRateSchema,
+  // Enhanced Government Contract Cost Accounting schemas
+  insertLaborBurdenRateSchema,
+  insertBillingRateSchema,
+  insertProjectBudgetBreakdownSchema,
+  insertProjectRevenueLedgerSchema,
+  insertProjectFinancialSnapshotSchema,
   // Government Grants (Nonprofit) schemas
   insertTimeEffortReportSchema,
   insertCostAllowabilityCheckSchema,
@@ -6755,6 +6761,514 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting indirect cost rate:", error);
       res.status(500).json({ message: "Failed to delete indirect cost rate" });
+    }
+  });
+
+  // ============================================
+  // ENHANCED COST ACCOUNTING ROUTES
+  // ============================================
+
+  // Labor Burden Rates Routes
+  app.get("/api/labor-burden-rates/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const rates = await storage.getLaborBurdenRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching labor burden rates:", error);
+      res.status(500).json({ message: "Failed to fetch labor burden rates" });
+    }
+  });
+
+  app.get("/api/labor-burden-rates/:organizationId/active", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const rates = await storage.getActiveLaborBurdenRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching active labor burden rates:", error);
+      res.status(500).json({ message: "Failed to fetch active labor burden rates" });
+    }
+  });
+
+  app.post("/api/labor-burden-rates", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...rateData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to create labor burden rates" });
+      }
+
+      const validatedData = insertLaborBurdenRateSchema.parse({
+        ...rateData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const rate = await storage.createLaborBurdenRate(validatedData);
+      await storage.logCreate(organizationId, userId, 'labor_burden_rate', rate.id.toString(), rate);
+      res.status(201).json(rate);
+    } catch (error: any) {
+      console.error("Error creating labor burden rate:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid rate data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create labor burden rate" });
+    }
+  });
+
+  app.put("/api/labor-burden-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      
+      const rate = await storage.getLaborBurdenRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Labor burden rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to update labor burden rates" });
+      }
+
+      const oldData = JSON.stringify(rate);
+      const updated = await storage.updateLaborBurdenRate(rateId, req.body);
+      await storage.logUpdate(rate.organizationId, userId, 'labor_burden_rate', rateId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating labor burden rate:", error);
+      res.status(500).json({ message: "Failed to update labor burden rate" });
+    }
+  });
+
+  app.delete("/api/labor-burden-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      
+      const rate = await storage.getLaborBurdenRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Labor burden rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to delete labor burden rates" });
+      }
+
+      await storage.logDelete(rate.organizationId, userId, 'labor_burden_rate', rateId.toString(), rate);
+      await storage.deleteLaborBurdenRate(rateId);
+      res.json({ message: "Labor burden rate deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting labor burden rate:", error);
+      res.status(500).json({ message: "Failed to delete labor burden rate" });
+    }
+  });
+
+  // Billing Rates Routes
+  app.get("/api/billing-rates/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const rates = await storage.getBillingRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching billing rates:", error);
+      res.status(500).json({ message: "Failed to fetch billing rates" });
+    }
+  });
+
+  app.get("/api/billing-rates/:organizationId/active", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const rates = await storage.getActiveBillingRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching active billing rates:", error);
+      res.status(500).json({ message: "Failed to fetch active billing rates" });
+    }
+  });
+
+  app.post("/api/billing-rates", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...rateData } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to create billing rates" });
+      }
+
+      const validatedData = insertBillingRateSchema.parse({
+        ...rateData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const rate = await storage.createBillingRate(validatedData);
+      await storage.logCreate(organizationId, userId, 'billing_rate', rate.id.toString(), rate);
+      res.status(201).json(rate);
+    } catch (error: any) {
+      console.error("Error creating billing rate:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid rate data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create billing rate" });
+    }
+  });
+
+  app.put("/api/billing-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      
+      const rate = await storage.getBillingRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Billing rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to update billing rates" });
+      }
+
+      const oldData = JSON.stringify(rate);
+      const updated = await storage.updateBillingRate(rateId, req.body);
+      await storage.logUpdate(rate.organizationId, userId, 'billing_rate', rateId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating billing rate:", error);
+      res.status(500).json({ message: "Failed to update billing rate" });
+    }
+  });
+
+  app.delete("/api/billing-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      
+      const rate = await storage.getBillingRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Billing rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to delete billing rates" });
+      }
+
+      await storage.logDelete(rate.organizationId, userId, 'billing_rate', rateId.toString(), rate);
+      await storage.deleteBillingRate(rateId);
+      res.json({ message: "Billing rate deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting billing rate:", error);
+      res.status(500).json({ message: "Failed to delete billing rate" });
+    }
+  });
+
+  // Project Budget Breakdowns Routes
+  app.get("/api/project-budget-breakdowns/:projectId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.projectId);
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, project.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const breakdowns = await storage.getProjectBudgetBreakdowns(projectId);
+      res.json(breakdowns);
+    } catch (error) {
+      console.error("Error fetching project budget breakdowns:", error);
+      res.status(500).json({ message: "Failed to fetch project budget breakdowns" });
+    }
+  });
+
+  app.post("/api/project-budget-breakdowns", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, projectId, ...breakdownData } = req.body;
+      
+      if (!organizationId || !projectId) {
+        return res.status(400).json({ message: "Organization and project are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to create budget breakdowns" });
+      }
+
+      const validatedData = insertProjectBudgetBreakdownSchema.parse({
+        ...breakdownData,
+        organizationId,
+        projectId,
+        createdBy: userId,
+      });
+
+      const breakdown = await storage.createProjectBudgetBreakdown(validatedData);
+      await storage.logCreate(organizationId, userId, 'project_budget_breakdown', breakdown.id.toString(), breakdown);
+      res.status(201).json(breakdown);
+    } catch (error: any) {
+      console.error("Error creating project budget breakdown:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid breakdown data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create project budget breakdown" });
+    }
+  });
+
+  app.put("/api/project-budget-breakdowns/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const breakdownId = parseInt(req.params.id);
+      
+      const breakdown = await storage.getProjectBudgetBreakdown(breakdownId);
+      if (!breakdown) {
+        return res.status(404).json({ message: "Project budget breakdown not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, breakdown.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to update budget breakdowns" });
+      }
+
+      const oldData = JSON.stringify(breakdown);
+      const updated = await storage.updateProjectBudgetBreakdown(breakdownId, req.body);
+      await storage.logUpdate(breakdown.organizationId, userId, 'project_budget_breakdown', breakdownId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating project budget breakdown:", error);
+      res.status(500).json({ message: "Failed to update project budget breakdown" });
+    }
+  });
+
+  app.delete("/api/project-budget-breakdowns/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const breakdownId = parseInt(req.params.id);
+      
+      const breakdown = await storage.getProjectBudgetBreakdown(breakdownId);
+      if (!breakdown) {
+        return res.status(404).json({ message: "Project budget breakdown not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, breakdown.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to delete budget breakdowns" });
+      }
+
+      await storage.logDelete(breakdown.organizationId, userId, 'project_budget_breakdown', breakdownId.toString(), breakdown);
+      await storage.deleteProjectBudgetBreakdown(breakdownId);
+      res.json({ message: "Project budget breakdown deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project budget breakdown:", error);
+      res.status(500).json({ message: "Failed to delete project budget breakdown" });
+    }
+  });
+
+  // Project Revenue Ledger Routes
+  app.get("/api/project-revenue-ledger/:projectId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.projectId);
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, project.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const ledgerEntries = await storage.getProjectRevenueLedger(projectId);
+      res.json(ledgerEntries);
+    } catch (error) {
+      console.error("Error fetching project revenue ledger:", error);
+      res.status(500).json({ message: "Failed to fetch project revenue ledger" });
+    }
+  });
+
+  app.post("/api/project-revenue-ledger", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, projectId, ...ledgerData } = req.body;
+      
+      if (!organizationId || !projectId) {
+        return res.status(400).json({ message: "Organization and project are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to create revenue ledger entries" });
+      }
+
+      const validatedData = insertProjectRevenueLedgerSchema.parse({
+        ...ledgerData,
+        organizationId,
+        projectId,
+        createdBy: userId,
+      });
+
+      const entry = await storage.createProjectRevenueLedger(validatedData);
+      await storage.logCreate(organizationId, userId, 'project_revenue_ledger', entry.id.toString(), entry);
+      res.status(201).json(entry);
+    } catch (error: any) {
+      console.error("Error creating project revenue ledger entry:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid ledger data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create project revenue ledger entry" });
+    }
+  });
+
+  app.put("/api/project-revenue-ledger/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getProjectRevenueLedgerEntry(entryId);
+      if (!entry) {
+        return res.status(404).json({ message: "Project revenue ledger entry not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, entry.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to update revenue ledger entries" });
+      }
+
+      const oldData = JSON.stringify(entry);
+      const updated = await storage.updateProjectRevenueLedger(entryId, req.body);
+      await storage.logUpdate(entry.organizationId, userId, 'project_revenue_ledger', entryId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating project revenue ledger entry:", error);
+      res.status(500).json({ message: "Failed to update project revenue ledger entry" });
+    }
+  });
+
+  app.delete("/api/project-revenue-ledger/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = parseInt(req.params.id);
+      
+      const entry = await storage.getProjectRevenueLedgerEntry(entryId);
+      if (!entry) {
+        return res.status(404).json({ message: "Project revenue ledger entry not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, entry.organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to delete revenue ledger entries" });
+      }
+
+      await storage.logDelete(entry.organizationId, userId, 'project_revenue_ledger', entryId.toString(), entry);
+      await storage.deleteProjectRevenueLedger(entryId);
+      res.json({ message: "Project revenue ledger entry deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting project revenue ledger entry:", error);
+      res.status(500).json({ message: "Failed to delete project revenue ledger entry" });
+    }
+  });
+
+  // Project Financial Snapshots Routes
+  app.get("/api/project-financial-snapshots/:projectId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = parseInt(req.params.projectId);
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, project.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const snapshots = await storage.getProjectFinancialSnapshots(projectId);
+      res.json(snapshots);
+    } catch (error) {
+      console.error("Error fetching project financial snapshots:", error);
+      res.status(500).json({ message: "Failed to fetch project financial snapshots" });
+    }
+  });
+
+  app.post("/api/project-financial-snapshots", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, projectId, ...snapshotData } = req.body;
+      
+      if (!organizationId || !projectId) {
+        return res.status(400).json({ message: "Organization and project are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer' || userRole.role === 'accountant') {
+        return res.status(403).json({ message: "You don't have permission to create financial snapshots" });
+      }
+
+      const validatedData = insertProjectFinancialSnapshotSchema.parse({
+        ...snapshotData,
+        organizationId,
+        projectId,
+      });
+
+      const snapshot = await storage.createProjectFinancialSnapshot(validatedData);
+      await storage.logCreate(organizationId, userId, 'project_financial_snapshot', snapshot.id.toString(), snapshot);
+      res.status(201).json(snapshot);
+    } catch (error: any) {
+      console.error("Error creating project financial snapshot:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid snapshot data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create project financial snapshot" });
     }
   });
 
