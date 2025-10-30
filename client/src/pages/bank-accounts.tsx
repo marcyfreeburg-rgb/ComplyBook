@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaidLink } from "react-plaid-link";
 import { useToast } from "@/hooks/use-toast";
@@ -161,9 +161,11 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   });
 
   // Open Plaid Link when token is ready
-  if (linkToken && ready) {
-    open();
-  }
+  useEffect(() => {
+    if (linkToken && ready) {
+      open();
+    }
+  }, [linkToken, ready, open]);
 
   // Group accounts by institution
   const accountsByInstitution = (accounts || []).reduce((acc, account) => {

@@ -773,15 +773,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // Use proper upsert with ON CONFLICT handling for both ID and email
-    // This handles cases where user ID or email might already exist
+    // Use email as the conflict target since it's the stable identifier
+    // This handles testing scenarios where the same email might be used with different test IDs
+    // and production scenarios where email should be unique across users
     const [user] = await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
-          email: userData.email,
+          id: userData.id,  // Update ID in case OIDC provider changes it
           firstName: userData.firstName,
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,

@@ -38,20 +38,22 @@ app.use((req, res, next) => {
   
   // Content-Security-Policy: Comprehensive XSS protection
   // Note: 'unsafe-inline' and WebSocket support needed for Vite in development
+  // Plaid CDN and iframe support required for bank integration
   const isDevelopment = process.env.NODE_ENV === 'development';
   const csp = [
     "default-src 'self'",
     isDevelopment 
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" 
-      : "script-src 'self'",
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.plaid.com https://*.plaid.com" 
+      : "script-src 'self' https://cdn.plaid.com https://*.plaid.com",
     isDevelopment
-      ? "style-src 'self' 'unsafe-inline'"
-      : "style-src 'self'",
-    "img-src 'self' data: https:",
-    "font-src 'self' data:",
+      ? "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com"
+      : "style-src 'self' https://fonts.googleapis.com",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     isDevelopment
-      ? "connect-src 'self' ws: wss: https://replit.com https://*.replit.com https://plaid.com https://*.plaid.com"
-      : "connect-src 'self' https://replit.com https://*.replit.com https://plaid.com https://*.plaid.com",
+      ? "connect-src 'self' ws: wss: https://replit.com https://*.replit.com https://plaid.com https://*.plaid.com https://sandbox.plaid.com https://development.plaid.com https://production.plaid.com"
+      : "connect-src 'self' https://replit.com https://*.replit.com https://plaid.com https://*.plaid.com https://sandbox.plaid.com https://development.plaid.com https://production.plaid.com",
+    "frame-src 'self' https://cdn.plaid.com https://*.plaid.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
