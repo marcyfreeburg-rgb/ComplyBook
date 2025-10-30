@@ -684,7 +684,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // Try to insert, but if the user already exists (by ID), update it
+    // Check if user exists by email first (since email is unique)
+    const existingUser = await this.getUserByEmail(userData.email!);
+    
+    if (existingUser) {
+      // User exists with this email - update their information
+      const [updated] = await db
+        .update(users)
+        .set({
+          id: userData.id, // Update ID in case it changed
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.email, userData.email!))
+        .returning();
+      return updated;
+    }
+    
+    // User doesn't exist - try to insert, handling conflict on ID
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -2347,18 +2366,18 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Get recurring expenses
-    const recurringTransactions = await db
+    const activeRecurringTransactions = await db
       .select()
       .from(recurringTransactions)
       .where(and(
         eq(recurringTransactions.organizationId, organizationId),
         eq(recurringTransactions.type, 'expense'),
-        eq(recurringTransactions.isActive, true)
+        eq(recurringTransactions.isActive, 1)
       ))
       .orderBy(desc(recurringTransactions.amount))
       .limit(10);
 
-    const recurringExpenses = recurringTransactions.map(rt => ({
+    const recurringExpenses = activeRecurringTransactions.map(rt => ({
       description: rt.description,
       amount: rt.amount,
       frequency: rt.frequency,
