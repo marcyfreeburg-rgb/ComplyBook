@@ -23,13 +23,20 @@ const getOidcConfig = memoize(
   { maxAge: 3600 * 1000 }
 );
 
+// NIST 800-53 AC-12: Session Termination
+// AAL2 Requirements:
+// - Maximum session duration: 12 hours
+// - Inactivity timeout: 30 minutes
+const SESSION_MAX_DURATION = 12 * 60 * 60 * 1000; // 12 hours
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const sessionTtl = SESSION_MAX_DURATION;
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: false,
-    ttl: sessionTtl,
+    ttl: sessionTtl / 1000, // Convert to seconds for pg-simple
     tableName: "sessions",
   });
   return session({
@@ -41,6 +48,7 @@ export function getSession() {
       httpOnly: true,
       secure: true,
       maxAge: sessionTtl,
+      sameSite: 'lax', // CSRF protection
     },
   });
 }
@@ -135,8 +143,44 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+  // NIST 800-53 AC-12: Session validity checks
+  // Store timestamps on req.session to ensure persistence with resave:false
+  const now = Date.now();
+  
+  // Initialize session timestamps on first request
+  if (!(req.session as any).sessionCreatedAt) {
+    (req.session as any).sessionCreatedAt = now;
+  }
+  if (!(req.session as any).lastActivity) {
+    (req.session as any).lastActivity = now;
+  }
+
+  const sessionAge = now - (req.session as any).sessionCreatedAt;
+  const inactivityPeriod = now - (req.session as any).lastActivity;
+
+  // Check session maximum duration (12 hours)
+  if (sessionAge > SESSION_MAX_DURATION) {
+    req.logout(() => {});
+    return res.status(401).json({ 
+      message: "Session expired. Maximum session duration exceeded. Please log in again." 
+    });
+  }
+
+  // Check inactivity timeout (30 minutes)
+  if (inactivityPeriod > INACTIVITY_TIMEOUT) {
+    req.logout(() => {});
+    return res.status(401).json({ 
+      message: "Session expired due to inactivity. Please log in again." 
+    });
+  }
+
+  // Update last activity timestamp and persist to store
+  (req.session as any).lastActivity = now;
+  req.session.touch(); // Ensure session is marked as modified
+
+  // Check OIDC token expiration
+  const tokenExpiry = Math.floor(Date.now() / 1000);
+  if (tokenExpiry <= user.expires_at) {
     return next();
   }
 
