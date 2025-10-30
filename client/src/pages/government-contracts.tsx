@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -725,27 +725,39 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
     }
   };
 
-  const validateProjectNumber = async (projectNumber: string) => {
+  // Debounce timer ref for validation
+  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const validateProjectNumber = (projectNumber: string) => {
     if (!projectNumber) {
       setProjectNumberError("");
       return;
     }
     
-    try {
-      const response: any = await apiRequest('POST', '/api/projects/validate-number', {
-        organizationId: currentOrganization.id,
-        projectNumber,
-        excludeProjectId: editingProject?.id,
-      });
-      
-      if (response.exists) {
-        setProjectNumberError("This project number already exists");
-      } else {
+    // Clear previous timeout
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+    
+    // Set new timeout for debounced validation
+    validationTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response: any = await apiRequest('POST', '/api/projects/validate-number', {
+          organizationId: currentOrganization.id,
+          projectNumber,
+          excludeProjectId: editingProject?.id,
+        });
+        
+        if (response.exists) {
+          setProjectNumberError("This project number already exists");
+        } else {
+          setProjectNumberError("");
+        }
+      } catch (error) {
+        console.error("Error validating project number:", error);
         setProjectNumberError("");
       }
-    } catch (error) {
-      console.error("Error validating project number:", error);
-    }
+    }, 500); // 500ms debounce
   };
 
   const handleCloneProject = (project: Project) => {
