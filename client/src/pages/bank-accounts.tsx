@@ -44,6 +44,7 @@ interface PlaidAccount {
 export default function BankAccounts({ currentOrganization }: BankAccountsProps) {
   const { toast } = useToast();
   const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [hasAttemptedAutoOpen, setHasAttemptedAutoOpen] = useState(false);
   const [disconnectingItemId, setDisconnectingItemId] = useState<string | null>(null);
 
   // Fetch connected accounts
@@ -154,18 +155,29 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
     token: linkToken,
     onSuccess: (public_token) => {
       exchangeToken.mutate(public_token);
+      setHasAttemptedAutoOpen(false);
     },
     onExit: () => {
       setLinkToken(null);
+      setHasAttemptedAutoOpen(false);
     },
   });
 
-  // Open Plaid Link when token is ready
+  // Open Plaid Link when token is ready (auto-open once per token)
   useEffect(() => {
-    if (linkToken && ready) {
+    if (linkToken && ready && !hasAttemptedAutoOpen) {
+      console.log("Plaid Link ready, attempting auto-open...");
+      setHasAttemptedAutoOpen(true);
       open();
     }
-  }, [linkToken, ready, open]);
+  }, [linkToken, ready, hasAttemptedAutoOpen, open]);
+
+  // Reset auto-open flag when link token changes
+  useEffect(() => {
+    if (!linkToken) {
+      setHasAttemptedAutoOpen(false);
+    }
+  }, [linkToken]);
 
   // Group accounts by institution
   const accountsByInstitution = (accounts || []).reduce((acc, account) => {
@@ -211,14 +223,25 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
               </>
             )}
           </Button>
-          <Button
-            onClick={() => createLinkToken.mutate()}
-            disabled={createLinkToken.isPending}
-            data-testid="button-connect-bank"
-          >
-            <Building2 className="h-4 w-4 mr-2" />
-            Connect Bank
-          </Button>
+          {linkToken && ready ? (
+            <Button
+              onClick={() => open()}
+              disabled={!ready}
+              data-testid="button-open-plaid"
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              Open Bank Connection
+            </Button>
+          ) : (
+            <Button
+              onClick={() => createLinkToken.mutate()}
+              disabled={createLinkToken.isPending || linkToken !== null}
+              data-testid="button-connect-bank"
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              Connect Bank
+            </Button>
+          )}
         </div>
       </div>
 

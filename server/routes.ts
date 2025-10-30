@@ -6311,21 +6311,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to create projects" });
       }
 
-      const validatedData = insertProjectSchema.parse({
+      // Clean up empty strings to null for optional fields and coerce numeric fields
+      const cleanedData = {
         ...projectData,
         organizationId,
         createdBy: userId,
-      });
+        contractId: projectData.contractId === '' ? null : projectData.contractId,
+        endDate: projectData.endDate === '' ? null : projectData.endDate,
+        budget: projectData.budget === '' || projectData.budget == null ? null : Number(projectData.budget),
+        projectManager: projectData.projectManager === '' ? null : projectData.projectManager,
+        projectType: projectData.projectType === '' ? null : projectData.projectType,
+        billingMethod: projectData.billingMethod === '' ? null : projectData.billingMethod,
+        laborRate: projectData.laborRate === '' || projectData.laborRate == null ? null : Number(projectData.laborRate),
+        overheadRate: projectData.overheadRate === '' || projectData.overheadRate == null ? null : Number(projectData.overheadRate),
+        notes: projectData.notes === '' ? null : projectData.notes,
+      };
+
+      const validatedData = insertProjectSchema.parse(cleanedData);
 
       const project = await storage.createProject(validatedData);
       await storage.logCreate(organizationId, userId, 'project', project.id.toString(), project);
       res.status(201).json(project);
     } catch (error: any) {
       console.error("Error creating project:", error);
+      console.error("Request body:", req.body);
       if (error.name === "ZodError") {
+        console.error("Zod validation errors:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid project data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create project" });
+      res.status(500).json({ message: "Failed to create project", error: error.message });
     }
   });
 
