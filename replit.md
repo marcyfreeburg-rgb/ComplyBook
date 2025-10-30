@@ -14,6 +14,8 @@ The application uses React 18 with TypeScript and Vite for the frontend. UI comp
 ### Technical Implementations
 The backend uses Express.js and TypeScript with a RESTful API. Authentication is handled via Replit Auth (OpenID Connect) using Passport.js and session-based, secure HTTP-only cookies stored in PostgreSQL. Authorization employs a multi-tenant, role-based access control system (owner, admin, accountant, viewer) per organization. Data validation is performed using Zod.
 
+**Security Posture (NIST 800-53 Compliance):** The application implements Phase 1 critical security controls including session management (12-hour max duration, 30-minute inactivity timeout per AAL2 requirements), comprehensive security headers (CSP, HSTS, X-Frame-Options), and rate limiting (10 req/min for auth, 100 req/min for API). Current baseline compliance: ~45% (moderate security posture). See `NIST_800-53_Security_Assessment.md` for detailed control mapping and remediation roadmap.
+
 ### Feature Specifications
 Key features include:
 -   **Core Financials:** Income/expense tracking, budget planning, recurring transactions, vendor/client management, invoice/bill management.
