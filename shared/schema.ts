@@ -1045,6 +1045,8 @@ export const auditLogs = pgTable("audit_logs", {
   ipAddress: varchar("ip_address", { length: 45 }), // IPv4/IPv6
   userAgent: text("user_agent"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
+  previousHash: varchar("previous_hash", { length: 64 }), // SHA-256 hash of previous audit log entry
+  chainHash: varchar("chain_hash", { length: 64 }), // SHA-256 hash of this entry (for tamper detection)
 }, (table) => [
   index("idx_audit_logs_org_id").on(table.organizationId),
   index("idx_audit_logs_user_id").on(table.userId),
@@ -1055,6 +1057,8 @@ export const auditLogs = pgTable("audit_logs", {
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
   timestamp: true,
+  previousHash: true,
+  chainHash: true,
 });
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

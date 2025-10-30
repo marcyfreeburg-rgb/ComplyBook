@@ -168,6 +168,7 @@ import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import memoize from "memoizee";
 import { encryptField, decryptField } from './encryption';
+import { computeAuditLogHash, verifyAuditLogChain as verifyChain } from './auditChain';
 
 // Interface for storage operations
 export interface IStorage {
@@ -483,6 +484,13 @@ export interface IStorage {
     limit?: number;
   }): Promise<Array<AuditLog & { userName: string; userEmail: string }>>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  verifyAuditLogChain(organizationId: number): Promise<{
+    isValid: boolean;
+    tamperedIndices: number[];
+    brokenChainIndices: number[];
+    nullHashIndices: number[];
+    message: string;
+  }>;
   logAuditTrail(params: {
     organizationId: number;
     userId: string;
@@ -3750,11 +3758,83 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
-    const [newLog] = await db
-      .insert(auditLogs)
-      .values(log)
-      .returning();
-    return newLog;
+    return await db.transaction(async (tx) => {
+      const [latestLog] = await tx
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.organizationId, log.organizationId))
+        .orderBy(desc(auditLogs.id))
+        .limit(1)
+        .for('update');
+      
+      const previousHash = latestLog?.chainHash || null;
+      
+      const [newLog] = await tx
+        .insert(auditLogs)
+        .values({
+          ...log,
+          previousHash,
+        })
+        .returning();
+      
+      const chainHash = computeAuditLogHash(newLog, newLog.timestamp);
+      
+      const [updatedLog] = await tx
+        .update(auditLogs)
+        .set({ chainHash })
+        .where(eq(auditLogs.id, newLog.id))
+        .returning();
+      
+      return updatedLog;
+    });
+  }
+
+  async verifyAuditLogChain(organizationId: number): Promise<{
+    isValid: boolean;
+    tamperedIndices: number[];
+    brokenChainIndices: number[];
+    nullHashIndices: number[];
+    message: string;
+  }> {
+    const logs = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.organizationId, organizationId))
+      .orderBy(auditLogs.id);
+    
+    if (logs.length === 0) {
+      return {
+        isValid: true,
+        tamperedIndices: [],
+        brokenChainIndices: [],
+        nullHashIndices: [],
+        message: 'No audit logs found for this organization',
+      };
+    }
+    
+    const result = verifyChain(logs);
+    
+    let message = '';
+    if (result.isValid) {
+      message = `Audit log chain verified successfully (${logs.length} entries)`;
+    } else {
+      const issues = [];
+      if (result.tamperedIndices.length > 0) {
+        issues.push(`${result.tamperedIndices.length} tampered entries`);
+      }
+      if (result.brokenChainIndices.length > 0) {
+        issues.push(`${result.brokenChainIndices.length} broken chain links`);
+      }
+      if (result.nullHashIndices.length > 0) {
+        issues.push(`${result.nullHashIndices.length} entries with null hash (initialization error)`);
+      }
+      message = `Audit log chain integrity compromised: ${issues.join(', ')}`;
+    }
+    
+    return {
+      ...result,
+      message,
+    };
   }
 
   async logAuditTrail(params: {
