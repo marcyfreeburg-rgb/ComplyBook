@@ -2130,19 +2130,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rawType = (row.type || row.Type || '').toString().toLowerCase().trim();
           let transactionType: 'income' | 'expense' = 'expense'; // default
           
+          // Check amount sign - negative amounts are expenses, positive are income (common in bank CSVs)
+          const hasNegativeSign = String(rawAmount).includes('-');
+          
           // Map common type variations
           if (rawType.includes('deposit') || 
               rawType.includes('credit') || 
               rawType.includes('income') || 
               rawType.includes('payment received') ||
-              rawType.includes('revenue')) {
+              rawType.includes('revenue') ||
+              rawType.includes('transfer in') ||
+              rawType.includes('transfer') && parsedAmount > 0) {
             transactionType = 'income';
           } else if (rawType.includes('withdrawal') || 
                      rawType.includes('debit') || 
                      rawType.includes('expense') || 
                      rawType.includes('payment') ||
-                     rawType.includes('charge')) {
+                     rawType.includes('charge') ||
+                     hasNegativeSign) {
             transactionType = 'expense';
+          }
+          
+          // If type contains "transfer" but amount is positive and no other indicators, treat as income
+          if (rawType.includes('transfer') && !hasNegativeSign && parsedAmount > 0) {
+            transactionType = 'income';
           }
 
           // Map CSV columns to transaction schema
