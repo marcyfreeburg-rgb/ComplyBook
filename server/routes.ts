@@ -2118,13 +2118,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const row: any = parseResult.data[i];
         
         try {
+          // Clean amount: remove currency symbols, commas, and convert to number
+          const rawAmount = row.amount || row.Amount || '0';
+          const cleanAmount = typeof rawAmount === 'string' 
+            ? rawAmount.replace(/[$,]/g, '').trim() 
+            : String(rawAmount);
+          const parsedAmount = parseFloat(cleanAmount);
+          const validAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
+
           // Map CSV columns to transaction schema
           const transactionData = {
             organizationId,
             createdBy: userId,
             date: row.date || row.Date || new Date().toISOString().split('T')[0],
             type: row.type || row.Type || 'expense',
-            amount: parseFloat(row.amount || row.Amount || 0),
+            amount: validAmount,
             description: row.description || row.Description || '',
             categoryId: row.categoryId || row.CategoryId || null,
             vendorId: row.vendorId || row.VendorId || null,
