@@ -2120,40 +2120,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Clean amount: remove currency symbols, commas, and convert to number
           const rawAmount = row.amount || row.Amount || '0';
+          const hasNegativeSign = String(rawAmount).includes('-');
           const cleanAmount = typeof rawAmount === 'string' 
-            ? rawAmount.replace(/[$,]/g, '').trim() 
+            ? rawAmount.replace(/[$,\-]/g, '').trim() 
             : String(rawAmount);
           const parsedAmount = parseFloat(cleanAmount);
-          const validAmount = isNaN(parsedAmount) ? 0 : Math.abs(parsedAmount);
+          const validAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
 
-          // Normalize transaction type (handle common variations)
+          // Determine transaction type
           const rawType = (row.type || row.Type || '').toString().toLowerCase().trim();
-          let transactionType: 'income' | 'expense' = 'expense'; // default
+          let transactionType: 'income' | 'expense';
           
-          // Check amount sign - negative amounts are expenses, positive are income (common in bank CSVs)
-          const hasNegativeSign = String(rawAmount).includes('-');
-          
-          // Map common type variations
-          if (rawType.includes('deposit') || 
-              rawType.includes('credit') || 
-              rawType.includes('income') || 
-              rawType.includes('payment received') ||
-              rawType.includes('revenue') ||
-              rawType.includes('transfer in') ||
-              rawType.includes('transfer') && parsedAmount > 0) {
-            transactionType = 'income';
-          } else if (rawType.includes('withdrawal') || 
-                     rawType.includes('debit') || 
-                     rawType.includes('expense') || 
-                     rawType.includes('payment') ||
-                     rawType.includes('charge') ||
-                     hasNegativeSign) {
-            transactionType = 'expense';
-          }
-          
-          // If type contains "transfer" but amount is positive and no other indicators, treat as income
-          if (rawType.includes('transfer') && !hasNegativeSign && parsedAmount > 0) {
-            transactionType = 'income';
+          // If CSV has no type column, use amount sign (negative = expense, positive = income)
+          if (!rawType || rawType === '') {
+            transactionType = hasNegativeSign ? 'expense' : 'income';
+          } else {
+            // CSV has a type column - map common variations
+            if (rawType.includes('deposit') || 
+                rawType.includes('credit') || 
+                rawType.includes('income') || 
+                rawType.includes('payment received') ||
+                rawType.includes('revenue') ||
+                rawType.includes('transfer in')) {
+              transactionType = 'income';
+            } else if (rawType.includes('withdrawal') || 
+                       rawType.includes('debit') || 
+                       rawType.includes('expense') || 
+                       rawType.includes('payment') ||
+                       rawType.includes('charge')) {
+              transactionType = 'expense';
+            } else if (rawType.includes('transfer')) {
+              // For generic "transfer", use amount sign
+              transactionType = hasNegativeSign ? 'expense' : 'income';
+            } else {
+              // Unknown type, default to amount sign
+              transactionType = hasNegativeSign ? 'expense' : 'income';
+            }
           }
 
           // Map CSV columns to transaction schema
