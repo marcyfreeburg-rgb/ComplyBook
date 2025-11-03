@@ -2121,6 +2121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Map CSV columns to transaction schema
           const transactionData = {
             organizationId,
+            createdBy: userId,
             date: row.date || row.Date || new Date().toISOString().split('T')[0],
             type: row.type || row.Type || 'expense',
             amount: parseFloat(row.amount || row.Amount || 0),
@@ -2137,10 +2138,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const transaction = await storage.createTransaction(validated);
           created.push(transaction);
         } catch (error: any) {
+          console.error(`CSV Import Error on row ${i + 1}:`, error);
           errors.push({
             row: i + 1,
             data: row,
-            error: error.message
+            error: error.message || JSON.stringify(error)
           });
         }
       }
