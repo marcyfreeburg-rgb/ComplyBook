@@ -2124,14 +2124,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? rawAmount.replace(/[$,]/g, '').trim() 
             : String(rawAmount);
           const parsedAmount = parseFloat(cleanAmount);
-          const validAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
+          const validAmount = isNaN(parsedAmount) ? 0 : Math.abs(parsedAmount);
+
+          // Normalize transaction type (handle common variations)
+          const rawType = (row.type || row.Type || '').toString().toLowerCase().trim();
+          let transactionType: 'income' | 'expense' = 'expense'; // default
+          
+          // Map common type variations
+          if (rawType.includes('deposit') || 
+              rawType.includes('credit') || 
+              rawType.includes('income') || 
+              rawType.includes('payment received') ||
+              rawType.includes('revenue')) {
+            transactionType = 'income';
+          } else if (rawType.includes('withdrawal') || 
+                     rawType.includes('debit') || 
+                     rawType.includes('expense') || 
+                     rawType.includes('payment') ||
+                     rawType.includes('charge')) {
+            transactionType = 'expense';
+          }
 
           // Map CSV columns to transaction schema
           const transactionData = {
             organizationId,
             createdBy: userId,
             date: row.date || row.Date || new Date().toISOString().split('T')[0],
-            type: row.type || row.Type || 'expense',
+            type: transactionType,
             amount: validAmount,
             description: row.description || row.Description || '',
             categoryId: row.categoryId || row.CategoryId || null,
