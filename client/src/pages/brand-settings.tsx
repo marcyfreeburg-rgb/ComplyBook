@@ -117,41 +117,20 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
 
     setIsUploading(true);
     try {
-      // Get signed upload URL
-      console.log("Requesting upload URL...");
-      const urlResponse = await fetch(`/api/organizations/${currentOrganization.id}/logo-upload-url`, {
-        method: "POST",
-      });
-      
-      if (!urlResponse.ok) {
-        const errorData = await urlResponse.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to get upload URL");
-      }
-      
-      const { uploadUrl } = await urlResponse.json();
-      console.log("Got upload URL, uploading file...");
+      // Create form data with the file
+      const formData = new FormData();
+      formData.append('logo', logoFile);
 
-      // Upload file to object storage
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        body: logoFile,
-        headers: {
-          "Content-Type": logoFile.type,
-        },
+      // Upload file to server (server handles object storage upload)
+      const uploadResponse = await fetch(`/api/organizations/${currentOrganization.id}/logo`, {
+        method: "POST",
+        body: formData,
       });
 
       if (!uploadResponse.ok) {
-        const responseText = await uploadResponse.text().catch(() => "");
-        console.error("Upload failed:", uploadResponse.status, responseText);
-        throw new Error(`Failed to upload logo (${uploadResponse.status}): ${responseText || 'Unknown error'}`);
+        const errorData = await uploadResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to upload logo");
       }
-
-      console.log("File uploaded, saving to database...");
-      
-      // Save logo URL to organization
-      await apiRequest('PATCH', `/api/organizations/${currentOrganization.id}/logo`, {
-        logoUrl: uploadUrl.split('?')[0], // Remove query params from URL
-      });
 
       queryClient.invalidateQueries({ queryKey: ['/api/organizations'] });
       
@@ -161,6 +140,7 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
       });
       
       setLogoFile(null);
+      setLogoPreview(null);
     } catch (error: any) {
       console.error("Logo upload error:", error);
       toast({

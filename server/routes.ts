@@ -302,27 +302,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/organizations/:id/logo-upload-url', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const organizationId = parseInt(req.params.id);
-      
-      // Check user has owner or admin role
-      const userRole = await storage.getUserRole(userId, organizationId);
-      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
-        return res.status(403).json({ message: "Only owners and admins can upload logos" });
-      }
-
-      const objectStorageService = new ObjectStorageService();
-      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
-      
-      res.json({ uploadUrl });
-    } catch (error) {
-      console.error("Error generating logo upload URL:", error);
-      res.status(500).json({ message: "Failed to generate upload URL" });
-    }
-  });
-
   app.patch('/api/organizations/:id/logo', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -2100,6 +2079,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         cb(new Error('Only CSV files are allowed'));
       }
+    }
+  });
+
+  // Configure multer for logo uploads
+  const logoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    }
+  });
+
+  // Logo upload route
+  app.post('/api/organizations/:id/logo', isAuthenticated, logoUpload.single('logo'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.id);
+      
+      // Check user has owner or admin role
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Only owners and admins can upload logos" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No logo file provided" });
+      }
+
+      // Upload to object storage
+      const objectStorageService = new ObjectStorageService();
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+      
+      // Upload file to object storage using signed URL
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: req.file.buffer,
+        headers: {
+          'Content-Type': req.file.mimetype,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload to object storage');
+      }
+
+      // Save logo URL to organization
+      const logoPath = objectStorageService.normalizeObjectEntityPath(uploadUrl.split('?')[0]);
+      const updated = await storage.updateOrganization(organizationId, { logoUrl: logoPath });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      res.status(500).json({ message: "Failed to upload logo" });
     }
   });
 
