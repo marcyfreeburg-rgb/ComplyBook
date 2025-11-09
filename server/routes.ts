@@ -8,6 +8,7 @@ import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
+import { sendInvoiceEmail } from "./email";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
@@ -4100,6 +4101,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting invoice:", error);
       res.status(500).json({ message: "Failed to delete invoice" });
+    }
+  });
+
+  app.post('/api/invoices/:id/send-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.id);
+      const { recipientEmail } = req.body;
+
+      if (!recipientEmail) {
+        return res.status(400).json({ message: "Recipient email is required" });
+      }
+
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to send invoices" });
+      }
+
+      const organization = await storage.getOrganization(invoice.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const customer = invoice.clientId ? await storage.getClient(invoice.clientId) : null;
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
+      const lineItems = await storage.getInvoiceLineItems(invoiceId);
+
+      const logoUrl = organization.logoUrl 
+        ? `${req.protocol}://${req.get('host')}${organization.logoUrl}`
+        : undefined;
+
+      await sendInvoiceEmail({
+        to: recipientEmail,
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: new Date(invoice.issueDate).toLocaleDateString(),
+        dueDate: new Date(invoice.dueDate).toLocaleDateString(),
+        amount: Number(invoice.totalAmount),
+        customerName: customer.name,
+        organizationName: organization.name,
+        organizationEmail: organization.companyEmail || '',
+        organizationPhone: organization.companyPhone || undefined,
+        organizationAddress: organization.companyAddress || undefined,
+        items: lineItems.map(item => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.rate),
+          total: Number(item.amount)
+        })),
+        notes: invoice.notes || undefined,
+        branding: {
+          primaryColor: organization.invoicePrimaryColor || undefined,
+          accentColor: organization.invoiceAccentColor || undefined,
+          fontFamily: organization.invoiceFontFamily || undefined,
+          logoUrl,
+          footer: organization.invoiceFooter || undefined
+        }
+      });
+
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId: invoice.organizationId,
+        userId,
+        entityType: 'invoice',
+        entityId: invoiceId.toString(),
+        action: 'update',
+        oldValues: null,
+        newValues: { emailSentTo: recipientEmail, emailSentAt: new Date() },
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+
+      res.json({ message: "Invoice sent successfully" });
+    } catch (error) {
+      console.error("Error sending invoice email:", error);
+      res.status(500).json({ message: "Failed to send invoice email" });
     }
   });
 

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, Mail } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, InvoiceLineItem, Client, Organization } from "@shared/schema";
 import { InvoicePreview } from "@/components/invoice-preview";
@@ -52,10 +52,12 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isNewCustomerDialogOpen, setIsNewCustomerDialogOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<number | null>(null);
   const [previewingInvoice, setPreviewingInvoice] = useState<(Invoice & { clientName: string | null }) | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [newCustomerForm, setNewCustomerForm] = useState({
     name: "",
     email: "",
@@ -251,6 +253,29 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to create customer",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendEmailMutation = useMutation({
+    mutationFn: async ({ invoiceId, email }: { invoiceId: number; email: string }) => {
+      return apiRequest('POST', `/api/invoices/${invoiceId}/send-email`, {
+        recipientEmail: email,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Invoice sent successfully",
+      });
+      setIsEmailDialogOpen(false);
+      setRecipientEmail("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send invoice",
         variant: "destructive",
       });
     },
@@ -729,15 +754,32 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
                   View and print invoice with company branding
                 </DialogDescription>
               </div>
-              <Button
-                onClick={handleDownloadPDF}
-                variant="default"
-                size="sm"
-                data-testid="button-download-invoice-pdf"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    if (previewingInvoice) {
+                      const customer = clients.find(c => c.id === previewingInvoice.clientId);
+                      setRecipientEmail(customer?.email || "");
+                      setIsEmailDialogOpen(true);
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-send-invoice-email"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send Email
+                </Button>
+                <Button
+                  onClick={handleDownloadPDF}
+                  variant="default"
+                  size="sm"
+                  data-testid="button-download-invoice-pdf"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+              </div>
             </div>
           </DialogHeader>
           {previewingInvoice && organizationForPreview && (
@@ -854,6 +896,69 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               >
                 {createCustomerMutation.isPending ? "Creating..." : "Create Customer"}
               </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invoice Email Dialog */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Invoice via Email</DialogTitle>
+            <DialogDescription>
+              Send this invoice to your customer via email
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (previewingInvoice && recipientEmail) {
+                sendEmailMutation.mutate({ 
+                  invoiceId: previewingInvoice.id, 
+                  email: recipientEmail 
+                });
+              }
+            }}
+          >
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipient-email">Recipient Email *</Label>
+                <Input
+                  id="recipient-email"
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="customer@example.com"
+                  required
+                  data-testid="input-recipient-email"
+                />
+                <p className="text-sm text-muted-foreground">
+                  The invoice will be sent as a professionally formatted email with all invoice details
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEmailDialogOpen(false);
+                    setRecipientEmail("");
+                  }}
+                  data-testid="button-cancel-send-email"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={sendEmailMutation.isPending || !recipientEmail}
+                  data-testid="button-confirm-send-email"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  {sendEmailMutation.isPending ? "Sending..." : "Send Invoice"}
+                </Button>
+              </div>
             </div>
           </form>
         </DialogContent>
