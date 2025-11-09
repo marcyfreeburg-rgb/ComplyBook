@@ -51,10 +51,17 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [isNewCustomerDialogOpen, setIsNewCustomerDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<number | null>(null);
   const [previewingInvoice, setPreviewingInvoice] = useState<(Invoice & { clientName: string | null }) | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+  });
 
   const [formData, setFormData] = useState<InvoiceFormData>({
     clientId: "none",
@@ -211,6 +218,39 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to delete invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createCustomerMutation = useMutation({
+    mutationFn: async (data: typeof newCustomerForm) => {
+      const response = await apiRequest('POST', '/api/clients', {
+        organizationId: currentOrganization.id,
+        name: data.name,
+        email: data.email || null,
+        phone: data.phone || null,
+        address: data.address || null,
+      });
+      const client = await response.json();
+      return client as Client;
+    },
+    onSuccess: (newClient: Client) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clients', currentOrganization.id] });
+      toast({
+        title: "Success",
+        description: "Customer created successfully",
+      });
+      // Auto-select the newly created customer using functional updater
+      setFormData(prev => ({ ...prev, clientId: newClient.id.toString() }));
+      // Reset form and close dialog
+      setNewCustomerForm({ name: "", email: "", phone: "", address: "" });
+      setIsNewCustomerDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create customer",
         variant: "destructive",
       });
     },
@@ -457,7 +497,19 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
           >
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="clientId">Client</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="clientId">Client</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsNewCustomerDialogOpen(true)}
+                    data-testid="button-create-customer"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    New Customer
+                  </Button>
+                </div>
                 <Select
                   value={formData.clientId}
                   onValueChange={(value) => setFormData({ ...formData, clientId: value })}
@@ -719,6 +771,93 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create New Customer Dialog */}
+      <Dialog open={isNewCustomerDialogOpen} onOpenChange={setIsNewCustomerDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Customer</DialogTitle>
+            <DialogDescription>
+              Add a new customer to quickly select when creating invoices
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              createCustomerMutation.mutate(newCustomerForm);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-name">Customer Name *</Label>
+              <Input
+                id="new-customer-name"
+                value={newCustomerForm.name}
+                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
+                placeholder="Acme Corporation"
+                required
+                data-testid="input-new-customer-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-email">Email</Label>
+              <Input
+                id="new-customer-email"
+                type="email"
+                value={newCustomerForm.email}
+                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                placeholder="contact@acme.com"
+                data-testid="input-new-customer-email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-phone">Phone</Label>
+              <Input
+                id="new-customer-phone"
+                type="tel"
+                value={newCustomerForm.phone}
+                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+                data-testid="input-new-customer-phone"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-address">Address</Label>
+              <Textarea
+                id="new-customer-address"
+                value={newCustomerForm.address}
+                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, address: e.target.value })}
+                placeholder="123 Main St, City, State 12345"
+                data-testid="input-new-customer-address"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsNewCustomerDialogOpen(false);
+                  setNewCustomerForm({ name: "", email: "", phone: "", address: "" });
+                }}
+                data-testid="button-cancel-new-customer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createCustomerMutation.isPending}
+                data-testid="button-submit-new-customer"
+              >
+                {createCustomerMutation.isPending ? "Creating..." : "Create Customer"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
