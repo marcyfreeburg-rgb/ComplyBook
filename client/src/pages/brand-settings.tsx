@@ -142,7 +142,7 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
       }
 
       // Save logo URL to organization
-      await apiRequest('PATCH', `/api/organizations/${currentOrganization.id}/invoice-settings`, {
+      await apiRequest('PATCH', `/api/organizations/${currentOrganization.id}/logo`, {
         logoUrl: uploadUrl.split('?')[0], // Remove query params from URL
       });
 

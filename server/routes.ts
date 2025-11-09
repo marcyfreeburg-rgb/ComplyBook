@@ -314,12 +314,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const objectStorageService = new ObjectStorageService();
-      const uploadUrl = await objectStorageService.getPublicObjectUploadURL(`logos/org-${organizationId}`);
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
       
       res.json({ uploadUrl });
     } catch (error) {
       console.error("Error generating logo upload URL:", error);
       res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  app.patch('/api/organizations/:id/logo', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.id);
+      
+      // Check user has owner or admin role
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Only owners and admins can update logos" });
+      }
+
+      if (!req.body.logoUrl) {
+        return res.status(400).json({ message: "logoUrl is required" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const logoPath = objectStorageService.normalizeObjectEntityPath(req.body.logoUrl);
+      
+      const updated = await storage.updateOrganization(organizationId, { logoUrl: logoPath });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating logo:", error);
+      res.status(500).json({ message: "Failed to update logo" });
     }
   });
 
