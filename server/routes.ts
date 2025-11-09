@@ -231,6 +231,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Serve object storage files (logos, uploads, etc.)
+  // Only serves PUBLIC files - private files require authentication
+  app.get('/objects/*', async (req, res) => {
+    try {
+      const objectPath = req.path;
+      const objectStorageService = new ObjectStorageService();
+      const file = await objectStorageService.getObjectEntityFile(objectPath);
+      
+      // Check ACL policy - only serve public files
+      const { getObjectAclPolicy } = await import('./objectAcl');
+      const aclPolicy = await getObjectAclPolicy(file);
+      
+      if (aclPolicy?.visibility !== 'public') {
+        return res.status(403).json({ message: "Access denied - file is not public" });
+      }
+      
+      await objectStorageService.downloadObject(file, res);
+    } catch (error: any) {
+      if (error.name === 'ObjectNotFoundError') {
+        res.status(404).json({ message: "File not found" });
+      } else {
+        console.error("Error serving object storage file:", error);
+        res.status(500).json({ message: "Failed to serve file" });
+      }
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -2128,8 +2155,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('Failed to upload to object storage');
       }
 
+      // Set the logo as public so it can be accessed via /objects/* route
+      const rawPath = uploadUrl.split('?')[0];
+      const logoPath = await objectStorageService.trySetObjectEntityAclPolicy(rawPath, {
+        visibility: 'public',
+      });
+      
       // Save logo URL to organization
-      const logoPath = objectStorageService.normalizeObjectEntityPath(uploadUrl.split('?')[0]);
       const updated = await storage.updateOrganization(organizationId, { logoUrl: logoPath });
       
       res.json(updated);
