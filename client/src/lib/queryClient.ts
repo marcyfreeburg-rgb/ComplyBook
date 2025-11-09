@@ -38,7 +38,9 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const json = await res.json();
+    // Extract data property from API responses
+    return json.data !== undefined ? json.data : json;
   };
 
 export const queryClient = new QueryClient({

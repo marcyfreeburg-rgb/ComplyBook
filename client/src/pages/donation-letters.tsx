@@ -41,7 +41,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
   const createLetterMutation = useMutation({
     mutationFn: async ({ donorId, year, letterType, donationAmount, customContent, renderedHtml }: any) => {
       // First create the draft letter
-      const letter = await apiRequest('POST', '/api/donor-letters', {
+      const createResponse = await apiRequest('POST', '/api/donor-letters', {
         organizationId: currentOrganization.id,
         donorId,
         year: parseInt(year),
@@ -49,11 +49,13 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
         donationAmount,
         customContent: letterType === 'custom' ? customContent : null,
       });
+      const { data: letter } = await createResponse.json();
 
       // Then finalize it with the rendered HTML
-      return await apiRequest('POST', `/api/donor-letters/${letter.id}/finalize`, {
+      const finalizeResponse = await apiRequest('POST', `/api/donor-letters/${letter.id}/finalize`, {
         renderedHtml,
       });
+      return await finalizeResponse.json();
     },
     onSuccess: () => {
       // Invalidate donation letters query in case we add a letters list view later

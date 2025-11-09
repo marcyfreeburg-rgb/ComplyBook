@@ -1131,7 +1131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const letters = await storage.getDonorLetters(organizationId);
-      res.json(letters);
+      res.json({ data: letters });
     } catch (error) {
       console.error("Error fetching donor letters:", error);
       res.status(500).json({ message: "Failed to fetch donor letters" });
@@ -1158,7 +1158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const letter = await storage.createDonorLetter(data, userId);
-      res.status(201).json(letter);
+      res.status(201).json({ data: letter });
     } catch (error) {
       console.error("Error creating donor letter:", error);
       res.status(500).json({ message: "Failed to create donor letter" });
@@ -1199,7 +1199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const finalizedLetter = await storage.finalizeDonorLetter(letterId, renderedHtml);
-      res.json(finalizedLetter);
+      res.json({ data: finalizedLetter });
     } catch (error) {
       console.error("Error finalizing donor letter:", error);
       res.status(500).json({ message: "Failed to finalize donor letter" });
@@ -1260,7 +1260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const donationData = await storage.getDonationsByYear(organizationId, year);
-      res.json(donationData);
+      res.json({ data: donationData });
     } catch (error) {
       console.error("Error fetching donation data:", error);
       res.status(500).json({ message: "Failed to fetch donation data" });
