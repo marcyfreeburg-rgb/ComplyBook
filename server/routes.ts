@@ -1114,6 +1114,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Donor Letter routes
+  app.get('/api/donor-letters/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor letters are only available for nonprofit organizations" });
+      }
+
+      const letters = await storage.getDonorLetters(organizationId);
+      res.json(letters);
+    } catch (error) {
+      console.error("Error fetching donor letters:", error);
+      res.status(500).json({ message: "Failed to fetch donor letters" });
+    }
+  });
+
+  app.post('/api/donor-letters', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = req.body;
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(data.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor letters are only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to create donor letters" });
+      }
+
+      const letter = await storage.createDonorLetter(data, userId);
+      res.status(201).json(letter);
+    } catch (error) {
+      console.error("Error creating donor letter:", error);
+      res.status(500).json({ message: "Failed to create donor letter" });
+    }
+  });
+
+  app.post('/api/donor-letters/:id/finalize', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const letterId = parseInt(req.params.id);
+      const { renderedHtml } = req.body;
+
+      if (!renderedHtml) {
+        return res.status(400).json({ message: "Rendered HTML is required" });
+      }
+
+      const letter = await storage.getDonorLetter(letterId);
+      if (!letter) {
+        return res.status(404).json({ message: "Letter not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, letter.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(letter.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor letters are only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to finalize donor letters" });
+      }
+
+      if (letter.letterStatus !== 'draft') {
+        return res.status(400).json({ message: "Only draft letters can be finalized" });
+      }
+
+      const finalizedLetter = await storage.finalizeDonorLetter(letterId, renderedHtml);
+      res.json(finalizedLetter);
+    } catch (error) {
+      console.error("Error finalizing donor letter:", error);
+      res.status(500).json({ message: "Failed to finalize donor letter" });
+    }
+  });
+
+  app.delete('/api/donor-letters/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const letterId = parseInt(req.params.id);
+      
+      const letter = await storage.getDonorLetter(letterId);
+      if (!letter) {
+        return res.status(404).json({ message: "Letter not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, letter.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(letter.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor letters are only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete donor letters" });
+      }
+
+      // Only allow deletion of draft letters
+      if (letter.letterStatus !== 'draft') {
+        return res.status(400).json({ message: "Only draft letters can be deleted" });
+      }
+
+      await storage.deleteDonorLetter(letterId);
+      res.status(200).json({ message: "Donor letter deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting donor letter:", error);
+      res.status(500).json({ message: "Failed to delete donor letter" });
+    }
+  });
+
   app.get('/api/donation-letters/:organizationId/:year', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

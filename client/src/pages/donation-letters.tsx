@@ -1,10 +1,16 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart, FileDown, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Heart, FileDown, Calendar, FileText, Edit3 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Organization, Donor, Transaction } from "@shared/schema";
+import html2pdf from "html2pdf.js";
 
 interface DonationLettersProps {
   currentOrganization: Organization;
@@ -12,8 +18,15 @@ interface DonationLettersProps {
 }
 
 export default function DonationLetters({ currentOrganization, userId }: DonationLettersProps) {
+  const { toast } = useToast();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  const [isLetterDialogOpen, setIsLetterDialogOpen] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState("");
+  const [letterType, setLetterType] = useState<'general' | 'custom'>('general');
+  const [customContent, setCustomContent] = useState("");
+  const letterContentRef = useRef<HTMLDivElement>(null);
   
   const availableYears = Array.from(
     { length: 5 },
@@ -25,9 +38,187 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     enabled: !!selectedYear,
   });
 
+  const createLetterMutation = useMutation({
+    mutationFn: async ({ donorId, year, letterType, donationAmount, customContent, renderedHtml }: any) => {
+      // First create the draft letter
+      const letter = await apiRequest('POST', '/api/donor-letters', {
+        organizationId: currentOrganization.id,
+        donorId,
+        year: parseInt(year),
+        letterType,
+        donationAmount,
+        customContent: letterType === 'custom' ? customContent : null,
+      });
+
+      // Then finalize it with the rendered HTML
+      return await apiRequest('POST', `/api/donor-letters/${letter.id}/finalize`, {
+        renderedHtml,
+      });
+    },
+    onSuccess: () => {
+      // Invalidate donation letters query in case we add a letters list view later
+      queryClient.invalidateQueries({ queryKey: [`/api/donor-letters`] });
+      toast({
+        title: "Letter created",
+        description: "Donor letter has been created and saved successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create donor letter",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleGenerateLetter = (donor: Donor, totalAmount: string) => {
-    // TODO: Implement PDF generation using html2pdf.js
-    console.log("Generate letter for:", donor.name, "Amount:", totalAmount);
+    setSelectedDonor(donor);
+    setSelectedAmount(totalAmount);
+    setLetterType('general');
+    setCustomContent("");
+    setIsLetterDialogOpen(true);
+  };
+
+  const generateGeneralLetterHTML = () => {
+    if (!selectedDonor) return "";
+
+    const logoUrl = currentOrganization.logoUrl 
+      ? `${window.location.origin}${currentOrganization.logoUrl}`
+      : "";
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: ${currentOrganization.invoiceFontFamily || 'Inter, sans-serif'};
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            line-height: 1.6;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid ${currentOrganization.invoicePrimaryColor || '#3b82f6'};
+          }
+          .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+          }
+          .org-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: ${currentOrganization.invoicePrimaryColor || '#3b82f6'};
+            margin-bottom: 10px;
+          }
+          .letter-content {
+            margin: 30px 0;
+          }
+          .signature {
+            margin-top: 60px;
+          }
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${currentOrganization.name}" class="logo" />` : ''}
+          <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
+          ${currentOrganization.companyAddress ? `<div>${currentOrganization.companyAddress}</div>` : ''}
+          ${currentOrganization.companyPhone ? `<div>Phone: ${currentOrganization.companyPhone}</div>` : ''}
+          ${currentOrganization.companyEmail ? `<div>Email: ${currentOrganization.companyEmail}</div>` : ''}
+        </div>
+
+        <div class="letter-content">
+          <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          
+          <p>Dear ${selectedDonor.name}:</p>
+          
+          <p>Thank you for your donation of <strong>${formatCurrency(selectedAmount)}</strong>.</p>
+          
+          <p>This letter confirms that you have received no material benefit from this donation. This donation is 100% tax deductible by the 501(c)(3) laws. Please contact your tax advisor for additional information.</p>
+          
+          <p>We truly appreciate your generosity and support of our mission.</p>
+        </div>
+
+        <div class="signature">
+          <p>Sincerely,</p>
+          <p><strong>${currentOrganization.companyName || currentOrganization.name}</strong></p>
+          ${currentOrganization.taxId ? `<p>Tax ID (EIN): ${currentOrganization.taxId}</p>` : ''}
+        </div>
+
+        ${currentOrganization.invoiceFooter ? `
+          <div class="footer">
+            ${currentOrganization.invoiceFooter}
+          </div>
+        ` : ''}
+      </body>
+      </html>
+    `;
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!selectedDonor) return;
+
+    const html = letterType === 'general' 
+      ? generateGeneralLetterHTML()
+      : customContent;
+
+    if (!html || (letterType === 'custom' && !customContent.trim())) {
+      toast({
+        title: "Error",
+        description: "Please provide letter content",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Generate PDF
+      const element = document.createElement('div');
+      element.innerHTML = html;
+      
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: `donation-letter-${selectedDonor.name.replace(/\s+/g, '-')}-${selectedYear}.pdf`,
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        })
+        .from(element)
+        .save();
+
+      // Save to database
+      await createLetterMutation.mutateAsync({
+        donorId: selectedDonor.id,
+        year: selectedYear,
+        letterType,
+        donationAmount: selectedAmount,
+        customContent: letterType === 'custom' ? customContent : null,
+        renderedHtml: html,
+      });
+
+      setIsLetterDialogOpen(false);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatCurrency = (amount: string) => {
@@ -152,6 +343,115 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           )}
         </CardContent>
       </Card>
+
+      {/* Donor Letter Generation Dialog */}
+      <Dialog open={isLetterDialogOpen} onOpenChange={setIsLetterDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Generate Donor Letter</DialogTitle>
+            <DialogDescription>
+              Create a tax deduction letter for {selectedDonor?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Letter Type Selection */}
+            <div className="space-y-3">
+              <Label>Letter Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setLetterType('general')}
+                  className={`p-4 rounded-md border-2 text-left transition-colors ${
+                    letterType === 'general'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover-elevate'
+                  }`}
+                  data-testid="button-letter-type-general"
+                >
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-5 h-5 mt-0.5" />
+                    <div>
+                      <div className="font-semibold mb-1">General Letter</div>
+                      <div className="text-sm text-muted-foreground">
+                        Standard 501(c)(3) tax deduction letter with IRS-compliant language
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setLetterType('custom')}
+                  className={`p-4 rounded-md border-2 text-left transition-colors ${
+                    letterType === 'custom'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover-elevate'
+                  }`}
+                  data-testid="button-letter-type-custom"
+                >
+                  <div className="flex items-start gap-3">
+                    <Edit3 className="w-5 h-5 mt-0.5" />
+                    <div>
+                      <div className="font-semibold mb-1">Custom Letter</div>
+                      <div className="text-sm text-muted-foreground">
+                        Write your own custom letter content
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Content Editor */}
+            {letterType === 'custom' && (
+              <div className="space-y-2">
+                <Label htmlFor="custom-content">Letter Content (HTML)</Label>
+                <Textarea
+                  id="custom-content"
+                  value={customContent}
+                  onChange={(e) => setCustomContent(e.target.value)}
+                  placeholder="Enter your custom letter content in HTML format..."
+                  rows={12}
+                  className="font-mono text-sm"
+                  data-testid="textarea-custom-content"
+                />
+                <p className="text-xs text-muted-foreground">
+                  You can use HTML for formatting. Include your organization branding manually.
+                </p>
+              </div>
+            )}
+
+            {/* Letter Preview */}
+            {letterType === 'general' && selectedDonor && (
+              <div className="space-y-2">
+                <Label>Letter Preview</Label>
+                <div
+                  className="border rounded-md p-6 bg-background max-h-96 overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: generateGeneralLetterHTML() }}
+                />
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setIsLetterDialogOpen(false)}
+                data-testid="button-cancel-letter"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDownloadPDF}
+                disabled={createLetterMutation.isPending || (letterType === 'custom' && !customContent.trim())}
+                data-testid="button-download-letter-pdf"
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                {createLetterMutation.isPending ? "Generating..." : "Generate & Download PDF"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

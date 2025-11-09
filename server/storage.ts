@@ -30,6 +30,9 @@ import {
   donors,
   type Donor,
   type InsertDonor,
+  donorLetters,
+  type DonorLetter,
+  type InsertDonorLetter,
   type Transaction,
   type InsertTransaction,
   type Grant,
@@ -251,6 +254,14 @@ export interface IStorage {
   deleteDonor(id: number): Promise<void>;
   getDonorDonations(donorId: number, year?: number): Promise<Array<Transaction & { donorName: string }>>;
   getDonationsByYear(organizationId: number, year: number): Promise<Array<{ donor: Donor; totalAmount: string; donations: Transaction[] }>>;
+
+  // Donor Letter operations
+  getDonorLetters(organizationId: number): Promise<Array<DonorLetter & { donorName: string }>>;
+  getDonorLetter(id: number): Promise<DonorLetter | undefined>;
+  createDonorLetter(letter: InsertDonorLetter, userId: string): Promise<DonorLetter>;
+  updateDonorLetter(id: number, updates: Partial<InsertDonorLetter>): Promise<DonorLetter>;
+  finalizeDonorLetter(id: number, renderedHtml: string): Promise<DonorLetter>;
+  deleteDonorLetter(id: number): Promise<void>;
 
   // Transaction operations
   getTransaction(id: number): Promise<Transaction | undefined>;
@@ -1370,6 +1381,81 @@ export class DatabaseStorage implements IStorage {
       ...entry,
       totalAmount: entry.totalAmount.toFixed(2),
     }));
+  }
+
+  // Donor Letter operations
+  async getDonorLetters(organizationId: number): Promise<Array<DonorLetter & { donorName: string }>> {
+    const results = await db
+      .select({
+        letter: donorLetters,
+        donorName: donors.name,
+      })
+      .from(donorLetters)
+      .innerJoin(donors, eq(donorLetters.donorId, donors.id))
+      .where(eq(donorLetters.organizationId, organizationId))
+      .orderBy(desc(donorLetters.year), desc(donorLetters.createdAt));
+
+    return results.map(r => ({
+      ...r.letter,
+      donorName: r.donorName,
+    }));
+  }
+
+  async getDonorLetter(id: number): Promise<DonorLetter | undefined> {
+    const [letter] = await db
+      .select()
+      .from(donorLetters)
+      .where(eq(donorLetters.id, id));
+    return letter;
+  }
+
+  async createDonorLetter(letterData: InsertDonorLetter, userId: string): Promise<DonorLetter> {
+    const [letter] = await db
+      .insert(donorLetters)
+      .values({
+        ...letterData,
+        createdBy: userId,
+      })
+      .returning();
+    return letter;
+  }
+
+  async updateDonorLetter(id: number, updates: Partial<InsertDonorLetter>): Promise<DonorLetter> {
+    // Only allow updates if letter is in draft status
+    const existing = await this.getDonorLetter(id);
+    if (existing && existing.letterStatus !== 'draft') {
+      throw new Error('Cannot update finalized or voided letter');
+    }
+
+    const [letter] = await db
+      .update(donorLetters)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(donorLetters.id, id))
+      .returning();
+    return letter;
+  }
+
+  async finalizeDonorLetter(id: number, renderedHtml: string): Promise<DonorLetter> {
+    const [letter] = await db
+      .update(donorLetters)
+      .set({
+        letterStatus: 'finalized',
+        renderedHtml,
+        generatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(donorLetters.id, id))
+      .returning();
+    return letter;
+  }
+
+  async deleteDonorLetter(id: number): Promise<void> {
+    await db
+      .delete(donorLetters)
+      .where(eq(donorLetters.id, id));
   }
 
   // Transaction operations
