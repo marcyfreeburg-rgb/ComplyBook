@@ -440,6 +440,40 @@ export const insertDonorSchema = createInsertSchema(donors).omit({
 export type InsertDonor = z.infer<typeof insertDonorSchema>;
 export type Donor = typeof donors.$inferSelect;
 
+// Donor Letters Type Enum
+export const donorLetterTypeEnum = pgEnum('donor_letter_type', ['general', 'custom']);
+export const donorLetterStatusEnum = pgEnum('donor_letter_status', ['draft', 'finalized', 'void']);
+
+export const donorLetters = pgTable("donor_letters", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  donorId: integer("donor_id").notNull().references(() => donors.id, { onDelete: 'cascade' }),
+  year: integer("year").notNull(),
+  letterType: donorLetterTypeEnum("letter_type").notNull().default('general'),
+  letterStatus: donorLetterStatusEnum("letter_status").notNull().default('draft'),
+  donationAmount: numeric("donation_amount", { precision: 12, scale: 2 }).notNull(),
+  customContent: text("custom_content"),
+  renderedHtml: text("rendered_html"),
+  deliveryMode: varchar("delivery_mode", { length: 50 }),
+  deliveryRef: varchar("delivery_ref", { length: 255 }),
+  generatedAt: timestamp("generated_at"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertDonorLetterSchema = createInsertSchema(donorLetters).omit({
+  id: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  donationAmount: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertDonorLetter = z.infer<typeof insertDonorLetterSchema>;
+export type DonorLetter = typeof donorLetters.$inferSelect;
+
 // ============================================
 // INVOICES (Sent to Clients)
 // ============================================
