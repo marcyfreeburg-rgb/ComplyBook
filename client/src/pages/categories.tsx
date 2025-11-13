@@ -156,12 +156,19 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
     setEditParentCategoryId(category.parentCategoryId ?? null);
   };
 
-  // Separate parent and child categories
-  const parentIncomeCategories = categories.filter(c => c.type === 'income' && !c.parentCategoryId);
-  const parentExpenseCategories = categories.filter(c => c.type === 'expense' && !c.parentCategoryId);
+  // Separate parent and child categories, sorted alphabetically
+  const parentIncomeCategories = categories
+    .filter(c => c.type === 'income' && !c.parentCategoryId)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  
+  const parentExpenseCategories = categories
+    .filter(c => c.type === 'expense' && !c.parentCategoryId)
+    .sort((a, b) => a.name.localeCompare(b.name));
   
   const getSubcategories = (parentId: number) => {
-    return categories.filter(c => c.parentCategoryId === parentId);
+    return categories
+      .filter(c => c.parentCategoryId === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   return (
