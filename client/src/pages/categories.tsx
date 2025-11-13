@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Tag, ArrowLeft, Pencil } from "lucide-react";
+import { Plus, Trash2, Tag, ArrowLeft, Pencil, FolderPlus } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Category, Organization } from "@shared/schema";
@@ -27,6 +27,10 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCategoryName, setEditCategoryName] = useState("");
   const [editCategoryType, setEditCategoryType] = useState<"income" | "expense">("expense");
+  const [editParentCategoryId, setEditParentCategoryId] = useState<number | null>(null);
+  
+  const [creatingSubcategoryFor, setCreatingSubcategoryFor] = useState<Category | null>(null);
+  const [subcategoryName, setSubcategoryName] = useState("");
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -91,6 +95,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       return await apiRequest('PATCH', `/api/categories/${editingCategory.id}`, {
         name: editCategoryName.trim(),
         type: editCategoryType,
+        parentCategoryId: editParentCategoryId,
       });
     },
     onSuccess: () => {
@@ -102,6 +107,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       setEditingCategory(null);
       setEditCategoryName("");
       setEditCategoryType("expense");
+      setEditParentCategoryId(null);
     },
     onError: (error: any) => {
       toast({
@@ -112,14 +118,51 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
     },
   });
 
+  const createSubcategoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!creatingSubcategoryFor || !subcategoryName.trim()) {
+        throw new Error("Subcategory name is required");
+      }
+      return await apiRequest('POST', '/api/categories', {
+        organizationId: currentOrganization.id,
+        name: subcategoryName.trim(),
+        type: creatingSubcategoryFor.type,
+        parentCategoryId: creatingSubcategoryFor.id,
+        createdBy: userId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      toast({
+        title: "Subcategory created",
+        description: `${subcategoryName} has been added successfully.`,
+      });
+      setCreatingSubcategoryFor(null);
+      setSubcategoryName("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create subcategory. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setEditCategoryName(category.name);
     setEditCategoryType(category.type);
+    setEditParentCategoryId(category.parentCategoryId ?? null);
   };
 
-  const incomeCategories = categories.filter(c => c.type === 'income');
-  const expenseCategories = categories.filter(c => c.type === 'expense');
+  // Separate parent and child categories
+  const parentIncomeCategories = categories.filter(c => c.type === 'income' && !c.parentCategoryId);
+  const parentExpenseCategories = categories.filter(c => c.type === 'expense' && !c.parentCategoryId);
+  
+  const getSubcategories = (parentId: number) => {
+    return categories.filter(c => c.parentCategoryId === parentId);
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -194,7 +237,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
             <DialogDescription>
-              Update the category name or type
+              Update the category name, type, or parent category
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
@@ -223,6 +266,31 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-parent-category">Parent Category (Optional)</Label>
+              <Select
+                value={editParentCategoryId?.toString() ?? "none"}
+                onValueChange={(value) => setEditParentCategoryId(value === "none" ? null : parseInt(value))}
+              >
+                <SelectTrigger id="edit-parent-category" data-testid="select-edit-parent-category">
+                  <SelectValue placeholder="None (Top-level category)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (Top-level category)</SelectItem>
+                  {categories
+                    .filter(c => 
+                      c.type === editCategoryType && 
+                      !c.parentCategoryId && 
+                      c.id !== editingCategory?.id
+                    )
+                    .map(cat => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               onClick={() => updateCategoryMutation.mutate()}
               disabled={updateCategoryMutation.isPending || !editCategoryName.trim()}
@@ -230,6 +298,38 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
               data-testid="button-update-category"
             >
               {updateCategoryMutation.isPending ? "Updating..." : "Update Category"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Subcategory Dialog */}
+      <Dialog open={creatingSubcategoryFor !== null} onOpenChange={(open) => !open && setCreatingSubcategoryFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Subcategory</DialogTitle>
+            <DialogDescription>
+              Add a subcategory under "{creatingSubcategoryFor?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="subcategory-name">Subcategory Name</Label>
+              <Input
+                id="subcategory-name"
+                placeholder="e.g., Digital Ads, Print Ads"
+                value={subcategoryName}
+                onChange={(e) => setSubcategoryName(e.target.value)}
+                data-testid="input-subcategory-name"
+              />
+            </div>
+            <Button
+              onClick={() => createSubcategoryMutation.mutate()}
+              disabled={createSubcategoryMutation.isPending || !subcategoryName.trim()}
+              className="w-full"
+              data-testid="button-create-subcategory"
+            >
+              {createSubcategoryMutation.isPending ? "Creating..." : "Create Subcategory"}
             </Button>
           </div>
         </DialogContent>
@@ -244,7 +344,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {expenseCategories.length === 0 ? (
+          {parentExpenseCategories.length === 0 ? (
             <div className="text-center py-8">
               <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <p className="text-sm text-muted-foreground">No expense categories yet</p>
@@ -253,40 +353,95 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {expenseCategories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between p-3 rounded-md bg-muted/50 hover-elevate"
-                  data-testid={`category-${category.id}`}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Tag className="h-4 w-4 text-chart-3 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">{category.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={() => handleEditCategory(category)}
-                      data-testid={`button-edit-category-${category.id}`}
+            <div className="space-y-2">
+              {parentExpenseCategories.map((category) => {
+                const subcategories = getSubcategories(category.id);
+                return (
+                  <div key={category.id} className="space-y-1">
+                    {/* Parent Category */}
+                    <div
+                      className="flex items-center justify-between p-3 rounded-md bg-muted/50 hover-elevate"
+                      data-testid={`category-${category.id}`}
                     >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={() => deleteCategoryMutation.mutate(category.id)}
-                      disabled={deleteCategoryMutation.isPending}
-                      data-testid={`button-delete-category-${category.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Tag className="h-4 w-4 text-chart-3 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">{category.name}</span>
+                        {subcategories.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {subcategories.length}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => setCreatingSubcategoryFor(category)}
+                          data-testid={`button-add-subcategory-${category.id}`}
+                          title="Add subcategory"
+                        >
+                          <FolderPlus className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => handleEditCategory(category)}
+                          data-testid={`button-edit-category-${category.id}`}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => deleteCategoryMutation.mutate(category.id)}
+                          disabled={deleteCategoryMutation.isPending}
+                          data-testid={`button-delete-category-${category.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Subcategories */}
+                    {subcategories.map((subcategory) => (
+                      <div
+                        key={subcategory.id}
+                        className="flex items-center justify-between p-2 pl-8 rounded-md bg-muted/30 hover-elevate ml-6"
+                        data-testid={`category-${subcategory.id}`}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Tag className="h-3 w-3 text-chart-3 flex-shrink-0 opacity-60" />
+                          <span className="text-sm truncate">{subcategory.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0"
+                            onClick={() => handleEditCategory(subcategory)}
+                            data-testid={`button-edit-category-${subcategory.id}`}
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0"
+                            onClick={() => deleteCategoryMutation.mutate(subcategory.id)}
+                            disabled={deleteCategoryMutation.isPending}
+                            data-testid={`button-delete-category-${subcategory.id}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -301,7 +456,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {incomeCategories.length === 0 ? (
+          {parentIncomeCategories.length === 0 ? (
             <div className="text-center py-8">
               <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <p className="text-sm text-muted-foreground">No income categories yet</p>
@@ -310,40 +465,95 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {incomeCategories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center justify-between p-3 rounded-md bg-muted/50 hover-elevate"
-                  data-testid={`category-${category.id}`}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Tag className="h-4 w-4 text-chart-2 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">{category.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={() => handleEditCategory(category)}
-                      data-testid={`button-edit-category-${category.id}`}
+            <div className="space-y-2">
+              {parentIncomeCategories.map((category) => {
+                const subcategories = getSubcategories(category.id);
+                return (
+                  <div key={category.id} className="space-y-1">
+                    {/* Parent Category */}
+                    <div
+                      className="flex items-center justify-between p-3 rounded-md bg-muted/50 hover-elevate"
+                      data-testid={`category-${category.id}`}
                     >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={() => deleteCategoryMutation.mutate(category.id)}
-                      disabled={deleteCategoryMutation.isPending}
-                      data-testid={`button-delete-category-${category.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Tag className="h-4 w-4 text-chart-2 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">{category.name}</span>
+                        {subcategories.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {subcategories.length}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => setCreatingSubcategoryFor(category)}
+                          data-testid={`button-add-subcategory-${category.id}`}
+                          title="Add subcategory"
+                        >
+                          <FolderPlus className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => handleEditCategory(category)}
+                          data-testid={`button-edit-category-${category.id}`}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => deleteCategoryMutation.mutate(category.id)}
+                          disabled={deleteCategoryMutation.isPending}
+                          data-testid={`button-delete-category-${category.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Subcategories */}
+                    {subcategories.map((subcategory) => (
+                      <div
+                        key={subcategory.id}
+                        className="flex items-center justify-between p-2 pl-8 rounded-md bg-muted/30 hover-elevate ml-6"
+                        data-testid={`category-${subcategory.id}`}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Tag className="h-3 w-3 text-chart-2 flex-shrink-0 opacity-60" />
+                          <span className="text-sm truncate">{subcategory.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0"
+                            onClick={() => handleEditCategory(subcategory)}
+                            data-testid={`button-edit-category-${subcategory.id}`}
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0"
+                            onClick={() => deleteCategoryMutation.mutate(subcategory.id)}
+                            disabled={deleteCategoryMutation.isPending}
+                            data-testid={`button-delete-category-${subcategory.id}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

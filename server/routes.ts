@@ -749,6 +749,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // Validate parent category if provided
+      if (data.parentCategoryId) {
+        const parentCategory = await storage.getCategory(data.parentCategoryId);
+        
+        if (!parentCategory) {
+          return res.status(400).json({ message: "Parent category not found" });
+        }
+        
+        if (parentCategory.organizationId !== data.organizationId) {
+          return res.status(400).json({ message: "Parent category must be in the same organization" });
+        }
+        
+        if (parentCategory.type !== data.type) {
+          return res.status(400).json({ message: "Parent category must be the same type (income/expense)" });
+        }
+        
+        if (parentCategory.parentCategoryId) {
+          return res.status(400).json({ message: "Cannot create subcategory of a subcategory (max 1 level deep)" });
+        }
+      }
+
       const category = await storage.createCategory(data);
       res.status(201).json(category);
     } catch (error) {
@@ -773,6 +794,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = await storage.getUserRole(userId, category.organizationId);
       if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Validate parent category if being updated
+      if (updates.parentCategoryId !== undefined) {
+        if (updates.parentCategoryId === categoryId) {
+          return res.status(400).json({ message: "Category cannot be its own parent" });
+        }
+        
+        if (updates.parentCategoryId !== null) {
+          const parentCategory = await storage.getCategory(updates.parentCategoryId);
+          
+          if (!parentCategory) {
+            return res.status(400).json({ message: "Parent category not found" });
+          }
+          
+          if (parentCategory.organizationId !== category.organizationId) {
+            return res.status(400).json({ message: "Parent category must be in the same organization" });
+          }
+          
+          const categoryType = updates.type ?? category.type;
+          if (parentCategory.type !== categoryType) {
+            return res.status(400).json({ message: "Parent category must be the same type (income/expense)" });
+          }
+          
+          if (parentCategory.parentCategoryId) {
+            return res.status(400).json({ message: "Cannot create subcategory of a subcategory (max 1 level deep)" });
+          }
+          
+          if (parentCategory.id === categoryId) {
+            return res.status(400).json({ message: "Category cannot be its own parent" });
+          }
+        }
       }
 
       const updatedCategory = await storage.updateCategory(categoryId, updates);
