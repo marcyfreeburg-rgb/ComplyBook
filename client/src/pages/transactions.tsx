@@ -1411,14 +1411,14 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       )}
 
       {/* Check Register */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Transaction Register</CardTitle>
           <CardDescription>
             {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''} found
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {filteredTransactions.length === 0 ? (
             <div className="text-center py-12 px-6">
               <div className="h-12 w-12 rounded-md bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -1432,8 +1432,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: '1200px' }}>
+            <table className="w-full" style={{ minWidth: '1200px' }}>
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 w-[60px]">
@@ -1535,7 +1534,6 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   })}
                 </tbody>
               </table>
-            </div>
           )}
         </CardContent>
       </Card>
