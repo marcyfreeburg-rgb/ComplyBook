@@ -2388,7 +2388,10 @@ export const bankReconciliations = pgTable("bank_reconciliations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   accountName: varchar("account_name", { length: 255 }).notNull(),
-  statementDate: timestamp("statement_date").notNull(),
+  statementStartDate: timestamp("statement_start_date"),
+  statementEndDate: timestamp("statement_end_date").notNull(),
+  beginningBalance: numeric("beginning_balance", { precision: 15, scale: 2 }).notNull(),
+  endingBalance: numeric("ending_balance", { precision: 15, scale: 2 }).notNull(),
   statementBalance: numeric("statement_balance", { precision: 15, scale: 2 }).notNull(),
   bookBalance: numeric("book_balance", { precision: 15, scale: 2 }).notNull(),
   difference: numeric("difference", { precision: 15, scale: 2 }).notNull(),
@@ -2409,12 +2412,15 @@ export const insertBankReconciliationSchema = createInsertSchema(bankReconciliat
   createdAt: true,
   updatedAt: true,
 }).extend({
-  statementDate: z.coerce.date(),
+  statementStartDate: z.coerce.date().optional().nullable(),
+  statementEndDate: z.coerce.date(),
+  beginningBalance: z.string().or(z.number()).transform(val => String(val)),
+  endingBalance: z.string().or(z.number()).transform(val => String(val)),
   statementBalance: z.string().or(z.number()).transform(val => String(val)),
   bookBalance: z.string().or(z.number()).transform(val => String(val)),
   difference: z.string().or(z.number()).transform(val => String(val)),
   reconciledDate: z.coerce.date().optional().nullable(),
-  status: z.enum(['unreconciled', 'reconciled', 'pending']).default('unreconciled'),
+  status: z.enum(['unreconciled', 'reconciled', 'pending']).default('pending'),
 });
 
 export type InsertBankReconciliation = z.infer<typeof insertBankReconciliationSchema>;

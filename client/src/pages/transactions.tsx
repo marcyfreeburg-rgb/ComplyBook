@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program } from "@shared/schema";
@@ -83,6 +83,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
   const [newCategoryParentId, setNewCategoryParentId] = useState<number | null>(null);
+  const [isReconciliationDialogOpen, setIsReconciliationDialogOpen] = useState(false);
+  const [reconciliationData, setReconciliationData] = useState({
+    accountName: '',
+    statementEndDate: new Date().toISOString().split('T')[0],
+    beginningBalance: '',
+    endingBalance: '',
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
   const [bulkSuggestions, setBulkSuggestions] = useState<Map<number, CategorySuggestion>>(new Map());
@@ -172,6 +179,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const { data: attachments, refetch: refetchAttachments } = useQuery<TransactionAttachment[]>({
     queryKey: [`/api/transactions/${selectedTransactionForAttachments?.id}/attachments`],
     enabled: !!selectedTransactionForAttachments && isAttachmentsDialogOpen,
+    retry: false,
+  });
+
+  const { data: lastReconciliation } = useQuery({
+    queryKey: [`/api/bank-reconciliations/${currentOrganization.id}/last`],
     retry: false,
   });
 
@@ -760,6 +772,98 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   data-testid="button-import-submit"
                 >
                   {csvImportMutation.isPending ? "Importing..." : "Import Transactions"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isReconciliationDialogOpen} onOpenChange={(open) => {
+            setIsReconciliationDialogOpen(open);
+            if (open && lastReconciliation) {
+              setReconciliationData(prev => ({
+                ...prev,
+                beginningBalance: lastReconciliation.endingBalance || '',
+                accountName: lastReconciliation.accountName || '',
+              }));
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-start-reconciliation">
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Reconcile
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Start Bank Reconciliation</DialogTitle>
+                <DialogDescription>
+                  Reconcile your transactions with your bank statement
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="account-name">Account Name</Label>
+                  <Input
+                    id="account-name"
+                    placeholder="e.g., Checking Account"
+                    value={reconciliationData.accountName}
+                    onChange={(e) => setReconciliationData({ ...reconciliationData, accountName: e.target.value })}
+                    data-testid="input-account-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="statement-end-date">Statement End Date</Label>
+                  <Input
+                    id="statement-end-date"
+                    type="date"
+                    value={reconciliationData.statementEndDate}
+                    onChange={(e) => setReconciliationData({ ...reconciliationData, statementEndDate: e.target.value })}
+                    data-testid="input-statement-end-date"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="beginning-balance">
+                    Beginning Balance
+                    {lastReconciliation && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        (From previous reconciliation)
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    id="beginning-balance"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={reconciliationData.beginningBalance}
+                    onChange={(e) => setReconciliationData({ ...reconciliationData, beginningBalance: e.target.value })}
+                    data-testid="input-beginning-balance"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ending-balance">Ending Balance (from bank statement)</Label>
+                  <Input
+                    id="ending-balance"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={reconciliationData.endingBalance}
+                    onChange={(e) => setReconciliationData({ ...reconciliationData, endingBalance: e.target.value })}
+                    data-testid="input-ending-balance"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    toast({
+                      title: "Coming Soon",
+                      description: "Bank reconciliation feature will be implemented shortly.",
+                    });
+                    setIsReconciliationDialogOpen(false);
+                  }}
+                  disabled={!reconciliationData.accountName || !reconciliationData.beginningBalance || !reconciliationData.endingBalance}
+                  className="w-full"
+                  data-testid="button-start-reconciliation-submit"
+                >
+                  Start Reconciliation
                 </Button>
               </div>
             </DialogContent>
