@@ -41,6 +41,7 @@ import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CategoryCombobox, CATEGORY_SENTINEL_NO_CHANGE } from "@/components/category-combobox";
 
 interface CategorySuggestion {
   categoryId: number;
@@ -99,9 +100,18 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
   const [bulkFunctionalCategory, setBulkFunctionalCategory] = useState<'program' | 'administrative' | 'fundraising' | undefined>(undefined);
   const [aiBatchSize, setAiBatchSize] = useState<number>(() => {
-    // Try to load from localStorage
-    const saved = localStorage.getItem('aiBatchSize');
-    return saved ? parseInt(saved) : 50;
+    // Try to load from localStorage with validation
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aiBatchSize');
+      if (saved) {
+        const parsed = parseInt(saved);
+        // Validate it's a number and within allowed range
+        if (!isNaN(parsed) && [10, 20, 30, 40, 50].includes(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return 50; // Default to maximum
   });
   const [formData, setFormData] = useState<TransactionFormData>({
     organizationId: currentOrganization.id,
@@ -474,7 +484,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const bulkUpdateCategoriesMutation = useMutation({
     mutationFn: async () => {
       const updates: any = {};
-      if (bulkCategoryId !== undefined) updates.categoryId = bulkCategoryId;
+      if (bulkCategoryId !== undefined && bulkCategoryId !== CATEGORY_SENTINEL_NO_CHANGE) {
+        updates.categoryId = bulkCategoryId;
+      }
       if (bulkFundId !== undefined) updates.fundId = bulkFundId;
       if (bulkProgramId !== undefined) updates.programId = bulkProgramId;
       if (bulkFunctionalCategory !== undefined) updates.functionalCategory = bulkFunctionalCategory;
@@ -1132,22 +1144,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                     New Category
                   </Button>
                 </div>
-                <Select
-                  value={formData.categoryId?.toString() || "none"}
-                  onValueChange={(value) => setFormData({ ...formData, categoryId: value === "none" ? undefined : parseInt(value) })}
-                >
-                  <SelectTrigger id="category" data-testid="select-transaction-category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No category</SelectItem>
-                    {categories?.filter(c => c.type === formData.type).map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id.toString()}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategoryCombobox
+                  categories={categories || []}
+                  value={formData.categoryId}
+                  onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                  type={formData.type}
+                  placeholder="Select a category"
+                  allowNone={true}
+                  noneSentinel={null}
+                  className="w-full"
+                  testId="select-transaction-category"
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
@@ -1676,22 +1683,20 @@ export default function Transactions({ currentOrganization, userId }: Transactio
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="bulk-category">Category (Optional)</Label>
-              <Select
-                value={bulkCategoryId?.toString() || "none"}
-                onValueChange={(value) => setBulkCategoryId(value === "none" ? undefined : parseInt(value))}
-              >
-                <SelectTrigger id="bulk-category" data-testid="select-bulk-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No change</SelectItem>
-                  {categories?.filter(c => c.type === 'expense').map(category => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryCombobox
+                categories={categories || []}
+                value={bulkCategoryId}
+                onValueChange={(value) => setBulkCategoryId(value)}
+                type="expense"
+                placeholder="Select a category"
+                allowNone={true}
+                noneLabel="No change"
+                noneSentinel={CATEGORY_SENTINEL_NO_CHANGE}
+                allowClear={true}
+                clearLabel="Clear category"
+                className="w-full"
+                testId="select-bulk-category"
+              />
             </div>
 
             {currentOrganization.type === 'nonprofit' && (

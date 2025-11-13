@@ -16,6 +16,7 @@ import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
+import { CategoryCombobox } from "@/components/category-combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -437,20 +438,16 @@ export default function Budgets() {
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Category</FormLabel>
-                                  <Select onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={field.value?.toString()}>
-                                    <FormControl>
-                                      <SelectTrigger data-testid="select-budget-category">
-                                        <SelectValue placeholder="Select a category" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {categories.map((category) => (
-                                        <SelectItem key={category.id} value={category.id.toString()}>
-                                          {category.name} ({category.type})
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <CategoryCombobox
+                                    categories={categories}
+                                    value={field.value}
+                                    onValueChange={(value) => field.onChange(value)}
+                                    placeholder="Select a category"
+                                    allowNone={false}
+                                    noneSentinel={null}
+                                    className="w-full"
+                                    testId="select-budget-category"
+                                  />
                                   <FormMessage />
                                 </FormItem>
                               )}

@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, ArrowUpRight, ArrowDownRight, Edit, Trash2, RefreshCw, Clock } from "lucide-react";
 import { format } from "date-fns";
 import type { Organization, Category } from "@shared/schema";
+import { CategoryCombobox } from "@/components/category-combobox";
 
 interface RecurringTransaction {
   id: number;
@@ -423,21 +424,16 @@ export default function RecurringTransactions({ currentOrganization, userId }: R
 
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Select
-                value={formData.categoryId?.toString() || ""}
-                onValueChange={(value) => setFormData({ ...formData, categoryId: value ? parseInt(value) : undefined })}
-              >
-                <SelectTrigger id="category" data-testid="select-category">
-                  <SelectValue placeholder="Select category (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories?.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CategoryCombobox
+                categories={categories || []}
+                value={formData.categoryId}
+                onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                placeholder="Select category (optional)"
+                allowNone={true}
+                noneSentinel={null}
+                className="w-full"
+                testId="select-category"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -567,23 +563,16 @@ export default function RecurringTransactions({ currentOrganization, userId }: R
 
               <div className="space-y-2">
                 <Label htmlFor="edit-category">Category</Label>
-                <Select
-                  value={editingTransaction.categoryId?.toString() || ""}
-                  onValueChange={(value) => 
-                    setEditingTransaction({ ...editingTransaction, categoryId: value ? parseInt(value) : null })
-                  }
-                >
-                  <SelectTrigger id="edit-category">
-                    <SelectValue placeholder="Select category (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories?.map((category) => (
-                      <SelectItem key={category.id} value={category.id.toString()}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategoryCombobox
+                  categories={categories || []}
+                  value={editingTransaction.categoryId}
+                  onValueChange={(value) => setEditingTransaction({ ...editingTransaction, categoryId: value })}
+                  placeholder="Select category (optional)"
+                  allowNone={true}
+                  noneSentinel={null}
+                  className="w-full"
+                  testId="select-edit-category"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -11,6 +11,10 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX Decisions
 The application uses React 18 with TypeScript and Vite for the frontend. UI components are built with `shadcn/ui` (New York style) based on Radix UI, styled using Tailwind CSS and custom CSS variables for themable light/dark modes. Design principles emphasize clarity, professional financial data presentation, minimal cognitive load, responsive design, and modern typography (Inter, JetBrains Mono). The application uses "hub" consolidation patterns with tabbed interfaces to group related functionality, ensuring a streamlined user experience.
 
+**CategoryCombobox Component:** A reusable searchable category selector with hierarchical display, type filtering, and advanced sentinel handling for distinguishing "no change" vs "clear" semantics in bulk operations. Uses `CATEGORY_SENTINEL_NO_CHANGE = -999999` constant for bulk operations to skip field updates, while regular forms use `null` to clear categories. Supports both "No change" and "Clear category" options in bulk dialogs. Default `noneSentinel = null` ensures pristine state always shows placeholder.
+
+**AI Categorization:** Batch size selector (10/20/30/40/50 transactions) with localStorage persistence and backend 50-transaction hard limit for bulk AI categorization operations.
+
 ### Technical Implementations
 The backend uses Express.js and TypeScript with a RESTful API. Authentication is handled via Replit Auth (OpenID Connect) using Passport.js and session-based, secure HTTP-only cookies stored in PostgreSQL. Authorization employs a multi-tenant, role-based access control system (owner, admin, accountant, viewer) per organization. Data validation is performed using Zod.
 

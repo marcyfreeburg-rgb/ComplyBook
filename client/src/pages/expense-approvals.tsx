@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { Organization, ExpenseApproval, Category, Vendor, InsertExpenseApproval } from "@shared/schema";
 import { insertExpenseApprovalSchema } from "@shared/schema";
 import { format } from "date-fns";
+import { CategoryCombobox } from "@/components/category-combobox";
 
 interface ExpenseApprovalsProps {
   currentOrganization: Organization;
@@ -303,24 +304,16 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category (Optional)</FormLabel>
-                        <Select
-                          value={field.value?.toString()}
-                          onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-category">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="0">None</SelectItem>
-                            {categories?.map((category) => (
-                              <SelectItem key={category.id} value={category.id.toString()}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <CategoryCombobox
+                          categories={categories || []}
+                          value={field.value}
+                          onValueChange={(value) => field.onChange(value)}
+                          placeholder="Select category"
+                          allowNone={true}
+                          noneSentinel={null}
+                          className="w-full"
+                          testId="select-category"
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
