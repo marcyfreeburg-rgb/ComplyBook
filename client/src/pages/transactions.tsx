@@ -1418,7 +1418,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''} found
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
           {filteredTransactions.length === 0 ? (
             <div className="text-center py-12 px-6">
               <div className="h-12 w-12 rounded-md bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -1432,7 +1432,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </p>
             </div>
           ) : (
-            <table style={{ width: '1400px', tableLayout: 'fixed' }}>
+            <div className="overflow-x-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+              <table style={{ width: '1400px', tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="border-b">
                     <th style={{ width: '80px' }} className="text-left py-3 px-4">
@@ -1534,6 +1535,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   })}
                 </tbody>
               </table>
+            </div>
           )}
         </CardContent>
       </Card>
