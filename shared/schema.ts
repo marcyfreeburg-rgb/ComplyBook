@@ -707,7 +707,10 @@ export const insertGrantSchema = createInsertSchema(grants).omit({
   lastReportSubmittedDate: z.coerce.date().optional().nullable(),
 });
 
+export const updateGrantSchema = insertGrantSchema.partial();
+
 export type InsertGrant = z.infer<typeof insertGrantSchema>;
+export type UpdateGrant = z.infer<typeof updateGrantSchema>;
 export type Grant = typeof grants.$inferSelect;
 
 // ============================================

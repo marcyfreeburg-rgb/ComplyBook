@@ -12,6 +12,7 @@ import { sendInvoiceEmail } from "./email";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
+import { z } from "zod";
 import {
   insertOrganizationSchema,
   insertCategorySchema,
@@ -23,6 +24,7 @@ import {
   insertBillLineItemSchema,
   insertTransactionSchema,
   insertGrantSchema,
+  updateGrantSchema,
   insertBudgetSchema,
   insertBudgetItemSchema,
   insertInvitationSchema,
@@ -3393,7 +3395,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const grantId = parseInt(req.params.id);
-      const updates = req.body;
 
       const existing = await storage.getGrant(grantId);
       if (!existing) {
@@ -3405,11 +3406,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied - only owners and admins can manage grants" });
       }
 
+      // Parse and validate updates with proper date conversion
+      const updates = updateGrantSchema.parse(req.body);
+
       const updated = await storage.updateGrant(grantId, updates);
       await storage.logUpdate(existing.organizationId, userId, 'grant', grantId.toString(), existing, updated);
       res.json(updated);
     } catch (error) {
       console.error("Error updating grant:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to update grant" });
     }
   });
