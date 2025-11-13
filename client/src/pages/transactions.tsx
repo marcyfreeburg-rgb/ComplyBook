@@ -82,6 +82,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
+  const [newCategoryParentId, setNewCategoryParentId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
   const [bulkSuggestions, setBulkSuggestions] = useState<Map<number, CategorySuggestion>>(new Map());
@@ -268,6 +269,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         organizationId: currentOrganization.id,
         name: newCategoryName.trim(),
         type: newCategoryType,
+        parentCategoryId: newCategoryParentId,
         createdBy: userId,
       });
       return await response.json();
@@ -287,6 +289,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       setIsCategoryDialogOpen(false);
       setNewCategoryName("");
       setNewCategoryType("expense");
+      setNewCategoryParentId(null);
     },
     onError: (error: any) => {
       toast({
@@ -798,6 +801,27 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                     <SelectContent>
                       <SelectItem value="income">Income</SelectItem>
                       <SelectItem value="expense">Expense</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="parent-category">Parent Category (Optional)</Label>
+                  <Select
+                    value={newCategoryParentId?.toString() || "none"}
+                    onValueChange={(value) => setNewCategoryParentId(value === "none" ? null : parseInt(value))}
+                  >
+                    <SelectTrigger id="parent-category" data-testid="select-parent-category">
+                      <SelectValue placeholder="None (Top-level category)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Top-level category)</SelectItem>
+                      {categories
+                        ?.filter(c => c.type === newCategoryType && !c.parentCategoryId)
+                        .map(category => (
+                          <SelectItem key={category.id} value={category.id.toString()}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
