@@ -2903,6 +2903,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/bank-reconciliations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.id);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(reconciliation);
+    } catch (error) {
+      console.error("Error fetching reconciliation:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation" });
+    }
+  });
+
+  app.patch('/api/bank-reconciliations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.id);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to update reconciliations" });
+      }
+
+      const updated = await storage.updateBankReconciliation(reconciliationId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating reconciliation:", error);
+      res.status(500).json({ message: "Failed to update reconciliation" });
+    }
+  });
+
+  // Bank Statement Entry routes
+  app.get('/api/bank-statement-entries/:reconciliationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.reconciliationId);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const entries = await storage.getBankStatementEntries(reconciliationId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching statement entries:", error);
+      res.status(500).json({ message: "Failed to fetch statement entries" });
+    }
+  });
+
+  app.post('/api/bank-statement-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { reconciliationId, entries } = req.body;
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to add statement entries" });
+      }
+
+      // Bulk create if array provided, otherwise single create
+      const newEntries = Array.isArray(entries)
+        ? await storage.bulkCreateBankStatementEntries(entries)
+        : await storage.createBankStatementEntry(req.body);
+
+      res.json(newEntries);
+    } catch (error) {
+      console.error("Error creating statement entries:", error);
+      res.status(500).json({ message: "Failed to create statement entries" });
+    }
+  });
+
+  // Reconciliation Match routes
+  app.get('/api/reconciliation-matches/:reconciliationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.reconciliationId);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const matches = await storage.getReconciliationMatches(reconciliationId);
+      res.json(matches);
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+      res.status(500).json({ message: "Failed to fetch matches" });
+    }
+  });
+
+  app.post('/api/reconciliation-matches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { reconciliationId, transactionId, statementEntryId } = req.body;
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to create matches" });
+      }
+
+      const match = await storage.matchTransactionToStatementEntry(
+        reconciliationId,
+        transactionId,
+        statementEntryId,
+        userId
+      );
+
+      res.json(match);
+    } catch (error: any) {
+      console.error("Error creating match:", error);
+      
+      // Handle duplicate match attempts with 409 Conflict
+      if (error.message?.includes('already')) {
+        return res.status(409).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: error.message || "Failed to create match" });
+    }
+  });
+
+  app.delete('/api/reconciliation-matches/:matchId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const matchId = parseInt(req.params.matchId);
+
+      const matches = await storage.getReconciliationMatches(0); // Get match to check permissions
+      const match = matches.find(m => m.id === matchId);
+      
+      if (!match) {
+        return res.status(404).json({ message: "Match not found" });
+      }
+
+      const reconciliation = await storage.getBankReconciliation(match.reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete matches" });
+      }
+
+      await storage.unmatchTransaction(matchId);
+      res.json({ message: "Match deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting match:", error);
+      res.status(500).json({ message: "Failed to delete match" });
+    }
+  });
+
+  app.get('/api/reconciliation-suggestions/:reconciliationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.reconciliationId);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const suggestions = await storage.getSuggestedMatches(reconciliationId);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error getting match suggestions:", error);
+      res.status(500).json({ message: "Failed to get match suggestions" });
+    }
+  });
+
   // Recurring Transaction routes
   app.get('/api/recurring-transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

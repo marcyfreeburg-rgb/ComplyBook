@@ -2426,27 +2426,53 @@ export const insertBankReconciliationSchema = createInsertSchema(bankReconciliat
 export type InsertBankReconciliation = z.infer<typeof insertBankReconciliationSchema>;
 export type BankReconciliation = typeof bankReconciliations.$inferSelect;
 
+export const bankStatementEntries = pgTable("bank_statement_entries", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  reconciliationId: integer("reconciliation_id").notNull().references(() => bankReconciliations.id, { onDelete: 'cascade' }),
+  date: timestamp("date").notNull(),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  isMatched: integer("is_matched").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_bank_statement_entries_recon_id").on(table.reconciliationId),
+  index("idx_bank_statement_entries_recon_matched").on(table.reconciliationId, table.isMatched),
+]);
+
+export const insertBankStatementEntrySchema = createInsertSchema(bankStatementEntries).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  date: z.coerce.date(),
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  type: z.enum(['income', 'expense']),
+  isMatched: z.number().default(0),
+});
+
+export type InsertBankStatementEntry = z.infer<typeof insertBankStatementEntrySchema>;
+export type BankStatementEntry = typeof bankStatementEntries.$inferSelect;
+
 export const reconciliationMatches = pgTable("reconciliation_matches", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   reconciliationId: integer("reconciliation_id").notNull().references(() => bankReconciliations.id, { onDelete: 'cascade' }),
   transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
-  statementDescription: text("statement_description"),
-  statementAmount: numeric("statement_amount", { precision: 12, scale: 2 }),
-  isMatched: integer("is_matched").notNull().default(0),
+  statementEntryId: integer("statement_entry_id").references(() => bankStatementEntries.id, { onDelete: 'cascade' }),
+  matchedBy: varchar("matched_by").references(() => users.id, { onDelete: 'set null' }),
   matchedAt: timestamp("matched_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_reconciliation_matches_recon_id").on(table.reconciliationId),
   index("idx_reconciliation_matches_transaction_id").on(table.transactionId),
+  index("idx_reconciliation_matches_statement_entry_id").on(table.statementEntryId),
+  index("idx_reconciliation_matches_recon_matched_at").on(table.reconciliationId, table.matchedAt),
 ]);
 
 export const insertReconciliationMatchSchema = createInsertSchema(reconciliationMatches).omit({
   id: true,
   createdAt: true,
 }).extend({
-  statementAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
   matchedAt: z.coerce.date().optional().nullable(),
-  isMatched: z.number().default(0),
 });
 
 export type InsertReconciliationMatch = z.infer<typeof insertReconciliationMatchSchema>;

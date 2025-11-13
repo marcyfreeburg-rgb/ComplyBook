@@ -169,6 +169,16 @@ import {
   vulnerabilityScans,
   type VulnerabilityScan,
   type InsertVulnerabilityScan,
+  // Bank Reconciliation types
+  bankReconciliations,
+  type BankReconciliation,
+  type InsertBankReconciliation,
+  bankStatementEntries,
+  type BankStatementEntry,
+  type InsertBankStatementEntry,
+  reconciliationMatches,
+  type ReconciliationMatch,
+  type InsertReconciliationMatch,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -285,6 +295,24 @@ export interface IStorage {
   getLastBankReconciliation(organizationId: number, accountName?: string): Promise<BankReconciliation | undefined>;
   createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation>;
   updateBankReconciliation(id: number, updates: Partial<InsertBankReconciliation>): Promise<BankReconciliation>;
+  
+  // Bank Statement Entry operations
+  getBankStatementEntries(reconciliationId: number): Promise<BankStatementEntry[]>;
+  createBankStatementEntry(entry: InsertBankStatementEntry): Promise<BankStatementEntry>;
+  bulkCreateBankStatementEntries(entries: InsertBankStatementEntry[]): Promise<BankStatementEntry[]>;
+  updateBankStatementEntry(id: number, updates: Partial<InsertBankStatementEntry>): Promise<BankStatementEntry>;
+  deleteBankStatementEntry(id: number): Promise<void>;
+  
+  // Reconciliation Match operations
+  getReconciliationMatches(reconciliationId: number): Promise<ReconciliationMatch[]>;
+  matchTransactionToStatementEntry(reconciliationId: number, transactionId: number, statementEntryId: number, userId: string): Promise<ReconciliationMatch>;
+  unmatchTransaction(matchId: number): Promise<void>;
+  bulkDeleteMatches(matchIds: number[]): Promise<number>;
+  getSuggestedMatches(reconciliationId: number): Promise<Array<{
+    transaction: Transaction;
+    statementEntry: BankStatementEntry;
+    similarityScore: number;
+  }>>;
 
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
@@ -1699,6 +1727,367 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bankReconciliations.id, id))
       .returning();
     return updated;
+  }
+
+  // Bank Statement Entry operations
+  async getBankStatementEntries(reconciliationId: number): Promise<BankStatementEntry[]> {
+    return await db
+      .select()
+      .from(bankStatementEntries)
+      .where(eq(bankStatementEntries.reconciliationId, reconciliationId))
+      .orderBy(bankStatementEntries.date);
+  }
+
+  async createBankStatementEntry(entry: InsertBankStatementEntry): Promise<BankStatementEntry> {
+    const [newEntry] = await db
+      .insert(bankStatementEntries)
+      .values(entry)
+      .returning();
+    return newEntry;
+  }
+
+  async bulkCreateBankStatementEntries(entries: InsertBankStatementEntry[]): Promise<BankStatementEntry[]> {
+    if (entries.length === 0) return [];
+    return await db
+      .insert(bankStatementEntries)
+      .values(entries)
+      .returning();
+  }
+
+  async updateBankStatementEntry(id: number, updates: Partial<InsertBankStatementEntry>): Promise<BankStatementEntry> {
+    const [updated] = await db
+      .update(bankStatementEntries)
+      .set(updates)
+      .where(eq(bankStatementEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBankStatementEntry(id: number): Promise<void> {
+    await db
+      .delete(bankStatementEntries)
+      .where(eq(bankStatementEntries.id, id));
+  }
+
+  // Reconciliation Match operations
+  async getReconciliationMatches(reconciliationId: number): Promise<ReconciliationMatch[]> {
+    return await db
+      .select()
+      .from(reconciliationMatches)
+      .where(eq(reconciliationMatches.reconciliationId, reconciliationId))
+      .orderBy(reconciliationMatches.matchedAt);
+  }
+
+  async matchTransactionToStatementEntry(
+    reconciliationId: number,
+    transactionId: number,
+    statementEntryId: number,
+    userId: string
+  ): Promise<ReconciliationMatch> {
+    return await db.transaction(async (tx) => {
+      // Lock and validate transaction belongs to correct reconciliation
+      const [transaction] = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, transactionId))
+        .for('update');
+
+      if (!transaction) {
+        throw new Error('Transaction not found');
+      }
+
+      // Lock and validate statement entry belongs to this reconciliation
+      const [statementEntry] = await tx
+        .select()
+        .from(bankStatementEntries)
+        .where(
+          and(
+            eq(bankStatementEntries.id, statementEntryId),
+            eq(bankStatementEntries.reconciliationId, reconciliationId)
+          )
+        )
+        .for('update');
+
+      if (!statementEntry) {
+        throw new Error('Statement entry not found or does not belong to this reconciliation');
+      }
+
+      // Check if already matched
+      if (transaction.reconciliationStatus === 'reconciled') {
+        throw new Error('Transaction is already reconciled');
+      }
+
+      if (statementEntry.isMatched === 1) {
+        throw new Error('Statement entry is already matched');
+      }
+
+      // Create the match
+      const [match] = await tx
+        .insert(reconciliationMatches)
+        .values({
+          reconciliationId,
+          transactionId,
+          statementEntryId,
+          matchedBy: userId,
+          matchedAt: new Date(),
+        })
+        .returning();
+
+      // Update transaction status
+      await tx
+        .update(transactions)
+        .set({
+          reconciliationStatus: 'reconciled',
+          reconciledDate: new Date(),
+          reconciledBy: userId,
+        })
+        .where(eq(transactions.id, transactionId));
+
+      // Update statement entry status
+      await tx
+        .update(bankStatementEntries)
+        .set({
+          isMatched: 1,
+        })
+        .where(eq(bankStatementEntries.id, statementEntryId));
+
+      // Audit log
+      await tx.insert(auditLogs).values({
+        organizationId: transaction.organizationId,
+        userId,
+        action: 'reconciliation_match',
+        entityType: 'transaction',
+        entityId: transactionId,
+        details: JSON.stringify({
+          reconciliationId,
+          statementEntryId,
+          transactionDescription: transaction.description,
+          statementDescription: statementEntry.description,
+          amount: transaction.amount,
+        }),
+        timestamp: new Date(),
+        ipAddress: '',
+        previousHash: '',
+        currentHash: '',
+      });
+
+      return match;
+    });
+  }
+
+  async unmatchTransaction(matchId: number): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Lock and get the match
+      const [match] = await tx
+        .select()
+        .from(reconciliationMatches)
+        .where(eq(reconciliationMatches.id, matchId))
+        .for('update');
+
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      // Update transaction status if exists
+      if (match.transactionId) {
+        await tx
+          .update(transactions)
+          .set({
+            reconciliationStatus: 'unreconciled',
+            reconciledDate: null,
+            reconciledBy: null,
+          })
+          .where(eq(transactions.id, match.transactionId));
+      }
+
+      // Update statement entry status if exists
+      if (match.statementEntryId) {
+        await tx
+          .update(bankStatementEntries)
+          .set({
+            isMatched: 0,
+          })
+          .where(eq(bankStatementEntries.id, match.statementEntryId));
+      }
+
+      // Delete the match
+      await tx
+        .delete(reconciliationMatches)
+        .where(eq(reconciliationMatches.id, matchId));
+
+      // Audit log
+      const transaction = match.transactionId 
+        ? (await tx.select().from(transactions).where(eq(transactions.id, match.transactionId)))[0]
+        : null;
+
+      if (transaction) {
+        await tx.insert(auditLogs).values({
+          organizationId: transaction.organizationId,
+          userId: match.matchedBy || 'system',
+          action: 'reconciliation_unmatch',
+          entityType: 'transaction',
+          entityId: match.transactionId!,
+          details: JSON.stringify({
+            reconciliationId: match.reconciliationId,
+            statementEntryId: match.statementEntryId,
+          }),
+          timestamp: new Date(),
+          ipAddress: '',
+          previousHash: '',
+          currentHash: '',
+        });
+      }
+    });
+  }
+
+  async bulkDeleteMatches(matchIds: number[]): Promise<number> {
+    if (matchIds.length === 0) return 0;
+
+    return await db.transaction(async (tx) => {
+      // Get all matches
+      const matches = await tx
+        .select()
+        .from(reconciliationMatches)
+        .where(inArray(reconciliationMatches.id, matchIds));
+
+      // Update all transactions
+      const transactionIds = matches
+        .map(m => m.transactionId)
+        .filter(id => id !== null) as number[];
+
+      if (transactionIds.length > 0) {
+        await tx
+          .update(transactions)
+          .set({
+            reconciliationStatus: 'unreconciled',
+            reconciledDate: null,
+            reconciledBy: null,
+          })
+          .where(inArray(transactions.id, transactionIds));
+      }
+
+      // Update all statement entries
+      const entryIds = matches
+        .map(m => m.statementEntryId)
+        .filter(id => id !== null) as number[];
+
+      if (entryIds.length > 0) {
+        await tx
+          .update(bankStatementEntries)
+          .set({
+            isMatched: 0,
+          })
+          .where(inArray(bankStatementEntries.id, entryIds));
+      }
+
+      // Delete all matches
+      await tx
+        .delete(reconciliationMatches)
+        .where(inArray(reconciliationMatches.id, matchIds));
+
+      return matches.length;
+    });
+  }
+
+  async getSuggestedMatches(reconciliationId: number): Promise<Array<{
+    transaction: Transaction;
+    statementEntry: BankStatementEntry;
+    similarityScore: number;
+  }>> {
+    // Get reconciliation to find date range
+    const reconciliation = await this.getBankReconciliation(reconciliationId);
+    if (!reconciliation) return [];
+
+    // Get unmatched transactions in date range
+    const unmatchedTransactions = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, reconciliation.organizationId),
+          eq(transactions.reconciliationStatus, 'unreconciled'),
+          gte(transactions.date, reconciliation.statementStartDate || new Date(0)),
+          lte(transactions.date, reconciliation.statementEndDate)
+        )
+      );
+
+    // Get unmatched statement entries
+    const unmatchedEntries = await db
+      .select()
+      .from(bankStatementEntries)
+      .where(
+        and(
+          eq(bankStatementEntries.reconciliationId, reconciliationId),
+          eq(bankStatementEntries.isMatched, 0)
+        )
+      );
+
+    // Calculate similarity scores
+    const suggestions: Array<{
+      transaction: Transaction;
+      statementEntry: BankStatementEntry;
+      similarityScore: number;
+    }> = [];
+
+    for (const txn of unmatchedTransactions) {
+      for (const entry of unmatchedEntries) {
+        let score = 0;
+
+        // Amount match (highest weight)
+        const txnAmount = Math.abs(parseFloat(txn.amount));
+        const entryAmount = Math.abs(parseFloat(entry.amount));
+        const amountDiff = Math.abs(txnAmount - entryAmount);
+        
+        if (amountDiff < 0.01) {
+          score += 50; // Exact match
+        } else if (amountDiff < 1) {
+          score += 40; // Very close
+        } else if (amountDiff < 10) {
+          score += 20; // Close
+        }
+
+        // Date proximity (medium weight)
+        const dateDiff = Math.abs(
+          new Date(txn.date).getTime() - new Date(entry.date).getTime()
+        ) / (1000 * 60 * 60 * 24); // days
+
+        if (dateDiff === 0) {
+          score += 30; // Same day
+        } else if (dateDiff <= 3) {
+          score += 20; // Within 3 days
+        } else if (dateDiff <= 7) {
+          score += 10; // Within a week
+        }
+
+        // Description similarity (lower weight)
+        const txnDesc = txn.description.toLowerCase();
+        const entryDesc = entry.description.toLowerCase();
+        
+        if (txnDesc === entryDesc) {
+          score += 20; // Exact match
+        } else if (txnDesc.includes(entryDesc) || entryDesc.includes(txnDesc)) {
+          score += 15; // Substring match
+        } else {
+          // Token overlap
+          const txnTokens = new Set(txnDesc.split(/\s+/));
+          const entryTokens = new Set(entryDesc.split(/\s+/));
+          const commonTokens = [...txnTokens].filter(t => entryTokens.has(t));
+          if (commonTokens.length > 0) {
+            score += Math.min(10, commonTokens.length * 3);
+          }
+        }
+
+        // Only suggest if score is meaningful (>= 60%)
+        if (score >= 60) {
+          suggestions.push({ transaction: txn, statementEntry: entry, similarityScore: score });
+        }
+      }
+    }
+
+    // Return top matches, ordered by score
+    return suggestions
+      .sort((a, b) => b.similarityScore - a.similarityScore)
+      .slice(0, 20); // Limit to top 20 suggestions
   }
 
   // Grant operations
