@@ -1432,22 +1432,22 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </p>
             </div>
           ) : (
-            <table className="w-full" style={{ minWidth: '1200px' }}>
+            <table style={{ width: '1400px', tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 w-[60px]">
+                    <th style={{ width: '80px' }} className="text-left py-3 px-4">
                       <Checkbox
                         checked={selectedTransactionIds.size === filteredTransactions.length && filteredTransactions.length > 0}
                         onCheckedChange={toggleSelectAll}
                         data-testid="checkbox-select-all"
                       />
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[250px]">Description</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[150px]">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Status</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Amount</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground w-[150px]">Actions</th>
+                    <th style={{ width: '140px' }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
+                    <th style={{ width: '300px' }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
+                    <th style={{ width: '200px' }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                    <th style={{ width: '180px' }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                    <th style={{ width: '180px' }} className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
+                    <th style={{ width: '220px' }} className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1459,17 +1459,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                         className="border-b hover-elevate"
                         data-testid={`transaction-row-${transaction.id}`}
                       >
-                        <td className="py-3 px-4 w-[60px]">
+                        <td className="py-3 px-4">
                           <Checkbox
                             checked={selectedTransactionIds.has(transaction.id)}
                             onCheckedChange={() => toggleSelectTransaction(transaction.id)}
                             data-testid={`checkbox-transaction-${transaction.id}`}
                           />
                         </td>
-                        <td className="py-3 px-4 text-sm w-[120px] whitespace-nowrap">
+                        <td className="py-3 px-4 text-sm whitespace-nowrap">
                           {format(new Date(transaction.date), 'MM/dd/yyyy')}
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium w-[250px]">
+                        <td className="py-3 px-4 text-sm font-medium">
                           <div className="truncate">{transaction.description}</div>
                         </td>
                         <td className="py-3 px-4 text-sm">
