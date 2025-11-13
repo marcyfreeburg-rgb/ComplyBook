@@ -98,6 +98,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [bulkFundId, setBulkFundId] = useState<number | undefined>(undefined);
   const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
   const [bulkFunctionalCategory, setBulkFunctionalCategory] = useState<'program' | 'administrative' | 'fundraising' | undefined>(undefined);
+  const [aiBatchSize, setAiBatchSize] = useState<number>(() => {
+    // Try to load from localStorage
+    const saved = localStorage.getItem('aiBatchSize');
+    return saved ? parseInt(saved) : 50;
+  });
   const [formData, setFormData] = useState<TransactionFormData>({
     organizationId: currentOrganization.id,
     type: 'expense',
@@ -1187,7 +1192,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       {uncategorizedTransactions.length > 0 && !searchQuery && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
@@ -1198,13 +1203,45 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </CardDescription>
               </div>
               {!showBulkCategorization ? (
-                <Button
-                  onClick={() => bulkCategorizeMutation.mutate(uncategorizedTransactions)}
-                  disabled={bulkCategorizeMutation.isPending}
-                  data-testid="button-bulk-categorize"
-                >
-                  {bulkCategorizeMutation.isPending ? "Analyzing..." : "Categorize All"}
-                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="batch-size" className="text-sm whitespace-nowrap">
+                      Batch size:
+                    </Label>
+                    <Select
+                      value={aiBatchSize.toString()}
+                      onValueChange={(value) => {
+                        const newSize = parseInt(value);
+                        setAiBatchSize(newSize);
+                        localStorage.setItem('aiBatchSize', value);
+                      }}
+                    >
+                      <SelectTrigger id="batch-size" className="w-24" data-testid="select-ai-batch-size">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="30">30</SelectItem>
+                        <SelectItem value="40">40</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      const transactionsToProcess = uncategorizedTransactions.slice(0, aiBatchSize);
+                      bulkCategorizeMutation.mutate(transactionsToProcess);
+                    }}
+                    disabled={bulkCategorizeMutation.isPending}
+                    data-testid="button-bulk-categorize"
+                  >
+                    {bulkCategorizeMutation.isPending 
+                      ? "Analyzing..." 
+                      : `Categorize ${Math.min(aiBatchSize, uncategorizedTransactions.length)}`
+                    }
+                  </Button>
+                </div>
               ) : (
                 <Button
                   variant="outline"
