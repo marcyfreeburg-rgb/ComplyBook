@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program } from "@shared/schema";
+import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryCombobox, CATEGORY_SENTINEL_NO_CHANGE } from "@/components/category-combobox";
@@ -307,6 +307,45 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       toast({
         title: "Error",
         description: error.message || "Failed to create category. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createReconciliationMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/bank-reconciliations', {
+        organizationId: currentOrganization.id,
+        accountName: reconciliationData.accountName,
+        statementEndDate: new Date(reconciliationData.statementEndDate),
+        statementStartDate: lastReconciliation?.statementEndDate ? new Date(lastReconciliation.statementEndDate) : null,
+        beginningBalance: reconciliationData.beginningBalance,
+        endingBalance: reconciliationData.endingBalance,
+        statementBalance: reconciliationData.endingBalance,
+        bookBalance: '0',
+        difference: '0',
+        status: 'pending',
+      });
+      return await response.json();
+    },
+    onSuccess: (newReconciliation: BankReconciliation) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization.id}/last`] });
+      toast({
+        title: "Reconciliation Started",
+        description: `Bank reconciliation for ${reconciliationData.accountName} has been created.`,
+      });
+      setIsReconciliationDialogOpen(false);
+      setReconciliationData({
+        accountName: '',
+        statementEndDate: new Date().toISOString().split('T')[0],
+        beginningBalance: '',
+        endingBalance: '',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create reconciliation. Please try again.",
         variant: "destructive",
       });
     },
@@ -852,18 +891,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   />
                 </div>
                 <Button
-                  onClick={() => {
-                    toast({
-                      title: "Coming Soon",
-                      description: "Bank reconciliation feature will be implemented shortly.",
-                    });
-                    setIsReconciliationDialogOpen(false);
-                  }}
-                  disabled={!reconciliationData.accountName || !reconciliationData.beginningBalance || !reconciliationData.endingBalance}
+                  onClick={() => createReconciliationMutation.mutate()}
+                  disabled={createReconciliationMutation.isPending || !reconciliationData.accountName || !reconciliationData.beginningBalance || !reconciliationData.endingBalance}
                   className="w-full"
                   data-testid="button-start-reconciliation-submit"
                 >
-                  Start Reconciliation
+                  {createReconciliationMutation.isPending ? "Creating..." : "Start Reconciliation"}
                 </Button>
               </div>
             </DialogContent>

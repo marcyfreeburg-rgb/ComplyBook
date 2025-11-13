@@ -278,6 +278,13 @@ export interface IStorage {
   unreconcileTransaction(id: number): Promise<Transaction>;
   bulkReconcileTransactions(ids: number[], userId: string): Promise<number>;
   autoReconcileTransactions(organizationId: number): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }>;
+  
+  // Bank Reconciliation Session operations
+  getBankReconciliations(organizationId: number): Promise<BankReconciliation[]>;
+  getBankReconciliation(id: number): Promise<BankReconciliation | undefined>;
+  getLastBankReconciliation(organizationId: number, accountName?: string): Promise<BankReconciliation | undefined>;
+  createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation>;
+  updateBankReconciliation(id: number, updates: Partial<InsertBankReconciliation>): Promise<BankReconciliation>;
 
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
@@ -1641,6 +1648,57 @@ export class DatabaseStorage implements IStorage {
       reconciledCount: idsToReconcile.length,
       matchedTransactions,
     };
+  }
+
+  // Bank Reconciliation Session operations
+  async getBankReconciliations(organizationId: number): Promise<BankReconciliation[]> {
+    return await db
+      .select()
+      .from(bankReconciliations)
+      .where(eq(bankReconciliations.organizationId, organizationId))
+      .orderBy(desc(bankReconciliations.statementEndDate));
+  }
+
+  async getBankReconciliation(id: number): Promise<BankReconciliation | undefined> {
+    const [reconciliation] = await db
+      .select()
+      .from(bankReconciliations)
+      .where(eq(bankReconciliations.id, id));
+    return reconciliation;
+  }
+
+  async getLastBankReconciliation(organizationId: number, accountName?: string): Promise<BankReconciliation | undefined> {
+    const conditions = [eq(bankReconciliations.organizationId, organizationId)];
+    
+    if (accountName) {
+      conditions.push(eq(bankReconciliations.accountName, accountName));
+    }
+    
+    const [reconciliation] = await db
+      .select()
+      .from(bankReconciliations)
+      .where(and(...conditions))
+      .orderBy(desc(bankReconciliations.statementEndDate))
+      .limit(1);
+    
+    return reconciliation;
+  }
+
+  async createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation> {
+    const [newReconciliation] = await db
+      .insert(bankReconciliations)
+      .values(reconciliation)
+      .returning();
+    return newReconciliation;
+  }
+
+  async updateBankReconciliation(id: number, updates: Partial<InsertBankReconciliation>): Promise<BankReconciliation> {
+    const [updated] = await db
+      .update(bankReconciliations)
+      .set(updates)
+      .where(eq(bankReconciliations.id, id))
+      .returning();
+    return updated;
   }
 
   // Grant operations

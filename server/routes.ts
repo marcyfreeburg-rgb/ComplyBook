@@ -2853,6 +2853,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bank Reconciliation Session routes
+  app.get('/api/bank-reconciliations/:organizationId/last', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const accountName = req.query.accountName as string | undefined;
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const lastReconciliation = await storage.getLastBankReconciliation(organizationId, accountName);
+      res.json(lastReconciliation || null);
+    } catch (error) {
+      console.error("Error fetching last bank reconciliation:", error);
+      res.status(500).json({ message: "Failed to fetch last bank reconciliation" });
+    }
+  });
+
+  app.post('/api/bank-reconciliations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationData = insertBankReconciliationSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliationData.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to create reconciliations" });
+      }
+
+      const newReconciliation = await storage.createBankReconciliation(reconciliationData);
+      res.json(newReconciliation);
+    } catch (error) {
+      console.error("Error creating bank reconciliation:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid reconciliation data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create bank reconciliation" });
+    }
+  });
+
   // Recurring Transaction routes
   app.get('/api/recurring-transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
