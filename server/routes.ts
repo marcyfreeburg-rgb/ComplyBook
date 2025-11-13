@@ -2305,19 +2305,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
+      
+      console.log('[CSV Import] Starting import for organization:', organizationId);
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
+        console.log('[CSV Import] Access denied - no user role');
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        console.log('[CSV Import] Permission denied');
         return res.status(403).json({ message: "You don't have permission to import transactions" });
       }
 
       if (!req.file) {
+        console.log('[CSV Import] No file uploaded');
         return res.status(400).json({ message: "No file uploaded" });
       }
+      
+      console.log('[CSV Import] File received:', req.file.originalname, 'Size:', req.file.size);
 
       // Parse CSV - handle both header rows and data rows
       let csvContent = req.file.buffer.toString('utf-8');
@@ -2356,6 +2363,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log('[CSV Import] Parsed', parseResult.data.length, 'rows');
+      console.log('[CSV Import] Column headers:', Object.keys(parseResult.data[0] || {}));
+
       // Validate and create transactions
       const created = [];
       const errors = [];
@@ -2365,8 +2375,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const row: any = parseResult.data[i];
         
         try {
+          // For double-entry formats, only import Cash/Bank account transactions to avoid duplicates
+          const accountName = String(row['Account Name'] || row.account || row.Account || '').trim();
+          if (accountName && !accountName.toLowerCase().includes('cash') && !accountName.toLowerCase().includes('bank') && !accountName.toLowerCase().includes('checking')) {
+            skipped.push({ row: i + 1, reason: 'Non-cash account (double-entry format)' });
+            continue;
+          }
+          
           // Skip rows that are clearly not transactions (e.g., "Starting Balance" rows)
-          const desc = String(row.description || row.Description || row.DESCRIPTION || '').trim();
+          const desc = String(row.description || row.Description || row.DESCRIPTION || 
+                             row['Transaction Description'] || row['Transaction Line Description'] || 
+                             row['Notes / Memo'] || '').trim();
           if (desc.toLowerCase().includes('starting balance') || desc.toLowerCase().includes('ending balance')) {
             skipped.push({ row: i + 1, reason: 'Balance row' });
             continue;
@@ -2377,8 +2396,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let transactionType: 'income' | 'expense' = 'expense';
           
           // Check for debit/credit columns (case-insensitive, with variations)
-          const debitCol = row.debit || row.Debit || row.DEBIT || row['DEBIT (In Business Currency)'] || '';
-          const creditCol = row.credit || row.Credit || row.CREDIT || row['CREDIT (In Business Currency)'] || '';
+          const debitCol = row.debit || row.Debit || row.DEBIT || 
+                          row['DEBIT (In Business Currency)'] || 
+                          row['Debit Amount (Two Column Approach)'] || '';
+          const creditCol = row.credit || row.Credit || row.CREDIT || 
+                           row['CREDIT (In Business Currency)'] || 
+                           row['Credit Amount (Two Column Approach)'] || '';
           
           if (debitCol || creditCol) {
             // CSV uses DEBIT/CREDIT format
@@ -2438,7 +2461,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Parse date from various column names
-          const rawDate = row.date || row.Date || row.DATE || '';
+          const rawDate = row.date || row.Date || row.DATE || 
+                         row['Transaction Date'] || row.transactionDate || '';
           let parsedDate = '';
           
           if (rawDate) {
@@ -2494,6 +2518,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'csv_import',
         { imported: created.length, errors: errors.length, skipped: skipped.length, totalRows: parseResult.data.length }
       );
+
+      console.log('[CSV Import] Complete -', 'Created:', created.length, 'Skipped:', skipped.length, 'Errors:', errors.length);
+      if (skipped.length > 0) {
+        console.log('[CSV Import] Skipped reasons:', skipped.slice(0, 10));
+      }
+      if (errors.length > 0) {
+        console.log('[CSV Import] First errors:', errors.slice(0, 5));
+      }
 
       res.json({
         message: `Import complete: ${created.length} transactions created, ${skipped.length} skipped, ${errors.length} errors`,
