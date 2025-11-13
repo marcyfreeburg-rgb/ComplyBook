@@ -159,7 +159,7 @@ function AuthenticatedApp() {
             </div>
           </header>
           
-          <main className="flex-1 overflow-auto p-8">
+          <main className="flex-1 overflow-y-auto p-8">
             <Switch>
               <Route path="/">
                 <Dashboard currentOrganization={currentOrganization} />
