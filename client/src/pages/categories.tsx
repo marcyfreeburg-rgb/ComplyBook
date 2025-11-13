@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Tag, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Tag, ArrowLeft, Pencil } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Category, Organization } from "@shared/schema";
@@ -23,6 +23,10 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
+  
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [editCategoryType, setEditCategoryType] = useState<"income" | "expense">("expense");
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -78,6 +82,41 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       });
     },
   });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingCategory || !editCategoryName.trim()) {
+        throw new Error("Category name is required");
+      }
+      return await apiRequest('PATCH', `/api/categories/${editingCategory.id}`, {
+        name: editCategoryName.trim(),
+        type: editCategoryType,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      toast({
+        title: "Category updated",
+        description: `${editCategoryName} has been updated successfully.`,
+      });
+      setEditingCategory(null);
+      setEditCategoryName("");
+      setEditCategoryType("expense");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update category. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setEditCategoryName(category.name);
+    setEditCategoryType(category.type);
+  };
 
   const incomeCategories = categories.filter(c => c.type === 'income');
   const expenseCategories = categories.filter(c => c.type === 'expense');
@@ -149,6 +188,53 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
         </Dialog>
       </div>
 
+      {/* Edit Category Dialog */}
+      <Dialog open={editingCategory !== null} onOpenChange={(open) => !open && setEditingCategory(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Category</DialogTitle>
+            <DialogDescription>
+              Update the category name or type
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-category-name">Category Name</Label>
+              <Input
+                id="edit-category-name"
+                placeholder="e.g., Office Supplies, Marketing"
+                value={editCategoryName}
+                onChange={(e) => setEditCategoryName(e.target.value)}
+                data-testid="input-edit-category-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-category-type">Type</Label>
+              <Select
+                value={editCategoryType}
+                onValueChange={(value: "income" | "expense") => setEditCategoryType(value)}
+              >
+                <SelectTrigger id="edit-category-type" data-testid="select-edit-category-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={() => updateCategoryMutation.mutate()}
+              disabled={updateCategoryMutation.isPending || !editCategoryName.trim()}
+              className="w-full"
+              data-testid="button-update-category"
+            >
+              {updateCategoryMutation.isPending ? "Updating..." : "Update Category"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Expense Categories */}
       <Card>
         <CardHeader>
@@ -178,16 +264,27 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                     <Tag className="h-4 w-4 text-chart-3 flex-shrink-0" />
                     <span className="text-sm font-medium truncate">{category.name}</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    onClick={() => deleteCategoryMutation.mutate(category.id)}
-                    disabled={deleteCategoryMutation.isPending}
-                    data-testid={`button-delete-category-${category.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      onClick={() => handleEditCategory(category)}
+                      data-testid={`button-edit-category-${category.id}`}
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      onClick={() => deleteCategoryMutation.mutate(category.id)}
+                      disabled={deleteCategoryMutation.isPending}
+                      data-testid={`button-delete-category-${category.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -224,16 +321,27 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                     <Tag className="h-4 w-4 text-chart-2 flex-shrink-0" />
                     <span className="text-sm font-medium truncate">{category.name}</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    onClick={() => deleteCategoryMutation.mutate(category.id)}
-                    disabled={deleteCategoryMutation.isPending}
-                    data-testid={`button-delete-category-${category.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      onClick={() => handleEditCategory(category)}
+                      data-testid={`button-edit-category-${category.id}`}
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      onClick={() => deleteCategoryMutation.mutate(category.id)}
+                      disabled={deleteCategoryMutation.isPending}
+                      data-testid={`button-delete-category-${category.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
