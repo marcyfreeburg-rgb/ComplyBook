@@ -805,7 +805,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 Add Transaction
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingTransaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
               <DialogDescription>
