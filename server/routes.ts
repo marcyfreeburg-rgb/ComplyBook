@@ -63,6 +63,11 @@ import {
   insertSubAwardSchema,
   insertFederalFinancialReportSchema,
   insertAuditPrepItemSchema,
+  // Bank Reconciliation schemas
+  insertBankReconciliationSchema,
+  insertBankStatementEntrySchema,
+  type InsertBankReconciliation,
+  type InsertBankStatementEntry,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -2892,7 +2897,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to create reconciliations" });
       }
 
-      const newReconciliation = await storage.createBankReconciliation(reconciliationData);
+      // Populate statementDate from statementEndDate for backwards compatibility
+      const dataWithStatementDate = {
+        ...reconciliationData,
+        statementDate: reconciliationData.statementEndDate,
+      };
+
+      const newReconciliation = await storage.createBankReconciliation(dataWithStatementDate as InsertBankReconciliation);
       res.json(newReconciliation);
     } catch (error) {
       console.error("Error creating bank reconciliation:", error);

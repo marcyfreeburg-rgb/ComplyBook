@@ -2388,6 +2388,7 @@ export const bankReconciliations = pgTable("bank_reconciliations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   accountName: varchar("account_name", { length: 255 }).notNull(),
+  statementDate: timestamp("statement_date").notNull(),
   statementStartDate: timestamp("statement_start_date"),
   statementEndDate: timestamp("statement_end_date").notNull(),
   beginningBalance: numeric("beginning_balance", { precision: 15, scale: 2 }).notNull(),
@@ -2409,6 +2410,7 @@ export const bankReconciliations = pgTable("bank_reconciliations", {
 
 export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({
   id: true,
+  statementDate: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
