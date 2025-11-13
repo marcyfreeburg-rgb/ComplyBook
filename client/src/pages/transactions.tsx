@@ -1475,9 +1475,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                         </td>
                         <td className="py-3 px-4 text-sm">
                           {category ? (
-                            <Badge variant="outline" className="text-xs">
-                              {category.name}
-                            </Badge>
+                            <div className="text-xs leading-tight">
+                              {category.parentCategoryId && (() => {
+                                const parentCategory = categories?.find(c => c.id === category.parentCategoryId);
+                                return parentCategory ? (
+                                  <div className="text-muted-foreground">{parentCategory.name}</div>
+                                ) : null;
+                              })()}
+                              <Badge variant="outline" className="text-xs whitespace-normal">
+                                {category.name}
+                              </Badge>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">Uncategorized</span>
                           )}
