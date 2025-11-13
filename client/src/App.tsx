@@ -48,6 +48,7 @@ import ExpenseApprovals from "@/pages/expense-approvals";
 import CustomReports from "@/pages/custom-reports";
 import AuditTrail from "@/pages/audit-trail";
 import BankReconciliation from "@/pages/bank-reconciliation";
+import ReconciliationHub from "@/pages/reconciliation-hub";
 import FundraisingHub from "@/pages/fundraising-hub";
 import GovernmentContractsHub from "@/pages/government-contracts-hub";
 import OperationsHub from "@/pages/operations-hub";
@@ -329,6 +330,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/bank-reconciliation">
                 <BankReconciliation currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/reconciliation-hub">
+                <ReconciliationHub currentOrganization={currentOrganization} />
               </Route>
               <Route path="/cash-flow">
                 <CashFlow currentOrganization={currentOrganization} />
