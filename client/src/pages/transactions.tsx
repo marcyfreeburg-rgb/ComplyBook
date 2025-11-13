@@ -42,6 +42,7 @@ import type { Organization, Transaction, Category, InsertTransaction, Transactio
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryCombobox, CATEGORY_SENTINEL_NO_CHANGE } from "@/components/category-combobox";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface CategorySuggestion {
   categoryId: number;
@@ -1432,25 +1433,26 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 w-12">
-                      <Checkbox
-                        checked={selectedTransactionIds.size === filteredTransactions.length && filteredTransactions.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        data-testid="checkbox-select-all"
-                      />
-                    </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Description</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Amount</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
+            <ScrollArea className="w-full">
+              <div className="min-w-max">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="sticky left-0 z-10 bg-background text-left py-3 px-4 w-[60px]">
+                        <Checkbox
+                          checked={selectedTransactionIds.size === filteredTransactions.length && filteredTransactions.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                          data-testid="checkbox-select-all"
+                        />
+                      </th>
+                      <th className="sticky left-[92px] z-10 bg-background text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Date</th>
+                      <th className="sticky left-[244px] z-10 bg-background text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[250px]">Description</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground min-w-[150px]">Category</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground min-w-[120px]">Status</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground min-w-[120px]">Amount</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground min-w-[150px]">Actions</th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {filteredTransactions.map((transaction) => {
                     const category = categories?.find(c => c.id === transaction.categoryId);
@@ -1460,17 +1462,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                         className="border-b hover-elevate"
                         data-testid={`transaction-row-${transaction.id}`}
                       >
-                        <td className="py-3 px-4">
+                        <td className="sticky left-0 z-10 bg-background py-3 px-4 w-[60px]">
                           <Checkbox
                             checked={selectedTransactionIds.has(transaction.id)}
                             onCheckedChange={() => toggleSelectTransaction(transaction.id)}
                             data-testid={`checkbox-transaction-${transaction.id}`}
                           />
                         </td>
-                        <td className="py-3 px-4 text-sm">
+                        <td className="sticky left-[92px] z-10 bg-background py-3 px-4 text-sm w-[120px]">
                           {format(new Date(transaction.date), 'MM/dd/yyyy')}
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium">
+                        <td className="sticky left-[244px] z-10 bg-background py-3 px-4 text-sm font-medium w-[250px]">
                           {transaction.description}
                         </td>
                         <td className="py-3 px-4 text-sm">
@@ -1535,7 +1537,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
