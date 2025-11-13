@@ -30,6 +30,7 @@ import {
 import type { Organization, Transaction, BankReconciliation, BankStatementEntry, ReconciliationMatch } from "@shared/schema";
 import { format } from "date-fns";
 import Papa from "papaparse";
+import html2pdf from "html2pdf.js";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
@@ -316,6 +317,143 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     matchMutation.mutate({ transactionId, statementEntryId });
   };
 
+  const generateReconciliationReport = () => {
+    if (!reconciliation) return;
+
+    const reportContent = `
+      <div style="font-family: Arial, sans-serif; padding: 40px; max-width: 800px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h1 style="color: #333; margin-bottom: 10px;">Bank Reconciliation Report</h1>
+          <p style="color: #666; font-size: 14px;">${currentOrganization?.name}</p>
+        </div>
+
+        <div style="border: 1px solid #e0e0e0; padding: 20px; margin-bottom: 30px; border-radius: 8px;">
+          <h2 style="color: #333; font-size: 18px; margin-bottom: 15px;">Reconciliation Details</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Account Name:</td>
+              <td style="padding: 8px 0; font-weight: bold;">${reconciliation.accountName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Statement Period:</td>
+              <td style="padding: 8px 0; font-weight: bold;">
+                ${format(new Date(reconciliation.statementStartDate || new Date()), 'MMM dd, yyyy')} - 
+                ${format(new Date(reconciliation.statementEndDate), 'MMM dd, yyyy')}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Book Balance:</td>
+              <td style="padding: 8px 0; font-weight: bold;">$${parseFloat(reconciliation.bookBalance).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Statement Balance:</td>
+              <td style="padding: 8px 0; font-weight: bold;">$${parseFloat(reconciliation.statementBalance).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Difference:</td>
+              <td style="padding: 8px 0; font-weight: bold; color: ${difference > 0.01 ? '#dc2626' : '#16a34a'};">
+                $${difference.toFixed(2)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Status:</td>
+              <td style="padding: 8px 0; font-weight: bold; text-transform: capitalize;">${reconciliation.status}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+          <h2 style="color: #333; font-size: 18px; margin-bottom: 15px;">Summary</h2>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #e0e0e0;">
+            <thead>
+              <tr style="background-color: #f9fafb;">
+                <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">Category</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">Count</th>
+                <th style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">Matched Items</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${existingMatches.length}</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">
+                  $${existingMatches.reduce((sum, match) => {
+                    const txn = unreconciledTransactions.find(t => t.id === match.transactionId);
+                    return sum + (txn ? parseFloat(txn.amount) : 0);
+                  }, 0).toFixed(2)}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">Unmatched Transactions</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${unmatchedTransactions.length}</td>
+                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">
+                  $${totalTransactionAmount.toFixed(2)}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px;">Unmatched Statement Entries</td>
+                <td style="padding: 12px; text-align: right;">${unmatchedStatements.length}</td>
+                <td style="padding: 12px; text-align: right;">
+                  $${totalStatementAmount.toFixed(2)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        ${existingMatches.length > 0 ? `
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: #333; font-size: 18px; margin-bottom: 15px;">Matched Items</h2>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #e0e0e0;">
+              <thead>
+                <tr style="background-color: #f9fafb;">
+                  <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">Date</th>
+                  <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">Transaction</th>
+                  <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">Statement Entry</th>
+                  <th style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${existingMatches.map(match => {
+                  const txn = unreconciledTransactions.find(t => t.id === match.transactionId);
+                  const entry = statementEntries.find(e => e.id === match.statementEntryId);
+                  if (!txn || !entry) return '';
+                  return `
+                    <tr>
+                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${format(new Date(txn.date), 'MMM dd, yyyy')}</td>
+                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${txn.description}</td>
+                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${entry.description}</td>
+                      <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">$${parseFloat(txn.amount).toFixed(2)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0; text-align: center; color: #666; font-size: 12px;">
+          <p>Generated on ${format(new Date(), 'MMMM dd, yyyy \'at\' hh:mm a')}</p>
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 10,
+      filename: `reconciliation-report-${reconciliation.accountName}-${format(new Date(reconciliation.statementEndDate), 'yyyy-MM-dd')}.pdf`,
+      image: { type: 'jpeg' as const, quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(reportContent).save();
+
+    toast({
+      title: "Success",
+      description: "Reconciliation report generated successfully",
+    });
+  };
+
   const unmatchedTransactions = unreconciledTransactions.filter(
     txn => !existingMatches.some(m => m.transactionId === txn.id)
   );
@@ -379,6 +517,14 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              <Button
+                variant="outline"
+                onClick={generateReconciliationReport}
+                data-testid="button-generate-report"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Generate Report
+              </Button>
               <Button
                 onClick={() => completeReconciliationMutation.mutate()}
                 disabled={unmatchedTransactions.length > 0 || unmatchedStatements.length > 0}
