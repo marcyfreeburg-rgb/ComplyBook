@@ -348,7 +348,7 @@ export const categories = pgTable("categories", {
   name: varchar("name", { length: 255 }).notNull(),
   type: accountTypeEnum("type").notNull(),
   description: text("description"),
-  parentCategoryId: integer("parent_category_id"),
+  parentCategoryId: integer("parent_category_id").references((): any => categories.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
