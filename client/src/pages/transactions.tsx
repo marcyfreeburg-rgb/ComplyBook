@@ -449,9 +449,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       setIsImportDialogOpen(false);
       setImportFile(null);
+      const successCount = data.summary?.success || data.created?.length || 0;
+      const skippedCount = data.summary?.skipped || data.skipped?.length || 0;
+      const errorCount = data.summary?.failed || data.errors?.length || 0;
       toast({
         title: "Import Complete",
-        description: `Successfully imported ${data.imported} transaction(s). ${data.errors?.length || 0} error(s).`,
+        description: `Successfully imported ${successCount} transaction(s). ${skippedCount} skipped, ${errorCount} error(s).`,
       });
     },
     onError: (error: any) => {

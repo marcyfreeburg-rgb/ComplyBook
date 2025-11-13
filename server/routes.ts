@@ -2319,15 +2319,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Parse CSV
-      const csvContent = req.file.buffer.toString('utf-8');
+      // Parse CSV - handle both header rows and data rows
+      let csvContent = req.file.buffer.toString('utf-8');
+      
+      // Remove BOM if present
+      csvContent = csvContent.replace(/^\uFEFF/, '');
+      
+      // Find the header row (look for common column headers)
+      const lines = csvContent.split('\n');
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        const line = lines[i].toUpperCase();
+        if ((line.includes('DATE') || line.includes('DESCRIPTION')) && 
+            (line.includes('AMOUNT') || line.includes('DEBIT') || line.includes('CREDIT'))) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      // If we found a header row after the first line, skip everything before it
+      if (headerRowIndex > 0) {
+        csvContent = lines.slice(headerRowIndex).join('\n');
+      }
+
       const parseResult = Papa.parse(csvContent, {
         header: true,
         skipEmptyLines: true,
-        dynamicTyping: true
+        dynamicTyping: false // Keep as strings to preserve formatting
       });
 
       if (parseResult.errors.length > 0) {
+        console.error("CSV parsing errors:", parseResult.errors);
         return res.status(400).json({ 
           message: "CSV parsing errors", 
           errors: parseResult.errors 
@@ -2337,59 +2359,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate and create transactions
       const created = [];
       const errors = [];
+      const skipped = [];
 
       for (let i = 0; i < parseResult.data.length; i++) {
         const row: any = parseResult.data[i];
         
         try {
-          // Clean amount: remove currency symbols, commas, and convert to number
-          const rawAmount = row.amount || row.Amount || '0';
-          const hasNegativeSign = String(rawAmount).includes('-');
-          const cleanAmount = typeof rawAmount === 'string' 
-            ? rawAmount.replace(/[$,\-]/g, '').trim() 
-            : String(rawAmount);
-          const parsedAmount = parseFloat(cleanAmount);
-          const validAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
+          // Skip rows that are clearly not transactions (e.g., "Starting Balance" rows)
+          const desc = String(row.description || row.Description || row.DESCRIPTION || '').trim();
+          if (desc.toLowerCase().includes('starting balance') || desc.toLowerCase().includes('ending balance')) {
+            skipped.push({ row: i + 1, reason: 'Balance row' });
+            continue;
+          }
 
-          // Determine transaction type
-          const rawType = (row.type || row.Type || '').toString().toLowerCase().trim();
-          let transactionType: 'income' | 'expense';
+          // Handle DEBIT/CREDIT columns (common in accounting exports)
+          let rawAmount = '';
+          let transactionType: 'income' | 'expense' = 'expense';
           
-          // If CSV has no type column, use amount sign (negative = expense, positive = income)
-          if (!rawType || rawType === '') {
-            transactionType = hasNegativeSign ? 'expense' : 'income';
+          // Check for debit/credit columns (case-insensitive, with variations)
+          const debitCol = row.debit || row.Debit || row.DEBIT || row['DEBIT (In Business Currency)'] || '';
+          const creditCol = row.credit || row.Credit || row.CREDIT || row['CREDIT (In Business Currency)'] || '';
+          
+          if (debitCol || creditCol) {
+            // CSV uses DEBIT/CREDIT format
+            if (debitCol && debitCol !== '') {
+              rawAmount = String(debitCol);
+              transactionType = 'income'; // Debits increase cash (income/deposits)
+            } else if (creditCol && creditCol !== '') {
+              rawAmount = String(creditCol);
+              transactionType = 'expense'; // Credits decrease cash (expenses/withdrawals)
+            } else {
+              // Both empty, skip this row
+              skipped.push({ row: i + 1, reason: 'No amount' });
+              continue;
+            }
           } else {
-            // CSV has a type column - map common variations
-            if (rawType.includes('deposit') || 
-                rawType.includes('credit') || 
-                rawType.includes('income') || 
-                rawType.includes('payment received') ||
-                rawType.includes('revenue') ||
-                rawType.includes('transfer in')) {
-              transactionType = 'income';
-            } else if (rawType.includes('withdrawal') || 
-                       rawType.includes('debit') || 
-                       rawType.includes('expense') || 
-                       rawType.includes('payment') ||
-                       rawType.includes('charge')) {
-              transactionType = 'expense';
-            } else if (rawType.includes('transfer')) {
-              // For generic "transfer", use amount sign
+            // CSV uses single amount column
+            rawAmount = row.amount || row.Amount || row.AMOUNT || '0';
+            const hasNegativeSign = String(rawAmount).includes('-');
+            
+            // Determine transaction type from type column or amount sign
+            const rawType = (row.type || row.Type || row.TYPE || '').toString().toLowerCase().trim();
+            
+            if (!rawType || rawType === '') {
               transactionType = hasNegativeSign ? 'expense' : 'income';
             } else {
-              // Unknown type, default to amount sign
-              transactionType = hasNegativeSign ? 'expense' : 'income';
+              // CSV has a type column - map common variations
+              if (rawType.includes('deposit') || 
+                  rawType.includes('credit') || 
+                  rawType.includes('income') || 
+                  rawType.includes('payment received') ||
+                  rawType.includes('revenue') ||
+                  rawType.includes('transfer in')) {
+                transactionType = 'income';
+              } else if (rawType.includes('withdrawal') || 
+                         rawType.includes('debit') || 
+                         rawType.includes('expense') || 
+                         rawType.includes('payment') ||
+                         rawType.includes('charge')) {
+                transactionType = 'expense';
+              } else if (rawType.includes('transfer')) {
+                transactionType = hasNegativeSign ? 'expense' : 'income';
+              } else {
+                transactionType = hasNegativeSign ? 'expense' : 'income';
+              }
             }
+          }
+
+          // Clean amount: remove currency symbols, commas, and convert to number
+          const cleanAmount = String(rawAmount).replace(/[$,\-]/g, '').trim();
+          const parsedAmount = parseFloat(cleanAmount);
+          const validAmount = isNaN(parsedAmount) ? 0 : Math.abs(parsedAmount);
+
+          // Skip if amount is 0 or invalid
+          if (validAmount === 0) {
+            skipped.push({ row: i + 1, reason: 'Zero amount' });
+            continue;
+          }
+
+          // Parse date from various column names
+          const rawDate = row.date || row.Date || row.DATE || '';
+          let parsedDate = '';
+          
+          if (rawDate) {
+            try {
+              // Handle various date formats
+              const dateObj = new Date(rawDate);
+              if (!isNaN(dateObj.getTime())) {
+                parsedDate = dateObj.toISOString().split('T')[0];
+              } else {
+                parsedDate = new Date().toISOString().split('T')[0];
+              }
+            } catch {
+              parsedDate = new Date().toISOString().split('T')[0];
+            }
+          } else {
+            parsedDate = new Date().toISOString().split('T')[0];
           }
 
           // Map CSV columns to transaction schema
           const transactionData = {
             organizationId,
             createdBy: userId,
-            date: row.date || row.Date || new Date().toISOString().split('T')[0],
+            date: parsedDate,
             type: transactionType,
             amount: validAmount,
-            description: row.description || row.Description || '',
+            description: desc || 'Imported transaction',
             categoryId: row.categoryId || row.CategoryId || null,
             vendorId: row.vendorId || row.VendorId || null,
             clientId: row.clientId || row.ClientId || null,
@@ -2417,16 +2492,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         'bulk_operation',
         'csv_import',
-        { imported: created.length, errors: errors.length, totalRows: parseResult.data.length }
+        { imported: created.length, errors: errors.length, skipped: skipped.length, totalRows: parseResult.data.length }
       );
 
       res.json({
-        message: `Import complete: ${created.length} transactions created, ${errors.length} errors`,
+        message: `Import complete: ${created.length} transactions created, ${skipped.length} skipped, ${errors.length} errors`,
         created,
         errors,
+        skipped,
         summary: {
           total: parseResult.data.length,
           success: created.length,
+          skipped: skipped.length,
           failed: errors.length
         }
       });
