@@ -17,6 +17,14 @@
 - All main routes tested and functional
 - See `APPLICATION_STATUS_SUMMARY.md` for complete testing report and recommendations
 
+**For-Profit Features Testing - COMPLETED ✅**
+- Tested for-profit organization creation and navigation
+- Identified core features ready for testing (transactions, invoices, bills, budgets)
+- Fixed budget date validation bug (Invalid time value error)
+- Created comprehensive testing documentation
+- **Start here:** See `QUICK_START_TESTING_GUIDE.md` for step-by-step testing instructions
+- **Detailed results:** See `FOR_PROFIT_TESTING_RESULTS.md` for full technical findings
+
 ## Overview
 Budget Manager is a web-based financial management platform for small non-profit and for-profit organizations. It provides multi-tenant capabilities for managing multiple organizations, tracking income and expenses, AI-assisted transaction categorization, grant management, budget planning, and comprehensive financial reporting. The vision is to offer an accessible and powerful financial tool that streamlines operations, enabling better financial oversight and strategic planning, and fostering better financial health for its users.
 

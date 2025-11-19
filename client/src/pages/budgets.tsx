@@ -303,7 +303,7 @@ export default function Budgets() {
                         <FormControl>
                           <Input
                             type="date"
-                            value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                            value={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.toISOString().split('T')[0] : ''}
                             onChange={(e) => field.onChange(new Date(e.target.value))}
                             data-testid="input-budget-start-date"
                           />
@@ -321,7 +321,7 @@ export default function Budgets() {
                         <FormControl>
                           <Input
                             type="date"
-                            value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                            value={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.toISOString().split('T')[0] : ''}
                             onChange={(e) => field.onChange(new Date(e.target.value))}
                             data-testid="input-budget-end-date"
                           />
