@@ -32,7 +32,7 @@ interface InvoiceFormData {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
-  status: 'draft' | 'sent' | 'paid' | 'partial' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'emailed' | 'needs_to_be_mailed' | 'paid' | 'partial' | 'overdue' | 'cancelled';
   notes: string;
   taxAmount: string;
   lineItems: Array<{
@@ -121,7 +121,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   };
 
   const createInvoiceMutation = useMutation({
-    mutationFn: async (data: InvoiceFormData) => {
+    mutationFn: async ({ data, action }: { data: InvoiceFormData; action: 'create' | 'email' | 'print' }) => {
       const subtotal = calculateSubtotal();
       const totalAmount = calculateTotal();
 
@@ -153,14 +153,74 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
         }
       }
 
-      return invoice;
+      return { invoice, action };
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      const { invoice, action } = result;
+      
+      // Handle post-creation actions BEFORE invalidating queries
+      if (action === 'email') {
+        // Get customer email
+        const customer = clients.find(c => c.id === invoice.clientId);
+        if (customer?.email) {
+          try {
+            await apiRequest('POST', `/api/invoices/${invoice.id}/send-email`, {
+              recipientEmail: customer.email
+            });
+            toast({
+              title: "Success",
+              description: "Invoice created and emailed successfully",
+            });
+          } catch (error) {
+            toast({
+              title: "Warning",
+              description: "Invoice created but failed to send email",
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Warning",
+            description: "Invoice created but customer has no email address",
+            variant: "destructive",
+          });
+        }
+      } else if (action === 'print') {
+        try {
+          await apiRequest('POST', `/api/invoices/${invoice.id}/mark-printed`, {});
+          toast({
+            title: "Success",
+            description: "Invoice created and marked for mailing. Download the PDF to print.",
+          });
+          // Trigger PDF download
+          setTimeout(() => {
+            const invoiceWithClient = {
+              ...invoice,
+              clientName: clients.find(c => c.id === invoice.clientId)?.name || null
+            };
+            setPreviewingInvoice(invoiceWithClient);
+            setIsPreviewDialogOpen(true);
+            setTimeout(() => {
+              handleDownloadPDF();
+            }, 500);
+          }, 500);
+        } catch (error) {
+          toast({
+            title: "Warning",
+            description: "Invoice created but failed to mark as printed",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Success",
+          description: "Invoice created successfully",
+        });
+      }
+      
+      // Invalidate queries AFTER post-creation actions complete
       queryClient.invalidateQueries({ queryKey: ['/api/invoices', currentOrganization.id] });
-      toast({
-        title: "Success",
-        description: "Invoice created successfully",
-      });
+      
       handleCloseDialog();
     },
     onError: (error: Error) => {
@@ -515,7 +575,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               if (editingInvoice) {
                 updateInvoiceMutation.mutate({ id: editingInvoice.id, updates: formData });
               } else {
-                createInvoiceMutation.mutate(formData);
+                createInvoiceMutation.mutate({ data: formData, action: 'create' });
               }
             }}
             className="space-y-4"
@@ -723,6 +783,34 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               >
                 Cancel
               </Button>
+              {!editingInvoice && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={createInvoiceMutation.isPending}
+                    onClick={() => {
+                      createInvoiceMutation.mutate({ data: formData, action: 'print' });
+                    }}
+                    data-testid="button-save-and-print"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Save & Print
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={createInvoiceMutation.isPending || formData.clientId === "none"}
+                    onClick={() => {
+                      createInvoiceMutation.mutate({ data: formData, action: 'email' });
+                    }}
+                    data-testid="button-save-and-email"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Save & Email
+                  </Button>
+                </>
+              )}
               <Button
                 type="submit"
                 disabled={createInvoiceMutation.isPending || updateInvoiceMutation.isPending}
@@ -730,7 +818,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
               >
                 {editingInvoice 
                   ? (updateInvoiceMutation.isPending ? "Updating..." : "Update")
-                  : (createInvoiceMutation.isPending ? "Creating..." : "Create")
+                  : (createInvoiceMutation.isPending ? "Creating..." : "Save as Draft")
                 }
               </Button>
             </div>

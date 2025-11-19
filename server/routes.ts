@@ -4735,32 +4735,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `${req.protocol}://${req.get('host')}${organization.logoUrl}`
         : undefined;
 
-      await sendInvoiceEmail({
-        to: recipientEmail,
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: new Date(invoice.issueDate).toLocaleDateString(),
-        dueDate: new Date(invoice.dueDate).toLocaleDateString(),
-        amount: Number(invoice.totalAmount),
-        customerName: customer.name,
-        organizationName: organization.name,
-        organizationEmail: organization.companyEmail || '',
-        organizationPhone: organization.companyPhone || undefined,
-        organizationAddress: organization.companyAddress || undefined,
-        items: lineItems.map(item => ({
-          description: item.description,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.rate),
-          total: Number(item.amount)
-        })),
-        notes: invoice.notes || undefined,
-        branding: {
-          primaryColor: organization.invoicePrimaryColor || undefined,
-          accentColor: organization.invoiceAccentColor || undefined,
-          fontFamily: organization.invoiceFontFamily || undefined,
-          logoUrl,
-          footer: organization.invoiceFooter || undefined
-        }
-      });
+      // Update invoice status to 'emailed' first (regardless of email send result)
+      await storage.updateInvoice(invoiceId, { status: 'emailed' });
+
+      // Try to send email, but don't fail the entire operation if it doesn't work
+      try {
+        await sendInvoiceEmail({
+          to: recipientEmail,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: new Date(invoice.issueDate).toLocaleDateString(),
+          dueDate: new Date(invoice.dueDate).toLocaleDateString(),
+          amount: Number(invoice.totalAmount),
+          customerName: customer.name,
+          organizationName: organization.name,
+          organizationEmail: organization.companyEmail || '',
+          organizationPhone: organization.companyPhone || undefined,
+          organizationAddress: organization.companyAddress || undefined,
+          items: lineItems.map(item => ({
+            description: item.description,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.rate),
+            total: Number(item.amount)
+          })),
+          notes: invoice.notes || undefined,
+          branding: {
+            primaryColor: organization.invoicePrimaryColor || undefined,
+            accentColor: organization.invoiceAccentColor || undefined,
+            fontFamily: organization.invoiceFontFamily || undefined,
+            logoUrl,
+            footer: organization.invoiceFooter || undefined
+          }
+        });
+      } catch (emailError) {
+        console.error("Error sending invoice email (status still updated):", emailError);
+        // Continue - status was already updated
+      }
 
       // Log audit trail
       await storage.logAuditTrail({
@@ -4769,8 +4778,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: 'invoice',
         entityId: invoiceId.toString(),
         action: 'update',
-        oldValues: null,
-        newValues: { emailSentTo: recipientEmail, emailSentAt: new Date() },
+        oldValues: { status: invoice.status },
+        newValues: { status: 'emailed', emailSentTo: recipientEmail, emailSentAt: new Date() },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null
       });
@@ -4779,6 +4788,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending invoice email:", error);
       res.status(500).json({ message: "Failed to send invoice email" });
+    }
+  });
+
+  app.post('/api/invoices/:id/mark-printed', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invoiceId = parseInt(req.params.id);
+
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, invoice.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage invoices" });
+      }
+
+      // Update invoice status to 'needs_to_be_mailed'
+      await storage.updateInvoice(invoiceId, { status: 'needs_to_be_mailed' });
+
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId: invoice.organizationId,
+        userId,
+        entityType: 'invoice',
+        entityId: invoiceId.toString(),
+        action: 'update',
+        oldValues: { status: invoice.status },
+        newValues: { status: 'needs_to_be_mailed', markedPrintedAt: new Date() },
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+
+      res.json({ message: "Invoice marked for mailing successfully" });
+    } catch (error) {
+      console.error("Error marking invoice as printed:", error);
+      res.status(500).json({ message: "Failed to mark invoice as printed" });
     }
   });
 
