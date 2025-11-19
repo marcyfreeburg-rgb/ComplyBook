@@ -1593,25 +1593,26 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto overflow-y-auto scroll-smooth" style={{ maxHeight: 'calc(100vh - 250px)', minHeight: '500px' }}>
-              <table className="w-full">
-                <thead className="sticky top-0 bg-card z-10 border-b">
-                  <tr>
-                    <th className="text-left py-3 px-4 bg-card w-12">
-                      <Checkbox
-                        checked={selectedTransactionIds.size === filteredTransactions.length && filteredTransactions.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        data-testid="checkbox-select-all"
-                      />
-                    </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card">Description</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Status</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Amount</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Actions</th>
-                  </tr>
-                </thead>
+            <div style={{ maxHeight: 'calc(100vh - 250px)', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+              <div className="overflow-x-auto flex-1 overflow-y-auto scroll-smooth">
+                <table className="w-full" style={{ minWidth: '900px' }}>
+                  <thead className="sticky top-0 bg-card z-10 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 bg-card w-12">
+                        <Checkbox
+                          checked={selectedTransactionIds.size === filteredTransactions.length && filteredTransactions.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                          data-testid="checkbox-select-all"
+                        />
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Date</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card">Description</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card">Category</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Status</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Amount</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground bg-card whitespace-nowrap">Actions</th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {filteredTransactions.map((transaction) => {
                     const category = categories?.find(c => c.id === transaction.categoryId);
@@ -1704,6 +1705,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </CardContent>
