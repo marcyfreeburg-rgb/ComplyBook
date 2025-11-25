@@ -1,4 +1,4 @@
-# Budget Manager - Multi-Tenant Financial Management Application
+# ComplyBook - Multi-Tenant Financial Management Application
 
 ## 📋 Recent Updates (January 13, 2025)
 
@@ -26,7 +26,7 @@
 - **Detailed results:** See `FOR_PROFIT_TESTING_RESULTS.md` for full technical findings
 
 ## Overview
-Budget Manager is a web-based financial management platform for small non-profit and for-profit organizations. It provides multi-tenant capabilities for managing multiple organizations, tracking income and expenses, AI-assisted transaction categorization, grant management, budget planning, and comprehensive financial reporting. The vision is to offer an accessible and powerful financial tool that streamlines operations, enabling better financial oversight and strategic planning, and fostering better financial health for its users.
+ComplyBook is a web-based financial management platform for small non-profit and for-profit organizations. It provides multi-tenant capabilities for managing multiple organizations, tracking income and expenses, AI-assisted transaction categorization, grant management, budget planning, and comprehensive financial reporting. The vision is to offer an accessible and powerful financial tool that streamlines operations, enabling better financial oversight and strategic planning, and fostering better financial health for its users.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

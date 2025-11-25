@@ -4278,7 +4278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: {
           client_user_id: userId,
         },
-        client_name: 'Budget Manager',
+        client_name: 'ComplyBook',
         products: ['transactions' as any],
         country_codes: ['US' as any],
         language: 'en',

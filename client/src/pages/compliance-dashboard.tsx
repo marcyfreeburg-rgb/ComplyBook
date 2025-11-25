@@ -226,7 +226,7 @@ export default function ComplianceDashboard({ currentOrganization }: ComplianceD
 
           <div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 4px solid #5bc0de; font-size: 10px;">
             <div style="font-weight: bold; margin-bottom: 5px;">Important:</div>
-            <p style="margin: 0;">This worksheet is generated from your Budget Manager financial data for tax year ${currentYear}. It provides a starting point for Form 990 preparation but is NOT a complete filing. Work with a qualified CPA or tax professional to:</p>
+            <p style="margin: 0;">This worksheet is generated from your ComplyBook financial data for tax year ${currentYear}. It provides a starting point for Form 990 preparation but is NOT a complete filing. Work with a qualified CPA or tax professional to:</p>
             <ul style="margin: 5px 0; padding-left: 20px;">
               <li>Complete all required fields marked with yellow highlighting</li>
               <li>Verify accuracy of all financial figures</li>

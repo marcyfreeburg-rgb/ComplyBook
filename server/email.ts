@@ -271,7 +271,7 @@ export async function sendSecurityAlertEmail({
           
           <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
             <p style="color: #666; font-size: 14px; margin: 0;">
-              This is an automated security alert from your Budget Manager application. If you believe this alert was sent in error, please contact your system administrator.
+              This is an automated security alert from your ComplyBook application. If you believe this alert was sent in error, please contact your system administrator.
             </p>
           </div>
         </body>
@@ -292,7 +292,7 @@ ${details ? `\nAdditional Details:\n${JSON.stringify(details, null, 2)}` : ''}
 Action Required:
 Review this security event immediately. Check your security monitoring dashboard for more details and take appropriate action.
 
-This is an automated security alert from your Budget Manager application.
+This is an automated security alert from your ComplyBook application.
     `.trim()
   };
 

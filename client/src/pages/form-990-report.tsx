@@ -337,7 +337,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                   <p className="font-medium">Important Note</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     This report provides financial data for IRS Form 990 preparation. It should be reviewed by a qualified
-                    tax professional before filing. The report reflects transaction data recorded in your Budget Manager system
+                    tax professional before filing. The report reflects transaction data recorded in your ComplyBook system
                     for the specified tax year.
                   </p>
                 </div>

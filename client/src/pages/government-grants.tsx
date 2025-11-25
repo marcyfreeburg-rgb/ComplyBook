@@ -683,7 +683,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br/>
             Organization: ${currentOrganization.name}<br/>
             Report Period Ending: ${formatDate(report.reportingPeriodEnd)}<br/>
-            <em style="font-size: 8px;">This export contains data from the Budget Manager system. Yellow highlighted fields require manual completion before official submission.</em>
+            <em style="font-size: 8px;">This export contains data from the ComplyBook system. Yellow highlighted fields require manual completion before official submission.</em>
           </p>
         </div>
       </div>

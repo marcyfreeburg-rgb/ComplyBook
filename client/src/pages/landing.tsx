@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Receipt, FileText, Gift, TrendingUp, Users } from "lucide-react";
+import { Receipt, FileText, Gift, TrendingUp, Users, Building2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import complyBookLogo from "@assets/Complybooklogo_1764036527423.jpg";
 
 export default function Landing() {
   return (
@@ -9,9 +10,9 @@ export default function Landing() {
       {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold text-foreground">Budget Manager</span>
+          <div className="flex items-center gap-3">
+            <img src={complyBookLogo} alt="ComplyBook" className="h-10 w-10 rounded object-cover" />
+            <span className="text-xl font-semibold text-foreground">ComplyBook</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -134,7 +135,7 @@ export default function Landing() {
             Ready to Simplify Your Financial Management?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Join organizations already using Budget Manager to streamline their accounting.
+            Join organizations already using ComplyBook to streamline their accounting.
           </p>
           <Button
             size="lg"
@@ -150,7 +151,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 Budget Manager. Simple financial management for small organizations.</p>
+          <p>&copy; 2025 ComplyBook. Simple financial management for small organizations.</p>
         </div>
       </footer>
     </div>
