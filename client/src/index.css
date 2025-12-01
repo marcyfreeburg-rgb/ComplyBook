@@ -322,3 +322,129 @@
     inset: -1px;
   }
 }
+
+/* ============================================
+   MOBILE-SPECIFIC STYLES
+   ============================================ */
+
+/* Safe area insets for notched devices */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Touch-friendly tap targets (minimum 44x44px) */
+@media (max-width: 768px) {
+  /* Ensure minimum touch target sizes */
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+  }
+
+  /* Larger text for better readability on mobile */
+  .text-sm {
+    font-size: 0.9375rem; /* 15px instead of 14px */
+  }
+
+  /* More padding on mobile for easier tapping */
+  .mobile-padding {
+    padding: 1rem;
+  }
+
+  /* Reduce main content padding on mobile */
+  main {
+    padding: 1rem !important;
+  }
+
+  /* Stack cards vertically on mobile */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Full-width buttons on mobile */
+  .mobile-full-width {
+    width: 100%;
+  }
+
+  /* Hide desktop-only elements */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Adjust dialog widths for mobile */
+  [role="dialog"] {
+    max-width: calc(100vw - 2rem) !important;
+    max-height: calc(100vh - 4rem) !important;
+  }
+
+  /* Better scrolling for mobile */
+  .overflow-auto,
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent text selection during touch interactions */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* Show mobile-only elements */
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .hover-elevate:not(.no-default-hover-elevate)::after {
+    display: none !important;
+  }
+  
+  /* Use active state instead of hover for touch */
+  .hover-elevate:active:not(.no-default-hover-elevate)::after {
+    display: block !important;
+    background-color: var(--elevate-1);
+  }
+}
+
+/* Smooth scrolling for all scrollable areas */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Pull-to-refresh prevention for PWA */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* PWA standalone mode adjustments */
+@media (display-mode: standalone) {
+  /* Extra top padding for status bar on iOS */
+  .pwa-header {
+    padding-top: env(safe-area-inset-top, 20px);
+  }
+  
+  /* Bottom navigation safe area */
+  .pwa-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
