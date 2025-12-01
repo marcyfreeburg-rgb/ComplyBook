@@ -2605,6 +2605,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // QuickBooks/Xero Import endpoint
+  app.post('/api/transactions/import-accounting/:organizationId', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const source = (req.query.source || 'quickbooks') as 'quickbooks' | 'xero';
+      
+      console.log(`[${source.toUpperCase()} Import] Starting import for organization:`, organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        console.log(`[${source.toUpperCase()} Import] Access denied - no user role`);
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        console.log(`[${source.toUpperCase()} Import] Permission denied`);
+        return res.status(403).json({ message: "You don't have permission to import transactions" });
+      }
+
+      if (!req.file) {
+        console.log(`[${source.toUpperCase()} Import] No file uploaded`);
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      console.log(`[${source.toUpperCase()} Import] File received:`, req.file.originalname, 'Size:', req.file.size);
+
+      // Parse CSV
+      let csvContent = req.file.buffer.toString('utf-8');
+      csvContent = csvContent.replace(/^\uFEFF/, ''); // Remove BOM
+
+      // Find header row
+      const lines = csvContent.split('\n');
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(lines.length, 10); i++) {
+        const line = lines[i].toUpperCase();
+        if ((line.includes('DATE') || line.includes('*DATE')) && 
+            (line.includes('AMOUNT') || line.includes('*AMOUNT') || line.includes('DEBIT') || line.includes('CREDIT'))) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      if (headerRowIndex > 0) {
+        csvContent = lines.slice(headerRowIndex).join('\n');
+      }
+
+      const parseResult = Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: false
+      });
+
+      if (parseResult.errors.length > 0) {
+        console.error(`${source.toUpperCase()} parsing errors:`, parseResult.errors);
+        return res.status(400).json({ 
+          message: "CSV parsing errors", 
+          errors: parseResult.errors 
+        });
+      }
+
+      console.log(`[${source.toUpperCase()} Import] Parsed`, parseResult.data.length, 'rows');
+      console.log(`[${source.toUpperCase()} Import] Column headers:`, Object.keys(parseResult.data[0] || {}));
+
+      // Get existing vendors and categories for matching
+      const vendors = await storage.getVendors(organizationId);
+      const categories = await storage.getCategories(organizationId);
+
+      const created = [];
+      const errors = [];
+      const skipped = [];
+
+      for (let i = 0; i < parseResult.data.length; i++) {
+        const row: any = parseResult.data[i];
+        
+        try {
+          let rawAmount = '';
+          let transactionType: 'income' | 'expense' = 'expense';
+          let description = '';
+          let rawDate = '';
+          let payeeName = '';
+          let accountInfo = '';
+
+          if (source === 'quickbooks') {
+            // QuickBooks column mapping
+            rawDate = row['Date'] || row['date'] || row['Transaction Date'] || '';
+            description = row['Memo/Description'] || row['Memo'] || row['Description'] || row['Memo/Desc'] || '';
+            payeeName = row['Name'] || row['Payee'] || row['Customer/Vendor'] || '';
+            accountInfo = row['Split'] || row['Account'] || row['Category'] || '';
+            
+            // Handle QuickBooks Debit/Credit format
+            const debitCol = row['Debit'] || row['debit'] || row['DEBIT'] || '';
+            const creditCol = row['Credit'] || row['credit'] || row['CREDIT'] || '';
+            
+            if (debitCol && debitCol !== '') {
+              rawAmount = String(debitCol);
+              transactionType = 'expense'; // Debit in QB typically = expense from bank perspective
+            } else if (creditCol && creditCol !== '') {
+              rawAmount = String(creditCol);
+              transactionType = 'income'; // Credit in QB typically = deposit
+            } else {
+              // Single amount column
+              rawAmount = row['Amount'] || row['amount'] || '0';
+              const hasNegativeSign = String(rawAmount).includes('-');
+              transactionType = hasNegativeSign ? 'expense' : 'income';
+            }
+          } else {
+            // Xero column mapping
+            rawDate = row['*Date'] || row['Date'] || row['date'] || '';
+            description = row['Description'] || row['description'] || row['Particulars'] || '';
+            payeeName = row['Payee'] || row['payee'] || row['Contact'] || row['Name'] || '';
+            accountInfo = row['Account Code'] || row['Account'] || row['account_code'] || '';
+            
+            // Xero uses signed amounts (positive = income, negative = expense)
+            rawAmount = row['*Amount'] || row['Amount'] || row['amount'] || '0';
+            const numericAmount = parseFloat(String(rawAmount).replace(/[$,]/g, ''));
+            transactionType = numericAmount >= 0 ? 'income' : 'expense';
+          }
+
+          // Skip empty rows
+          if (!rawDate && !rawAmount) {
+            skipped.push(`Row ${i + 1}: Empty row`);
+            continue;
+          }
+
+          // Clean and parse amount
+          const cleanAmount = String(rawAmount).replace(/[$,\-]/g, '').trim();
+          const parsedAmount = parseFloat(cleanAmount);
+          const validAmount = isNaN(parsedAmount) ? 0 : Math.abs(parsedAmount);
+
+          if (validAmount === 0) {
+            skipped.push(`Row ${i + 1}: Zero or invalid amount`);
+            continue;
+          }
+
+          // Parse date
+          let parsedDate = '';
+          if (rawDate) {
+            try {
+              const dateObj = new Date(rawDate);
+              if (!isNaN(dateObj.getTime())) {
+                parsedDate = dateObj.toISOString().split('T')[0];
+              } else {
+                parsedDate = new Date().toISOString().split('T')[0];
+              }
+            } catch {
+              parsedDate = new Date().toISOString().split('T')[0];
+            }
+          } else {
+            parsedDate = new Date().toISOString().split('T')[0];
+          }
+
+          // Try to match vendor by name
+          let matchedVendorId = null;
+          if (payeeName && transactionType === 'expense') {
+            const matchedVendor = vendors.find(v => 
+              v.name.toLowerCase() === payeeName.toLowerCase() ||
+              v.name.toLowerCase().includes(payeeName.toLowerCase()) ||
+              payeeName.toLowerCase().includes(v.name.toLowerCase())
+            );
+            if (matchedVendor) {
+              matchedVendorId = matchedVendor.id;
+            }
+          }
+
+          // Try to match category by name
+          let matchedCategoryId = null;
+          if (accountInfo) {
+            const matchedCategory = categories.find(c => 
+              c.name.toLowerCase() === accountInfo.toLowerCase() ||
+              c.name.toLowerCase().includes(accountInfo.toLowerCase()) ||
+              accountInfo.toLowerCase().includes(c.name.toLowerCase())
+            );
+            if (matchedCategory) {
+              matchedCategoryId = matchedCategory.id;
+            }
+          }
+
+          const transactionData = {
+            organizationId,
+            createdBy: userId,
+            date: parsedDate,
+            type: transactionType,
+            amount: validAmount,
+            description: description || payeeName || `Imported from ${source}`,
+            categoryId: matchedCategoryId,
+            vendorId: matchedVendorId,
+            clientId: null,
+            fundId: null,
+            programId: null,
+            functionalCategory: null,
+          };
+
+          const validated = insertTransactionSchema.parse(transactionData);
+          const transaction = await storage.createTransaction(validated);
+          created.push(transaction);
+        } catch (error: any) {
+          console.error(`${source.toUpperCase()} Import Error on row ${i + 1}:`, error);
+          errors.push(`Row ${i + 1}: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // Log audit trail
+      await storage.logCreate(
+        organizationId,
+        userId,
+        'bulk_operation',
+        `${source}_import`,
+        { imported: created.length, errors: errors.length, skipped: skipped.length, totalRows: parseResult.data.length }
+      );
+
+      console.log(`[${source.toUpperCase()} Import] Complete -`, 'Created:', created.length, 'Skipped:', skipped.length, 'Errors:', errors.length);
+
+      res.json({
+        message: `Import complete: ${created.length} transactions created, ${skipped.length} skipped, ${errors.length} errors`,
+        created: created.length,
+        skipped: skipped.length,
+        errors: errors.length,
+        createdTransactions: created,
+        skippedDetails: skipped,
+        errorDetails: errors,
+      });
+    } catch (error) {
+      console.error(`Error importing from accounting software:`, error);
+      res.status(500).json({ message: "Failed to import from accounting software" });
+    }
+  });
+
   app.get('/api/transactions/export/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

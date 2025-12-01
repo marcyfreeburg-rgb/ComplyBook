@@ -1,4 +1,4 @@
-import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck, Sparkles, Database, Shield } from "lucide-react";
+import { Building2, Home, Receipt, FileText, Gift, Settings, LogOut, Landmark, TrendingUp, Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, Award, ShieldCheck, Sparkles, Database, Shield, FileSpreadsheet } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -184,6 +184,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       title: "Operations Hub",
       url: "/operations-hub",
       icon: Database,
+    },
+    {
+      title: "Accounting Imports",
+      url: "/accounting-imports",
+      icon: FileSpreadsheet,
     },
     {
       title: "Bank Reconciliation",

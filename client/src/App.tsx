@@ -53,6 +53,7 @@ import FundraisingHub from "@/pages/fundraising-hub";
 import GovernmentContractsHub from "@/pages/government-contracts-hub";
 import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
+import AccountingImports from "@/pages/accounting-imports";
 import type { Organization } from "@shared/schema";
 
 // Organization with user role
@@ -351,6 +352,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/security-monitoring">
                 <SecurityMonitoring organizationId={currentOrganization.id} />
+              </Route>
+              <Route path="/accounting-imports">
+                <AccountingImports organizationId={currentOrganization.id} />
               </Route>
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/fundraising-hub">
