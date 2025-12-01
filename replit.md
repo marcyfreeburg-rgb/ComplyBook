@@ -1,6 +1,21 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## 📋 Recent Updates (January 13, 2025)
+## 📋 Recent Updates (December 1, 2025)
+
+**PWA & Mobile Optimization - COMPLETED ✅**
+- Progressive Web App (PWA) support with `manifest.json` for home screen installation
+- Service worker (`client/public/sw.js`) for offline caching of GET requests
+- DeviceContext provider (`client/src/contexts/DeviceContext.tsx`) for responsive device detection
+- Mobile-optimized CSS: 44px minimum touch targets, safe-area insets for notched devices
+- Responsive grid adjustments and drawer-based sidebar for mobile navigation
+- E2E tested on mobile (375x667) and desktop (1920x1080) viewports
+
+**QuickBooks/Xero Import - COMPLETED ✅**
+- Accounting imports page at `/accounting-imports` for CSV file uploads
+- Supports QuickBooks and Xero CSV formats with automatic vendor/category matching
+- Full audit logging for imported transactions
+
+## 📋 Previous Updates (January 13, 2025)
 
 **Bank Reconciliation System - COMPLETED ✅**
 - Full reconciliation hub implemented at `/reconciliation-hub`
