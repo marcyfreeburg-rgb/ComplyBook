@@ -68,6 +68,11 @@ import {
   insertBankStatementEntrySchema,
   type InsertBankReconciliation,
   type InsertBankStatementEntry,
+  // Bill Payment Automation schemas
+  insertAutoPayRuleSchema,
+  insertScheduledPaymentSchema,
+  insertBillPaymentSchema,
+  insertVendorPaymentDetailsSchema,
   type InsertOrganization,
   type InsertCategory,
   type InsertVendor,
@@ -5453,6 +5458,587 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting bill line item:", error);
       res.status(500).json({ message: "Failed to delete line item" });
+    }
+  });
+
+  // ============================================
+  // AUTO-PAY RULES ROUTES
+  // ============================================
+
+  app.get('/api/auto-pay-rules/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const rules = await storage.getAutoPayRules(organizationId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching auto-pay rules:", error);
+      res.status(500).json({ message: "Failed to fetch auto-pay rules" });
+    }
+  });
+
+  app.get('/api/auto-pay-rules/single/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ruleId = parseInt(req.params.id);
+      
+      const rule = await storage.getAutoPayRule(ruleId);
+      if (!rule) {
+        return res.status(404).json({ message: "Auto-pay rule not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rule.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(rule);
+    } catch (error) {
+      console.error("Error fetching auto-pay rule:", error);
+      res.status(500).json({ message: "Failed to fetch auto-pay rule" });
+    }
+  });
+
+  app.post('/api/auto-pay-rules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertAutoPayRuleSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage auto-pay rules" });
+      }
+
+      const rule = await storage.createAutoPayRule({
+        ...data,
+        createdBy: userId,
+      });
+      res.status(201).json(rule);
+    } catch (error) {
+      console.error("Error creating auto-pay rule:", error);
+      res.status(400).json({ message: "Failed to create auto-pay rule" });
+    }
+  });
+
+  app.patch('/api/auto-pay-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ruleId = parseInt(req.params.id);
+      const updates = insertAutoPayRuleSchema.partial().parse(req.body);
+
+      const existingRule = await storage.getAutoPayRule(ruleId);
+      if (!existingRule) {
+        return res.status(404).json({ message: "Auto-pay rule not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingRule.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage auto-pay rules" });
+      }
+
+      const updatedRule = await storage.updateAutoPayRule(ruleId, updates);
+      res.json(updatedRule);
+    } catch (error) {
+      console.error("Error updating auto-pay rule:", error);
+      res.status(400).json({ message: "Failed to update auto-pay rule" });
+    }
+  });
+
+  app.delete('/api/auto-pay-rules/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ruleId = parseInt(req.params.id);
+
+      const existingRule = await storage.getAutoPayRule(ruleId);
+      if (!existingRule) {
+        return res.status(404).json({ message: "Auto-pay rule not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingRule.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage auto-pay rules" });
+      }
+
+      await storage.deleteAutoPayRule(ruleId);
+      res.json({ message: "Auto-pay rule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting auto-pay rule:", error);
+      res.status(500).json({ message: "Failed to delete auto-pay rule" });
+    }
+  });
+
+  app.get('/api/auto-pay-rules/active/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const rules = await storage.getActiveAutoPayRules(organizationId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching active auto-pay rules:", error);
+      res.status(500).json({ message: "Failed to fetch active auto-pay rules" });
+    }
+  });
+
+  app.post('/api/auto-pay-rules/check-bill/:billId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.billId);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const matchingRules = await storage.getMatchingAutoPayRules(bill);
+      res.json(matchingRules);
+    } catch (error) {
+      console.error("Error checking auto-pay rules for bill:", error);
+      res.status(500).json({ message: "Failed to check auto-pay rules" });
+    }
+  });
+
+  // ============================================
+  // SCHEDULED PAYMENT ROUTES
+  // ============================================
+
+  app.get('/api/scheduled-payments/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const payments = await storage.getScheduledPayments(organizationId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching scheduled payments:", error);
+      res.status(500).json({ message: "Failed to fetch scheduled payments" });
+    }
+  });
+
+  app.get('/api/scheduled-payments/single/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paymentId = parseInt(req.params.id);
+      
+      const payment = await storage.getScheduledPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Scheduled payment not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, payment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(payment);
+    } catch (error) {
+      console.error("Error fetching scheduled payment:", error);
+      res.status(500).json({ message: "Failed to fetch scheduled payment" });
+    }
+  });
+
+  app.post('/api/scheduled-payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertScheduledPaymentSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to schedule payments" });
+      }
+
+      const payment = await storage.createScheduledPayment({
+        ...data,
+        createdBy: userId,
+      });
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error creating scheduled payment:", error);
+      res.status(400).json({ message: "Failed to create scheduled payment" });
+    }
+  });
+
+  app.patch('/api/scheduled-payments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paymentId = parseInt(req.params.id);
+      const updates = insertScheduledPaymentSchema.partial().parse(req.body);
+
+      const existingPayment = await storage.getScheduledPayment(paymentId);
+      if (!existingPayment) {
+        return res.status(404).json({ message: "Scheduled payment not found" });
+      }
+
+      // Cannot modify processed or cancelled payments
+      if (existingPayment.status === 'completed' || existingPayment.status === 'cancelled') {
+        return res.status(400).json({ message: "Cannot modify completed or cancelled payments" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingPayment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage scheduled payments" });
+      }
+
+      const updatedPayment = await storage.updateScheduledPayment(paymentId, updates);
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error("Error updating scheduled payment:", error);
+      res.status(400).json({ message: "Failed to update scheduled payment" });
+    }
+  });
+
+  app.delete('/api/scheduled-payments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paymentId = parseInt(req.params.id);
+
+      const existingPayment = await storage.getScheduledPayment(paymentId);
+      if (!existingPayment) {
+        return res.status(404).json({ message: "Scheduled payment not found" });
+      }
+
+      // Cannot delete processed payments
+      if (existingPayment.status === 'completed') {
+        return res.status(400).json({ message: "Cannot delete completed payments" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingPayment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage scheduled payments" });
+      }
+
+      await storage.deleteScheduledPayment(paymentId);
+      res.json({ message: "Scheduled payment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting scheduled payment:", error);
+      res.status(500).json({ message: "Failed to delete scheduled payment" });
+    }
+  });
+
+  app.get('/api/scheduled-payments/pending/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const beforeDate = req.query.beforeDate ? new Date(req.query.beforeDate as string) : undefined;
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const payments = await storage.getPendingScheduledPayments(organizationId, beforeDate);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching pending scheduled payments:", error);
+      res.status(500).json({ message: "Failed to fetch pending scheduled payments" });
+    }
+  });
+
+  app.get('/api/scheduled-payments/bill/:billId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.billId);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const payments = await storage.getScheduledPaymentsByBill(billId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching scheduled payments for bill:", error);
+      res.status(500).json({ message: "Failed to fetch scheduled payments for bill" });
+    }
+  });
+
+  app.post('/api/scheduled-payments/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paymentId = parseInt(req.params.id);
+
+      const existingPayment = await storage.getScheduledPayment(paymentId);
+      if (!existingPayment) {
+        return res.status(404).json({ message: "Scheduled payment not found" });
+      }
+
+      if (existingPayment.status !== 'pending') {
+        return res.status(400).json({ message: "Can only cancel pending payments" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingPayment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage scheduled payments" });
+      }
+
+      const updatedPayment = await storage.updateScheduledPayment(paymentId, { status: 'cancelled' });
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error("Error cancelling scheduled payment:", error);
+      res.status(500).json({ message: "Failed to cancel scheduled payment" });
+    }
+  });
+
+  // ============================================
+  // BILL PAYMENT ROUTES
+  // ============================================
+
+  app.get('/api/bill-payments/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const payments = await storage.getBillPayments(organizationId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching bill payments:", error);
+      res.status(500).json({ message: "Failed to fetch bill payments" });
+    }
+  });
+
+  app.get('/api/bill-payments/single/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paymentId = parseInt(req.params.id);
+      
+      const payment = await storage.getBillPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Bill payment not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, payment.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(payment);
+    } catch (error) {
+      console.error("Error fetching bill payment:", error);
+      res.status(500).json({ message: "Failed to fetch bill payment" });
+    }
+  });
+
+  app.post('/api/bill-payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertBillPaymentSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to record payments" });
+      }
+
+      // Verify bill exists
+      const bill = await storage.getBill(data.billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      if (bill.organizationId !== data.organizationId) {
+        return res.status(400).json({ message: "Bill does not belong to this organization" });
+      }
+
+      const payment = await storage.createBillPayment({
+        ...data,
+        createdBy: userId,
+      });
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error creating bill payment:", error);
+      res.status(400).json({ message: "Failed to create bill payment" });
+    }
+  });
+
+  app.get('/api/bill-payments/bill/:billId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.billId);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const payments = await storage.getBillPaymentsByBill(billId);
+      const totalPaid = await storage.getTotalPaidForBill(billId);
+      res.json({ payments, totalPaid });
+    } catch (error) {
+      console.error("Error fetching payments for bill:", error);
+      res.status(500).json({ message: "Failed to fetch payments for bill" });
+    }
+  });
+
+  // ============================================
+  // VENDOR PAYMENT DETAILS ROUTES
+  // ============================================
+
+  app.get('/api/vendor-payment-details/:vendorId/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendorId = parseInt(req.params.vendorId);
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const details = await storage.getVendorPaymentDetails(vendorId, organizationId);
+      res.json(details || null);
+    } catch (error) {
+      console.error("Error fetching vendor payment details:", error);
+      res.status(500).json({ message: "Failed to fetch vendor payment details" });
+    }
+  });
+
+  app.post('/api/vendor-payment-details', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = insertVendorPaymentDetailsSchema.parse(req.body);
+      
+      const userRole = await storage.getUserRole(userId, data.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage vendor payment details" });
+      }
+
+      // Check if details already exist
+      const existing = await storage.getVendorPaymentDetails(data.vendorId, data.organizationId);
+      if (existing) {
+        return res.status(400).json({ message: "Vendor payment details already exist. Use PATCH to update." });
+      }
+
+      const details = await storage.createVendorPaymentDetails(data);
+      res.status(201).json(details);
+    } catch (error) {
+      console.error("Error creating vendor payment details:", error);
+      res.status(400).json({ message: "Failed to create vendor payment details" });
+    }
+  });
+
+  app.patch('/api/vendor-payment-details/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const detailsId = parseInt(req.params.id);
+      const updates = insertVendorPaymentDetailsSchema.partial().parse(req.body);
+
+      // Get existing details first
+      const existingDetails = await storage.getVendorPaymentDetails(0, 0); // Need to find by ID
+      // Use a workaround since we need to get by ID
+      const allVendors = await storage.getVendors(updates.organizationId || 0);
+      
+      if (!updates.organizationId) {
+        return res.status(400).json({ message: "Organization ID required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, updates.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage vendor payment details" });
+      }
+
+      const updatedDetails = await storage.updateVendorPaymentDetails(detailsId, updates);
+      res.json(updatedDetails);
+    } catch (error) {
+      console.error("Error updating vendor payment details:", error);
+      res.status(400).json({ message: "Failed to update vendor payment details" });
+    }
+  });
+
+  app.delete('/api/vendor-payment-details/:id/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const detailsId = parseInt(req.params.id);
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage vendor payment details" });
+      }
+
+      await storage.deleteVendorPaymentDetails(detailsId);
+      res.json({ message: "Vendor payment details deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting vendor payment details:", error);
+      res.status(500).json({ message: "Failed to delete vendor payment details" });
     }
   });
 
