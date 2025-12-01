@@ -90,6 +90,12 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'general'
 ]);
 
+// Bill Payment Automation enums
+export const autoPayRuleTypeEnum = pgEnum('auto_pay_rule_type', ['vendor', 'amount_threshold', 'due_date', 'combined']);
+export const autoPayStatusEnum = pgEnum('auto_pay_status', ['active', 'paused', 'disabled']);
+export const scheduledPaymentStatusEnum = pgEnum('scheduled_payment_status', ['pending', 'processing', 'completed', 'failed', 'cancelled']);
+export const paymentMethodEnum = pgEnum('payment_method', ['ach', 'card', 'check', 'manual']);
+
 // Security enums (NIST 800-53 AU-2)
 export const securityEventTypeEnum = pgEnum('security_event_type', [
   'login_success',
@@ -2555,6 +2561,198 @@ export const insertComplianceEventSchema = createInsertSchema(complianceEvents).
 
 export type InsertComplianceEvent = z.infer<typeof insertComplianceEventSchema>;
 export type ComplianceEvent = typeof complianceEvents.$inferSelect;
+
+// ============================================
+// BILL PAYMENT AUTOMATION
+// ============================================
+
+// Auto-pay rules for automated bill payment
+export const autoPayRules = pgTable("auto_pay_rules", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(),
+  ruleType: autoPayRuleTypeEnum("rule_type").notNull(),
+  status: autoPayStatusEnum("status").notNull().default('active'),
+  
+  // Vendor-based rule
+  vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'cascade' }),
+  
+  // Amount threshold rules
+  minAmount: numeric("min_amount", { precision: 12, scale: 2 }),
+  maxAmount: numeric("max_amount", { precision: 12, scale: 2 }),
+  
+  // Due date rules (e.g., pay X days before due)
+  daysBeforeDue: integer("days_before_due").default(0),
+  
+  // Payment settings
+  paymentMethod: paymentMethodEnum("payment_method").notNull().default('manual'),
+  requiresApproval: boolean("requires_approval").default(true).notNull(),
+  
+  // Notification settings
+  notifyOnPayment: boolean("notify_on_payment").default(true).notNull(),
+  notifyDaysBeforePayment: integer("notify_days_before_payment").default(1),
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_auto_pay_rules_org_id").on(table.organizationId),
+  index("idx_auto_pay_rules_vendor_id").on(table.vendorId),
+  index("idx_auto_pay_rules_status").on(table.status),
+]);
+
+export const insertAutoPayRuleSchema = createInsertSchema(autoPayRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  minAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  maxAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  ruleType: z.enum(['vendor', 'amount_threshold', 'due_date', 'combined']),
+  status: z.enum(['active', 'paused', 'disabled']).default('active'),
+  paymentMethod: z.enum(['ach', 'card', 'check', 'manual']).default('manual'),
+});
+
+export type InsertAutoPayRule = z.infer<typeof insertAutoPayRuleSchema>;
+export type AutoPayRule = typeof autoPayRules.$inferSelect;
+
+// Scheduled payments for specific bills
+export const scheduledPayments = pgTable("scheduled_payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  billId: integer("bill_id").notNull().references(() => bills.id, { onDelete: 'cascade' }),
+  autoPayRuleId: integer("auto_pay_rule_id").references(() => autoPayRules.id, { onDelete: 'set null' }),
+  
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentMethod: paymentMethodEnum("payment_method").notNull().default('manual'),
+  status: scheduledPaymentStatusEnum("status").notNull().default('pending'),
+  
+  // Reminder settings
+  reminderSent: boolean("reminder_sent").default(false).notNull(),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  
+  // Processing details
+  processedAt: timestamp("processed_at"),
+  failureReason: text("failure_reason"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_scheduled_payments_org_id").on(table.organizationId),
+  index("idx_scheduled_payments_bill_id").on(table.billId),
+  index("idx_scheduled_payments_scheduled_date").on(table.scheduledDate),
+  index("idx_scheduled_payments_status").on(table.status),
+]);
+
+export const insertScheduledPaymentSchema = createInsertSchema(scheduledPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  scheduledDate: z.coerce.date(),
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  paymentMethod: z.enum(['ach', 'card', 'check', 'manual']).default('manual'),
+  status: z.enum(['pending', 'processing', 'completed', 'failed', 'cancelled']).default('pending'),
+});
+
+export type InsertScheduledPayment = z.infer<typeof insertScheduledPaymentSchema>;
+export type ScheduledPayment = typeof scheduledPayments.$inferSelect;
+
+// Payment history records
+export const billPayments = pgTable("bill_payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  billId: integer("bill_id").notNull().references(() => bills.id, { onDelete: 'cascade' }),
+  scheduledPaymentId: integer("scheduled_payment_id").references(() => scheduledPayments.id, { onDelete: 'set null' }),
+  
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  
+  // Stripe integration
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeChargeId: varchar("stripe_charge_id", { length: 255 }),
+  
+  // Check details (if applicable)
+  checkNumber: varchar("check_number", { length: 50 }),
+  
+  // ACH details (if applicable)
+  achTransactionId: varchar("ach_transaction_id", { length: 255 }),
+  
+  // Reference/confirmation
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  notes: text("notes"),
+  
+  // Linked transaction (expense record)
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_bill_payments_org_id").on(table.organizationId),
+  index("idx_bill_payments_bill_id").on(table.billId),
+  index("idx_bill_payments_payment_date").on(table.paymentDate),
+]);
+
+export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  paymentDate: z.coerce.date(),
+  paymentMethod: z.enum(['ach', 'card', 'check', 'manual']),
+});
+
+export type InsertBillPayment = z.infer<typeof insertBillPaymentSchema>;
+export type BillPayment = typeof billPayments.$inferSelect;
+
+// Vendor payment details (bank info for ACH, etc.)
+export const vendorPaymentDetails = pgTable("vendor_payment_details", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: 'cascade' }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Preferred payment method
+  preferredPaymentMethod: paymentMethodEnum("preferred_payment_method").notNull().default('manual'),
+  
+  // Bank details for ACH (encrypted)
+  bankNameEncrypted: text("bank_name_encrypted"),
+  accountNumberEncrypted: text("account_number_encrypted"),
+  routingNumberEncrypted: text("routing_number_encrypted"),
+  accountType: varchar("account_type", { length: 20 }), // 'checking' or 'savings'
+  
+  // Address for checks
+  payableTo: varchar("payable_to", { length: 255 }),
+  mailingAddress: text("mailing_address"),
+  
+  // Stripe Connect (if using Stripe for payouts)
+  stripeConnectedAccountId: varchar("stripe_connected_account_id", { length: 255 }),
+  
+  isVerified: boolean("is_verified").default(false).notNull(),
+  verifiedAt: timestamp("verified_at"),
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_vendor_payment_details_vendor_id").on(table.vendorId),
+  index("idx_vendor_payment_details_org_id").on(table.organizationId),
+]);
+
+export const insertVendorPaymentDetailsSchema = createInsertSchema(vendorPaymentDetails).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  preferredPaymentMethod: z.enum(['ach', 'card', 'check', 'manual']).default('manual'),
+});
+
+export type InsertVendorPaymentDetails = z.infer<typeof insertVendorPaymentDetailsSchema>;
+export type VendorPaymentDetails = typeof vendorPaymentDetails.$inferSelect;
 
 // ============================================
 // RELATIONS
