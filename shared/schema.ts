@@ -2653,10 +2653,20 @@ export const insertScheduledPaymentSchema = createInsertSchema(scheduledPayments
   createdAt: true,
   updatedAt: true,
 }).extend({
+  organizationId: z.number(),
+  billId: z.number(),
+  autoPayRuleId: z.number().optional().nullable(),
   scheduledDate: z.coerce.date(),
   amount: z.string().or(z.number()).transform(val => String(val)),
   paymentMethod: z.enum(['ach', 'card', 'check', 'manual']).default('manual'),
   status: z.enum(['pending', 'processing', 'completed', 'failed', 'cancelled']).default('pending'),
+  reminderSent: z.boolean().default(false),
+  reminderSentAt: z.coerce.date().optional().nullable(),
+  processedAt: z.coerce.date().optional().nullable(),
+  failureReason: z.string().optional().nullable(),
+  stripePaymentIntentId: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  createdBy: z.string(),
 });
 
 export type InsertScheduledPayment = z.infer<typeof insertScheduledPaymentSchema>;
@@ -2702,9 +2712,20 @@ export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({
   id: true,
   createdAt: true,
 }).extend({
+  organizationId: z.number(),
+  billId: z.number(),
+  scheduledPaymentId: z.number().optional().nullable(),
   amount: z.string().or(z.number()).transform(val => String(val)),
   paymentDate: z.coerce.date(),
   paymentMethod: z.enum(['ach', 'card', 'check', 'manual']),
+  stripePaymentIntentId: z.string().optional().nullable(),
+  stripeChargeId: z.string().optional().nullable(),
+  checkNumber: z.string().optional().nullable(),
+  achTransactionId: z.string().optional().nullable(),
+  referenceNumber: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  transactionId: z.number().optional().nullable(),
+  createdBy: z.string(),
 });
 
 export type InsertBillPayment = z.infer<typeof insertBillPaymentSchema>;
