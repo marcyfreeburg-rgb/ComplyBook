@@ -101,6 +101,11 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: FileX,
     },
     {
+      title: "Bill Payments",
+      url: "/bill-payments",
+      icon: DollarSign,
+    },
+    {
       title: "Brand Settings",
       url: "/brand-settings",
       icon: FileSliders,

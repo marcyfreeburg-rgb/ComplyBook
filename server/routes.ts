@@ -5394,6 +5394,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Record a payment for a bill
+  app.post('/api/bills/:billId/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const billId = parseInt(req.params.billId);
+      
+      if (isNaN(billId)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+
+      // Validate request body with Zod schema
+      const paymentSchema = z.object({
+        amount: z.string().or(z.number()).transform(val => {
+          const num = typeof val === 'string' ? parseFloat(val) : val;
+          if (isNaN(num) || num <= 0) throw new Error("Amount must be a positive number");
+          return num.toFixed(2);
+        }),
+        paymentMethod: z.enum(['ach', 'card', 'check', 'manual']),
+        paymentDate: z.string().transform(val => {
+          const date = new Date(val);
+          if (isNaN(date.getTime())) throw new Error("Invalid date format");
+          return date;
+        }),
+        checkNumber: z.string().max(50).optional().nullable(),
+        referenceNumber: z.string().max(100).optional().nullable(),
+        notes: z.string().optional().nullable(),
+      });
+
+      const validatedData = paymentSchema.parse(req.body);
+      
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      // Verify user has access to THIS organization specifically
+      const userOrgs = await storage.getOrganizations(userId);
+      const hasOrgAccess = userOrgs.some(org => org.id === bill.organizationId);
+      if (!hasOrgAccess) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const userRole = await storage.getUserRole(userId, bill.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to record payments" });
+      }
+
+      // Check if bill is already fully paid
+      if (bill.status === 'paid') {
+        return res.status(400).json({ message: "Bill is already fully paid" });
+      }
+
+      // Check if bill is cancelled
+      if (bill.status === 'cancelled') {
+        return res.status(400).json({ message: "Cannot record payment for a cancelled bill" });
+      }
+
+      // Create the payment record
+      const payment = await storage.createBillPayment({
+        organizationId: bill.organizationId,
+        billId,
+        amount: validatedData.amount,
+        paymentMethod: validatedData.paymentMethod,
+        paymentDate: validatedData.paymentDate,
+        checkNumber: validatedData.checkNumber || null,
+        referenceNumber: validatedData.referenceNumber || null,
+        notes: validatedData.notes || null,
+        createdBy: userId,
+      } as any);
+
+      // Update bill status to paid if full amount is covered
+      const allPayments = await storage.getBillPaymentsByBill(billId);
+      const totalPaid = allPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      const billTotal = parseFloat(bill.totalAmount);
+      
+      if (totalPaid >= billTotal) {
+        await storage.updateBill(billId, { status: 'paid' });
+      } else if (totalPaid > 0) {
+        await storage.updateBill(billId, { status: 'partial' });
+      }
+
+      // Note: Bill payment recording is captured in the bill_payments table as an audit trail
+      // Security event logging is reserved for authentication/authorization events
+
+      res.status(201).json(payment);
+    } catch (error: any) {
+      console.error("Error recording payment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0]?.message || "Invalid payment data" });
+      }
+      res.status(400).json({ message: error.message || "Failed to record payment" });
+    }
+  });
+
   app.patch('/api/bill-line-items/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -5508,7 +5606,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auto-pay-rules', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const data = insertAutoPayRuleSchema.parse(req.body);
+      // Parse without createdBy since we'll set it from the authenticated user
+      const ruleSchema = insertAutoPayRuleSchema.omit({ createdBy: true });
+      const data = ruleSchema.parse(req.body);
       
       const userRole = await storage.getUserRole(userId, data.organizationId);
       if (!userRole) {
@@ -5522,7 +5622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rule = await storage.createAutoPayRule({
         ...data,
         createdBy: userId,
-      });
+      } as any);
       res.status(201).json(rule);
     } catch (error) {
       console.error("Error creating auto-pay rule:", error);

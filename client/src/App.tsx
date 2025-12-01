@@ -25,6 +25,7 @@ import Deductions from "@/pages/deductions";
 import Payroll from "@/pages/payroll";
 import Invoices from "@/pages/invoices";
 import Bills from "@/pages/bills";
+import BillPayments from "@/pages/bill-payments";
 import BrandSettings from "@/pages/brand-settings";
 import Reports from "@/pages/reports";
 import Grants from "@/pages/grants";
@@ -235,6 +236,9 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/bills">
                 <Bills currentOrganization={currentOrganization} />
+              </Route>
+              <Route path="/bill-payments">
+                <BillPayments currentOrganization={currentOrganization} />
               </Route>
               <Route path="/brand-settings">
                 <BrandSettings currentOrganization={currentOrganization} />
