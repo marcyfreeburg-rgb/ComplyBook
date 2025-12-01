@@ -179,6 +179,19 @@ import {
   reconciliationMatches,
   type ReconciliationMatch,
   type InsertReconciliationMatch,
+  // Bill Payment Automation types
+  autoPayRules,
+  type AutoPayRule,
+  type InsertAutoPayRule,
+  scheduledPayments,
+  type ScheduledPayment,
+  type InsertScheduledPayment,
+  billPayments,
+  type BillPayment,
+  type InsertBillPayment,
+  vendorPaymentDetails,
+  type VendorPaymentDetails,
+  type InsertVendorPaymentDetails,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
@@ -488,6 +501,38 @@ export interface IStorage {
   createBillLineItem(item: InsertBillLineItem): Promise<BillLineItem>;
   updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem>;
   deleteBillLineItem(id: number): Promise<void>;
+
+  // Auto-pay rule operations
+  getAutoPayRules(organizationId: number): Promise<Array<AutoPayRule & { vendorName: string | null }>>;
+  getAutoPayRule(id: number): Promise<AutoPayRule | undefined>;
+  createAutoPayRule(rule: InsertAutoPayRule): Promise<AutoPayRule>;
+  updateAutoPayRule(id: number, updates: Partial<InsertAutoPayRule>): Promise<AutoPayRule>;
+  deleteAutoPayRule(id: number): Promise<void>;
+  getActiveAutoPayRules(organizationId: number): Promise<Array<AutoPayRule & { vendorName: string | null }>>;
+  getMatchingAutoPayRules(bill: Bill): Promise<Array<AutoPayRule & { vendorName: string | null }>>;
+
+  // Scheduled payment operations
+  getScheduledPayments(organizationId: number): Promise<Array<ScheduledPayment & { billNumber: string; vendorName: string | null }>>;
+  getScheduledPayment(id: number): Promise<ScheduledPayment | undefined>;
+  createScheduledPayment(payment: InsertScheduledPayment): Promise<ScheduledPayment>;
+  updateScheduledPayment(id: number, updates: Partial<InsertScheduledPayment>): Promise<ScheduledPayment>;
+  deleteScheduledPayment(id: number): Promise<void>;
+  getScheduledPaymentsByBill(billId: number): Promise<ScheduledPayment[]>;
+  getPendingScheduledPayments(organizationId: number, beforeDate?: Date): Promise<Array<ScheduledPayment & { billNumber: string; vendorName: string | null; billTotalAmount: string }>>;
+  processScheduledPayment(id: number): Promise<ScheduledPayment>;
+
+  // Bill payment operations
+  getBillPayments(organizationId: number): Promise<Array<BillPayment & { billNumber: string; vendorName: string | null }>>;
+  getBillPayment(id: number): Promise<BillPayment | undefined>;
+  createBillPayment(payment: InsertBillPayment): Promise<BillPayment>;
+  getBillPaymentsByBill(billId: number): Promise<BillPayment[]>;
+  getTotalPaidForBill(billId: number): Promise<string>;
+
+  // Vendor payment details operations
+  getVendorPaymentDetails(vendorId: number, organizationId: number): Promise<VendorPaymentDetails | undefined>;
+  createVendorPaymentDetails(details: InsertVendorPaymentDetails): Promise<VendorPaymentDetails>;
+  updateVendorPaymentDetails(id: number, updates: Partial<InsertVendorPaymentDetails>): Promise<VendorPaymentDetails>;
+  deleteVendorPaymentDetails(id: number): Promise<void>;
 
   // Expense approval operations
   getExpenseApprovals(organizationId: number): Promise<Array<ExpenseApproval & { requestedByName: string; categoryName: string | null; vendorName: string | null }>>;
@@ -3759,6 +3804,339 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBillLineItem(id: number): Promise<void> {
     await db.delete(billLineItems).where(eq(billLineItems.id, id));
+  }
+
+  // ============================================
+  // AUTO-PAY RULE OPERATIONS
+  // ============================================
+
+  async getAutoPayRules(organizationId: number): Promise<Array<AutoPayRule & { vendorName: string | null }>> {
+    const results = await db
+      .select({
+        id: autoPayRules.id,
+        organizationId: autoPayRules.organizationId,
+        name: autoPayRules.name,
+        ruleType: autoPayRules.ruleType,
+        status: autoPayRules.status,
+        vendorId: autoPayRules.vendorId,
+        minAmount: autoPayRules.minAmount,
+        maxAmount: autoPayRules.maxAmount,
+        daysBeforeDue: autoPayRules.daysBeforeDue,
+        paymentMethod: autoPayRules.paymentMethod,
+        requiresApproval: autoPayRules.requiresApproval,
+        notifyOnPayment: autoPayRules.notifyOnPayment,
+        notifyDaysBeforePayment: autoPayRules.notifyDaysBeforePayment,
+        createdBy: autoPayRules.createdBy,
+        createdAt: autoPayRules.createdAt,
+        updatedAt: autoPayRules.updatedAt,
+        vendorName: vendors.name,
+      })
+      .from(autoPayRules)
+      .leftJoin(vendors, eq(autoPayRules.vendorId, vendors.id))
+      .where(eq(autoPayRules.organizationId, organizationId))
+      .orderBy(desc(autoPayRules.createdAt));
+    return results;
+  }
+
+  async getAutoPayRule(id: number): Promise<AutoPayRule | undefined> {
+    const [rule] = await db.select().from(autoPayRules).where(eq(autoPayRules.id, id));
+    return rule;
+  }
+
+  async createAutoPayRule(rule: InsertAutoPayRule): Promise<AutoPayRule> {
+    const [newRule] = await db.insert(autoPayRules).values(rule).returning();
+    return newRule;
+  }
+
+  async updateAutoPayRule(id: number, updates: Partial<InsertAutoPayRule>): Promise<AutoPayRule> {
+    const [updatedRule] = await db
+      .update(autoPayRules)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(autoPayRules.id, id))
+      .returning();
+    return updatedRule;
+  }
+
+  async deleteAutoPayRule(id: number): Promise<void> {
+    await db.delete(autoPayRules).where(eq(autoPayRules.id, id));
+  }
+
+  async getActiveAutoPayRules(organizationId: number): Promise<Array<AutoPayRule & { vendorName: string | null }>> {
+    const results = await db
+      .select({
+        id: autoPayRules.id,
+        organizationId: autoPayRules.organizationId,
+        name: autoPayRules.name,
+        ruleType: autoPayRules.ruleType,
+        status: autoPayRules.status,
+        vendorId: autoPayRules.vendorId,
+        minAmount: autoPayRules.minAmount,
+        maxAmount: autoPayRules.maxAmount,
+        daysBeforeDue: autoPayRules.daysBeforeDue,
+        paymentMethod: autoPayRules.paymentMethod,
+        requiresApproval: autoPayRules.requiresApproval,
+        notifyOnPayment: autoPayRules.notifyOnPayment,
+        notifyDaysBeforePayment: autoPayRules.notifyDaysBeforePayment,
+        createdBy: autoPayRules.createdBy,
+        createdAt: autoPayRules.createdAt,
+        updatedAt: autoPayRules.updatedAt,
+        vendorName: vendors.name,
+      })
+      .from(autoPayRules)
+      .leftJoin(vendors, eq(autoPayRules.vendorId, vendors.id))
+      .where(and(
+        eq(autoPayRules.organizationId, organizationId),
+        eq(autoPayRules.status, 'active')
+      ))
+      .orderBy(desc(autoPayRules.createdAt));
+    return results;
+  }
+
+  async getMatchingAutoPayRules(bill: Bill): Promise<Array<AutoPayRule & { vendorName: string | null }>> {
+    const activeRules = await this.getActiveAutoPayRules(bill.organizationId);
+    
+    return activeRules.filter(rule => {
+      const billAmount = parseFloat(bill.totalAmount);
+      
+      // Check vendor match
+      if (rule.ruleType === 'vendor' || rule.ruleType === 'combined') {
+        if (rule.vendorId && rule.vendorId !== bill.vendorId) {
+          return false;
+        }
+      }
+      
+      // Check amount threshold
+      if (rule.ruleType === 'amount_threshold' || rule.ruleType === 'combined') {
+        const minAmount = rule.minAmount ? parseFloat(rule.minAmount) : 0;
+        const maxAmount = rule.maxAmount ? parseFloat(rule.maxAmount) : Infinity;
+        if (billAmount < minAmount || billAmount > maxAmount) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }
+
+  // ============================================
+  // SCHEDULED PAYMENT OPERATIONS
+  // ============================================
+
+  async getScheduledPayments(organizationId: number): Promise<Array<ScheduledPayment & { billNumber: string; vendorName: string | null }>> {
+    const results = await db
+      .select({
+        id: scheduledPayments.id,
+        organizationId: scheduledPayments.organizationId,
+        billId: scheduledPayments.billId,
+        autoPayRuleId: scheduledPayments.autoPayRuleId,
+        scheduledDate: scheduledPayments.scheduledDate,
+        amount: scheduledPayments.amount,
+        paymentMethod: scheduledPayments.paymentMethod,
+        status: scheduledPayments.status,
+        reminderSent: scheduledPayments.reminderSent,
+        reminderSentAt: scheduledPayments.reminderSentAt,
+        processedAt: scheduledPayments.processedAt,
+        failureReason: scheduledPayments.failureReason,
+        stripePaymentIntentId: scheduledPayments.stripePaymentIntentId,
+        notes: scheduledPayments.notes,
+        createdBy: scheduledPayments.createdBy,
+        createdAt: scheduledPayments.createdAt,
+        updatedAt: scheduledPayments.updatedAt,
+        billNumber: bills.billNumber,
+        vendorName: vendors.name,
+      })
+      .from(scheduledPayments)
+      .innerJoin(bills, eq(scheduledPayments.billId, bills.id))
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .where(eq(scheduledPayments.organizationId, organizationId))
+      .orderBy(scheduledPayments.scheduledDate);
+    return results;
+  }
+
+  async getScheduledPayment(id: number): Promise<ScheduledPayment | undefined> {
+    const [payment] = await db.select().from(scheduledPayments).where(eq(scheduledPayments.id, id));
+    return payment;
+  }
+
+  async createScheduledPayment(payment: InsertScheduledPayment): Promise<ScheduledPayment> {
+    const [newPayment] = await db.insert(scheduledPayments).values(payment).returning();
+    return newPayment;
+  }
+
+  async updateScheduledPayment(id: number, updates: Partial<InsertScheduledPayment>): Promise<ScheduledPayment> {
+    const [updatedPayment] = await db
+      .update(scheduledPayments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(scheduledPayments.id, id))
+      .returning();
+    return updatedPayment;
+  }
+
+  async deleteScheduledPayment(id: number): Promise<void> {
+    await db.delete(scheduledPayments).where(eq(scheduledPayments.id, id));
+  }
+
+  async getScheduledPaymentsByBill(billId: number): Promise<ScheduledPayment[]> {
+    return db.select().from(scheduledPayments).where(eq(scheduledPayments.billId, billId));
+  }
+
+  async getPendingScheduledPayments(organizationId: number, beforeDate?: Date): Promise<Array<ScheduledPayment & { billNumber: string; vendorName: string | null; billTotalAmount: string }>> {
+    const now = new Date();
+    const targetDate = beforeDate || new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // Default: next 7 days
+    
+    const results = await db
+      .select({
+        id: scheduledPayments.id,
+        organizationId: scheduledPayments.organizationId,
+        billId: scheduledPayments.billId,
+        autoPayRuleId: scheduledPayments.autoPayRuleId,
+        scheduledDate: scheduledPayments.scheduledDate,
+        amount: scheduledPayments.amount,
+        paymentMethod: scheduledPayments.paymentMethod,
+        status: scheduledPayments.status,
+        reminderSent: scheduledPayments.reminderSent,
+        reminderSentAt: scheduledPayments.reminderSentAt,
+        processedAt: scheduledPayments.processedAt,
+        failureReason: scheduledPayments.failureReason,
+        stripePaymentIntentId: scheduledPayments.stripePaymentIntentId,
+        notes: scheduledPayments.notes,
+        createdBy: scheduledPayments.createdBy,
+        createdAt: scheduledPayments.createdAt,
+        updatedAt: scheduledPayments.updatedAt,
+        billNumber: bills.billNumber,
+        vendorName: vendors.name,
+        billTotalAmount: bills.totalAmount,
+      })
+      .from(scheduledPayments)
+      .innerJoin(bills, eq(scheduledPayments.billId, bills.id))
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .where(and(
+        eq(scheduledPayments.organizationId, organizationId),
+        eq(scheduledPayments.status, 'pending'),
+        lte(scheduledPayments.scheduledDate, targetDate)
+      ))
+      .orderBy(scheduledPayments.scheduledDate);
+    return results;
+  }
+
+  async processScheduledPayment(id: number): Promise<ScheduledPayment> {
+    const [updatedPayment] = await db
+      .update(scheduledPayments)
+      .set({
+        status: 'processing',
+        updatedAt: new Date(),
+      })
+      .where(eq(scheduledPayments.id, id))
+      .returning();
+    return updatedPayment;
+  }
+
+  // ============================================
+  // BILL PAYMENT OPERATIONS
+  // ============================================
+
+  async getBillPayments(organizationId: number): Promise<Array<BillPayment & { billNumber: string; vendorName: string | null }>> {
+    const results = await db
+      .select({
+        id: billPayments.id,
+        organizationId: billPayments.organizationId,
+        billId: billPayments.billId,
+        scheduledPaymentId: billPayments.scheduledPaymentId,
+        amount: billPayments.amount,
+        paymentDate: billPayments.paymentDate,
+        paymentMethod: billPayments.paymentMethod,
+        stripePaymentIntentId: billPayments.stripePaymentIntentId,
+        stripeChargeId: billPayments.stripeChargeId,
+        checkNumber: billPayments.checkNumber,
+        achTransactionId: billPayments.achTransactionId,
+        referenceNumber: billPayments.referenceNumber,
+        notes: billPayments.notes,
+        transactionId: billPayments.transactionId,
+        createdBy: billPayments.createdBy,
+        createdAt: billPayments.createdAt,
+        billNumber: bills.billNumber,
+        vendorName: vendors.name,
+      })
+      .from(billPayments)
+      .innerJoin(bills, eq(billPayments.billId, bills.id))
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .where(eq(billPayments.organizationId, organizationId))
+      .orderBy(desc(billPayments.paymentDate));
+    return results;
+  }
+
+  async getBillPayment(id: number): Promise<BillPayment | undefined> {
+    const [payment] = await db.select().from(billPayments).where(eq(billPayments.id, id));
+    return payment;
+  }
+
+  async createBillPayment(payment: InsertBillPayment): Promise<BillPayment> {
+    const [newPayment] = await db.insert(billPayments).values(payment).returning();
+    
+    // Update bill status based on total paid
+    const totalPaid = await this.getTotalPaidForBill(payment.billId);
+    const bill = await this.getBill(payment.billId);
+    
+    if (bill) {
+      const totalPaidNum = parseFloat(totalPaid);
+      const totalAmountNum = parseFloat(bill.totalAmount);
+      
+      let newStatus: 'paid' | 'partial' | 'received' = 'received';
+      if (totalPaidNum >= totalAmountNum) {
+        newStatus = 'paid';
+      } else if (totalPaidNum > 0) {
+        newStatus = 'partial';
+      }
+      
+      await this.updateBill(bill.id, { status: newStatus });
+    }
+    
+    return newPayment;
+  }
+
+  async getBillPaymentsByBill(billId: number): Promise<BillPayment[]> {
+    return db.select().from(billPayments).where(eq(billPayments.billId, billId)).orderBy(desc(billPayments.paymentDate));
+  }
+
+  async getTotalPaidForBill(billId: number): Promise<string> {
+    const result = await db
+      .select({ total: sql<string>`COALESCE(SUM(${billPayments.amount}), 0)` })
+      .from(billPayments)
+      .where(eq(billPayments.billId, billId));
+    return result[0]?.total || '0';
+  }
+
+  // ============================================
+  // VENDOR PAYMENT DETAILS OPERATIONS
+  // ============================================
+
+  async getVendorPaymentDetails(vendorId: number, organizationId: number): Promise<VendorPaymentDetails | undefined> {
+    const [details] = await db
+      .select()
+      .from(vendorPaymentDetails)
+      .where(and(
+        eq(vendorPaymentDetails.vendorId, vendorId),
+        eq(vendorPaymentDetails.organizationId, organizationId)
+      ));
+    return details;
+  }
+
+  async createVendorPaymentDetails(details: InsertVendorPaymentDetails): Promise<VendorPaymentDetails> {
+    const [newDetails] = await db.insert(vendorPaymentDetails).values(details).returning();
+    return newDetails;
+  }
+
+  async updateVendorPaymentDetails(id: number, updates: Partial<InsertVendorPaymentDetails>): Promise<VendorPaymentDetails> {
+    const [updatedDetails] = await db
+      .update(vendorPaymentDetails)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(vendorPaymentDetails.id, id))
+      .returning();
+    return updatedDetails;
+  }
+
+  async deleteVendorPaymentDetails(id: number): Promise<void> {
+    await db.delete(vendorPaymentDetails).where(eq(vendorPaymentDetails.id, id));
   }
 
   // ============================================
