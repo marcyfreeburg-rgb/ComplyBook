@@ -1,6 +1,17 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## 📋 Recent Updates (December 1, 2025)
+## 📋 Recent Updates (December 5, 2025)
+
+**Subscription Tier System - COMPLETED ✅**
+- 5-tier subscription system: Free, Starter ($29/mo), Professional ($79/mo), Growth ($159/mo), Enterprise ($349+/mo)
+- Pricing page at `/pricing` accessible to both authenticated and unauthenticated users
+- Stripe checkout integration with tier-based pricing (annual discount: 17%)
+- Webhook handlers for subscription lifecycle events (checkout, updates, cancellation)
+- Feature gating middleware (`server/featureGating.ts`) for enforcing tier limits
+- User schema extended with subscription fields: `subscriptionTier`, `subscriptionStatus`, `subscriptionCurrentPeriodEnd`, `billingInterval`
+- Storage method `getUserByStripeSubscriptionId()` for webhook processing
+
+## 📋 Previous Updates (December 1, 2025)
 
 **PWA & Mobile Optimization - COMPLETED ✅**
 - Progressive Web App (PWA) support with `manifest.json` for home screen installation
