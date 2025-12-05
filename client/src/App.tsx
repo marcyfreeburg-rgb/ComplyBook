@@ -404,20 +404,24 @@ function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
 
-  if (isLoading) {
-    return <Landing />;
-  }
-
   // Allow invitation page for both authenticated and non-authenticated users
   if (location.startsWith('/invite/')) {
     return <AcceptInvitation />;
+  }
+
+  // Allow pricing page for both authenticated and non-authenticated users
+  if (location === '/pricing' || location.startsWith('/pricing')) {
+    return <Pricing />;
+  }
+
+  if (isLoading) {
+    return <Landing />;
   }
 
   if (!isAuthenticated) {
     return (
       <Switch>
         <Route path="/" component={Landing} />
-        <Route path="/pricing" component={Pricing} />
         <Route component={Landing} />
       </Switch>
     );
