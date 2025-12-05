@@ -9808,11 +9808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/stripe/checkout', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { priceId, organizationId } = req.body;
-
-      if (!priceId) {
-        return res.status(400).json({ message: 'Price ID is required' });
-      }
+      const { priceId, tier, interval, organizationId } = req.body;
 
       const user = await storage.getUser(userId);
       if (!user) {
@@ -9829,14 +9825,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId = customer.id;
       }
 
+      // Get Stripe client for creating prices on-the-fly if needed
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+
+      // Tier pricing configuration (matching shared/schema.ts)
+      const tierPricing: Record<string, { monthly: number; annual: number; name: string }> = {
+        starter: { monthly: 3500, annual: 2900, name: 'Starter' },
+        professional: { monthly: 9500, annual: 7900, name: 'Professional' },
+        growth: { monthly: 18900, annual: 15900, name: 'Growth' },
+        enterprise: { monthly: 34900, annual: 34900, name: 'Enterprise' },
+      };
+
+      let finalPriceId = priceId;
+
+      // If tier-based checkout, find or create the price
+      if (tier && interval && tierPricing[tier]) {
+        const tierConfig = tierPricing[tier];
+        const amount = interval === 'annual' ? tierConfig.annual : tierConfig.monthly;
+        const intervalValue = interval === 'annual' ? 'year' : 'month';
+
+        // Look for existing product for this tier
+        const products = await stripe.products.list({ active: true, limit: 100 });
+        let product = products.data.find(p => p.metadata?.tier === tier);
+
+        if (!product) {
+          // Create product for this tier
+          product = await stripe.products.create({
+            name: `ComplyBook ${tierConfig.name}`,
+            metadata: { tier },
+          });
+        }
+
+        // Look for existing price
+        const prices = await stripe.prices.list({ 
+          product: product.id, 
+          active: true, 
+          limit: 100 
+        });
+        let price = prices.data.find(p => 
+          p.unit_amount === amount && 
+          p.recurring?.interval === intervalValue
+        );
+
+        if (!price) {
+          // Create price for this tier/interval
+          price = await stripe.prices.create({
+            product: product.id,
+            unit_amount: amount,
+            currency: 'usd',
+            recurring: { interval: intervalValue },
+            metadata: { tier, interval },
+          });
+        }
+
+        finalPriceId = price.id;
+      }
+
+      if (!finalPriceId) {
+        return res.status(400).json({ message: 'Price ID or tier/interval is required' });
+      }
+
       // Create checkout session
       const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
       const session = await stripeService.createCheckoutSession(
         customerId,
-        priceId,
-        `${baseUrl}/checkout/success`,
-        `${baseUrl}/checkout/cancel`,
-        { userId, organizationId: organizationId?.toString() || '' }
+        finalPriceId,
+        `${baseUrl}/checkout/success?tier=${tier || ''}&interval=${interval || ''}`,
+        `${baseUrl}/pricing`,
+        { userId, tier: tier || '', interval: interval || '', organizationId: organizationId?.toString() || '' }
       );
 
       res.json({ url: session.url });
@@ -9859,7 +9916,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
       const session = await stripeService.createCustomerPortalSession(
         user.stripeCustomerId,
-        `${baseUrl}/settings`
+        `${baseUrl}/pricing`
+      );
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error('Error creating customer portal session:', error);
+      res.status(500).json({ message: 'Failed to create customer portal session' });
+    }
+  });
+
+  // Portal alias for convenience
+  app.post('/api/stripe/portal', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: 'No Stripe customer found' });
+      }
+
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripeService.createCustomerPortalSession(
+        user.stripeCustomerId,
+        `${baseUrl}/pricing`
       );
 
       res.json({ url: session.url });

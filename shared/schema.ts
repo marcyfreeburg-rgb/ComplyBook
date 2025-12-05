@@ -132,6 +132,179 @@ export const scanStatusEnum = pgEnum('scan_status', [
   'failed'
 ]);
 
+// Subscription tier enum
+export const subscriptionTierEnum = pgEnum('subscription_tier', [
+  'free',
+  'starter',
+  'professional',
+  'growth',
+  'enterprise'
+]);
+
+// ============================================
+// SUBSCRIPTION TIER CONFIGURATION
+// ============================================
+
+export const SUBSCRIPTION_TIERS = {
+  free: {
+    name: 'Free Forever',
+    monthlyPrice: 0,
+    annualPrice: 0,
+    maxOrganizations: 1,
+    maxUsers: 2,
+    maxTransactionsPerMonth: 200,
+    features: {
+      basicReports: true,
+      plaidSandbox: true,
+      plaidLive: false,
+      stripeInvoicing: false,
+      fundAccounting: false,
+      form990Export: false,
+      sf425Export: false,
+      grantTracking: false,
+      dcaaTimeTracking: false,
+      payrollModule: false,
+      indirectRateCalcs: false,
+      advancedForecasting: false,
+      apiAccess: false,
+      whiteLabel: false,
+      prioritySupport: false,
+      dedicatedOnboarding: false,
+      customIntegrations: false,
+    },
+    supportLevel: 'community',
+    description: 'For tiny nonprofits testing the platform',
+  },
+  starter: {
+    name: 'Starter',
+    monthlyPrice: 35,
+    annualPrice: 29,
+    stripePriceIdMonthly: null as string | null, // Set after creating in Stripe
+    stripePriceIdAnnual: null as string | null,
+    maxOrganizations: 3,
+    maxUsers: 5,
+    maxTransactionsPerMonth: null, // Unlimited
+    features: {
+      basicReports: true,
+      plaidSandbox: true,
+      plaidLive: true,
+      stripeInvoicing: true,
+      fundAccounting: false,
+      form990Export: false,
+      sf425Export: false,
+      grantTracking: false,
+      dcaaTimeTracking: false,
+      payrollModule: false,
+      indirectRateCalcs: false,
+      advancedForecasting: false,
+      apiAccess: false,
+      whiteLabel: false,
+      prioritySupport: false,
+      dedicatedOnboarding: false,
+      customIntegrations: false,
+    },
+    supportLevel: 'email',
+    description: 'For small nonprofits < $500k budget',
+  },
+  professional: {
+    name: 'Professional',
+    monthlyPrice: 95,
+    annualPrice: 79,
+    stripePriceIdMonthly: null as string | null,
+    stripePriceIdAnnual: null as string | null,
+    maxOrganizations: null, // Unlimited
+    maxUsers: 15,
+    maxTransactionsPerMonth: null,
+    features: {
+      basicReports: true,
+      plaidSandbox: true,
+      plaidLive: true,
+      stripeInvoicing: true,
+      fundAccounting: true,
+      form990Export: true,
+      sf425Export: true,
+      grantTracking: true,
+      dcaaTimeTracking: true,
+      payrollModule: false,
+      indirectRateCalcs: false,
+      advancedForecasting: false,
+      apiAccess: false,
+      whiteLabel: false,
+      prioritySupport: true,
+      dedicatedOnboarding: false,
+      customIntegrations: false,
+    },
+    supportLevel: 'priority_chat_email',
+    description: 'Most popular - 80% of customers',
+  },
+  growth: {
+    name: 'Growth',
+    monthlyPrice: 189,
+    annualPrice: 159,
+    stripePriceIdMonthly: null as string | null,
+    stripePriceIdAnnual: null as string | null,
+    maxOrganizations: null,
+    maxUsers: 50,
+    maxTransactionsPerMonth: null,
+    features: {
+      basicReports: true,
+      plaidSandbox: true,
+      plaidLive: true,
+      stripeInvoicing: true,
+      fundAccounting: true,
+      form990Export: true,
+      sf425Export: true,
+      grantTracking: true,
+      dcaaTimeTracking: true,
+      payrollModule: true,
+      indirectRateCalcs: true,
+      advancedForecasting: true,
+      apiAccess: false,
+      whiteLabel: false,
+      prioritySupport: true,
+      dedicatedOnboarding: false,
+      customIntegrations: false,
+    },
+    supportLevel: '4hr_email_sla',
+    description: 'For nonprofits $750k-$3M or gov contractors with 5-30 staff',
+  },
+  enterprise: {
+    name: 'Scale / Enterprise',
+    monthlyPrice: 349, // Starting price
+    annualPrice: 349,
+    stripePriceIdMonthly: null as string | null,
+    stripePriceIdAnnual: null as string | null,
+    maxOrganizations: null,
+    maxUsers: null, // Unlimited
+    maxTransactionsPerMonth: null,
+    features: {
+      basicReports: true,
+      plaidSandbox: true,
+      plaidLive: true,
+      stripeInvoicing: true,
+      fundAccounting: true,
+      form990Export: true,
+      sf425Export: true,
+      grantTracking: true,
+      dcaaTimeTracking: true,
+      payrollModule: true,
+      indirectRateCalcs: true,
+      advancedForecasting: true,
+      apiAccess: true,
+      whiteLabel: true,
+      prioritySupport: true,
+      dedicatedOnboarding: true,
+      customIntegrations: true,
+    },
+    supportLevel: 'phone_sla',
+    description: 'For orgs > $3M or complex multi-entity/DCAA audit needs',
+  },
+} as const;
+
+export type SubscriptionTier = keyof typeof SUBSCRIPTION_TIERS;
+export type TierConfig = typeof SUBSCRIPTION_TIERS[SubscriptionTier];
+export type TierFeatures = TierConfig['features'];
+
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)
 // ============================================
@@ -162,9 +335,13 @@ export const users = pgTable("users", {
   mfaGracePeriodEnd: timestamp("mfa_grace_period_end"),
   lastMfaNotification: timestamp("last_mfa_notification"),
   
-  // Stripe integration fields
+  // Stripe integration & subscription fields
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  subscriptionTier: subscriptionTierEnum("subscription_tier").default('free').notNull(),
+  subscriptionStatus: varchar("subscription_status").default('active'), // active, past_due, cancelled, trialing
+  subscriptionCurrentPeriodEnd: timestamp("subscription_current_period_end"),
+  billingInterval: varchar("billing_interval"), // monthly or annual
 });
 
 export type UpsertUser = typeof users.$inferInsert;

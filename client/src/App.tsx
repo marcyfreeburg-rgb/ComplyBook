@@ -55,6 +55,7 @@ import GovernmentContractsHub from "@/pages/government-contracts-hub";
 import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
+import Pricing from "@/pages/pricing";
 import type { Organization } from "@shared/schema";
 
 // Organization with user role
@@ -388,6 +389,8 @@ function AuthenticatedApp() {
                   user={user!}
                 />
               </Route>
+              <Route path="/pricing" component={Pricing} />
+              <Route path="/checkout/success" component={Pricing} />
               <Route component={NotFound} />
             </Switch>
           </main>
@@ -414,6 +417,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/pricing" component={Pricing} />
         <Route component={Landing} />
       </Switch>
     );
