@@ -9,6 +9,8 @@ import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
 import { sendInvoiceEmail } from "./email";
+import { stripeService } from "./stripeService";
+import { getStripePublishableKey } from "./stripeClient";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
@@ -9715,6 +9717,197 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error deleting audit prep item:", error);
       res.status(500).json({ message: "Failed to delete audit prep item" });
+    }
+  });
+
+  // ============================================
+  // STRIPE PAYMENT ROUTES
+  // Reference: connection:conn_stripe_01KBR6VNRM1YXQ0MFRV5N4NKP1
+  // ============================================
+
+  // Get Stripe publishable key for frontend
+  app.get('/api/stripe/publishable-key', async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error: any) {
+      console.error('Error getting Stripe publishable key:', error);
+      res.status(500).json({ message: 'Failed to get Stripe configuration' });
+    }
+  });
+
+  // List products from Stripe API
+  app.get('/api/stripe/products', async (req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+      const products = await stripe.products.list({ active: true, limit: 100 });
+      res.json({ data: products.data });
+    } catch (error: any) {
+      console.error('Error fetching Stripe products:', error);
+      res.status(500).json({ message: 'Failed to fetch products' });
+    }
+  });
+
+  // List products with prices from Stripe API
+  app.get('/api/stripe/products-with-prices', async (req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+      
+      const products = await stripe.products.list({ active: true, limit: 100 });
+      const prices = await stripe.prices.list({ active: true, limit: 100 });
+      
+      // Group prices by product
+      const pricesByProduct = new Map<string, any[]>();
+      for (const price of prices.data) {
+        const productId = typeof price.product === 'string' ? price.product : price.product.id;
+        if (!pricesByProduct.has(productId)) {
+          pricesByProduct.set(productId, []);
+        }
+        pricesByProduct.get(productId)!.push({
+          id: price.id,
+          unit_amount: price.unit_amount,
+          currency: price.currency,
+          recurring: price.recurring,
+          active: price.active,
+          metadata: price.metadata,
+        });
+      }
+
+      const productsWithPrices = products.data.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        active: product.active,
+        metadata: product.metadata,
+        prices: pricesByProduct.get(product.id) || []
+      }));
+
+      res.json({ data: productsWithPrices });
+    } catch (error: any) {
+      console.error('Error fetching Stripe products with prices:', error);
+      res.status(500).json({ message: 'Failed to fetch products' });
+    }
+  });
+
+  // List prices from Stripe API
+  app.get('/api/stripe/prices', async (req, res) => {
+    try {
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+      const prices = await stripe.prices.list({ active: true, limit: 100 });
+      res.json({ data: prices.data });
+    } catch (error: any) {
+      console.error('Error fetching Stripe prices:', error);
+      res.status(500).json({ message: 'Failed to fetch prices' });
+    }
+  });
+
+  // Create checkout session for subscription
+  app.post('/api/stripe/checkout', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { priceId, organizationId } = req.body;
+
+      if (!priceId) {
+        return res.status(400).json({ message: 'Price ID is required' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Create or get customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(user.email || '', userId, {
+          organizationId: organizationId?.toString() || ''
+        });
+        await storage.updateUser(userId, { stripeCustomerId: customer.id });
+        customerId = customer.id;
+      }
+
+      // Create checkout session
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        `${baseUrl}/checkout/success`,
+        `${baseUrl}/checkout/cancel`,
+        { userId, organizationId: organizationId?.toString() || '' }
+      );
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ message: 'Failed to create checkout session' });
+    }
+  });
+
+  // Create customer portal session
+  app.post('/api/stripe/customer-portal', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: 'No Stripe customer found' });
+      }
+
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const session = await stripeService.createCustomerPortalSession(
+        user.stripeCustomerId,
+        `${baseUrl}/settings`
+      );
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error('Error creating customer portal session:', error);
+      res.status(500).json({ message: 'Failed to create customer portal session' });
+    }
+  });
+
+  // Get user subscription status
+  app.get('/api/stripe/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user?.stripeSubscriptionId) {
+        return res.json({ subscription: null });
+      }
+
+      // Get subscription from Stripe API
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+
+      res.json({ subscription });
+    } catch (error: any) {
+      console.error('Error fetching subscription:', error);
+      res.status(500).json({ message: 'Failed to fetch subscription' });
+    }
+  });
+
+  // Cancel subscription
+  app.post('/api/stripe/subscription/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user?.stripeSubscriptionId) {
+        return res.status(400).json({ message: 'No subscription found' });
+      }
+
+      await stripeService.cancelSubscription(user.stripeSubscriptionId);
+      await storage.updateUser(userId, { stripeSubscriptionId: null });
+
+      res.json({ message: 'Subscription cancelled successfully' });
+    } catch (error: any) {
+      console.error('Error cancelling subscription:', error);
+      res.status(500).json({ message: 'Failed to cancel subscription' });
     }
   });
 

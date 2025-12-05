@@ -161,6 +161,10 @@ export const users = pgTable("users", {
   mfaRequired: boolean("mfa_required").default(false).notNull(),
   mfaGracePeriodEnd: timestamp("mfa_grace_period_end"),
   lastMfaNotification: timestamp("last_mfa_notification"),
+  
+  // Stripe integration fields
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
