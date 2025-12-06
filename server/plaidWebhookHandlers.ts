@@ -5,6 +5,7 @@ export interface PlaidWebhookPayload {
   webhook_type: string;
   webhook_code: string;
   item_id: string;
+  account_id?: string;
   error?: {
     error_code: string;
     error_message: string;
@@ -141,11 +142,20 @@ export class PlaidWebhookHandlers {
 
       case 'USER_PERMISSION_REVOKED':
         console.log(`User permission revoked for item ${item_id}`);
+        await storage.clearPlaidAccountSensitiveData(plaidItem.id);
         await storage.updatePlaidItemStatus(plaidItem.id, {
           status: 'error',
           errorCode: 'USER_PERMISSION_REVOKED',
-          errorMessage: 'User has revoked access. Please reconnect the account.',
+          errorMessage: 'User has revoked access. Sensitive data has been deleted. Please reconnect the account.',
         });
+        break;
+
+      case 'USER_ACCOUNT_REVOKED':
+        console.log(`User account revoked for item ${item_id}, account: ${payload.account_id}`);
+        if (payload.account_id) {
+          await storage.deletePlaidAccountByAccountId(payload.account_id);
+          console.log(`Deleted account ${payload.account_id} due to USER_ACCOUNT_REVOKED webhook`);
+        }
         break;
 
       case 'PENDING_DISCONNECT':

@@ -446,6 +446,8 @@ export interface IStorage {
   updatePlaidAccountAuth(accountId: string, data: { accountNumber: string | null; routingNumber: string | null; wireRoutingNumber: string | null }): Promise<void>;
   updatePlaidAccountIdentity(accountId: string, data: { ownerNames: string[]; ownerEmails: string[]; ownerPhoneNumbers: string[]; ownerAddresses: any[] }): Promise<void>;
   getPlaidAccountByAccountId(accountId: string): Promise<PlaidAccount | undefined>;
+  clearPlaidAccountSensitiveData(plaidItemId: number): Promise<void>;
+  deletePlaidAccountByAccountId(accountId: string): Promise<void>;
 
   // AI Categorization history operations
   recordCategorizationSuggestion(history: InsertCategorizationHistory): Promise<CategorizationHistory>;
@@ -3479,6 +3481,30 @@ export class DatabaseStorage implements IStorage {
       .from(plaidAccounts)
       .where(eq(plaidAccounts.accountId, accountId));
     return account;
+  }
+
+  async clearPlaidAccountSensitiveData(plaidItemId: number): Promise<void> {
+    await db
+      .update(plaidAccounts)
+      .set({
+        accountNumberEncrypted: null,
+        routingNumberEncrypted: null,
+        wireRoutingNumberEncrypted: null,
+        ownerNames: null,
+        ownerEmails: null,
+        ownerPhoneNumbers: null,
+        ownerAddresses: null,
+        authFetchedAt: null,
+        identityFetchedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidAccounts.plaidItemId, plaidItemId));
+  }
+
+  async deletePlaidAccountByAccountId(accountId: string): Promise<void> {
+    await db
+      .delete(plaidAccounts)
+      .where(eq(plaidAccounts.accountId, accountId));
   }
 
   // AI Categorization history operations
