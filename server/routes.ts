@@ -7373,6 +7373,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // NIST 800-53 AU-11: Audit Log Retention API
+  // Manual trigger for audit retention policies (admin only)
+  app.post('/api/security/audit-retention/run', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Only allow system admins (users with owner role in any org) to run retention
+      const userOrgs = await storage.getOrganizationsByUser(userId);
+      const isOwner = userOrgs.some((org: any) => org.userRole === 'owner');
+      
+      if (!isOwner) {
+        return res.status(403).json({ message: "Only organization owners can run audit retention" });
+      }
+
+      const { runAuditRetentionPolicies } = await import('./auditRetention');
+      const result = await runAuditRetentionPolicies();
+
+      // Log the manual trigger
+      await storage.createAuditLog({
+        userId,
+        action: 'audit_retention_manual_trigger',
+        resourceType: 'system',
+        resourceId: null,
+        details: result,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          archived: result.archived,
+          deleted: result.deleted,
+          stats: result.stats,
+        },
+      });
+
+      res.json({
+        success: true,
+        archived: result.archived,
+        deleted: result.deleted,
+        stats: result.stats,
+      });
+    } catch (error) {
+      console.error("Error running audit retention:", error);
+      res.status(500).json({ message: "Failed to run audit retention" });
+    }
+  });
+
+  // Get audit retention statistics
+  app.get('/api/security/audit-retention/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Only allow organization owners to view retention stats
+      const userOrgs = await storage.getOrganizationsByUser(userId);
+      const isOwner = userOrgs.some((org: any) => org.userRole === 'owner');
+      
+      if (!isOwner) {
+        return res.status(403).json({ message: "Only organization owners can view audit retention stats" });
+      }
+
+      const { getAuditRetentionStats } = await import('./auditRetention');
+      const stats = await getAuditRetentionStats();
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting audit retention stats:", error);
+      res.status(500).json({ message: "Failed to get audit retention stats" });
+    }
+  });
+
   // Notification routes
   app.get('/api/notifications/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

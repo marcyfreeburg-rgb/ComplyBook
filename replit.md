@@ -10,12 +10,15 @@
 - Warning shows remaining days until MFA required; changes to destructive alert when grace period expires
 - API endpoint `GET /api/security/mfa/status` returns user's current MFA requirement status
 
-**Plaid Production Deployment - COMPLETED**
+**Production Setup - COMPLETED**
 - Plaid credentials set to production (PLAID_ENV=production)
 - Webhooks registered in Plaid dashboard for TRANSACTIONS, ITEM, AUTH, and IDENTITY events
 - Complete offboarding flows: USER_PERMISSION_REVOKED and USER_ACCOUNT_REVOKED webhooks implemented
 - Sensitive data clearing for disconnected accounts (encrypted account/routing numbers, owner info)
-- Full audit logging for compliance tracking
+- SECURITY_ADMIN_EMAILS environment variable set for system-wide security alerts
+- Stripe integration updated to use Replit connector instead of environment variables
+- Automated audit log retention runs daily (90-day archival, 7-year deletion policy)
+- API endpoints for manual audit retention: POST /api/security/audit-retention/run, GET /api/security/audit-retention/stats
 
 ## Overview
 ComplyBook is a web-based financial management platform designed for small non-profit and for-profit organizations. It offers multi-tenant capabilities for managing multiple organizations, tracking income and expenses, AI-assisted transaction categorization, grant management, budget planning, and comprehensive financial reporting. The project's vision is to provide an accessible and powerful financial tool that streamlines operations, enhances financial oversight, and supports strategic planning, ultimately improving the financial health of its users.
