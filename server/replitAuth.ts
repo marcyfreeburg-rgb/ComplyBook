@@ -171,6 +171,57 @@ export async function setupAuth(app: Express) {
   });
 }
 
+// NIST 800-53 IA-2(1), IA-2(2): MFA Enforcement Middleware
+// Blocks privileged operations after MFA grace period expires
+export const requireMfaCompliance: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+  
+  if (!user || !user.claims?.sub) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  const userId = user.claims.sub;
+  const dbUser = await storage.getUser(userId);
+  
+  if (!dbUser) {
+    return next(); // New user, no MFA requirement yet
+  }
+  
+  // If MFA is not required, allow access
+  if (!dbUser.mfaRequired) {
+    return next();
+  }
+  
+  // Check grace period
+  const gracePeriodCheck = await storage.checkMfaGracePeriod(userId);
+  
+  if (gracePeriodCheck.expired) {
+    // NIST 800-53 AU-2: Log blocked access due to MFA non-compliance
+    await storage.logSecurityEvent({
+      eventType: 'mfa_required_block',
+      severity: 'warning',
+      userId: userId,
+      email: user.claims.email || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+      userAgent: req.get('user-agent') || null,
+      eventData: {
+        route: req.path,
+        method: req.method,
+        reason: 'mfa_grace_period_expired',
+      },
+    });
+    
+    return res.status(403).json({ 
+      message: "Multi-factor authentication is required for this action. Your grace period has expired. Please contact your administrator.",
+      code: "MFA_REQUIRED",
+      mfaRequired: true,
+      gracePeriodExpired: true,
+    });
+  }
+  
+  next();
+};
+
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 

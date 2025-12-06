@@ -57,9 +57,19 @@ import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
 import Pricing from "@/pages/pricing";
 import type { Organization } from "@shared/schema";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 // Organization with user role
 type OrganizationWithRole = Organization & { userRole: string };
+
+// MFA Status type
+type MfaStatus = {
+  mfaRequired: boolean;
+  mfaGracePeriodEnd: string | null;
+  gracePeriodExpired: boolean;
+  daysRemaining: number | null;
+};
 
 function AuthenticatedApp() {
   const { user } = useAuth();
@@ -78,6 +88,12 @@ function AuthenticatedApp() {
   // Fetch user's organizations (with user roles)
   const { data: organizations } = useQuery<OrganizationWithRole[]>({
     queryKey: ['/api/organizations'],
+    retry: false,
+  });
+
+  // Fetch MFA status for warning banner
+  const { data: mfaStatus } = useQuery<MfaStatus>({
+    queryKey: ['/api/security/mfa/status'],
     retry: false,
   });
 
@@ -162,6 +178,30 @@ function AuthenticatedApp() {
               <ThemeToggle />
             </div>
           </header>
+          
+          {/* MFA Warning Banner */}
+          {mfaStatus?.mfaRequired && (
+            <Alert 
+              variant={mfaStatus.gracePeriodExpired ? "destructive" : "default"} 
+              className="mx-6 mt-4 rounded-md"
+              data-testid="alert-mfa-warning"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {mfaStatus.gracePeriodExpired ? (
+                  <span>
+                    <strong>Multi-factor authentication required.</strong> Your grace period has expired. 
+                    Some administrative functions are now restricted. Please contact your administrator.
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Multi-factor authentication will be required.</strong> You have {mfaStatus.daysRemaining} day{mfaStatus.daysRemaining !== 1 ? 's' : ''} remaining 
+                    to set up MFA before access to administrative functions is restricted.
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
           
           <main className="flex-1 overflow-y-auto p-8">
             <Switch>

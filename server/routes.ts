@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, requireMfaCompliance } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
@@ -371,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invitation routes
-  app.post('/api/invitations/:organizationId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/invitations/:organizationId', isAuthenticated, requireMfaCompliance, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
@@ -640,7 +640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/team/:organizationId/:userId/role', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/team/:organizationId/:userId/role', isAuthenticated, requireMfaCompliance, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
@@ -705,7 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/team/:organizationId/:userId', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/team/:organizationId/:userId', isAuthenticated, requireMfaCompliance, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
@@ -7335,7 +7335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/security/mfa/set-required', isAuthenticated, async (req: any, res) => {
+  app.post('/api/security/mfa/set-required', isAuthenticated, requireMfaCompliance, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
       const { userId, required, gracePeriodDays } = req.body;
