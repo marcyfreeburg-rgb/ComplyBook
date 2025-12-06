@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft, CreditCard, User, Phone, Mail, MapPin, Key } from "lucide-react";
+import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft, CreditCard, User, Phone, Mail, MapPin, Key, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
 import {
   AlertDialog,
@@ -42,6 +43,17 @@ interface PlaidAccount {
   itemId: string;
 }
 
+interface PlaidItem {
+  id: number;
+  itemId: string;
+  institutionId: string | null;
+  institutionName: string | null;
+  status: 'active' | 'login_required' | 'error' | 'pending';
+  errorCode: string | null;
+  errorMessage: string | null;
+  lastSyncedAt: string | null;
+}
+
 interface AuthAccountData {
   accountId: string;
   name: string;
@@ -71,12 +83,25 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   const [hasAttemptedAutoOpen, setHasAttemptedAutoOpen] = useState(false);
   const [disconnectingItemId, setDisconnectingItemId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("accounts");
+  const [updateModeItemId, setUpdateModeItemId] = useState<number | null>(null);
+  const [updateLinkToken, setUpdateLinkToken] = useState<string | null>(null);
 
   // Fetch connected accounts
   const { data: accounts, isLoading } = useQuery<PlaidAccount[]>({
     queryKey: [`/api/plaid/accounts/${currentOrganization.id}`],
     retry: false,
   });
+
+  // Fetch Plaid items (to check status)
+  const { data: plaidItems } = useQuery<PlaidItem[]>({
+    queryKey: [`/api/plaid/items/${currentOrganization.id}`],
+    retry: false,
+  });
+
+  // Get items that need attention (login_required or error status)
+  const itemsNeedingUpdate = plaidItems?.filter(
+    item => item.status === 'login_required' || item.status === 'error'
+  ) || [];
 
   // Create link token mutation
   const createLinkToken = useMutation({
@@ -203,7 +228,26 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
     },
   });
 
-  // Plaid Link configuration
+  // Create update mode link token mutation
+  const createUpdateLinkToken = useMutation({
+    mutationFn: async (itemId: number) => {
+      const response = await apiRequest('POST', `/api/plaid/create-update-link-token/${itemId}`, {});
+      return response;
+    },
+    onSuccess: (data: any, itemId: number) => {
+      setUpdateModeItemId(itemId);
+      setUpdateLinkToken(data.link_token);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to start bank re-authentication. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Plaid Link configuration (for new connections)
   const { open, ready } = usePlaidLink({
     token: linkToken,
     onSuccess: (public_token) => {
@@ -216,6 +260,26 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
     },
   });
 
+  // Plaid Link configuration (for update mode)
+  const { open: openUpdate, ready: readyUpdate } = usePlaidLink({
+    token: updateLinkToken,
+    onSuccess: () => {
+      // Update mode doesn't return a public token - just invalidate queries to refresh status
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/items/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
+      toast({
+        title: "Bank Connection Repaired",
+        description: "Your bank connection has been successfully re-authenticated.",
+      });
+      setUpdateLinkToken(null);
+      setUpdateModeItemId(null);
+    },
+    onExit: () => {
+      setUpdateLinkToken(null);
+      setUpdateModeItemId(null);
+    },
+  });
+
   // Open Plaid Link when token is ready (auto-open once per token)
   useEffect(() => {
     if (linkToken && ready && !hasAttemptedAutoOpen) {
@@ -224,6 +288,14 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
       open();
     }
   }, [linkToken, ready, hasAttemptedAutoOpen, open]);
+
+  // Auto-open update mode Plaid Link when token is ready
+  useEffect(() => {
+    if (updateLinkToken && readyUpdate) {
+      console.log("Plaid Link (update mode) ready, opening...");
+      openUpdate();
+    }
+  }, [updateLinkToken, readyUpdate, openUpdate]);
 
   // Reset auto-open flag when link token changes
   useEffect(() => {
@@ -297,6 +369,48 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
           )}
         </div>
       </div>
+
+      {/* Update Mode Alert - Items needing re-authentication */}
+      {itemsNeedingUpdate.length > 0 && (
+        <div className="space-y-3">
+          {itemsNeedingUpdate.map((item) => (
+            <Alert key={item.id} variant="destructive" data-testid={`alert-update-needed-${item.id}`}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle className="flex items-center justify-between">
+                <span>
+                  {item.institutionName || 'Bank Connection'} Needs Attention
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => createUpdateLinkToken.mutate(item.id)}
+                  disabled={createUpdateLinkToken.isPending}
+                  data-testid={`button-repair-connection-${item.id}`}
+                >
+                  {createUpdateLinkToken.isPending && updateModeItemId === item.id ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Repair Connection
+                    </>
+                  )}
+                </Button>
+              </AlertTitle>
+              <AlertDescription>
+                {item.errorMessage || 'Please re-authenticate to continue syncing transactions.'}
+                {item.errorCode && (
+                  <span className="text-xs ml-2 opacity-75">
+                    (Error: {item.errorCode})
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (

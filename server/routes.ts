@@ -4653,6 +4653,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Plaid items (bank connections) with status for update mode detection
+  app.get('/api/plaid/items/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const items = await storage.getPlaidItems(organizationId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching Plaid items:", error);
+      res.status(500).json({ message: "Failed to fetch bank connections" });
+    }
+  });
+
   app.get('/api/plaid/accounts/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
