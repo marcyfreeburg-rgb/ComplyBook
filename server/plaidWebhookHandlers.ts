@@ -141,20 +141,25 @@ export class PlaidWebhookHandlers {
         break;
 
       case 'USER_PERMISSION_REVOKED':
-        console.log(`User permission revoked for item ${item_id}`);
+        console.log(`[OFFBOARDING] User permission revoked for item ${item_id}`);
+        console.log(`[OFFBOARDING] Clearing sensitive data (encrypted account/routing numbers, owner info) for all accounts of item ${plaidItem.id}`);
         await storage.clearPlaidAccountSensitiveData(plaidItem.id);
+        console.log(`[OFFBOARDING] Sensitive data cleared successfully for item ${plaidItem.id}`);
         await storage.updatePlaidItemStatus(plaidItem.id, {
           status: 'error',
           errorCode: 'USER_PERMISSION_REVOKED',
           errorMessage: 'User has revoked access. Sensitive data has been deleted. Please reconnect the account.',
         });
+        console.log(`[OFFBOARDING] Item ${item_id} marked as error with USER_PERMISSION_REVOKED`);
         break;
 
       case 'USER_ACCOUNT_REVOKED':
-        console.log(`User account revoked for item ${item_id}, account: ${payload.account_id}`);
+        console.log(`[OFFBOARDING] User account revoked for item ${item_id}, account: ${payload.account_id}`);
         if (payload.account_id) {
           await storage.deletePlaidAccountByAccountId(payload.account_id);
-          console.log(`Deleted account ${payload.account_id} due to USER_ACCOUNT_REVOKED webhook`);
+          console.log(`[OFFBOARDING] Deleted account ${payload.account_id} and all associated data due to USER_ACCOUNT_REVOKED webhook`);
+        } else {
+          console.log(`[OFFBOARDING] WARNING: USER_ACCOUNT_REVOKED received without account_id for item ${item_id}`);
         }
         break;
 

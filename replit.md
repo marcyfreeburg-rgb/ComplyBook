@@ -2,6 +2,15 @@
 
 ## 📋 Recent Updates (December 6, 2025)
 
+**Plaid Offboarding & Privacy - COMPLETED ✅**
+- User-initiated disconnect via UI "Disconnect" button with confirmation dialog
+- DELETE `/api/plaid/item/:itemId` calls Plaid itemRemove API and deletes from database
+- Cascade delete automatically removes all associated PlaidAccounts when PlaidItem is deleted
+- USER_PERMISSION_REVOKED webhook clears all sensitive data (encrypted account/routing numbers, owner info)
+- USER_ACCOUNT_REVOKED webhook (Chase-only) deletes specific account by account_id
+- Storage methods: `clearPlaidAccountSensitiveData()`, `deletePlaidAccountByAccountId()`
+- Audit logging with [OFFBOARDING] prefix for compliance tracking
+
 **Plaid Update Mode - COMPLETED ✅**
 - Update mode webhook handlers for: ITEM_LOGIN_REQUIRED, PENDING_EXPIRATION, PENDING_DISCONNECT, USER_PERMISSION_REVOKED
 - Update-mode link token endpoint: `POST /api/plaid/create-update-link-token/:itemId`
