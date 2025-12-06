@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
+import { PlaidWebhookHandlers, PlaidWebhookPayload } from './plaidWebhookHandlers';
 
 const app = express();
 
@@ -77,6 +78,30 @@ app.post(
     } catch (error: any) {
       console.error('Stripe webhook error:', error.message);
       res.status(400).json({ error: 'Webhook processing error' });
+    }
+  }
+);
+
+// Plaid webhook endpoint (registered before express.json())
+app.post(
+  '/api/plaid/webhook',
+  express.json(),
+  async (req, res) => {
+    try {
+      const payload = req.body as PlaidWebhookPayload;
+
+      if (!payload.webhook_type || !payload.item_id) {
+        return res.status(400).json({ error: 'Invalid webhook payload' });
+      }
+
+      console.log(`Received Plaid webhook: ${payload.webhook_type}/${payload.webhook_code} for item ${payload.item_id}`);
+
+      await PlaidWebhookHandlers.processWebhook(payload);
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('Plaid webhook error:', error.message);
+      res.status(500).json({ error: 'Webhook processing error' });
     }
   }
 );

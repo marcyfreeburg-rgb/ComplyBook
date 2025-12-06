@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import { plaidClient } from './routes';
+import { plaidClient } from './plaid';
 
 export interface PlaidWebhookPayload {
   webhook_type: string;
@@ -221,15 +221,16 @@ export class PlaidWebhookHandlers {
 
         if (!isDuplicate) {
           const isExpense = plaidTx.amount > 0;
+          const txDescription = plaidTx.name || plaidTx.merchant_name || 'Unknown Transaction';
+          const importNote = plaidItem.institutionName ? ` (${plaidItem.institutionName})` : '';
           await storage.createTransaction({
             organizationId: plaidItem.organizationId,
-            description: plaidTx.name || plaidTx.merchant_name || 'Unknown Transaction',
+            description: txDescription + importNote,
             amount: Math.abs(plaidTx.amount).toFixed(2),
             type: isExpense ? 'expense' : 'income',
             date: new Date(plaidTx.date),
             categoryId: null,
             vendorId: null,
-            notes: `Imported from ${plaidItem.institutionName || 'Bank'} via Plaid`,
             createdBy: plaidItem.createdBy,
           });
           imported++;

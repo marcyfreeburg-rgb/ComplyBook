@@ -4509,6 +4509,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      const webhookBaseUrl = process.env.REPLIT_DOMAINS?.split(',')[0];
+      const webhookUrl = webhookBaseUrl ? `https://${webhookBaseUrl}/api/plaid/webhook` : undefined;
+
       const response = await plaidClient.linkTokenCreate({
         user: {
           client_user_id: userId,
@@ -4517,6 +4520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         products: ['transactions' as any],
         country_codes: ['US' as any],
         language: 'en',
+        webhook: webhookUrl,
       });
 
       res.json({ link_token: response.data.link_token });
