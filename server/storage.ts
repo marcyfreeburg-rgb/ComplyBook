@@ -435,8 +435,10 @@ export interface IStorage {
   // Plaid operations
   getPlaidItems(organizationId: number): Promise<PlaidItem[]>;
   getPlaidItem(itemId: string): Promise<PlaidItem | undefined>;
+  getPlaidItemByPlaidId(plaidItemId: string): Promise<PlaidItem | undefined>;
   createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem>;
   deletePlaidItem(id: number): Promise<void>;
+  updatePlaidItemStatus(id: number, updates: { status?: 'active' | 'login_required' | 'error' | 'pending'; errorCode?: string | null; errorMessage?: string | null; lastSyncedAt?: Date }): Promise<void>;
   getPlaidAccounts(plaidItemId: number): Promise<PlaidAccount[]>;
   getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null; itemId: string }>>;
   createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
@@ -3363,6 +3365,24 @@ export class DatabaseStorage implements IStorage {
       .from(plaidItems)
       .where(eq(plaidItems.itemId, itemId));
     return item;
+  }
+
+  async getPlaidItemByPlaidId(plaidItemId: string): Promise<PlaidItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(plaidItems)
+      .where(eq(plaidItems.itemId, plaidItemId));
+    return item;
+  }
+
+  async updatePlaidItemStatus(id: number, updates: { status?: 'active' | 'login_required' | 'error' | 'pending'; errorCode?: string | null; errorMessage?: string | null; lastSyncedAt?: Date }): Promise<void> {
+    await db
+      .update(plaidItems)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidItems.id, id));
   }
 
   async createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem> {
