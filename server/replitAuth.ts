@@ -1,6 +1,8 @@
-// Referenced from javascript_log_in_with_replit blueprint
 import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as OidcStrategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 
 import passport from "passport";
 import session from "express-session";
@@ -9,9 +11,9 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
-}
+const scryptAsync = promisify(scrypt);
+
+const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
 
 const getOidcConfig = memoize(
   async () => {
@@ -23,12 +25,21 @@ const getOidcConfig = memoize(
   { maxAge: 3600 * 1000 }
 );
 
-// NIST 800-53 AC-12: Session Termination
-// AAL2 Requirements:
-// - Maximum session duration: 12 hours
-// - Inactivity timeout: 30 minutes
 const SESSION_MAX_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+export async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  const [hashedPassword, salt] = stored.split(".");
+  const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
+  const suppliedPasswordBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+}
 
 export function getSession() {
   const sessionTtl = SESSION_MAX_DURATION;
@@ -36,7 +47,7 @@ export function getSession() {
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: false,
-    ttl: sessionTtl / 1000, // Convert to seconds for pg-simple
+    ttl: sessionTtl / 1000,
     tableName: "sessions",
   });
   return session({
@@ -46,9 +57,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
-      sameSite: 'lax', // CSRF protection
+      sameSite: 'lax',
     },
   });
 }
@@ -63,9 +74,7 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -75,12 +84,7 @@ async function upsertUser(
   });
 }
 
-export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
-
+async function setupReplitAuth(app: Express) {
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -92,14 +96,13 @@ export async function setupAuth(app: Express) {
     const claims = tokens.claims();
     await upsertUser(claims);
     
-    // NIST 800-53 AU-2: Log successful authentication
     if (claims) {
       await storage.logSecurityEvent({
         eventType: 'login_success',
         severity: 'info',
         userId: claims.sub || null,
         email: claims.email || null,
-        ipAddress: null, // Will be set by callback handler
+        ipAddress: null,
         userAgent: null,
         eventData: {
           authMethod: 'replit_oidc',
@@ -111,9 +114,8 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    const strategy = new Strategy(
+  for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
+    const strategy = new OidcStrategy(
       {
         name: `replitauth:${domain}`,
         config,
@@ -124,9 +126,6 @@ export async function setupAuth(app: Express) {
     );
     passport.use(strategy);
   }
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
@@ -145,7 +144,6 @@ export async function setupAuth(app: Express) {
   app.get("/api/logout", async (req, res) => {
     const user = req.user as any;
     
-    // NIST 800-53 AU-2: Log logout event
     if (user && user.claims) {
       await storage.logSecurityEvent({
         eventType: 'logout',
@@ -169,10 +167,263 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+
+  app.get("/api/auth/mode", (_req, res) => {
+    res.json({ mode: "replit" });
+  });
 }
 
-// NIST 800-53 IA-2(1), IA-2(2): MFA Enforcement Middleware
-// Blocks privileged operations after MFA grace period expires
+async function setupLocalAuth(app: Express) {
+  passport.use(
+    new LocalStrategy(
+      { usernameField: "email", passwordField: "password", passReqToCallback: true },
+      async (req, email, password, done) => {
+        const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+        const userAgent = req.get('user-agent') || 'unknown';
+        
+        try {
+          const user = await storage.getUserByEmail(email);
+          
+          if (!user || !user.passwordHash) {
+            await storage.logSecurityEvent({
+              eventType: 'login_failure',
+              severity: 'warning',
+              userId: null,
+              email: email,
+              ipAddress: ipAddress,
+              userAgent: userAgent,
+              eventData: {
+                authMethod: 'local',
+                reason: 'user_not_found_or_no_password',
+                timestamp: new Date().toISOString(),
+              },
+            });
+            return done(null, false, { message: "Invalid email or password" });
+          }
+
+          const isValid = await comparePasswords(password, user.passwordHash);
+          
+          if (!isValid) {
+            await storage.logSecurityEvent({
+              eventType: 'login_failure',
+              severity: 'warning',
+              userId: user.id,
+              email: email,
+              ipAddress: ipAddress,
+              userAgent: userAgent,
+              eventData: {
+                authMethod: 'local',
+                reason: 'invalid_password',
+                timestamp: new Date().toISOString(),
+              },
+            });
+            return done(null, false, { message: "Invalid email or password" });
+          }
+
+          await storage.logSecurityEvent({
+            eventType: 'login_success',
+            severity: 'info',
+            userId: user.id,
+            email: email,
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            eventData: {
+              authMethod: 'local',
+              timestamp: new Date().toISOString(),
+            },
+          });
+
+          const sessionUser = {
+            claims: {
+              sub: user.id,
+              email: user.email,
+              first_name: user.firstName,
+              last_name: user.lastName,
+            },
+            expires_at: Math.floor(Date.now() / 1000) + SESSION_MAX_DURATION / 1000,
+          };
+
+          return done(null, sessionUser);
+        } catch (error) {
+          return done(error);
+        }
+      }
+    )
+  );
+
+  app.post("/api/login", async (req, res, next) => {
+    const email = req.body?.email;
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('user-agent') || 'unknown';
+
+    if (email) {
+      const isLocked = await storage.isAccountLocked(email);
+      if (isLocked) {
+        await storage.logSecurityEvent({
+          eventType: 'login_blocked',
+          severity: 'warning',
+          userId: null,
+          email: email,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+          eventData: {
+            authMethod: 'local',
+            reason: 'account_locked',
+            timestamp: new Date().toISOString(),
+          },
+        });
+        return res.status(429).json({ 
+          message: "Account temporarily locked due to too many failed login attempts. Please try again later." 
+        });
+      }
+
+      const recentAttempts = await storage.getFailedLoginAttemptsByEmail(email, 15);
+      if (recentAttempts.length >= 5) {
+        await storage.lockAccount(email, 15);
+        await storage.logSecurityEvent({
+          eventType: 'account_locked',
+          severity: 'warning',
+          userId: null,
+          email: email,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+          eventData: {
+            authMethod: 'local',
+            reason: 'too_many_failed_attempts',
+            attemptCount: recentAttempts.length,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        return res.status(429).json({ 
+          message: "Account temporarily locked due to too many failed login attempts. Please try again later." 
+        });
+      }
+    }
+
+    passport.authenticate("local", async (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Internal server error" });
+      }
+      if (!user) {
+        if (email) {
+          await storage.recordFailedLoginAttempt(email, ipAddress);
+        }
+        return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      }
+
+      if (email) {
+        await storage.clearFailedLoginAttempts(email);
+      }
+
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) {
+          return res.status(500).json({ message: "Session error" });
+        }
+        
+        req.logIn(user, (loginErr) => {
+          if (loginErr) {
+            return res.status(500).json({ message: "Login failed" });
+          }
+          return res.json({ 
+            success: true, 
+            user: {
+              id: user.claims.sub,
+              email: user.claims.email,
+              firstName: user.claims.first_name,
+              lastName: user.claims.last_name,
+            }
+          });
+        });
+      });
+    })(req, res, next);
+  });
+
+  app.get("/api/logout", async (req, res) => {
+    const user = req.user as any;
+    
+    if (user && user.claims) {
+      await storage.logSecurityEvent({
+        eventType: 'logout',
+        severity: 'info',
+        userId: user.claims.sub,
+        email: user.claims.email,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          authMethod: 'local',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+    
+    req.logout(() => {
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/mode", (_req, res) => {
+    res.json({ mode: "local" });
+  });
+
+  console.log("[Auth] Local authentication mode enabled (Replit environment not detected)");
+}
+
+export async function createDefaultAdminUser() {
+  if (isReplitEnvironment) {
+    return;
+  }
+
+  const adminEmail = "admin@complybook.net";
+  const adminPassword = "comply2025";
+  const adminId = "local_admin_default";
+
+  try {
+    const existingUser = await storage.getUserByEmail(adminEmail);
+    
+    if (!existingUser) {
+      const hashedPassword = await hashPassword(adminPassword);
+      
+      await storage.upsertLocalUser({
+        id: adminId,
+        email: adminEmail,
+        passwordHash: hashedPassword,
+        firstName: "Admin",
+        lastName: "User",
+        role: "admin",
+      });
+
+      console.log(`[Auth] Default admin user created: ${adminEmail}`);
+    } else if (!existingUser.passwordHash) {
+      const hashedPassword = await hashPassword(adminPassword);
+      await storage.updateUserPassword(existingUser.id, hashedPassword);
+      console.log(`[Auth] Password set for existing admin user: ${adminEmail}`);
+    } else {
+      console.log(`[Auth] Default admin user already exists: ${adminEmail}`);
+    }
+  } catch (error) {
+    console.error("[Auth] Failed to create default admin user:", error);
+  }
+}
+
+export async function setupAuth(app: Express) {
+  app.set("trust proxy", 1);
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+  if (isReplitEnvironment) {
+    console.log("[Auth] Replit environment detected, using Replit OIDC authentication");
+    await setupReplitAuth(app);
+  } else {
+    console.log("[Auth] Non-Replit environment detected, using local authentication");
+    await setupLocalAuth(app);
+    await createDefaultAdminUser();
+  }
+}
+
 export const requireMfaCompliance: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
   
@@ -184,19 +435,16 @@ export const requireMfaCompliance: RequestHandler = async (req, res, next) => {
   const dbUser = await storage.getUser(userId);
   
   if (!dbUser) {
-    return next(); // New user, no MFA requirement yet
+    return next();
   }
   
-  // If MFA is not required, allow access
   if (!dbUser.mfaRequired) {
     return next();
   }
   
-  // Check grace period
   const gracePeriodCheck = await storage.checkMfaGracePeriod(userId);
   
   if (gracePeriodCheck.expired) {
-    // NIST 800-53 AU-2: Log blocked access due to MFA non-compliance
     await storage.logSecurityEvent({
       eventType: 'mfa_required_block',
       severity: 'warning',
@@ -229,11 +477,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // NIST 800-53 AC-12: Session validity checks
-  // Store timestamps on req.session to ensure persistence with resave:false
   const now = Date.now();
   
-  // Initialize session timestamps on first request
   if (!(req.session as any).sessionCreatedAt) {
     (req.session as any).sessionCreatedAt = now;
   }
@@ -244,9 +489,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const sessionAge = now - (req.session as any).sessionCreatedAt;
   const inactivityPeriod = now - (req.session as any).lastActivity;
 
-  // Check session maximum duration (12 hours)
   if (sessionAge > SESSION_MAX_DURATION) {
-    // NIST 800-53 AU-2: Log session expiration
     await storage.logSecurityEvent({
       eventType: 'session_expired',
       severity: 'info',
@@ -267,9 +510,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     });
   }
 
-  // Check inactivity timeout (30 minutes)
   if (inactivityPeriod > INACTIVITY_TIMEOUT) {
-    // NIST 800-53 AU-2: Log session expiration
     await storage.logSecurityEvent({
       eventType: 'session_expired',
       severity: 'info',
@@ -290,11 +531,13 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     });
   }
 
-  // Update last activity timestamp and persist to store
   (req.session as any).lastActivity = now;
-  req.session.touch(); // Ensure session is marked as modified
+  req.session.touch();
 
-  // Check OIDC token expiration
+  if (!isReplitEnvironment) {
+    return next();
+  }
+
   const tokenExpiry = Math.floor(Date.now() / 1000);
   if (tokenExpiry <= user.expires_at) {
     return next();

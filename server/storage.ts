@@ -206,6 +206,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string }): Promise<User>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<User>;
   
   // MFA enforcement (NIST 800-53 IA-2(1), IA-2(2))
   setMfaRequired(userId: string, required: boolean, gracePeriodDays?: number): Promise<User>;
@@ -228,6 +230,7 @@ export interface IStorage {
   // Failed login tracking (NIST 800-53 AC-7)
   recordFailedLoginAttempt(email: string, ipAddress: string, userId?: string): Promise<void>;
   getFailedLoginAttempts(email: string, ipAddress: string, minutesAgo: number): Promise<FailedLoginAttempt[]>;
+  getFailedLoginAttemptsByEmail(email: string, minutesAgo: number): Promise<FailedLoginAttempt[]>;
   lockAccount(email: string, lockoutMinutes: number): Promise<void>;
   unlockAccount(email: string): Promise<void>;
   isAccountLocked(email: string): Promise<boolean>;
@@ -896,6 +899,43 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+
+  async upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        id: userData.id,
+        email: userData.email,
+        passwordHash: userData.passwordHash,
+        firstName: userData.firstName || null,
+        lastName: userData.lastName || null,
+        role: userData.role || 'member',
+      })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: {
+          passwordHash: userData.passwordHash,
+          firstName: userData.firstName || null,
+          lastName: userData.lastName || null,
+          role: userData.role || 'member',
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
   
   // MFA enforcement (NIST 800-53 IA-2(1), IA-2(2))
   async setMfaRequired(userId: string, required: boolean, gracePeriodDays: number = 30): Promise<User> {
@@ -1042,6 +1082,21 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(failedLoginAttempts.email, email),
           eq(failedLoginAttempts.ipAddress, ipAddress),
+          gte(failedLoginAttempts.attemptedAt, cutoffTime)
+        )
+      )
+      .orderBy(desc(failedLoginAttempts.attemptedAt));
+  }
+
+  async getFailedLoginAttemptsByEmail(email: string, minutesAgo: number): Promise<FailedLoginAttempt[]> {
+    const cutoffTime = new Date(Date.now() - minutesAgo * 60 * 1000);
+    
+    return await db
+      .select()
+      .from(failedLoginAttempts)
+      .where(
+        and(
+          eq(failedLoginAttempts.email, email),
           gte(failedLoginAttempts.attemptedAt, cutoffTime)
         )
       )

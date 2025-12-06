@@ -56,6 +56,7 @@ import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
 import Pricing from "@/pages/pricing";
+import Login from "@/pages/login";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
@@ -462,6 +463,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
         <Route component={Landing} />
       </Switch>
     );

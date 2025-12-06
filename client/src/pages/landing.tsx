@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, FileText, Gift, TrendingUp, Users, Building2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Link } from "wouter";
 import complyBookLogo from "@assets/COmplybook_1765050943685.png";
 
 export default function Landing() {
@@ -16,12 +17,11 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button
-              onClick={() => window.location.href = '/api/login'}
-              data-testid="button-login"
-            >
-              Log In
-            </Button>
+            <Link href="/login">
+              <Button data-testid="button-login">
+                Log In
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -35,14 +35,15 @@ export default function Landing() {
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
             Track transactions, manage multiple businesses, generate financial reports, and track grants—all in one intuitive platform designed for small non-profits and for-profit companies.
           </p>
-          <Button
-            size="lg"
-            onClick={() => window.location.href = '/api/login'}
-            data-testid="button-get-started"
-            className="h-12 px-8 text-base"
-          >
-            Get Started
-          </Button>
+          <Link href="/login">
+            <Button
+              size="lg"
+              data-testid="button-get-started"
+              className="h-12 px-8 text-base"
+            >
+              Get Started
+            </Button>
+          </Link>
         </div>
       </section>
 
@@ -137,14 +138,15 @@ export default function Landing() {
           <p className="text-lg text-muted-foreground mb-8">
             Join organizations already using ComplyBook to streamline their accounting.
           </p>
-          <Button
-            size="lg"
-            onClick={() => window.location.href = '/api/login'}
-            data-testid="button-cta-login"
-            className="h-12 px-8 text-base"
-          >
-            Get Started Today
-          </Button>
+          <Link href="/login">
+            <Button
+              size="lg"
+              data-testid="button-cta-login"
+              className="h-12 px-8 text-base"
+            >
+              Get Started Today
+            </Button>
+          </Link>
         </div>
       </section>
 
