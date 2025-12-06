@@ -205,14 +205,14 @@ Based on typical budget management apps, these features may be missing:
 - [ ] Browser compatibility testing (Chrome, Firefox, Safari, Edge)
 
 ### Security Compliance (NIST 800-53)
-- [ ] Enable MFA enforcement for privileged accounts
-- [ ] Configure `SECURITY_ADMIN_EMAILS` environment variable
-- [ ] Set up automated audit retention job (daily/weekly)
-- [ ] Enable scheduled vulnerability scanning
-- [ ] Review and test security event alerting
-- [ ] Verify field-level encryption for sensitive data
-- [ ] Test session timeout enforcement (30-minute inactivity)
-- [ ] Verify rate limiting on auth and API endpoints
+- [x] Enable MFA enforcement for privileged accounts ✅ COMPLETE
+- [x] Configure `SECURITY_ADMIN_EMAILS` environment variable ✅ COMPLETE
+- [x] Set up automated audit retention job (daily/weekly) ✅ COMPLETE
+- [ ] Enable scheduled vulnerability scanning (manual trigger available)
+- [x] Review and test security event alerting ✅ COMPLETE
+- [x] Verify field-level encryption for sensitive data ✅ COMPLETE
+- [x] Test session timeout enforcement (30-minute inactivity) ✅ COMPLETE
+- [x] Verify rate limiting on auth and API endpoints ✅ COMPLETE
 
 ---
 

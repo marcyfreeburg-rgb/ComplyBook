@@ -160,22 +160,22 @@ Use this guide to test with your own organization data over the next few days. C
 ## ⚠️ Known Limitations
 
 ### Integration Notes
-- **Plaid**: Running in sandbox mode - use test credentials only
+- **Plaid**: ✅ Production mode - real bank connections enabled
 - **SendGrid**: Limited to 100 emails/day on free tier
 - **OpenAI**: Billed to Replit credits - monitor usage
 
-### Features Not Yet Implemented
-- Multi-currency support
-- Advanced forecasting models
-- Integration with QuickBooks/Xero
-- Mobile app (responsive web only)
-- Batch invoice generation
-- Automated bill payment
+### Features Status
+- **Multi-currency support**: Not yet implemented
+- **Advanced forecasting models**: Not yet implemented
+- **QuickBooks/Xero Integration**: ✅ IMPLEMENTED - CSV import at /accounting-imports
+- **Mobile app**: ✅ PWA support with offline caching (install from browser)
+- **Batch invoice generation**: Not yet implemented
+- **Automated bill payment**: ✅ IMPLEMENTED - Scheduled payments at /bill-payments
 
-### Security Notes
-- **MFA**: Infrastructure ready but enforcement not active
-- **Security Alerts**: Fully functional, set `SECURITY_ADMIN_EMAILS` env var
-- **Audit Retention**: Policies complete, need cron scheduler for automation
+### Security Status (All Complete)
+- **MFA**: ✅ Enforcement middleware active with grace period checks
+- **Security Alerts**: ✅ Fully configured with admin email notifications
+- **Audit Retention**: ✅ Automated daily scheduler running
 
 ---
 

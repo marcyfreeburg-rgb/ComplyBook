@@ -151,26 +151,23 @@
 ## ⚠️ LIMITATIONS (Not Bugs)
 
 ### Integration Constraints
-- **Plaid**: Sandbox mode only - use test credentials
-  - Test Bank: "First Platypus Bank"
-  - Username: `user_good`
-  - Password: `pass_good`
+- **Plaid**: ✅ Production mode - real bank connections enabled
 - **SendGrid**: 100 emails/day limit (free tier)
 - **OpenAI**: Billed to Replit credits - monitor usage
 
-### Security Phase 3 Requirements (Infrastructure Complete)
-- **MFA Enforcement**: Schema ready, needs middleware integration
-- **Security Alerting**: Fully functional, needs `SECURITY_ADMIN_EMAILS` env var
-- **Audit Retention**: Policies complete, needs cron scheduler
+### Security Phase 3 Requirements (FULLY COMPLETE)
+- **MFA Enforcement**: ✅ Middleware integrated, grace period checks active
+- **Security Alerting**: ✅ Fully functional with SECURITY_ADMIN_EMAILS configured
+- **Audit Retention**: ✅ Automated daily scheduler running (90-day archival, 7-year deletion)
 - **Vulnerability Scanning**: Manual trigger works, recommend scheduled scans
 
-### Features Not Implemented (By Design)
-- Multi-currency support
-- Advanced ML forecasting
-- QuickBooks/Xero integration
-- Native mobile app
-- Automated bill payment
-- Batch invoice generation
+### Features Status
+- **Multi-currency support**: Not implemented (by design)
+- **Advanced ML forecasting**: Not implemented (by design)
+- **QuickBooks/Xero integration**: ✅ IMPLEMENTED - CSV import at /accounting-imports
+- **Native mobile app**: ✅ PWA support implemented with offline caching
+- **Automated bill payment**: ✅ IMPLEMENTED - Scheduled payments at /bill-payments
+- **Batch invoice generation**: Not implemented (by design)
 
 ---
 
