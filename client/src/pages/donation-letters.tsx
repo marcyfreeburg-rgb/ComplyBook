@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Organization, Donor, Transaction } from "@shared/schema";
 import html2pdf from "html2pdf.js";
+import DOMPurify from "dompurify";
 
 interface DonationLettersProps {
   currentOrganization: Organization;
@@ -190,7 +191,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     try {
       // Generate PDF
       const element = document.createElement('div');
-      element.innerHTML = html;
+      element.innerHTML = DOMPurify.sanitize(html);
       
       await html2pdf()
         .set({
@@ -428,7 +429,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
                 <Label>Letter Preview</Label>
                 <div
                   className="border rounded-md p-6 bg-background max-h-96 overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: generateGeneralLetterHTML() }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(generateGeneralLetterHTML()) }}
                 />
               </div>
             )}
