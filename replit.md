@@ -2,6 +2,14 @@
 
 ## 📋 Recent Updates (December 6, 2025)
 
+**Plaid Update Mode - COMPLETED ✅**
+- Update mode webhook handlers for: ITEM_LOGIN_REQUIRED, PENDING_EXPIRATION, PENDING_DISCONNECT, USER_PERMISSION_REVOKED
+- Update-mode link token endpoint: `POST /api/plaid/create-update-link-token/:itemId`
+- Plaid items endpoint: `GET /api/plaid/items/:organizationId` returns items with status
+- Bank accounts UI shows alert banners for items needing re-authentication
+- "Repair Connection" button triggers update mode Plaid Link flow
+- Alerts automatically dismiss when LOGIN_REPAIRED webhook received or update completes
+
 **Plaid Auth & Identity Workflows - COMPLETED ✅**
 - Auth endpoint at `/api/plaid/auth/:organizationId` retrieves account and routing numbers for ACH transfers
 - Identity endpoint at `/api/plaid/identity/:organizationId` retrieves account holder information (names, emails, phones, addresses)
