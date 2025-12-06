@@ -4517,7 +4517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           client_user_id: userId,
         },
         client_name: 'ComplyBook',
-        products: ['transactions' as any],
+        products: ['transactions', 'auth', 'identity'] as any[],
         country_codes: ['US' as any],
         language: 'en',
         webhook: webhookUrl,
@@ -4772,6 +4772,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error syncing transactions:", error);
       res.status(500).json({ message: "Failed to sync transactions" });
+    }
+  });
+
+  // Plaid Auth - Get account and routing numbers for ACH transfers
+  app.post('/api/plaid/auth/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can access bank account numbers" });
+      }
+
+      const plaidItems = await storage.getPlaidItems(organizationId);
+      if (plaidItems.length === 0) {
+        return res.status(404).json({ message: "No bank accounts connected" });
+      }
+
+      const authData: Array<{
+        institutionName: string | null;
+        accounts: Array<{
+          accountId: string;
+          name: string;
+          mask: string | null;
+          accountNumber: string | null;
+          routingNumber: string | null;
+          wireRoutingNumber: string | null;
+        }>;
+      }> = [];
+
+      for (const plaidItem of plaidItems) {
+        try {
+          const authResponse = await plaidClient.authGet({
+            access_token: plaidItem.accessToken,
+          });
+
+          const itemAuthData: typeof authData[0] = {
+            institutionName: plaidItem.institutionName,
+            accounts: [],
+          };
+
+          for (const account of authResponse.data.accounts) {
+            const numbers = authResponse.data.numbers;
+            let accountNumber: string | null = null;
+            let routingNumber: string | null = null;
+            let wireRoutingNumber: string | null = null;
+
+            const achNumbers = numbers.ach?.find(n => n.account_id === account.account_id);
+            if (achNumbers) {
+              accountNumber = achNumbers.account;
+              routingNumber = achNumbers.routing;
+              wireRoutingNumber = achNumbers.wire_routing || null;
+            }
+
+            const eftNumbers = numbers.eft?.find(n => n.account_id === account.account_id);
+            if (eftNumbers && !accountNumber) {
+              accountNumber = eftNumbers.account;
+              routingNumber = eftNumbers.branch;
+            }
+
+            await storage.updatePlaidAccountAuth(account.account_id, {
+              accountNumber,
+              routingNumber,
+              wireRoutingNumber,
+            });
+
+            itemAuthData.accounts.push({
+              accountId: account.account_id,
+              name: account.name,
+              mask: account.mask || null,
+              accountNumber: accountNumber ? `****${accountNumber.slice(-4)}` : null,
+              routingNumber,
+              wireRoutingNumber,
+            });
+          }
+
+          authData.push(itemAuthData);
+        } catch (error: any) {
+          console.error(`Error fetching auth for item ${plaidItem.itemId}:`, error);
+          if (error?.response?.data?.error_code === 'PRODUCTS_NOT_READY') {
+            authData.push({
+              institutionName: plaidItem.institutionName,
+              accounts: [],
+            });
+          }
+        }
+      }
+
+      res.json({ authData });
+    } catch (error) {
+      console.error("Error fetching auth data:", error);
+      res.status(500).json({ message: "Failed to fetch account numbers" });
+    }
+  });
+
+  // Plaid Identity - Get account holder information
+  app.post('/api/plaid/identity/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can access identity information" });
+      }
+
+      const plaidItems = await storage.getPlaidItems(organizationId);
+      if (plaidItems.length === 0) {
+        return res.status(404).json({ message: "No bank accounts connected" });
+      }
+
+      const identityData: Array<{
+        institutionName: string | null;
+        accounts: Array<{
+          accountId: string;
+          name: string;
+          mask: string | null;
+          owners: Array<{
+            names: string[];
+            emails: Array<{ data: string; primary: boolean; type: string }>;
+            phoneNumbers: Array<{ data: string; primary: boolean; type: string }>;
+            addresses: Array<{ data: any; primary: boolean }>;
+          }>;
+        }>;
+      }> = [];
+
+      for (const plaidItem of plaidItems) {
+        try {
+          const identityResponse = await plaidClient.identityGet({
+            access_token: plaidItem.accessToken,
+          });
+
+          const itemIdentityData: typeof identityData[0] = {
+            institutionName: plaidItem.institutionName,
+            accounts: [],
+          };
+
+          for (const account of identityResponse.data.accounts) {
+            const owners = account.owners || [];
+            
+            const ownerNames: string[] = [];
+            const ownerEmails: string[] = [];
+            const ownerPhoneNumbers: string[] = [];
+            const ownerAddresses: any[] = [];
+
+            for (const owner of owners) {
+              ownerNames.push(...(owner.names || []));
+              ownerEmails.push(...(owner.emails || []).map(e => e.data));
+              ownerPhoneNumbers.push(...(owner.phone_numbers || []).map(p => p.data));
+              ownerAddresses.push(...(owner.addresses || []).map(a => a.data));
+            }
+
+            await storage.updatePlaidAccountIdentity(account.account_id, {
+              ownerNames,
+              ownerEmails,
+              ownerPhoneNumbers,
+              ownerAddresses,
+            });
+
+            itemIdentityData.accounts.push({
+              accountId: account.account_id,
+              name: account.name,
+              mask: account.mask || null,
+              owners: owners.map(owner => ({
+                names: owner.names || [],
+                emails: (owner.emails || []).map(e => ({ data: e.data, primary: e.primary, type: e.type })),
+                phoneNumbers: (owner.phone_numbers || []).map(p => ({ data: p.data, primary: p.primary, type: p.type })),
+                addresses: (owner.addresses || []).map(a => ({ data: a.data, primary: a.primary })),
+              })),
+            });
+          }
+
+          identityData.push(itemIdentityData);
+        } catch (error: any) {
+          console.error(`Error fetching identity for item ${plaidItem.itemId}:`, error);
+          if (error?.response?.data?.error_code === 'PRODUCTS_NOT_READY') {
+            identityData.push({
+              institutionName: plaidItem.institutionName,
+              accounts: [],
+            });
+          }
+        }
+      }
+
+      res.json({ identityData });
+    } catch (error) {
+      console.error("Error fetching identity data:", error);
+      res.status(500).json({ message: "Failed to fetch identity information" });
     }
   });
 

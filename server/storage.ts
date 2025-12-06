@@ -443,6 +443,9 @@ export interface IStorage {
   getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null; itemId: string }>>;
   createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
   updatePlaidAccountBalances(accountId: string, currentBalance: string, availableBalance: string): Promise<void>;
+  updatePlaidAccountAuth(accountId: string, data: { accountNumber: string | null; routingNumber: string | null; wireRoutingNumber: string | null }): Promise<void>;
+  updatePlaidAccountIdentity(accountId: string, data: { ownerNames: string[]; ownerEmails: string[]; ownerPhoneNumbers: string[]; ownerAddresses: any[] }): Promise<void>;
+  getPlaidAccountByAccountId(accountId: string): Promise<PlaidAccount | undefined>;
 
   // AI Categorization history operations
   recordCategorizationSuggestion(history: InsertCategorizationHistory): Promise<CategorizationHistory>;
@@ -3440,6 +3443,42 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(plaidAccounts.accountId, accountId));
+  }
+
+  async updatePlaidAccountAuth(accountId: string, data: { accountNumber: string | null; routingNumber: string | null; wireRoutingNumber: string | null }): Promise<void> {
+    const { encryptField } = await import('./encryption.js');
+    await db
+      .update(plaidAccounts)
+      .set({
+        accountNumberEncrypted: encryptField(data.accountNumber),
+        routingNumberEncrypted: encryptField(data.routingNumber),
+        wireRoutingNumberEncrypted: encryptField(data.wireRoutingNumber),
+        authFetchedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidAccounts.accountId, accountId));
+  }
+
+  async updatePlaidAccountIdentity(accountId: string, data: { ownerNames: string[]; ownerEmails: string[]; ownerPhoneNumbers: string[]; ownerAddresses: any[] }): Promise<void> {
+    await db
+      .update(plaidAccounts)
+      .set({
+        ownerNames: data.ownerNames,
+        ownerEmails: data.ownerEmails,
+        ownerPhoneNumbers: data.ownerPhoneNumbers,
+        ownerAddresses: data.ownerAddresses,
+        identityFetchedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidAccounts.accountId, accountId));
+  }
+
+  async getPlaidAccountByAccountId(accountId: string): Promise<PlaidAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(plaidAccounts)
+      .where(eq(plaidAccounts.accountId, accountId));
+    return account;
   }
 
   // AI Categorization history operations

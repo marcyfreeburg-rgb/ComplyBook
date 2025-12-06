@@ -2,6 +2,14 @@
 
 ## 📋 Recent Updates (December 6, 2025)
 
+**Plaid Auth & Identity Workflows - COMPLETED ✅**
+- Auth endpoint at `/api/plaid/auth/:organizationId` retrieves account and routing numbers for ACH transfers
+- Identity endpoint at `/api/plaid/identity/:organizationId` retrieves account holder information (names, emails, phones, addresses)
+- Link token creation now requests `transactions`, `auth`, and `identity` products
+- PlaidAccounts schema extended with: `accountNumberEncrypted`, `routingNumberEncrypted`, `wireRoutingNumberEncrypted`, `ownerNames`, `ownerEmails`, `ownerPhoneNumbers`, `ownerAddresses`, `authFetchedAt`, `identityFetchedAt`
+- Bank accounts UI updated with tabs: Accounts, ACH Numbers, and Identity
+- Storage methods: `updatePlaidAccountAuth()`, `updatePlaidAccountIdentity()`, `getPlaidAccountByAccountId()`
+
 **Plaid Webhooks - COMPLETED ✅**
 - Plaid webhook endpoint at `/api/plaid/webhook` for automatic transaction syncing
 - Webhook handler (`server/plaidWebhookHandlers.ts`) processes TRANSACTIONS, ITEM, and LINK webhook types
