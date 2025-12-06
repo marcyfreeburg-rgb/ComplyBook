@@ -98,18 +98,9 @@ export class BillPaymentService {
   }
 
   async processStripePayment(scheduledPayment: ScheduledPayment, bill: Bill): Promise<PaymentResult> {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    
-    if (!stripeSecretKey) {
-      return {
-        success: false,
-        error: "Stripe is not configured. Please set up Stripe integration to process card payments.",
-      };
-    }
-
     try {
-      const Stripe = (await import('stripe')).default;
-      const stripe = new Stripe(stripeSecretKey);
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
 
       const amountInCents = Math.round(parseFloat(scheduledPayment.amount) * 100);
 
