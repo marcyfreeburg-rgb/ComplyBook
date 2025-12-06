@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, FileText, Gift, TrendingUp, Users, Building2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import complyBookLogo from "@assets/Complybooklogo_1764036527423.jpg";
+import complyBookLogo from "@assets/COmplybook_1765050943685.png";
 
 export default function Landing() {
   return (
