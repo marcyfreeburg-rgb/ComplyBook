@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { PlaidWebhookHandlers, PlaidWebhookPayload } from './plaidWebhookHandlers';
+import { runAuditRetentionPolicies } from './auditRetention';
 
 const app = express();
 
@@ -50,6 +51,28 @@ async function initStripe() {
 }
 
 initStripe();
+
+// NIST 800-53 AU-11: Scheduled Audit Log Retention
+// Run daily at startup and every 24 hours thereafter
+async function scheduleAuditRetention() {
+  const runRetention = async () => {
+    try {
+      const result = await runAuditRetentionPolicies();
+      console.log(`Audit retention completed: ${result.archived} archived, ${result.deleted} deleted`);
+      console.log(`Audit stats: ${result.stats.totalLogs} total (${result.stats.activeLogs} active, ${result.stats.archivedLogs} archived)`);
+    } catch (error: any) {
+      console.error('Audit retention error:', error.message);
+    }
+  };
+
+  // Run immediately on startup (with 10 second delay to let DB connect)
+  setTimeout(runRetention, 10000);
+
+  // Schedule to run every 24 hours
+  setInterval(runRetention, 24 * 60 * 60 * 1000);
+}
+
+scheduleAuditRetention();
 
 // CRITICAL: Register Stripe webhook route BEFORE express.json()
 // Webhook needs raw Buffer, not parsed JSON
