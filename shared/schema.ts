@@ -952,6 +952,8 @@ export type BudgetItem = typeof budgetItems.$inferSelect;
 // PLAID INTEGRATIONS
 // ============================================
 
+export const plaidItemStatusEnum = pgEnum("plaid_item_status", ["active", "login_required", "error", "pending"]);
+
 export const plaidItems = pgTable("plaid_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
@@ -959,6 +961,11 @@ export const plaidItems = pgTable("plaid_items", {
   accessToken: text("access_token").notNull(),
   institutionId: varchar("institution_id", { length: 255 }),
   institutionName: varchar("institution_name", { length: 255 }),
+  status: plaidItemStatusEnum("status").default("active").notNull(),
+  errorCode: varchar("error_code", { length: 100 }),
+  errorMessage: text("error_message"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  cursor: text("cursor"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
