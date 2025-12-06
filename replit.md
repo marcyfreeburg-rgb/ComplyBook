@@ -2,6 +2,15 @@
 
 ## Recent Updates (December 6, 2025)
 
+**Local Authentication & Password Management - COMPLETED**
+- Local email/password authentication fallback for non-Replit deployments
+- Password change functionality with API endpoint `POST /api/auth/change-password`
+- Password change UI in Settings page (only visible in local auth mode)
+- Two default admin users for local auth mode:
+  - admin@complybook.net / comply2025
+  - marcy.freeburg@gmail.com / CaseyLee12
+- Security logging for password changes and failed attempts
+
 **MFA Enforcement Infrastructure - COMPLETED**
 - `requireMfaCompliance` middleware in `server/replitAuth.ts` enforces MFA grace period checks
 - Applied to sensitive routes: organization creation, team invitations, team role changes, team member deletion, MFA settings

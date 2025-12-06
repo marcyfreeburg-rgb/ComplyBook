@@ -373,35 +373,50 @@ export async function createDefaultAdminUser() {
     return;
   }
 
-  const adminEmail = "admin@complybook.net";
-  const adminPassword = "comply2025";
-  const adminId = "local_admin_default";
+  const adminUsers = [
+    {
+      email: "admin@complybook.net",
+      password: "comply2025",
+      id: "local_admin_default",
+      firstName: "Admin",
+      lastName: "User",
+    },
+    {
+      email: "marcy.freeburg@gmail.com",
+      password: "CaseyLee12",
+      id: "local_admin_marcy",
+      firstName: "Marcy",
+      lastName: "Freeburg",
+    },
+  ];
 
-  try {
-    const existingUser = await storage.getUserByEmail(adminEmail);
-    
-    if (!existingUser) {
-      const hashedPassword = await hashPassword(adminPassword);
+  for (const admin of adminUsers) {
+    try {
+      const existingUser = await storage.getUserByEmail(admin.email);
       
-      await storage.upsertLocalUser({
-        id: adminId,
-        email: adminEmail,
-        passwordHash: hashedPassword,
-        firstName: "Admin",
-        lastName: "User",
-        role: "admin",
-      });
+      if (!existingUser) {
+        const hashedPassword = await hashPassword(admin.password);
+        
+        await storage.upsertLocalUser({
+          id: admin.id,
+          email: admin.email,
+          passwordHash: hashedPassword,
+          firstName: admin.firstName,
+          lastName: admin.lastName,
+          role: "admin",
+        });
 
-      console.log(`[Auth] Default admin user created: ${adminEmail}`);
-    } else if (!existingUser.passwordHash) {
-      const hashedPassword = await hashPassword(adminPassword);
-      await storage.updateUserPassword(existingUser.id, hashedPassword);
-      console.log(`[Auth] Password set for existing admin user: ${adminEmail}`);
-    } else {
-      console.log(`[Auth] Default admin user already exists: ${adminEmail}`);
+        console.log(`[Auth] Default admin user created: ${admin.email}`);
+      } else if (!existingUser.passwordHash) {
+        const hashedPassword = await hashPassword(admin.password);
+        await storage.updateUserPassword(existingUser.id, hashedPassword);
+        console.log(`[Auth] Password set for existing admin user: ${admin.email}`);
+      } else {
+        console.log(`[Auth] Default admin user already exists: ${admin.email}`);
+      }
+    } catch (error) {
+      console.error(`[Auth] Failed to create default admin user ${admin.email}:`, error);
     }
-  } catch (error) {
-    console.error("[Auth] Failed to create default admin user:", error);
   }
 }
 

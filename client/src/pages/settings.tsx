@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check } from "lucide-react";
+import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check, Lock } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, Organization, Category, InsertCategory } from "@shared/schema";
@@ -77,6 +77,12 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [newRole, setNewRole] = useState<string>("");
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"replit" | "local" | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -113,6 +119,14 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
     
     fetchLinkToken();
   }, [currentOrganization.id]);
+
+  // Fetch auth mode to show/hide password change section
+  useEffect(() => {
+    fetch("/api/auth/mode")
+      .then((res) => res.json())
+      .then((data) => setAuthMode(data.mode))
+      .catch(() => setAuthMode(null));
+  }, []);
 
   const createCategoryMutation = useMutation({
     mutationFn: async (data: InsertCategory) => {
@@ -177,6 +191,74 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
       });
     },
   });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const response = await apiRequest('POST', '/api/auth/change-password', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password changed",
+        description: "Your password has been updated successfully.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error: Error) => {
+      // apiRequest throws errors in format "status: {json}" - try to extract the message
+      let errorMessage = "Failed to change password. Please try again.";
+      try {
+        const colonIndex = error.message.indexOf(': ');
+        if (colonIndex > -1) {
+          const jsonPart = error.message.slice(colonIndex + 2);
+          const parsed = JSON.parse(jsonPart);
+          if (parsed.message) {
+            errorMessage = parsed.message;
+          }
+        }
+      } catch {
+        // If parsing fails, use a generic message
+      }
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleChangePassword = () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in all password fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast({
+        title: "Error",
+        description: "New password must be at least 8 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    changePasswordMutation.mutate({ currentPassword, newPassword });
+  };
 
   const disconnectBankMutation = useMutation({
     mutationFn: async (itemId: string) => {
@@ -437,6 +519,66 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Password Change - Only shown for local auth */}
+      {authMode === "local" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Update your account password
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                placeholder="Enter your current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                data-testid="input-current-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Enter your new password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                data-testid="input-new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="Confirm your new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                data-testid="input-confirm-password"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Password must be at least 8 characters long
+            </p>
+            <Button
+              onClick={handleChangePassword}
+              disabled={changePasswordMutation.isPending}
+              data-testid="button-change-password"
+            >
+              {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Current Organization */}
       <Card>

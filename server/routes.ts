@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, requireMfaCompliance } from "./replitAuth";
+import { setupAuth, isAuthenticated, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
@@ -282,6 +282,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Password change route (for local auth only)
+  app.post('/api/auth/change-password', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters long" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.passwordHash) {
+        return res.status(400).json({ message: "Password change is not available for this account type" });
+      }
+
+      const isCurrentPasswordValid = await comparePasswords(currentPassword, user.passwordHash);
+      if (!isCurrentPasswordValid) {
+        await storage.logSecurityEvent({
+          eventType: 'password_change_failed',
+          severity: 'warning',
+          userId: userId,
+          email: user.email || null,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            reason: 'invalid_current_password',
+            timestamp: new Date().toISOString(),
+          },
+        });
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      const newPasswordHash = await hashPassword(newPassword);
+      await storage.updateUserPassword(userId, newPasswordHash);
+
+      await storage.logSecurityEvent({
+        eventType: 'password_changed',
+        severity: 'info',
+        userId: userId,
+        email: user.email || null,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      res.json({ success: true, message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
     }
   });
 
