@@ -72,7 +72,7 @@ export function decryptField(ciphertext: string | null): string | null {
     const authTag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
     const encrypted = buffer.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
     
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
     decipher.setAuthTag(authTag);
     
     let decrypted = decipher.update(encrypted.toString('hex'), 'hex', 'utf8');
