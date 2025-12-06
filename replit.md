@@ -1,6 +1,18 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## 📋 Recent Updates (December 5, 2025)
+## 📋 Recent Updates (December 6, 2025)
+
+**Plaid Webhooks - COMPLETED ✅**
+- Plaid webhook endpoint at `/api/plaid/webhook` for automatic transaction syncing
+- Webhook handler (`server/plaidWebhookHandlers.ts`) processes TRANSACTIONS, ITEM, and LINK webhook types
+- Supports: SYNC_UPDATES_AVAILABLE, INITIAL_UPDATE, HISTORICAL_UPDATE, DEFAULT_UPDATE
+- Error handling: ITEM_ERROR, LOGIN_REPAIRED, PENDING_EXPIRATION, USER_PERMISSION_REVOKED
+- PlaidItem schema extended with: `status` (active/login_required/error/pending), `errorCode`, `errorMessage`, `lastSyncedAt`, `cursor`
+- Storage methods: `getPlaidItemByPlaidId()`, `updatePlaidItemStatus()` for webhook processing
+- Link token creation now includes webhook URL automatically based on REPLIT_DOMAINS
+- Transaction import correctly handles Plaid amount polarity (negative = income, positive = expense)
+
+## 📋 Previous Updates (December 5, 2025)
 
 **Subscription Tier System - COMPLETED ✅**
 - 5-tier subscription system: Free, Starter ($29/mo), Professional ($79/mo), Growth ($159/mo), Enterprise ($349+/mo)
