@@ -148,6 +148,15 @@ export class PlaidWebhookHandlers {
         });
         break;
 
+      case 'PENDING_DISCONNECT':
+        console.log(`Pending disconnect for item ${item_id}`);
+        await storage.updatePlaidItemStatus(plaidItem.id, {
+          status: 'login_required',
+          errorCode: 'PENDING_DISCONNECT',
+          errorMessage: 'Bank connection will be disconnected soon. Please re-authenticate to maintain access.',
+        });
+        break;
+
       case 'WEBHOOK_UPDATE_ACKNOWLEDGED':
         console.log(`Webhook update acknowledged for item ${item_id}`);
         break;

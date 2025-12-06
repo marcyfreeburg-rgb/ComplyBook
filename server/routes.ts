@@ -4530,6 +4530,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create link token for update mode (re-authentication)
+  app.post('/api/plaid/create-update-link-token/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.itemId);
+
+      // Get the Plaid item
+      const plaidItem = await storage.getPlaidItem(itemId);
+      if (!plaidItem) {
+        return res.status(404).json({ message: "Plaid item not found" });
+      }
+
+      // Check user has access to the organization
+      const userRole = await storage.getUserRole(userId, plaidItem.organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can update bank connections" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const webhookBaseUrl = process.env.REPLIT_DOMAINS?.split(',')[0];
+      const webhookUrl = webhookBaseUrl ? `https://${webhookBaseUrl}/api/plaid/webhook` : undefined;
+
+      // Create link token in update mode by passing access_token
+      const response = await plaidClient.linkTokenCreate({
+        user: {
+          client_user_id: userId,
+        },
+        client_name: 'ComplyBook',
+        access_token: plaidItem.accessToken,
+        country_codes: ['US' as any],
+        language: 'en',
+        webhook: webhookUrl,
+      });
+
+      res.json({ link_token: response.data.link_token });
+    } catch (error) {
+      console.error("Error creating update link token:", error);
+      res.status(500).json({ message: "Failed to create update link token" });
+    }
+  });
+
   app.post('/api/plaid/exchange-token/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
