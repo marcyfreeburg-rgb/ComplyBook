@@ -4576,12 +4576,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const webhookBaseUrl = process.env.REPLIT_DOMAINS?.split(',')[0];
       const webhookUrl = webhookBaseUrl ? `https://${webhookBaseUrl}/api/plaid/webhook` : undefined;
 
+      // Note: Products available depend on Plaid dashboard settings
+      // Currently using auth and identity - add 'transactions' when enabled in Plaid dashboard
+      const plaidProducts = ['auth', 'identity'] as any[];
+      console.log('Requesting Plaid products:', plaidProducts);
+      
       const response = await plaidClient.linkTokenCreate({
         user: {
           client_user_id: userId,
         },
         client_name: 'ComplyBook',
-        products: ['transactions', 'auth', 'identity'] as any[],
+        products: plaidProducts,
         country_codes: ['US' as any],
         language: 'en',
         webhook: webhookUrl,
