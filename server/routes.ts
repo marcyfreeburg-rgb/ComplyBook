@@ -4556,8 +4556,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Plaid routes
   app.post('/api/plaid/create-link-token/:organizationId', isAuthenticated, async (req: any, res) => {
+    console.log('Plaid create-link-token request received for org:', req.params.organizationId);
     try {
       const userId = req.user.claims.sub;
+      console.log('User ID:', userId);
       const organizationId = parseInt(req.params.organizationId);
 
       // Check user has access to this organization
