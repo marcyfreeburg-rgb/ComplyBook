@@ -9,6 +9,7 @@ import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
 import { sendInvoiceEmail } from "./email";
+import { encryptAccessToken, decryptAccessToken } from "./encryption";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import memoize from "memoizee";
@@ -4624,7 +4625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           client_user_id: userId,
         },
         client_name: 'ComplyBook',
-        access_token: plaidItem.accessToken,
+        access_token: decryptAccessToken(plaidItem.accessToken),
         country_codes: ['US' as any],
         language: 'en',
         webhook: webhookUrl,
@@ -4677,11 +4678,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Store the Plaid item
+      // Store the Plaid item with encrypted access token
       const plaidItem = await storage.createPlaidItem({
         organizationId,
         itemId,
-        accessToken,
+        accessToken: encryptAccessToken(accessToken),
         institutionId,
         institutionName,
         createdBy: userId,
@@ -4774,7 +4775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Remove the item from Plaid
       try {
         await plaidClient.itemRemove({
-          access_token: plaidItem.accessToken,
+          access_token: decryptAccessToken(plaidItem.accessToken),
         });
       } catch (error) {
         console.error("Error removing item from Plaid:", error);
@@ -4819,7 +4820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate.setDate(startDate.getDate() - 30);
 
           const transactionsResponse = await plaidClient.transactionsGet({
-            access_token: plaidItem.accessToken,
+            access_token: decryptAccessToken(plaidItem.accessToken),
             start_date: startDate.toISOString().split('T')[0],
             end_date: endDate.toISOString().split('T')[0],
             options: {
@@ -4933,7 +4934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const plaidItem of plaidItems) {
         try {
           const authResponse = await plaidClient.authGet({
-            access_token: plaidItem.accessToken,
+            access_token: decryptAccessToken(plaidItem.accessToken),
           });
 
           const itemAuthData: typeof authData[0] = {
@@ -5029,7 +5030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const plaidItem of plaidItems) {
         try {
           const identityResponse = await plaidClient.identityGet({
-            access_token: plaidItem.accessToken,
+            access_token: decryptAccessToken(plaidItem.accessToken),
           });
 
           const itemIdentityData: typeof identityData[0] = {

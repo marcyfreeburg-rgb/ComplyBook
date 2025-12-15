@@ -105,3 +105,35 @@ export function validateEncryptionKey(): boolean {
     return false;
   }
 }
+
+export function encryptAccessToken(token: string): string {
+  const encrypted = encryptField(token);
+  if (!encrypted) {
+    throw new Error('Failed to encrypt access token');
+  }
+  return encrypted;
+}
+
+export function decryptAccessToken(encryptedToken: string): string {
+  if (!encryptedToken) {
+    throw new Error('Access token is required');
+  }
+  
+  // Check if the token looks like a Plaid access token (starts with 'access-')
+  // If so, it's not encrypted yet (legacy data)
+  if (encryptedToken.startsWith('access-')) {
+    return encryptedToken;
+  }
+  
+  const decrypted = decryptField(encryptedToken);
+  if (!decrypted) {
+    throw new Error('Failed to decrypt access token');
+  }
+  return decrypted;
+}
+
+export function isTokenEncrypted(token: string): boolean {
+  // Plaid access tokens start with 'access-'
+  // Encrypted tokens are base64 and won't start with 'access-'
+  return !token.startsWith('access-');
+}
