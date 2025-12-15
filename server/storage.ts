@@ -3412,27 +3412,36 @@ export class DatabaseStorage implements IStorage {
 
   // Plaid operations
   async getPlaidItems(organizationId: number): Promise<PlaidItem[]> {
-    return await db
+    const { decryptAccessToken } = await import('./encryption');
+    const items = await db
       .select()
       .from(plaidItems)
       .where(eq(plaidItems.organizationId, organizationId))
       .orderBy(desc(plaidItems.createdAt));
+    return items.map(item => ({
+      ...item,
+      accessToken: decryptAccessToken(item.accessToken),
+    }));
   }
 
   async getPlaidItem(itemId: string): Promise<PlaidItem | undefined> {
+    const { decryptAccessToken } = await import('./encryption');
     const [item] = await db
       .select()
       .from(plaidItems)
       .where(eq(plaidItems.itemId, itemId));
-    return item;
+    if (!item) return undefined;
+    return { ...item, accessToken: decryptAccessToken(item.accessToken) };
   }
 
   async getPlaidItemByPlaidId(plaidItemId: string): Promise<PlaidItem | undefined> {
+    const { decryptAccessToken } = await import('./encryption');
     const [item] = await db
       .select()
       .from(plaidItems)
       .where(eq(plaidItems.itemId, plaidItemId));
-    return item;
+    if (!item) return undefined;
+    return { ...item, accessToken: decryptAccessToken(item.accessToken) };
   }
 
   async updatePlaidItemStatus(id: number, updates: { status?: 'active' | 'login_required' | 'error' | 'pending'; errorCode?: string | null; errorMessage?: string | null; lastSyncedAt?: Date }): Promise<void> {
@@ -3446,11 +3455,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem> {
+    const { encryptAccessToken, decryptAccessToken } = await import('./encryption');
     const [plaidItem] = await db
       .insert(plaidItems)
-      .values(item)
+      .values({ ...item, accessToken: encryptAccessToken(item.accessToken) })
       .returning();
-    return plaidItem;
+    return { ...plaidItem, accessToken: decryptAccessToken(plaidItem.accessToken) };
   }
 
   async deletePlaidItem(id: number): Promise<void> {
@@ -3503,7 +3513,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePlaidAccountAuth(accountId: string, data: { accountNumber: string | null; routingNumber: string | null; wireRoutingNumber: string | null }): Promise<void> {
-    const { encryptField } = await import('./encryption.js');
+    const { encryptField } = await import('./encryption');
     await db
       .update(plaidAccounts)
       .set({

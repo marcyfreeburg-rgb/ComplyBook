@@ -119,21 +119,50 @@ export function decryptAccessToken(encryptedToken: string): string {
     throw new Error('Access token is required');
   }
   
-  // Check if the token looks like a Plaid access token (starts with 'access-')
-  // If so, it's not encrypted yet (legacy data)
-  if (encryptedToken.startsWith('access-')) {
+  // First, try to decrypt assuming it's encrypted
+  try {
+    const decrypted = decryptField(encryptedToken);
+    if (decrypted) {
+      return decrypted;
+    }
+  } catch {
+    // Decryption failed - token might be plaintext (legacy data)
+  }
+  
+  // If decryption failed, check if it looks like a plaintext Plaid token
+  // This handles backwards compatibility for legacy unencrypted tokens
+  if (looksLikePlaidToken(encryptedToken)) {
+    console.warn('Warning: Found plaintext Plaid access token. Consider running migration script.');
     return encryptedToken;
   }
   
-  const decrypted = decryptField(encryptedToken);
-  if (!decrypted) {
-    throw new Error('Failed to decrypt access token');
+  // Neither encrypted nor recognizable as Plaid token - this is an error
+  throw new Error('Failed to decrypt access token and token does not match expected Plaid format');
+}
+
+function looksLikePlaidToken(token: string): boolean {
+  // Plaid access tokens typically start with 'access-' but may have other patterns
+  // Check for common patterns to avoid false positives
+  if (token.startsWith('access-')) {
+    return true;
   }
-  return decrypted;
+  // Additional patterns: check if it's a long alphanumeric string (typical Plaid format)
+  // Plaid tokens are typically 40+ characters with alphanumeric and hyphens
+  if (/^[a-zA-Z0-9-_]{30,}$/.test(token)) {
+    return true;
+  }
+  return false;
 }
 
 export function isTokenEncrypted(token: string): boolean {
-  // Plaid access tokens start with 'access-'
-  // Encrypted tokens are base64 and won't start with 'access-'
-  return !token.startsWith('access-');
+  // Try to decrypt - if it succeeds, it was encrypted
+  try {
+    const decrypted = decryptField(token);
+    if (decrypted) {
+      return true;
+    }
+  } catch {
+    // Decryption failed
+  }
+  return false;
 }
