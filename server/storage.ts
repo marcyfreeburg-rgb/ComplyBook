@@ -1179,6 +1179,17 @@ export class DatabaseStorage implements IStorage {
 
   // Organization operations
   async getOrganizations(userId: string): Promise<Array<Organization & { userRole: string }>> {
+    // Special handling for super admin users - they can see all organizations
+    const superAdminUserIds = ['local_admin_default', 'local_admin_marcy'];
+    if (superAdminUserIds.includes(userId)) {
+      const allOrgs = await db.select().from(organizations);
+      return allOrgs.map(org => ({
+        ...org,
+        taxId: org.taxId ? decryptField(org.taxId) : null,
+        userRole: 'admin',
+      }));
+    }
+    
     const result = await db
       .select({
         organization: organizations,
@@ -1257,6 +1268,20 @@ export class DatabaseStorage implements IStorage {
 
   // User organization role operations
   async getUserRole(userId: string, organizationId: number): Promise<UserOrganizationRole | undefined> {
+    // Special handling for super admin users - they have admin access to all organizations
+    const superAdminUserIds = ['local_admin_default', 'local_admin_marcy'];
+    if (superAdminUserIds.includes(userId)) {
+      // Return a synthetic admin role for super admin users
+      return {
+        id: -1,
+        userId,
+        organizationId,
+        role: 'admin',
+        permissions: 'full_access',
+        createdAt: new Date(),
+      } as UserOrganizationRole;
+    }
+    
     const [role] = await db
       .select()
       .from(userOrganizationRoles)
