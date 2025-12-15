@@ -251,9 +251,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Serve object storage files (logos, uploads, etc.)
+  // Serve object storage files (logos, uploads, etc.) - Replit only
   // Only serves PUBLIC files - private files require authentication
   app.get('/objects/*', async (req, res) => {
+    // This route only works on Replit - on other platforms, files are served via /uploads/*
+    if (!isReplitEnvironment) {
+      return res.status(404).json({ message: "Object storage not available on this platform" });
+    }
+    
     try {
       const objectPath = req.path;
       const objectStorageService = new ObjectStorageService();
@@ -436,8 +441,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "logoUrl is required" });
       }
 
-      const objectStorageService = new ObjectStorageService();
-      const logoPath = objectStorageService.normalizeObjectEntityPath(req.body.logoUrl);
+      let logoPath = req.body.logoUrl;
+      
+      // Only normalize path on Replit environment
+      if (isReplitEnvironment) {
+        const objectStorageService = new ObjectStorageService();
+        logoPath = objectStorageService.normalizeObjectEntityPath(req.body.logoUrl);
+      }
       
       const updated = await storage.updateOrganization(organizationId, { logoUrl: logoPath });
       res.json(updated);
@@ -3687,6 +3697,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/transactions/:transactionId/attachments/upload-url', isAuthenticated, async (req: any, res) => {
     try {
+      // Attachment uploads only supported on Replit environment
+      if (!isReplitEnvironment) {
+        return res.status(501).json({ message: "Attachment uploads are not supported in this environment" });
+      }
+      
       const userId = req.user.claims.sub;
       const transactionId = parseInt(req.params.transactionId);
       
@@ -3719,6 +3734,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/transactions/:transactionId/attachments', isAuthenticated, async (req: any, res) => {
     try {
+      // Attachment uploads only supported on Replit environment
+      if (!isReplitEnvironment) {
+        return res.status(501).json({ message: "Attachment uploads are not supported in this environment" });
+      }
+      
       const userId = req.user.claims.sub;
       const transactionId = parseInt(req.params.transactionId);
       const { fileName, fileSize, fileType, objectPath } = req.body;
@@ -3777,6 +3797,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/attachments/:id/download', isAuthenticated, async (req: any, res) => {
     try {
+      // Attachment downloads only supported on Replit environment
+      if (!isReplitEnvironment) {
+        return res.status(501).json({ message: "Attachment downloads are not supported in this environment" });
+      }
+      
       const userId = req.user.claims.sub;
       const attachmentId = parseInt(req.params.id);
       
@@ -3820,6 +3845,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/attachments/:id', isAuthenticated, async (req: any, res) => {
     try {
+      // Attachment operations only supported on Replit environment
+      if (!isReplitEnvironment) {
+        return res.status(501).json({ message: "Attachment operations are not supported in this environment" });
+      }
+      
       const userId = req.user.claims.sub;
       const attachmentId = parseInt(req.params.id);
       
