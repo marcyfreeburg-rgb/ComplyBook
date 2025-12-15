@@ -2,7 +2,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import { storage } from "./storage";
+
+// Check if we're in a Replit environment
+const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
 import { setupAuth, isAuthenticated, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
@@ -270,6 +275,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error serving object storage file:", error);
         res.status(500).json({ message: "Failed to serve file" });
       }
+    }
+  });
+
+  // Serve local uploads (for non-Replit environments like Render)
+  app.get('/uploads/*', (req, res) => {
+    const filePath = path.join(process.cwd(), req.path);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).json({ message: "File not found" });
     }
   });
 
@@ -2397,28 +2412,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No logo file provided" });
       }
 
-      // Upload to object storage
-      const objectStorageService = new ObjectStorageService();
-      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
-      
-      // Upload file to object storage using signed URL
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: req.file.buffer,
-        headers: {
-          'Content-Type': req.file.mimetype,
-        },
-      });
+      let logoPath: string;
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload to object storage');
+      if (isReplitEnvironment) {
+        // Use Replit Object Storage
+        const objectStorageService = new ObjectStorageService();
+        const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+        
+        // Upload file to object storage using signed URL
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: req.file.buffer,
+          headers: {
+            'Content-Type': req.file.mimetype,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload to object storage');
+        }
+
+        // Set the logo as public so it can be accessed via /objects/* route
+        const rawPath = uploadUrl.split('?')[0];
+        logoPath = await objectStorageService.trySetObjectEntityAclPolicy(rawPath, {
+          visibility: 'public',
+        });
+      } else {
+        // Fallback: Save to local filesystem for non-Replit environments (e.g., Render)
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'logos');
+        
+        // Ensure uploads directory exists
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        // Generate unique filename
+        const fileExt = path.extname(req.file.originalname) || '.png';
+        const fileName = `org_${organizationId}_${Date.now()}${fileExt}`;
+        const filePath = path.join(uploadsDir, fileName);
+
+        // Write file to disk
+        fs.writeFileSync(filePath, req.file.buffer);
+
+        // Return the relative URL path that will be served
+        logoPath = `/uploads/logos/${fileName}`;
       }
-
-      // Set the logo as public so it can be accessed via /objects/* route
-      const rawPath = uploadUrl.split('?')[0];
-      const logoPath = await objectStorageService.trySetObjectEntityAclPolicy(rawPath, {
-        visibility: 'public',
-      });
       
       // Save logo URL to organization
       const updated = await storage.updateOrganization(organizationId, { logoUrl: logoPath });
