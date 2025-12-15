@@ -357,7 +357,8 @@ async function setupLocalAuth(app: Express) {
     }
     
     req.logout(() => {
-      res.json({ success: true });
+      // Redirect to home page after logout (same as Replit auth behavior)
+      res.redirect("/");
     });
   });
 
