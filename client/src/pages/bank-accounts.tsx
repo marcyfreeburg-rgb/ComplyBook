@@ -106,15 +106,38 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Create link token mutation
   const createLinkToken = useMutation({
     mutationFn: async () => {
-      console.log('Creating link token for org:', currentOrganization.id);
-      const response = await apiRequest('POST', `/api/plaid/create-link-token/${currentOrganization.id}`, {});
-      console.log('Link token response received');
-      return response.json();
+      console.log('=== Creating Plaid Link Token ===');
+      console.log('Organization ID:', currentOrganization?.id);
+      console.log('Organization name:', currentOrganization?.name);
+      
+      if (!currentOrganization?.id) {
+        throw new Error('No organization selected');
+      }
+      
+      try {
+        const url = `/api/plaid/create-link-token/${currentOrganization.id}`;
+        console.log('Calling API:', url);
+        const response = await apiRequest('POST', url, {});
+        console.log('Link token response status:', response.status);
+        const data = await response.json();
+        console.log('Link token data received:', data.link_token ? 'token present' : 'no token');
+        return data;
+      } catch (fetchError: any) {
+        console.error('Fetch error:', fetchError);
+        console.error('Error message:', fetchError.message);
+        throw fetchError;
+      }
     },
     onSuccess: (data: any) => {
+      console.log('onSuccess - setting link token');
       setLinkToken(data.link_token);
     },
     onError: (error: Error) => {
+      console.error('=== Plaid Link Token Error ===');
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Full error:', error);
+      
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -127,7 +150,7 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
       } else {
         toast({
           title: "Error",
-          description: "Failed to initialize bank connection. Please try again.",
+          description: error.message || "Failed to initialize bank connection. Please try again.",
           variant: "destructive",
         });
       }
