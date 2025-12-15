@@ -4586,9 +4586,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({ link_token: response.data.link_token });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating link token:", error);
-      res.status(500).json({ message: "Failed to create link token" });
+      if (error?.response?.data) {
+        console.error("Plaid API error details:", JSON.stringify(error.response.data, null, 2));
+      }
+      const errorMessage = error?.response?.data?.error_message || "Failed to create link token";
+      res.status(500).json({ message: errorMessage });
     }
   });
 
