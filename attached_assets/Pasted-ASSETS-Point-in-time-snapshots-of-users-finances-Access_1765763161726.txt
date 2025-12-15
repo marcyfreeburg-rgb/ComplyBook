@@ -1,0 +1,166 @@
+ASSETS
+
+Point-in-time snapshots of users' finances
+
+Access detailed borrower information directly from their bank account and gather an in-depth snapshot of a borrowers' finances.
+
+
+AUTH
+
+ENABLED
+Instantly verify bank accounts
+
+Verify account ownership and share bank account information from 12K+ financial institutions in the U.S., Canada, and Europe.
+
+0/200
+
+
+BALANCE
+
+Verify real-time account balances
+
+Enables access either via the Balance endpoint, or through the Signal payments risk platform to reduce the risk of insufficient funds.
+
+
+CONSUMER REPORT - BASE
+
+Base report for cash flow insights
+
+Fill in the gaps with real-time, consumer-permissioned reports powered by Plaid Check, a consumer reporting agency (US).
+
+
+INCOME INSIGHTS (ADD ON)
+
+Base REQUIRED
+Assess financial stability with insights
+
+Get details on categorized income streams along with ready-made, model-driven attributes like historical gross and net income (US).
+
+
+PARTNER INSIGHTS (ADD ON)
+
+NOT ELIGIBLE
+View credit card and mortgage data
+
+Get off-the-shelf cash flow risk scores based on de-identified deposit account data (US).
+
+
+ENRICH
+
+Turn messy transaction data into user insights
+
+Cleanse, categorize, and enhance data generated from your card products and bank accounts, or from non-Plaid sources (US, CA).
+
+
+IDENTITY
+
+ENABLED
+Verify bank account ownership
+
+Verify new user identities using bank data and reduce fraud losses and help prevent account takeover.
+
+0/200
+
+
+IDENTITY MATCH (ADD ON)
+
+Identity REQUIRED
+Improve onboarding conversion
+
+Match identity data against the owners' identity information on connected accounts (US, CA, UK, EU).
+
+
+IDENTITY VERIFICATION
+
+Verify good users and stop bad ones in seconds
+
+Prevent sophisticated attacks and reduces fraud losses with an anti-fraud engine that analyzes hundreds of risk signals.
+
+
+INCOME
+
+Verify income and employment
+
+Choose from one of three methods to securely verify income and employment: payroll, bank, or document uploaded data (US, CA, UK).
+
+
+INVESTMENTS
+
+Build a holistic view of a user's investments
+
+Gain insight into a user's investment accounts, including balances, holdings, and transactions that create a change in a holding (US, CA).
+
+
+INVESTMENTS REFRESH (ADD ON)
+
+Investments REQUIRED
+Refresh investments data
+
+Initiate an on-demand extraction to fetch the newest investment holdings and transactions (US).
+
+
+INVESTMENTS MOVE
+
+Reduce rejections with broker-sourced data
+
+Streamline transfers with broker-sourced account numbers, account holder names, holdings data, and DTC codes (US, CA).
+
+
+LIABILITIES
+
+Access debt information
+
+View account information for credit cards, PayPal credit accounts, private student loans, and mortgages (US, CA).
+
+
+MONITOR
+
+Screen for fraud
+
+Detect if your customers are on government watchlists, using modern APIs that reduce false positives and increase efficiency.
+
+
+SIGNAL TRANSACTION SCORES
+
+NOT ELIGIBLE
+ACH risk assessment and scoring
+
+Enhance your risk program with two predictive scores that indicate the likelihood of an ACH return (US).
+
+
+STATEMENTS
+
+Retrieve a PDF copy of a user's financial statement
+
+Simplify the process of collecting documents for loan verification purposes or rental application review purposes, among others (US).
+
+
+TRANSACTIONS
+
+View up to 24 months of transactions data
+
+Use Transactions to create budgeting tools and tailored recommendations that help your users achieve their financial goals.
+
+
+RECURRING TRANSACTIONS (ADD ON)
+
+Transactions REQUIRED
+Fetch recurring streams
+
+Receive a summary of the recurring expenses and deposits from a user's checking, savings or credit card (US, CA, UK).
+
+
+TRANSACTIONS REFRESH (ADD ON)
+
+Transactions REQUIRED
+Refresh transactions data
+
+Initiate an on-demand extraction to fetch the newest transactions. Notifies you proactively when new transactions are available.
+
+
+TRANSFER
+
+UPGRADE PLAN
+Transfer money safely and quickly
+
+With Plaid Transfer, you can optimize for revenue at every stage of the user journey. ACH, RTP, and FedNow payment processing (US).
