@@ -384,14 +384,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only allow updating invoice-related fields
-      const allowedFields: (keyof InsertOrganization)[] = [
+      const allowedFields = [
         'logoUrl', 'companyName', 'companyAddress', 'companyPhone', 
         'companyEmail', 'companyWebsite', 'taxId', 'invoicePrefix', 'invoiceNotes',
         'invoicePrimaryColor', 'invoiceAccentColor', 'invoiceFontFamily', 'invoiceTemplate',
         'invoicePaymentTerms', 'invoicePaymentMethods', 'invoiceFooter'
-      ];
+      ] as const;
       
-      const updates: Partial<InsertOrganization> = {};
+      const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
           updates[field] = req.body[field];
