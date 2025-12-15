@@ -107,7 +107,7 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   const createLinkToken = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', `/api/plaid/create-link-token/${currentOrganization.id}`, {});
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       setLinkToken(data.link_token);
