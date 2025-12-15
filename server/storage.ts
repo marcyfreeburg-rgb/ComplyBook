@@ -1181,7 +1181,20 @@ export class DatabaseStorage implements IStorage {
   async getOrganizations(userId: string): Promise<Array<Organization & { userRole: string }>> {
     // Special handling for super admin users - they can see all organizations
     const superAdminUserIds = ['local_admin_default', 'local_admin_marcy'];
-    if (superAdminUserIds.includes(userId)) {
+    const superAdminEmails = ['admin@complybook.net', 'marcy.freeburg@gmail.com'];
+    
+    // Check by user ID first
+    let isSuperAdmin = superAdminUserIds.includes(userId);
+    
+    // If not found by ID, check by email
+    if (!isSuperAdmin) {
+      const user = await this.getUser(userId);
+      if (user && superAdminEmails.includes(user.email.toLowerCase())) {
+        isSuperAdmin = true;
+      }
+    }
+    
+    if (isSuperAdmin) {
       const allOrgs = await db.select().from(organizations);
       return allOrgs.map(org => ({
         ...org,
@@ -1270,7 +1283,20 @@ export class DatabaseStorage implements IStorage {
   async getUserRole(userId: string, organizationId: number): Promise<UserOrganizationRole | undefined> {
     // Special handling for super admin users - they have admin access to all organizations
     const superAdminUserIds = ['local_admin_default', 'local_admin_marcy'];
-    if (superAdminUserIds.includes(userId)) {
+    const superAdminEmails = ['admin@complybook.net', 'marcy.freeburg@gmail.com'];
+    
+    // Check by user ID first
+    let isSuperAdmin = superAdminUserIds.includes(userId);
+    
+    // If not found by ID, check by email
+    if (!isSuperAdmin) {
+      const user = await this.getUser(userId);
+      if (user && superAdminEmails.includes(user.email.toLowerCase())) {
+        isSuperAdmin = true;
+      }
+    }
+    
+    if (isSuperAdmin) {
       // Return a synthetic admin role for super admin users
       return {
         id: -1,
