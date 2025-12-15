@@ -2445,6 +2445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Set the logo as public so it can be accessed via /objects/* route
         const rawPath = uploadUrl.split('?')[0];
         logoPath = await objectStorageService.trySetObjectEntityAclPolicy(rawPath, {
+          owner: userId,
           visibility: 'public',
         });
       } else {
