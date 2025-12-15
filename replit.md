@@ -1,6 +1,18 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## Recent Updates (December 6, 2025)
+## Recent Updates (December 15, 2025)
+
+**Plaid Access Token Encryption - COMPLETED**
+- Plaid access tokens are now encrypted at rest using AES-256-GCM (same as account/routing numbers)
+- Encryption handled transparently in storage layer (`server/storage.ts`)
+- Helper functions in `server/encryption.ts`: `encryptAccessToken()`, `decryptAccessToken()`, `isTokenEncrypted()`
+- Backwards compatible: decrypts encrypted tokens, safely handles legacy plaintext tokens with warning
+- Migration script: `npx tsx server/migrateAccessTokens.ts` - encrypts existing plaintext tokens
+- Requires `ENCRYPTION_KEY` environment variable (32+ characters)
+
+---
+
+## Previous Updates (December 6, 2025)
 
 **Local Authentication & Password Management - COMPLETED**
 - Local email/password authentication fallback for non-Replit deployments
