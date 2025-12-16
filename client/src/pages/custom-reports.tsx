@@ -127,6 +127,49 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     queryKey: ["/api/categories", currentOrganization.id],
   });
 
+  // Build hierarchical category display with "Parent - Subcategory" format
+  const getCategoryDisplayName = (category: Category): string => {
+    if (category.parentCategoryId) {
+      const parent = categories.find(c => c.id === category.parentCategoryId);
+      if (parent) {
+        return `${parent.name} - ${category.name}`;
+      }
+    }
+    return category.name;
+  };
+
+  // Build hierarchical list of categories (parents first, then children)
+  const buildHierarchicalCategories = (): Category[] => {
+    const childrenMap = new Map<number | null, Category[]>();
+    categories.forEach(cat => {
+      const key = cat.parentCategoryId;
+      if (!childrenMap.has(key)) {
+        childrenMap.set(key, []);
+      }
+      childrenMap.get(key)!.push(cat);
+    });
+    
+    // Sort children within each parent
+    childrenMap.forEach(children => {
+      children.sort((a, b) => a.name.localeCompare(b.name));
+    });
+    
+    // Recursively build hierarchical list
+    const buildList = (parentId: number | null): Category[] => {
+      const result: Category[] = [];
+      const children = childrenMap.get(parentId) || [];
+      children.forEach(child => {
+        result.push(child);
+        result.push(...buildList(child.id));
+      });
+      return result;
+    };
+    
+    return buildList(null);
+  };
+
+  const hierarchicalCategories = buildHierarchicalCategories();
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       console.log("[CreateReport] Submitting data:", JSON.stringify(data, null, 2));
@@ -433,44 +476,48 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                               <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-full p-0" align="start">
+                          <PopoverContent className="w-[300px] p-0" align="start">
                             <ScrollArea className="h-60">
                               <div className="p-2 space-y-1">
-                                {categories.length === 0 ? (
+                                {hierarchicalCategories.length === 0 ? (
                                   <p className="text-sm text-muted-foreground p-2">No categories found</p>
                                 ) : (
-                                  categories.map((category) => (
-                                    <div
-                                      key={category.id}
-                                      className="flex items-center space-x-2 p-2 rounded hover-elevate cursor-pointer"
-                                      onClick={() => {
-                                        setFilterCategoryIds(prev =>
-                                          prev.includes(category.id)
-                                            ? prev.filter(id => id !== category.id)
-                                            : [...prev, category.id]
-                                        );
-                                      }}
-                                    >
-                                      <Checkbox
-                                        id={`category-${category.id}`}
-                                        checked={filterCategoryIds.includes(category.id)}
-                                        onCheckedChange={() => {
+                                  hierarchicalCategories.map((category) => {
+                                    const isSubcategory = category.parentCategoryId !== null;
+                                    const displayName = getCategoryDisplayName(category);
+                                    return (
+                                      <div
+                                        key={category.id}
+                                        className={`flex items-center space-x-2 p-2 rounded hover-elevate cursor-pointer ${isSubcategory ? 'ml-4' : ''}`}
+                                        onClick={() => {
                                           setFilterCategoryIds(prev =>
                                             prev.includes(category.id)
                                               ? prev.filter(id => id !== category.id)
                                               : [...prev, category.id]
                                           );
                                         }}
-                                        data-testid={`checkbox-category-${category.id}`}
-                                      />
-                                      <label
-                                        htmlFor={`category-${category.id}`}
-                                        className="text-sm cursor-pointer flex-1"
                                       >
-                                        {category.name}
-                                      </label>
-                                    </div>
-                                  ))
+                                        <Checkbox
+                                          id={`category-${category.id}`}
+                                          checked={filterCategoryIds.includes(category.id)}
+                                          onCheckedChange={() => {
+                                            setFilterCategoryIds(prev =>
+                                              prev.includes(category.id)
+                                                ? prev.filter(id => id !== category.id)
+                                                : [...prev, category.id]
+                                            );
+                                          }}
+                                          data-testid={`checkbox-category-${category.id}`}
+                                        />
+                                        <label
+                                          htmlFor={`category-${category.id}`}
+                                          className="text-sm cursor-pointer flex-1"
+                                        >
+                                          {isSubcategory ? category.name : <span className="font-medium">{category.name}</span>}
+                                        </label>
+                                      </div>
+                                    );
+                                  })
                                 )}
                               </div>
                             </ScrollArea>
@@ -486,7 +533,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                                   variant="secondary"
                                   className="text-xs"
                                 >
-                                  {cat.name}
+                                  {getCategoryDisplayName(cat)}
                                   <button
                                     className="ml-1 hover:text-destructive"
                                     onClick={() => setFilterCategoryIds(prev => prev.filter(id => id !== catId))}
