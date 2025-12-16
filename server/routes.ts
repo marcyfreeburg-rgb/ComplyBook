@@ -7862,6 +7862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // MFA was disabled while session was pending - clear the pending flag
         (req.session as any).mfaPending = false;
         (req.session as any).mfaVerified = true;
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err: any) => err ? reject(err) : resolve());
+        });
         return res.json({ success: true, message: "MFA not required" });
       }
       
@@ -7897,9 +7900,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await storage.updateMfaBackupCodes(userId, remainingCodes);
         
-        // Mark MFA as verified in session
+        // Mark MFA as verified in session and save
         (req.session as any).mfaPending = false;
         (req.session as any).mfaVerified = true;
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err: any) => err ? reject(err) : resolve());
+        });
         
         await storage.logSecurityEvent({
           eventType: 'login_success',
@@ -7941,9 +7947,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Invalid verification code" });
         }
         
-        // Mark MFA as verified in session
+        // Mark MFA as verified in session and save
         (req.session as any).mfaPending = false;
         (req.session as any).mfaVerified = true;
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err: any) => err ? reject(err) : resolve());
+        });
         
         await storage.logSecurityEvent({
           eventType: 'login_success',
