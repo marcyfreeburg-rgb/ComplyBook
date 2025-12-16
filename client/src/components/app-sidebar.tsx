@@ -4,7 +4,7 @@ import {
   ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, 
   DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, 
   Award, ShieldCheck, Sparkles, Database, Shield, FileSpreadsheet,
-  ChevronDown, ArrowDownCircle, ArrowUpCircle, LineChart, Cog
+  ChevronDown, ArrowDownCircle, ArrowUpCircle, LineChart, Cog, HandHeart
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,9 +52,121 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
 
   const isAdminOrOwner = currentOrganization?.userRole === 'owner' || currentOrganization?.userRole === 'admin';
   const isNonprofit = currentOrganization?.type === 'nonprofit';
-  const isForprofit = currentOrganization?.type === 'forprofit';
 
-  const menuGroups: MenuGroup[] = [
+  const nonprofitMenuGroups: MenuGroup[] = [
+    {
+      title: "Home",
+      icon: Home,
+      defaultOpen: true,
+      items: [
+        { title: "Dashboard", url: "/", icon: Home },
+      ],
+    },
+    {
+      title: "Donors & Fundraising",
+      icon: HandHeart,
+      items: [
+        { title: "Donors", url: "/donors", icon: Heart },
+        { title: "Pledges", url: "/pledges", icon: CalendarCheck },
+        { title: "Recurring Donations", url: "/recurring-transactions", icon: Clock },
+        { title: "Donation Letters", url: "/donation-letters", icon: FileDown },
+        { title: "Fundraising Hub", url: "/fundraising-hub", icon: Sparkles },
+      ],
+    },
+    {
+      title: "Revenue & Grants",
+      icon: ArrowDownCircle,
+      items: [
+        { title: "Invoices", url: "/invoices", icon: File },
+        { title: "Clients", url: "/clients", icon: Users },
+        { title: "Grants", url: "/grants", icon: Gift },
+        { title: "Government Grants", url: "/government-grants", icon: Award },
+        { title: "Funds", url: "/funds", icon: PiggyBank },
+      ],
+    },
+    {
+      title: "Programs & Expenses",
+      icon: ArrowUpCircle,
+      items: [
+        { title: "Programs", url: "/programs", icon: Folder },
+        { title: "Expenses", url: "/transactions", icon: Receipt },
+        { title: "Vendors", url: "/vendors", icon: Truck },
+        { title: "Bills", url: "/bills", icon: FileX },
+        { title: "Bill Payments", url: "/bill-payments", icon: DollarSign },
+        { title: "Expense Approvals", url: "/expense-approvals", icon: ClipboardCheck },
+        { title: "Categories", url: "/categories", icon: Tag },
+      ],
+    },
+    {
+      title: "Payroll & People",
+      icon: UserCog,
+      items: [
+        { title: "Payroll", url: "/payroll", icon: DollarSign },
+        { title: "Employees", url: "/employees", icon: UserCog },
+        { title: "Deductions", url: "/deductions", icon: Calculator },
+      ],
+    },
+    {
+      title: "Budgets & Planning",
+      icon: TrendingUp,
+      items: [
+        { title: "Budgets", url: "/budgets", icon: TrendingUp },
+        { title: "Cash Flow", url: "/cash-flow", icon: BarChart3 },
+      ],
+    },
+    {
+      title: "Bank & Accounting",
+      icon: Landmark,
+      items: [
+        { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+        { title: "Bank Reconciliation", url: "/bank-reconciliation", icon: CheckSquare },
+        { title: "Accounting Imports", url: "/accounting-imports", icon: FileSpreadsheet },
+      ],
+    },
+    {
+      title: "Reports & Compliance",
+      icon: LineChart,
+      items: [
+        { title: "Reports", url: "/reports", icon: FileText },
+        { title: "Analytics", url: "/analytics", icon: TrendingUp },
+        { title: "Custom Reports", url: "/custom-reports", icon: FileLineChart },
+        { title: "Functional Expense Report", url: "/functional-expense-report", icon: FileBarChart },
+        { title: "Form 990 Report", url: "/form-990-report", icon: FileCheck },
+        { title: "Tax Reporting", url: "/tax-reporting", icon: Calculator },
+        { title: "Compliance", url: "/compliance-dashboard", icon: ShieldCheck },
+        ...(isAdminOrOwner ? [
+          { title: "Audit Trail", url: "/audit-trail", icon: History },
+        ] : []),
+      ],
+    },
+    {
+      title: "Operations & Security",
+      icon: Shield,
+      items: [
+        { title: "Operations Hub", url: "/operations-hub", icon: Database },
+        ...(isAdminOrOwner ? [
+          { title: "Security Monitoring", url: "/security-monitoring", icon: Shield },
+        ] : []),
+      ],
+    },
+    ...(isAdminOrOwner ? [{
+      title: "Organization & Settings",
+      icon: Cog,
+      items: [
+        { title: "Organizations", url: "/organizations", icon: Building2 },
+        { title: "Brand Settings", url: "/brand-settings", icon: FileSliders },
+        { title: "Settings", url: "/settings", icon: Settings },
+      ],
+    }] : [{
+      title: "Settings",
+      icon: Settings,
+      items: [
+        { title: "Settings", url: "/settings", icon: Settings },
+      ],
+    }]),
+  ];
+
+  const forprofitMenuGroups: MenuGroup[] = [
     {
       title: "Home",
       icon: Home,
@@ -70,18 +182,8 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Invoices", url: "/invoices", icon: File },
         { title: "Clients", url: "/clients", icon: Users },
         { title: "Recurring Income", url: "/recurring-transactions", icon: Clock },
-        ...(isForprofit ? [
-          { title: "Government Contracts", url: "/government-contracts", icon: Briefcase },
-          { title: "Contracts Hub", url: "/government-contracts-hub", icon: Sparkles },
-        ] : []),
-        ...(isNonprofit ? [
-          { title: "Donors", url: "/donors", icon: Heart },
-          { title: "Donation Letters", url: "/donation-letters", icon: FileDown },
-          { title: "Fundraising Hub", url: "/fundraising-hub", icon: Sparkles },
-          { title: "Grants", url: "/grants", icon: Gift },
-          { title: "Pledges", url: "/pledges", icon: CalendarCheck },
-          { title: "Government Grants", url: "/government-grants", icon: Award },
-        ] : []),
+        { title: "Government Contracts", url: "/government-contracts", icon: Briefcase },
+        { title: "Contracts Hub", url: "/government-contracts-hub", icon: Sparkles },
       ],
     },
     {
@@ -111,10 +213,6 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Budgets", url: "/budgets", icon: TrendingUp },
         { title: "Categories", url: "/categories", icon: Tag },
         { title: "Cash Flow", url: "/cash-flow", icon: BarChart3 },
-        ...(isNonprofit ? [
-          { title: "Funds", url: "/funds", icon: PiggyBank },
-          { title: "Programs", url: "/programs", icon: Folder },
-        ] : []),
       ],
     },
     {
@@ -134,10 +232,6 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Analytics", url: "/analytics", icon: TrendingUp },
         { title: "Custom Reports", url: "/custom-reports", icon: FileLineChart },
         { title: "Tax Reporting", url: "/tax-reporting", icon: Calculator },
-        ...(isNonprofit ? [
-          { title: "Functional Expense Report", url: "/functional-expense-report", icon: FileBarChart },
-          { title: "Form 990 Report", url: "/form-990-report", icon: FileCheck },
-        ] : []),
       ],
     },
     {
@@ -148,9 +242,6 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         ...(isAdminOrOwner ? [
           { title: "Audit Trail", url: "/audit-trail", icon: History },
           { title: "Security Monitoring", url: "/security-monitoring", icon: Shield },
-        ] : []),
-        ...(isNonprofit ? [
-          { title: "Compliance", url: "/compliance-dashboard", icon: ShieldCheck },
         ] : []),
       ],
     },
@@ -170,6 +261,8 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       ],
     }]),
   ];
+
+  const menuGroups = isNonprofit ? nonprofitMenuGroups : forprofitMenuGroups;
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
