@@ -4873,7 +4873,10 @@ export class DatabaseStorage implements IStorage {
         if (filters?.type && filters.type !== 'all') {
           query = query.where(eq(transactions.type, filters.type));
         }
-        if (filters?.categoryId) {
+        // Support both legacy single categoryId and new categoryIds array
+        if (filters?.categoryIds && Array.isArray(filters.categoryIds) && filters.categoryIds.length > 0) {
+          query = query.where(inArray(transactions.categoryId, filters.categoryIds));
+        } else if (filters?.categoryId) {
           query = query.where(eq(transactions.categoryId, parseInt(filters.categoryId)));
         }
         if (filters?.minAmount) {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Organization } from "@shared/schema";
+import type { Organization, Category } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,9 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Play, Save, Download, Trash2, Edit } from "lucide-react";
+import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 
 type CustomReport = {
@@ -106,7 +109,8 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCategoryId, setFilterCategoryId] = useState("");
+  const [filterCategoryIds, setFilterCategoryIds] = useState<number[]>([]);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [filterMinAmount, setFilterMinAmount] = useState("");
   const [filterMaxAmount, setFilterMaxAmount] = useState("");
   const [sortBy, setSortBy] = useState("none");
@@ -116,6 +120,11 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
 
   const { data: reports = [], isLoading } = useQuery<CustomReport[]>({
     queryKey: ["/api/custom-reports", currentOrganization.id],
+  });
+
+  // Fetch categories for the dropdown
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories", currentOrganization.id],
   });
 
   const createMutation = useMutation({
@@ -187,7 +196,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     setSelectedFields([]);
     setFilterType("all");
     setFilterStatus("all");
-    setFilterCategoryId("");
+    setFilterCategoryIds([]);
     setFilterMinAmount("");
     setFilterMaxAmount("");
     setSortBy("none");
@@ -210,7 +219,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     const filters: any = {};
     if (filterType && filterType !== "all") filters.type = filterType;
     if (filterStatus && filterStatus !== "all") filters.status = filterStatus;
-    if (filterCategoryId) filters.categoryId = filterCategoryId;
+    if (filterCategoryIds.length > 0) filters.categoryIds = filterCategoryIds;
     if (filterMinAmount) filters.minAmount = filterMinAmount;
     if (filterMaxAmount) filters.maxAmount = filterMaxAmount;
 
@@ -242,7 +251,14 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     const filters = report.filters || {};
     setFilterType(filters.type || "all");
     setFilterStatus(filters.status || "all");
-    setFilterCategoryId(filters.categoryId || "");
+    // Handle both legacy single categoryId and new categoryIds array
+    if (filters.categoryIds) {
+      setFilterCategoryIds(filters.categoryIds);
+    } else if (filters.categoryId) {
+      setFilterCategoryIds([parseInt(filters.categoryId)]);
+    } else {
+      setFilterCategoryIds([]);
+    }
     setFilterMinAmount(filters.minAmount || "");
     setFilterMaxAmount(filters.maxAmount || "");
     setSortBy(report.sortBy || "none");
@@ -396,15 +412,93 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
-                        <Label htmlFor="filterCategory" className="text-sm">Category ID</Label>
-                        <Input
-                          id="filterCategory"
-                          data-testid="input-filter-category"
-                          value={filterCategoryId}
-                          onChange={(e) => setFilterCategoryId(e.target.value)}
-                          placeholder="Category ID"
-                        />
+                      <div className="col-span-2">
+                        <Label className="text-sm">Categories</Label>
+                        <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={categoryPopoverOpen}
+                              className="w-full justify-between font-normal"
+                              data-testid="button-filter-categories"
+                            >
+                              {filterCategoryIds.length === 0 ? (
+                                <span className="text-muted-foreground">Select categories...</span>
+                              ) : (
+                                <span className="truncate">
+                                  {filterCategoryIds.length} {filterCategoryIds.length === 1 ? "category" : "categories"} selected
+                                </span>
+                              )}
+                              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <ScrollArea className="h-60">
+                              <div className="p-2 space-y-1">
+                                {categories.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground p-2">No categories found</p>
+                                ) : (
+                                  categories.map((category) => (
+                                    <div
+                                      key={category.id}
+                                      className="flex items-center space-x-2 p-2 rounded hover-elevate cursor-pointer"
+                                      onClick={() => {
+                                        setFilterCategoryIds(prev =>
+                                          prev.includes(category.id)
+                                            ? prev.filter(id => id !== category.id)
+                                            : [...prev, category.id]
+                                        );
+                                      }}
+                                    >
+                                      <Checkbox
+                                        id={`category-${category.id}`}
+                                        checked={filterCategoryIds.includes(category.id)}
+                                        onCheckedChange={() => {
+                                          setFilterCategoryIds(prev =>
+                                            prev.includes(category.id)
+                                              ? prev.filter(id => id !== category.id)
+                                              : [...prev, category.id]
+                                          );
+                                        }}
+                                        data-testid={`checkbox-category-${category.id}`}
+                                      />
+                                      <label
+                                        htmlFor={`category-${category.id}`}
+                                        className="text-sm cursor-pointer flex-1"
+                                      >
+                                        {category.name}
+                                      </label>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
+                        {filterCategoryIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {filterCategoryIds.map(catId => {
+                              const cat = categories.find(c => c.id === catId);
+                              return cat ? (
+                                <Badge
+                                  key={catId}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {cat.name}
+                                  <button
+                                    className="ml-1 hover:text-destructive"
+                                    onClick={() => setFilterCategoryIds(prev => prev.filter(id => id !== catId))}
+                                    data-testid={`button-remove-category-${catId}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="filterMinAmount" className="text-sm">Min Amount</Label>
