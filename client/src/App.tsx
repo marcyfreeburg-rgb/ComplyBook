@@ -55,21 +55,26 @@ import GovernmentContractsHub from "@/pages/government-contracts-hub";
 import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
+import MfaSetup from "@/pages/mfa-setup";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
+import { Link } from "wouter";
 
 // Organization with user role
 type OrganizationWithRole = Organization & { userRole: string };
 
 // MFA Status type
 type MfaStatus = {
+  mfaEnabled: boolean;
   mfaRequired: boolean;
   mfaGracePeriodEnd: string | null;
   gracePeriodExpired: boolean;
   daysRemaining: number | null;
+  backupCodesRemaining: number;
 };
 
 function AuthenticatedApp() {
@@ -181,18 +186,18 @@ function AuthenticatedApp() {
           </header>
           
           {/* MFA Warning Banner */}
-          {mfaStatus?.mfaRequired && (
+          {mfaStatus?.mfaRequired && !mfaStatus?.mfaEnabled && (
             <Alert 
               variant={mfaStatus.gracePeriodExpired ? "destructive" : "default"} 
               className="mx-6 mt-4 rounded-md"
               data-testid="alert-mfa-warning"
             >
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
+              <AlertDescription className="flex items-center justify-between gap-4 flex-wrap">
                 {mfaStatus.gracePeriodExpired ? (
                   <span>
                     <strong>Multi-factor authentication required.</strong> Your grace period has expired. 
-                    Some administrative functions are now restricted. Please contact your administrator.
+                    Some administrative functions are now restricted.
                   </span>
                 ) : (
                   <span>
@@ -200,6 +205,11 @@ function AuthenticatedApp() {
                     to set up MFA before access to administrative functions is restricted.
                   </span>
                 )}
+                <Link href="/mfa-setup">
+                  <Button size="sm" variant={mfaStatus.gracePeriodExpired ? "secondary" : "default"} data-testid="button-setup-mfa-banner">
+                    Set Up MFA
+                  </Button>
+                </Link>
               </AlertDescription>
             </Alert>
           )}
@@ -426,6 +436,12 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/settings">
                 <Settings 
+                  currentOrganization={currentOrganization}
+                  user={user!}
+                />
+              </Route>
+              <Route path="/mfa-setup">
+                <MfaSetup 
                   currentOrganization={currentOrganization}
                   user={user!}
                 />
