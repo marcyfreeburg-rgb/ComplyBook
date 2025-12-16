@@ -397,9 +397,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.id);
       
+      console.log(`[Invoice Settings] User ${userId} updating org ${organizationId}`);
+      
       // Check user has owner or admin role
       const userRole = await storage.getUserRole(userId, organizationId);
+      console.log(`[Invoice Settings] User role:`, userRole);
+      
       if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        console.log(`[Invoice Settings] Access denied - role: ${userRole?.role}`);
         return res.status(403).json({ message: "Only owners and admins can update invoice settings" });
       }
 
@@ -418,10 +423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log(`[Invoice Settings] Updating with fields:`, Object.keys(updates));
       const updated = await storage.updateOrganization(organizationId, updates);
+      console.log(`[Invoice Settings] Update successful`);
       res.json(updated);
-    } catch (error) {
-      console.error("Error updating invoice settings:", error);
+    } catch (error: any) {
+      console.error("[Invoice Settings] Error:", error?.message || error);
       res.status(400).json({ message: "Failed to update invoice settings" });
     }
   });
