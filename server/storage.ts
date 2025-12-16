@@ -214,6 +214,14 @@ export interface IStorage {
   checkMfaGracePeriod(userId: string): Promise<{ expired: boolean; daysRemaining: number | null }>;
   updateMfaNotification(userId: string): Promise<User>;
   getUsersRequiringMfa(): Promise<User[]>;
+  
+  // MFA TOTP implementation (NIST 800-53 IA-2(1))
+  setupMfaSecret(userId: string, encryptedSecret: string): Promise<User>;
+  enableMfa(userId: string, hashedBackupCodes: string[]): Promise<User>;
+  disableMfa(userId: string): Promise<User>;
+  getMfaSecret(userId: string): Promise<string | null>;
+  getMfaBackupCodes(userId: string): Promise<string[] | null>;
+  updateMfaBackupCodes(userId: string, hashedBackupCodes: string[]): Promise<User>;
 
   // Security event logging (NIST 800-53 AU-2, AC-7)
   logSecurityEvent(event: InsertSecurityEvent): Promise<SecurityEvent>;
@@ -987,6 +995,71 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.mfaRequired, true));
+  }
+  
+  // MFA TOTP implementation (NIST 800-53 IA-2(1))
+  async setupMfaSecret(userId: string, encryptedSecret: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        mfaSecret: encryptedSecret,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+  
+  async enableMfa(userId: string, hashedBackupCodes: string[]): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        mfaEnabled: true,
+        mfaBackupCodes: hashedBackupCodes,
+        mfaVerifiedAt: new Date(),
+        mfaGracePeriodEnd: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+  
+  async disableMfa(userId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        mfaEnabled: false,
+        mfaSecret: null,
+        mfaBackupCodes: null,
+        mfaVerifiedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+  
+  async getMfaSecret(userId: string): Promise<string | null> {
+    const user = await this.getUser(userId);
+    return user?.mfaSecret || null;
+  }
+  
+  async getMfaBackupCodes(userId: string): Promise<string[] | null> {
+    const user = await this.getUser(userId);
+    return (user?.mfaBackupCodes as string[] | null) || null;
+  }
+  
+  async updateMfaBackupCodes(userId: string, hashedBackupCodes: string[]): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        mfaBackupCodes: hashedBackupCodes,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 
   // Security event logging (NIST 800-53 AU-2, AC-7)

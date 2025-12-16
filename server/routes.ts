@@ -7559,12 +7559,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const gracePeriodCheck = await storage.checkMfaGracePeriod(userId);
+      const backupCodes = await storage.getMfaBackupCodes(userId);
       
       res.json({
+        mfaEnabled: user.mfaEnabled,
         mfaRequired: user.mfaRequired,
         mfaGracePeriodEnd: user.mfaGracePeriodEnd,
+        mfaVerifiedAt: user.mfaVerifiedAt,
         gracePeriodExpired: gracePeriodCheck.expired,
         daysRemaining: gracePeriodCheck.daysRemaining,
+        backupCodesRemaining: backupCodes?.length || 0,
       });
     } catch (error) {
       console.error("Error fetching MFA status:", error);
@@ -7607,6 +7611,342 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting MFA requirement:", error);
       res.status(500).json({ message: "Failed to set MFA requirement" });
+    }
+  });
+
+  // MFA TOTP implementation endpoints (NIST 800-53 IA-2(1))
+  
+  // Begin MFA setup - generates secret and QR code
+  app.post('/api/security/mfa/setup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.mfaEnabled) {
+        return res.status(400).json({ message: "MFA is already enabled. Disable it first to set up again." });
+      }
+      
+      const { generateTotpSecret, createTotpUri, generateQrCodeDataUrl } = await import('./mfa');
+      const { encryptField } = await import('./encryption');
+      
+      const secret = generateTotpSecret();
+      const uri = createTotpUri(secret, user.email || userId);
+      const qrCode = await generateQrCodeDataUrl(uri);
+      
+      const encryptedSecret = encryptField(secret);
+      await storage.setupMfaSecret(userId, encryptedSecret);
+      
+      res.json({
+        secret,
+        qrCode,
+        message: "Scan the QR code with your authenticator app, then verify with a code",
+      });
+    } catch (error) {
+      console.error("Error setting up MFA:", error);
+      res.status(500).json({ message: "Failed to set up MFA" });
+    }
+  });
+  
+  // Verify MFA code and complete setup
+  app.post('/api/security/mfa/verify-setup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { code } = req.body;
+      
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ message: "Verification code is required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.mfaEnabled) {
+        return res.status(400).json({ message: "MFA is already enabled" });
+      }
+      
+      const encryptedSecret = await storage.getMfaSecret(userId);
+      if (!encryptedSecret) {
+        return res.status(400).json({ message: "MFA setup not initiated. Please start setup first." });
+      }
+      
+      const { verifyTotp, generateBackupCodes, hashBackupCode } = await import('./mfa');
+      const { decryptField } = await import('./encryption');
+      
+      const secret = decryptField(encryptedSecret);
+      const isValid = verifyTotp(secret, code);
+      
+      if (!isValid) {
+        await storage.logSecurityEvent({
+          eventType: 'login_failure',
+          severity: 'warning',
+          userId,
+          email: user.email,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            action: 'mfa_setup_verification_failed',
+          },
+        });
+        return res.status(400).json({ message: "Invalid verification code. Please try again." });
+      }
+      
+      const backupCodes = generateBackupCodes();
+      const hashedBackupCodes = backupCodes.map(hashBackupCode);
+      
+      await storage.enableMfa(userId, hashedBackupCodes);
+      
+      await storage.logSecurityEvent({
+        eventType: 'login_success',
+        severity: 'info',
+        userId,
+        email: user.email,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          action: 'mfa_enabled',
+        },
+      });
+      
+      res.json({
+        success: true,
+        backupCodes,
+        message: "MFA has been enabled. Save your backup codes in a secure location.",
+      });
+    } catch (error) {
+      console.error("Error verifying MFA setup:", error);
+      res.status(500).json({ message: "Failed to verify MFA setup" });
+    }
+  });
+  
+  // Verify MFA code during login
+  app.post('/api/security/mfa/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { code, isBackupCode } = req.body;
+      
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ message: "Verification code is required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!user.mfaEnabled) {
+        return res.status(400).json({ message: "MFA is not enabled for this account" });
+      }
+      
+      const encryptedSecret = await storage.getMfaSecret(userId);
+      if (!encryptedSecret) {
+        return res.status(400).json({ message: "MFA configuration error" });
+      }
+      
+      if (isBackupCode) {
+        const { verifyBackupCode } = await import('./mfa');
+        const backupCodes = await storage.getMfaBackupCodes(userId);
+        
+        if (!backupCodes || backupCodes.length === 0) {
+          return res.status(400).json({ message: "No backup codes available" });
+        }
+        
+        const { valid, remainingCodes } = verifyBackupCode(code, backupCodes);
+        
+        if (!valid) {
+          await storage.logSecurityEvent({
+            eventType: 'login_failure',
+            severity: 'warning',
+            userId,
+            email: user.email,
+            ipAddress: req.ip || req.socket.remoteAddress || null,
+            userAgent: req.get('user-agent') || null,
+            eventData: {
+              action: 'mfa_backup_code_failed',
+            },
+          });
+          return res.status(400).json({ message: "Invalid backup code" });
+        }
+        
+        await storage.updateMfaBackupCodes(userId, remainingCodes);
+        
+        await storage.logSecurityEvent({
+          eventType: 'login_success',
+          severity: 'info',
+          userId,
+          email: user.email,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            action: 'mfa_backup_code_used',
+            remainingBackupCodes: remainingCodes.length,
+          },
+        });
+        
+        res.json({
+          success: true,
+          remainingBackupCodes: remainingCodes.length,
+          message: "Backup code verified successfully",
+        });
+      } else {
+        const { verifyTotp } = await import('./mfa');
+        const { decryptField } = await import('./encryption');
+        
+        const secret = decryptField(encryptedSecret);
+        const isValid = verifyTotp(secret, code);
+        
+        if (!isValid) {
+          await storage.logSecurityEvent({
+            eventType: 'login_failure',
+            severity: 'warning',
+            userId,
+            email: user.email,
+            ipAddress: req.ip || req.socket.remoteAddress || null,
+            userAgent: req.get('user-agent') || null,
+            eventData: {
+              action: 'mfa_verification_failed',
+            },
+          });
+          return res.status(400).json({ message: "Invalid verification code" });
+        }
+        
+        await storage.logSecurityEvent({
+          eventType: 'login_success',
+          severity: 'info',
+          userId,
+          email: user.email,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            action: 'mfa_verified',
+          },
+        });
+        
+        res.json({
+          success: true,
+          message: "MFA verification successful",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying MFA:", error);
+      res.status(500).json({ message: "Failed to verify MFA" });
+    }
+  });
+  
+  // Disable MFA (requires current MFA code)
+  app.post('/api/security/mfa/disable', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { code } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!user.mfaEnabled) {
+        return res.status(400).json({ message: "MFA is not enabled" });
+      }
+      
+      const encryptedSecret = await storage.getMfaSecret(userId);
+      if (!encryptedSecret) {
+        return res.status(400).json({ message: "MFA configuration error" });
+      }
+      
+      const { verifyTotp } = await import('./mfa');
+      const { decryptField } = await import('./encryption');
+      
+      const secret = decryptField(encryptedSecret);
+      const isValid = verifyTotp(secret, code);
+      
+      if (!isValid) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+      
+      await storage.disableMfa(userId);
+      
+      await storage.logSecurityEvent({
+        eventType: 'login_success',
+        severity: 'warning',
+        userId,
+        email: user.email,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          action: 'mfa_disabled',
+        },
+      });
+      
+      res.json({
+        success: true,
+        message: "MFA has been disabled",
+      });
+    } catch (error) {
+      console.error("Error disabling MFA:", error);
+      res.status(500).json({ message: "Failed to disable MFA" });
+    }
+  });
+  
+  // Regenerate backup codes
+  app.post('/api/security/mfa/regenerate-backup-codes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { code } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!user.mfaEnabled) {
+        return res.status(400).json({ message: "MFA is not enabled" });
+      }
+      
+      const encryptedSecret = await storage.getMfaSecret(userId);
+      if (!encryptedSecret) {
+        return res.status(400).json({ message: "MFA configuration error" });
+      }
+      
+      const { verifyTotp, generateBackupCodes, hashBackupCode } = await import('./mfa');
+      const { decryptField } = await import('./encryption');
+      
+      const secret = decryptField(encryptedSecret);
+      const isValid = verifyTotp(secret, code);
+      
+      if (!isValid) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+      
+      const backupCodes = generateBackupCodes();
+      const hashedBackupCodes = backupCodes.map(hashBackupCode);
+      
+      await storage.updateMfaBackupCodes(userId, hashedBackupCodes);
+      
+      await storage.logSecurityEvent({
+        eventType: 'login_success',
+        severity: 'info',
+        userId,
+        email: user.email,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          action: 'mfa_backup_codes_regenerated',
+        },
+      });
+      
+      res.json({
+        success: true,
+        backupCodes,
+        message: "Backup codes have been regenerated. Save them in a secure location.",
+      });
+    } catch (error) {
+      console.error("Error regenerating backup codes:", error);
+      res.status(500).json({ message: "Failed to regenerate backup codes" });
     }
   });
 
