@@ -56,6 +56,7 @@ import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
 import MfaSetup from "@/pages/mfa-setup";
+import MfaVerify from "@/pages/mfa-verify";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
 import type { Organization } from "@shared/schema";
@@ -469,6 +470,17 @@ function Router() {
   // Allow pricing page for both authenticated and non-authenticated users
   if (location === '/pricing' || location.startsWith('/pricing')) {
     return <Pricing />;
+  }
+
+  // Handle MFA verification page for authenticated users with pending MFA
+  if (location === '/mfa-verify') {
+    if (isLoading) {
+      return <Landing />;
+    }
+    if (isAuthenticated) {
+      return <MfaVerify />;
+    }
+    return <Landing />;
   }
 
   if (isLoading) {

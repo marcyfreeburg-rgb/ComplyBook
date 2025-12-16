@@ -135,9 +135,36 @@ async function setupReplitAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any, info: any) => {
+      if (err) {
+        return next(err);
+      }
+      if (!user) {
+        return res.redirect("/api/login");
+      }
+      
+      req.login(user, async (loginErr) => {
+        if (loginErr) {
+          return next(loginErr);
+        }
+        
+        // Check if user has MFA enabled
+        const claims = user.claims;
+        if (claims?.sub) {
+          const dbUser = await storage.getUser(claims.sub);
+          if (dbUser?.mfaEnabled) {
+            // MFA is required - redirect to MFA verification page
+            (req.session as any).mfaPending = true;
+            (req.session as any).mfaVerified = false;
+            return res.redirect("/mfa-verify");
+          }
+        }
+        
+        // No MFA required - proceed to home
+        (req.session as any).mfaVerified = true;
+        (req.session as any).mfaPending = false;
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 
@@ -315,17 +342,40 @@ async function setupLocalAuth(app: Express) {
         await storage.clearFailedLoginAttempts(email);
       }
 
-      req.session.regenerate((regenerateErr) => {
+      req.session.regenerate(async (regenerateErr) => {
         if (regenerateErr) {
           return res.status(500).json({ message: "Session error" });
         }
         
-        req.logIn(user, (loginErr) => {
+        req.logIn(user, async (loginErr) => {
           if (loginErr) {
             return res.status(500).json({ message: "Login failed" });
           }
+          
+          // Check if user has MFA enabled
+          const dbUser = await storage.getUser(user.claims.sub);
+          if (dbUser?.mfaEnabled) {
+            // MFA is required - return pending status
+            (req.session as any).mfaPending = true;
+            (req.session as any).mfaVerified = false;
+            return res.json({ 
+              success: true,
+              mfaRequired: true,
+              user: {
+                id: user.claims.sub,
+                email: user.claims.email,
+                firstName: user.claims.first_name,
+                lastName: user.claims.last_name,
+              }
+            });
+          }
+          
+          // No MFA required
+          (req.session as any).mfaVerified = true;
+          (req.session as any).mfaPending = false;
           return res.json({ 
             success: true, 
+            mfaRequired: false,
             user: {
               id: user.claims.sub,
               email: user.claims.email,
@@ -486,11 +536,31 @@ export const requireMfaCompliance: RequestHandler = async (req, res, next) => {
   next();
 };
 
+// Check if user is authenticated but MFA verification is pending
+export const isAuthenticatedAllowPendingMfa: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+
+  if (!req.isAuthenticated() || !user.expires_at) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  return next();
+};
+
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Check if MFA verification is pending
+  if ((req.session as any).mfaPending === true && (req.session as any).mfaVerified !== true) {
+    return res.status(403).json({ 
+      message: "MFA verification required",
+      code: "MFA_VERIFICATION_PENDING",
+      mfaPending: true 
+    });
   }
 
   const now = Date.now();

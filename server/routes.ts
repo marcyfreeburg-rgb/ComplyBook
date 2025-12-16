@@ -8,7 +8,7 @@ import { storage } from "./storage";
 
 // Check if we're in a Replit environment
 const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
-import { setupAuth, isAuthenticated, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
@@ -7835,6 +7835,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying MFA:", error);
       res.status(500).json({ message: "Failed to verify MFA" });
+    }
+  });
+  
+  // Verify MFA code during login (for pending MFA sessions)
+  app.post('/api/auth/mfa/verify-login', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { code, isBackupCode } = req.body;
+      
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ message: "Verification code is required" });
+      }
+      
+      // Check if MFA is actually pending
+      if (!(req.session as any).mfaPending) {
+        return res.status(400).json({ message: "No MFA verification pending" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!user.mfaEnabled) {
+        // MFA was disabled while session was pending - clear the pending flag
+        (req.session as any).mfaPending = false;
+        (req.session as any).mfaVerified = true;
+        return res.json({ success: true, message: "MFA not required" });
+      }
+      
+      const encryptedSecret = await storage.getMfaSecret(userId);
+      if (!encryptedSecret) {
+        return res.status(400).json({ message: "MFA configuration error" });
+      }
+      
+      if (isBackupCode) {
+        const { verifyBackupCode } = await import('./mfa');
+        const backupCodes = await storage.getMfaBackupCodes(userId);
+        
+        if (!backupCodes || backupCodes.length === 0) {
+          return res.status(400).json({ message: "No backup codes available" });
+        }
+        
+        const { valid, remainingCodes } = verifyBackupCode(code, backupCodes);
+        
+        if (!valid) {
+          await storage.logSecurityEvent({
+            eventType: 'login_failure',
+            severity: 'warning',
+            userId,
+            email: user.email,
+            ipAddress: req.ip || req.socket.remoteAddress || null,
+            userAgent: req.get('user-agent') || null,
+            eventData: {
+              action: 'mfa_login_backup_code_failed',
+            },
+          });
+          return res.status(400).json({ message: "Invalid backup code" });
+        }
+        
+        await storage.updateMfaBackupCodes(userId, remainingCodes);
+        
+        // Mark MFA as verified in session
+        (req.session as any).mfaPending = false;
+        (req.session as any).mfaVerified = true;
+        
+        await storage.logSecurityEvent({
+          eventType: 'login_success',
+          severity: 'info',
+          userId,
+          email: user.email,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            action: 'mfa_login_backup_code_verified',
+            remainingBackupCodes: remainingCodes.length,
+          },
+        });
+        
+        res.json({
+          success: true,
+          remainingBackupCodes: remainingCodes.length,
+          message: "Login verified with backup code",
+        });
+      } else {
+        const { verifyTotp } = await import('./mfa');
+        const { decryptField } = await import('./encryption');
+        
+        const secret = decryptField(encryptedSecret);
+        const isValid = verifyTotp(secret, code);
+        
+        if (!isValid) {
+          await storage.logSecurityEvent({
+            eventType: 'login_failure',
+            severity: 'warning',
+            userId,
+            email: user.email,
+            ipAddress: req.ip || req.socket.remoteAddress || null,
+            userAgent: req.get('user-agent') || null,
+            eventData: {
+              action: 'mfa_login_verification_failed',
+            },
+          });
+          return res.status(400).json({ message: "Invalid verification code" });
+        }
+        
+        // Mark MFA as verified in session
+        (req.session as any).mfaPending = false;
+        (req.session as any).mfaVerified = true;
+        
+        await storage.logSecurityEvent({
+          eventType: 'login_success',
+          severity: 'info',
+          userId,
+          email: user.email,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            action: 'mfa_login_verified',
+          },
+        });
+        
+        res.json({
+          success: true,
+          message: "Login MFA verification successful",
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying login MFA:", error);
+      res.status(500).json({ message: "Failed to verify MFA" });
+    }
+  });
+  
+  // Check MFA login pending status
+  app.get('/api/auth/mfa/login-status', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const mfaPending = (req.session as any).mfaPending === true;
+      const mfaVerified = (req.session as any).mfaVerified === true;
+      
+      const user = await storage.getUser(userId);
+      const backupCodesRemaining = user?.mfaBackupCodes?.length || 0;
+      
+      res.json({
+        mfaPending,
+        mfaVerified,
+        backupCodesRemaining,
+        userId,
+      });
+    } catch (error) {
+      console.error("Error checking MFA login status:", error);
+      res.status(500).json({ message: "Failed to check MFA status" });
     }
   });
   
