@@ -424,6 +424,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`[Invoice Settings] Updating with fields:`, Object.keys(updates));
+      
+      // Check if organization exists first
+      const existingOrg = await storage.getOrganization(organizationId);
+      if (!existingOrg) {
+        console.log(`[Invoice Settings] Organization ${organizationId} not found`);
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
       const updated = await storage.updateOrganization(organizationId, updates);
       console.log(`[Invoice Settings] Update successful`);
       res.json(updated);
