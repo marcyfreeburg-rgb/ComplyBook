@@ -298,7 +298,11 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
       return client as Client;
     },
     onSuccess: (newClient: Client) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients', currentOrganization.id] });
+      // Update the cache immediately with the new client to avoid race conditions
+      queryClient.setQueryData(
+        ['/api/clients', currentOrganization.id],
+        (oldData: Client[] | undefined) => [...(oldData || []), newClient]
+      );
       toast({
         title: "Success",
         description: "Customer created successfully",
