@@ -85,7 +85,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
   const { toast } = useToast();
   
   const { data: metrics, isLoading } = useQuery<SecurityMetrics>({
-    queryKey: ['/api/security/metrics', organizationId],
+    queryKey: [`/api/security/metrics/${organizationId}`],
   });
 
   const { data: vulnSummary, isLoading: vulnLoading } = useQuery<VulnerabilityScanSummary>({

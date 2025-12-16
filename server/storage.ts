@@ -1031,9 +1031,8 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(securityEventLog);
     
     const conditions = [];
-    if (filters?.organizationId !== undefined) {
-      conditions.push(eq(securityEventLog.organizationId, filters.organizationId));
-    }
+    // Note: organizationId filter is not applied as the security_event_log table
+    // does not have an organizationId column - security events are system-wide
     if (filters?.userId) {
       conditions.push(eq(securityEventLog.userId, filters.userId));
     }
@@ -1050,7 +1049,9 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(securityEventLog.timestamp, filters.endDate));
     }
 
-    if (conditions.length > 0) {
+    if (conditions.length === 1) {
+      query = query.where(conditions[0]) as any;
+    } else if (conditions.length > 1) {
       query = query.where(and(...conditions)) as any;
     }
 
