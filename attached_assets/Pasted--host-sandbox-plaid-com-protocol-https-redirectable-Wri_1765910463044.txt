@@ -1,0 +1,140 @@
+      host: 'sandbox.plaid.com',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      [Symbol(shapeMode)]: false,
+      [Symbol(kCapture)]: false,
+      [Symbol(kBytesWritten)]: 0,
+      [Symbol(kNeedDrain)]: false,
+      [Symbol(corked)]: 0,
+      [Symbol(kChunkedBuffer)]: [],
+      [Symbol(kChunkedLength)]: 0,
+      [Symbol(kSocket)]: [TLSSocket],
+      [Symbol(kOutHeaders)]: [Object: null prototype],
+      [Symbol(errored)]: null,
+      [Symbol(kHighWaterMark)]: 65536,
+      [Symbol(kRejectNonStandardBodyWrites)]: false,
+      [Symbol(kUniqueHeaders)]: null
+    },
+    data: {
+      display_message: null,
+      documentation_url: 'https://plaid.com/docs/?ref=error#invalid-input-errors',
+      error_code: 'INVALID_API_KEYS',
+      error_message: 'invalid client_id or secret provided',
+      error_type: 'INVALID_INPUT',
+      request_id: 'd86GoAAtJfVTXvE',
+      suggested_action: null
+    }
+  },
+  status: 400
+}
+Plaid API error details: {
+  "display_message": null,
+  "documentation_url": "https://plaid.com/docs/?ref=error#invalid-input-errors",
+  "error_code": "INVALID_API_KEYS",
+  "error_message": "invalid client_id or secret provided",
+  "error_type": "INVALID_INPUT",
+  "request_id": "d86GoAAtJfVTXvE",
+  "suggested_action": null
+}
+6:16:43 PM [express] POST /api/plaid/create-link-token/113 500 in 1070ms :: {"message":"invalid clie…
+6:16:58 PM [express] GET /api/notifications/113/unread-count 304 in 803ms :: {"count":"0"}
+6:17:35 PM [express] GET /api/notifications/166/unread-count 200 in 408ms :: {"count":"0"}
+6:17:35 PM [express] GET /api/dashboard/166 200 in 782ms :: {"totalIncome":"0","totalExpenses":"0","…
+6:17:35 PM [express] GET /api/budgets/166 200 in 796ms :: []
+6:17:36 PM [express] GET /api/dashboard/166/category-breakdown 200 in 973ms :: {"incomeByCategory":[…
+6:17:36 PM [express] GET /api/dashboard/166/monthly-trends 200 in 1554ms :: [{"month":"Jul 2025","in…
+6:18:06 PM [express] GET /api/notifications/166/unread-count 304 in 796ms :: {"count":"0"}
+6:18:37 PM [express] GET /api/notifications/166/unread-count 304 in 802ms :: {"count":"0"}
+6:18:40 PM [express] GET /api/logout 302 in 333ms
+6:18:42 PM [express] GET /api/auth/user 401 in 131ms :: {"message":"Unauthorized"}
+     ==> Deploying...
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+6:22:11 PM [express] serving on port 10000
+     ==> Your service is live 🎉
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+     ==> 
+     ==> Available at your primary URL https://complybook.net + 2 more domains
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 0 total (0 active, 0 archived)
+     ==> Detected service running on port 10000
+     ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+6:28:02 PM [express] GET /api/auth/user 401 in 136ms :: {"message":"Unauthorized"}
+6:28:04 PM [express] GET /api/auth/mode 304 in 133ms :: {"mode":"local"}
+6:28:06 PM [express] POST /api/login 200 in 1049ms :: {"success":true,"user":{"id":"local_admin_defa…
+6:28:07 PM [express] GET /api/auth/user 304 in 202ms :: {"id":"local_admin_default","email":"admin@c…
+6:28:07 PM [express] GET /api/organizations 200 in 217ms :: []
+6:28:07 PM [express] GET /api/security/mfa/status 304 in 460ms :: {"mfaRequired":false,"mfaGracePeri…
+6:28:27 PM [express] POST /api/organizations 201 in 902ms :: {"id":167,"name":"J & M SOLUTIONS, LLC"…
+6:28:27 PM [express] GET /api/organizations 200 in 197ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC"…
+6:28:28 PM [express] GET /api/notifications/167/unread-count 200 in 404ms :: {"count":"0"}
+6:28:28 PM [express] GET /api/budgets/167 200 in 595ms :: []
+6:28:28 PM [express] GET /api/dashboard/167/monthly-trends 200 in 948ms :: [{"month":"Jul 2025","inc…
+6:28:28 PM [express] GET /api/dashboard/167/category-breakdown 200 in 1023ms :: {"incomeByCategory":…
+6:28:28 PM [express] GET /api/dashboard/167 200 in 1013ms :: {"totalIncome":"0","totalExpenses":"0",…
+6:28:33 PM [express] GET /api/organizations 304 in 198ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC"…
+6:28:42 PM [express] POST /api/organizations/167/logo 200 in 210ms :: {"id":167,"name":"J & M SOLUTI…
+6:28:42 PM [express] GET /api/organizations 200 in 198ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC"…
+6:28:43 PM [express] GET /api/organizations 304 in 603ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC"…
+6:28:59 PM [express] GET /api/notifications/167/unread-count 304 in 767ms :: {"count":"0"}
+6:29:30 PM [express] GET /api/notifications/167/unread-count 304 in 799ms :: {"count":"0"}
+6:30:01 PM [express] GET /api/notifications/167/unread-count 304 in 797ms :: {"count":"0"}
+Encryption error: Error: ENCRYPTION_KEY must be at least 32 characters for AES-256 encryption.
+    at getEncryptionKey (file:///opt/render/project/src/dist/index.js:2729:11)
+    at encryptField (file:///opt/render/project/src/dist/index.js:2739:17)
+    at DatabaseStorage.updateOrganization (file:///opt/render/project/src/dist/index.js:3689:61)
+    at file:///opt/render/project/src/dist/index.js:8726:37
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Error updating invoice settings: Error: Failed to encrypt sensitive field
+    at encryptField (file:///opt/render/project/src/dist/index.js:2753:11)
+    at DatabaseStorage.updateOrganization (file:///opt/render/project/src/dist/index.js:3689:61)
+    at file:///opt/render/project/src/dist/index.js:8726:37
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+6:30:31 PM [express] PATCH /api/organizations/167/invoice-settings 400 in 506ms :: {"message":"Faile…
+6:30:31 PM [express] GET /api/notifications/167/unread-count 304 in 399ms :: {"count":"0"}
+6:31:02 PM [express] GET /api/notifications/167/unread-count 304 in 774ms :: {"count":"0"}
+6:31:34 PM [express] GET /api/notifications/167/unread-count 304 in 776ms :: {"count":"0"}
+6:32:05 PM [express] GET /api/notifications/167/unread-count 304 in 799ms :: {"count":"0"}
+6:32:36 PM [express] GET /api/notifications/167/unread-count 304 in 791ms :: {"count":"0"}
+6:33:07 PM [express] GET /api/notifications/167/unread-count 304 in 798ms :: {"count":"0"}
+6:33:38 PM [express] GET /api/notifications/167/unread-count 304 in 808ms :: {"count":"0"}
+6:34:09 PM [express] GET /api/notifications/167/unread-count 304 in 812ms :: {"count":"0"}
+6:34:40 PM [express] GET /api/notifications/167/unread-count 304 in 768ms :: {"count":"0"}
+6:34:59 PM [express] GET /api/logout 302 in 907ms
+6:35:00 PM [express] GET /api/auth/user 401 in 125ms :: {"message":"Unauthorized"}
+     ==> Deploying...
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+Initializing Stripe integration...
+[Auth] Non-Replit environment detected, using local authentication
+[Auth] Local authentication mode enabled (Replit environment not detected)
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+6:37:28 PM [express] serving on port 10000
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 0 total (0 active, 0 archived)
+     ==> Your service is live 🎉
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+     ==> 
+     ==> Available at your primary URL https://complybook.net + 2 more domains
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+6:38:01 PM [express] GET /api/auth/user 401 in 132ms :: {"message":"Unauthorized"}
+6:38:19 PM [express] GET /api/auth/user 401 in 132ms :: {"message":"Unauthorized"}
+6:38:21 PM [express] GET /api/auth/mode 304 in 129ms :: {"mode":"local"}
+6:38:25 PM [express] POST /api/login 200 in 3000ms :: {"success":true,"user":{"id":"local_admin_defa…
+6:38:26 PM [express] GET /api/auth/user 200 in 191ms :: {"id":"local_admin_default","email":"admin@c…
+6:38:26 PM [express] GET /api/security/mfa/status 304 in 260ms :: {"mfaRequired":false,"mfaGracePeri…
+6:38:26 PM [express] GET /api/organizations 304 in 426ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC"…
+6:38:27 PM [express] GET /api/notifications/167/unread-count 304 in 216ms :: {"count":"0"}
+6:38:27 PM [express] GET /api/dashboard/167/category-breakdown 304 in 408ms :: {"incomeByCategory":[…
+6:38:27 PM [express] GET /api/budgets/167 304 in 600ms :: []
+6:38:28 PM [express] GET /api/dashboard/167 304 in 1003ms :: {"totalIncome":"0","totalExpenses":"0",…
+6:38:28 PM [express] GET /api/dashboard/167/monthly-trends 304 in 1336ms :: [{"month":"Jul 2025","in…
+6:38:32 PM [express] GET /api/organizations 304 in 200ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC"…
