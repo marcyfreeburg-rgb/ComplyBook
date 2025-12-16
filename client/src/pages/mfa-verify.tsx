@@ -30,12 +30,8 @@ export default function MfaVerify() {
 
   const verifyMutation = useMutation({
     mutationFn: async ({ code, isBackupCode }: { code: string; isBackupCode: boolean }) => {
-      const response = await apiRequest('/api/auth/mfa/verify-login', {
-        method: 'POST',
-        body: JSON.stringify({ code, isBackupCode }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      return response;
+      const response = await apiRequest('POST', '/api/auth/mfa/verify-login', { code, isBackupCode });
+      return response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/mfa/login-status'] });

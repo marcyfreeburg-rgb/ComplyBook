@@ -1,6 +1,32 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## Recent Updates (December 15, 2025)
+## Recent Updates (December 16, 2025)
+
+**TOTP-Based Multi-Factor Authentication - COMPLETED**
+- Full TOTP-based MFA implementation using authenticator apps (Google Authenticator, Authy, etc.)
+- Database schema: `mfaSecret`, `mfaEnabled`, `mfaBackupCodes`, `mfaVerifiedAt` fields in users table
+- MFA secrets encrypted at rest using AES-256-GCM (same as other sensitive data)
+- Generates 10 backup codes (hashed with SHA-256) during MFA setup
+- MFA utility functions in `server/mfa.ts`: `generateTotpSecret()`, `verifyTotp()`, `generateBackupCodes()`, `hashBackupCode()`, `verifyBackupCode()`
+- API Endpoints:
+  - `POST /api/security/mfa/setup` - Initiates MFA setup, returns secret and QR code URI
+  - `POST /api/security/mfa/verify-setup` - Verifies TOTP code and enables MFA
+  - `POST /api/auth/mfa/verify-login` - Verifies MFA during login flow
+  - `GET /api/auth/mfa/login-status` - Returns pending MFA status
+  - `POST /api/security/mfa/verify` - Verifies TOTP for authenticated users
+  - `POST /api/security/mfa/disable` - Disables MFA (requires current TOTP code)
+  - `POST /api/security/mfa/regenerate-backup-codes` - Regenerates backup codes
+- Frontend pages:
+  - `/mfa-setup` - MFA setup wizard with QR code display and backup codes
+  - `/mfa-verify` - MFA verification during login
+- Session-based MFA tracking: `mfaPending` and `mfaVerified` session flags
+- `isAuthenticatedAllowPendingMfa` middleware for MFA verification endpoints
+- MFA warning banner in App.tsx links to setup page (only shows when MFA required but not enabled)
+- Requires `ENCRYPTION_KEY` environment variable for secret encryption
+
+---
+
+## Previous Updates (December 15, 2025)
 
 **Plaid Access Token Encryption - COMPLETED**
 - Plaid access tokens are now encrypted at rest using AES-256-GCM (same as account/routing numbers)
