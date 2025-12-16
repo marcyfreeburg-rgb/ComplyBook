@@ -1,0 +1,81 @@
+Main Menu Groups for Non-Profits (Suggested Order & Grouping)
+
+Home
+Dashboard
+
+Donors & Fundraising
+Donors
+Pledges
+Recurring (recurring donations/pledges)
+Donation Letters
+Fundraising Hub
+
+Revenue & Grants (Money coming in)
+Invoices (for events, sponsorships, or billable services)
+Clients (corporate sponsors or fee-for-service)
+Grants
+Government Grants
+Funds (restricted/unrestricted tracking)
+
+Programs & Expenses (Money going out)
+Programs
+Transactions (or rename to “Expenses”)
+Vendors
+Bills
+Bill Payments
+Expense Approvals
+Categories
+Recurring (recurring expenses)
+
+Payroll & People
+Payroll
+Employees
+Deductions
+
+Budgets & Planning
+Budgets
+Cash Flow
+
+Bank & Accounting
+Bank Accounts
+Bank Reconciliation
+Accounting Imports
+
+Reports & Compliance
+Reports
+Analytics
+Custom Reports
+Functional Expense Report
+Form 990 Report
+Tax Reporting
+Compliance
+Audit Trail
+
+Operations & Security
+Operations Hub
+Security Monitoring
+
+Organization & Settings (Admin / Board / Executive only)
+Organizations (multi-chapter or multi-entity switcher)
+Brand Settings
+Settings
+
+
+Benefits of This Structure
+
+Reduces visible items from ~38 → 10 top-level groups (over 70% less scrolling)
+Highly intuitive for non-profit staff and board members (“Where do I record a donation?” → Donors & Fundraising; “How are we spending on programs?” → Programs & Expenses)
+Groups key non-profit features together (e.g., donors/pledges, grants/funds, functional/Form 990 reporting)
+Extremely easy to implement role-based permissions: hide/show entire groups (e.g., hide Payroll from volunteers, hide Organization & Settings from program staff)
+Works perfectly with collapsible/expandable sidebars – everything is 1–2 clicks away
+
+Optional Enhancements
+
+Add a Quick Access top bar with the most-used items: Dashboard | Donors | Transactions | Grants | Reports
+Use meaningful icons (e.g., heart for Donors & Fundraising, grant/document for Revenue & Grants, chart-pie for Reports & Compliance)
+Suggested renames for clarity:
+“Transactions” → “Expenses” or “Spending”
+“Clients” → “Sponsors” (if primarily corporate partners)
+
+
+This layout draws from successful non-profit platforms like Bloomerang, DonorPerfect, Aplos, and Blackbaud, making it feel familiar to development directors, finance teams, and executive staff. Let me know if you'd like adjustments for specific user roles (e.g., development vs. finance vs. program manager)!
