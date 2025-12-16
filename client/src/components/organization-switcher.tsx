@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Organization } from "@shared/schema";
 
 interface OrganizationSwitcherProps {
@@ -34,7 +35,16 @@ export function OrganizationSwitcher({
           className="h-10 gap-2 px-3"
           data-testid="button-organization-switcher"
         >
-          <Building2 className="h-4 w-4" />
+          {currentOrg?.logoUrl ? (
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={currentOrg.logoUrl} alt={currentOrg.name} className="object-contain" />
+              <AvatarFallback className="text-xs">
+                <Building2 className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <Building2 className="h-4 w-4" />
+          )}
           <div className="flex flex-col items-start min-w-0 flex-1">
             <span className="text-sm font-medium truncate max-w-[200px]">
               {currentOrg?.name || "Select Organization"}
@@ -60,7 +70,16 @@ export function OrganizationSwitcher({
             className="flex items-center gap-2 cursor-pointer"
             data-testid={`option-organization-${org.id}`}
           >
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            {org.logoUrl ? (
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={org.logoUrl} alt={org.name} className="object-contain" />
+                <AvatarFallback className="text-xs">
+                  <Building2 className="h-3 w-3" />
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{org.name}</p>
               <Badge variant="secondary" className="mt-1">
