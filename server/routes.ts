@@ -5187,6 +5187,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invoice routes
+  
+  // Get next invoice number for organization
+  app.get('/api/invoices/:organizationId/next-number', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const invoices = await storage.getInvoices(organizationId);
+      
+      // Find the highest invoice number and increment
+      let maxNumber = 0;
+      for (const invoice of invoices) {
+        // Extract number from invoice number (handles formats like "INV-001", "001", "1")
+        const match = invoice.invoiceNumber.match(/(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+      
+      const nextNumber = maxNumber + 1;
+      const nextInvoiceNumber = `INV-${nextNumber.toString().padStart(3, '0')}`;
+      
+      res.json({ nextInvoiceNumber });
+    } catch (error) {
+      console.error("Error getting next invoice number:", error);
+      res.status(500).json({ message: "Failed to get next invoice number" });
+    }
+  });
+
   app.get('/api/invoices/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

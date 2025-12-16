@@ -92,6 +92,12 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
     enabled: !!previewingInvoice,
   });
 
+  // Fetch next invoice number
+  const { data: nextInvoiceData, refetch: refetchNextInvoiceNumber } = useQuery<{ nextInvoiceNumber: string }>({
+    queryKey: ['/api/invoices', currentOrganization.id, 'next-number'],
+    enabled: false, // Only fetch when needed
+  });
+
   // Fetch fresh organization data with customization settings for preview
   const { data: organizationForPreview } = useQuery<Organization>({
     queryKey: ['/api/organizations', currentOrganization.id, 'full'],
@@ -360,6 +366,25 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
     });
   };
 
+  const handleOpenNewInvoice = async () => {
+    // Fetch the next invoice number
+    const result = await refetchNextInvoiceNumber();
+    const nextNumber = result.data?.nextInvoiceNumber || "";
+    
+    setEditingInvoice(null);
+    setFormData({
+      clientId: "none",
+      invoiceNumber: nextNumber,
+      issueDate: format(new Date(), "yyyy-MM-dd"),
+      dueDate: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+      status: "draft",
+      notes: "",
+      taxAmount: "0.00",
+      lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
+    });
+    setIsDialogOpen(true);
+  };
+
   const handleEdit = (invoice: Invoice & { clientName: string | null }) => {
     setEditingInvoice(invoice);
     setFormData({
@@ -450,7 +475,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
           <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
           <p className="text-muted-foreground">Manage invoices sent to clients</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-create-invoice">
+        <Button onClick={handleOpenNewInvoice} data-testid="button-create-invoice">
           <Plus className="w-4 h-4 mr-2" />
           Create Invoice
         </Button>
