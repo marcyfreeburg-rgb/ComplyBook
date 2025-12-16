@@ -336,6 +336,12 @@ export const users = pgTable("users", {
   mfaGracePeriodEnd: timestamp("mfa_grace_period_end"),
   lastMfaNotification: timestamp("last_mfa_notification"),
   
+  // NIST 800-53 IA-2(1): TOTP-based MFA implementation
+  mfaSecret: varchar("mfa_secret"), // Encrypted TOTP secret
+  mfaEnabled: boolean("mfa_enabled").default(false).notNull(), // Whether MFA is active
+  mfaBackupCodes: jsonb("mfa_backup_codes"), // Hashed backup codes
+  mfaVerifiedAt: timestamp("mfa_verified_at"), // When MFA was set up
+  
   // Stripe integration & subscription fields
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
