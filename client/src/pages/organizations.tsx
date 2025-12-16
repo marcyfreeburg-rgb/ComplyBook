@@ -25,9 +25,19 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Building2, Users, ArrowLeft } from "lucide-react";
+import { Plus, Building2, Users, ArrowLeft, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Organization, InsertOrganization, UserOrganizationRole } from "@shared/schema";
 
 interface OrganizationsProps {
@@ -42,6 +52,8 @@ interface OrganizationWithRole extends Organization {
 export default function Organizations({ onSelectOrganization, userId }: OrganizationsProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [organizationToDelete, setOrganizationToDelete] = useState<OrganizationWithRole | null>(null);
   const [formData, setFormData] = useState<Partial<InsertOrganization>>({
     name: '',
     type: 'forprofit',
@@ -102,6 +114,51 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
       });
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (organizationId: number) => {
+      return await apiRequest('DELETE', `/api/organizations/${organizationId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/organizations'] });
+      toast({
+        title: "Organization deleted",
+        description: "The organization and all its data have been permanently deleted.",
+      });
+      setDeleteDialogOpen(false);
+      setOrganizationToDelete(null);
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete organization. Only owners can delete organizations.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteClick = (e: React.MouseEvent, org: OrganizationWithRole) => {
+    e.stopPropagation(); // Prevent card click from firing
+    setOrganizationToDelete(org);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (organizationToDelete) {
+      deleteMutation.mutate(organizationToDelete.id);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,9 +312,22 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
                   <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <Building2 className="h-5 w-5 text-primary" />
                   </div>
-                  <Badge variant="secondary">
-                    {org.type === 'nonprofit' ? 'Non-Profit' : 'For-Profit'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {org.type === 'nonprofit' ? 'Non-Profit' : 'For-Profit'}
+                    </Badge>
+                    {org.userRole === 'owner' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => handleDeleteClick(e, org)}
+                        data-testid={`button-delete-organization-${org.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <CardTitle className="mt-4">{org.name}</CardTitle>
                 {org.description && (
@@ -281,6 +351,37 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{organizationToDelete?.name}</strong>? 
+              This action cannot be undone and will permanently delete all data associated 
+              with this organization, including transactions, invoices, bills, team members, 
+              and all other records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setOrganizationToDelete(null)}
+              data-testid="button-cancel-delete-organization"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete-organization"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete Organization"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

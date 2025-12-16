@@ -247,6 +247,7 @@ export interface IStorage {
   getOrganization(id: number): Promise<Organization | undefined>;
   createOrganization(org: InsertOrganization, userId: string): Promise<Organization>;
   updateOrganization(id: number, updates: Partial<InsertOrganization>): Promise<Organization>;
+  deleteOrganization(id: number): Promise<void>;
 
   // User organization role operations
   getUserRole(userId: string, organizationId: number): Promise<UserOrganizationRole | undefined>;
@@ -1277,6 +1278,11 @@ export class DatabaseStorage implements IStorage {
       ...updated,
       taxId: updated.taxId ? decryptField(updated.taxId) : null,
     };
+  }
+
+  async deleteOrganization(id: number): Promise<void> {
+    // Due to CASCADE constraints, all related data will be automatically deleted
+    await db.delete(organizations).where(eq(organizations.id, id));
   }
 
   // User organization role operations

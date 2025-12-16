@@ -472,6 +472,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete organization (owner only)
+  app.delete('/api/organizations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.id);
+      
+      // Check organization exists
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
+      // Only organization owner can delete
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role !== 'owner') {
+        return res.status(403).json({ message: "Only the organization owner can delete the organization" });
+      }
+
+      // Log the deletion for audit purposes
+      await storage.logSecurityEvent({
+        eventType: 'organization_deleted',
+        severity: 'warning',
+        userId: userId,
+        organizationId: organizationId,
+        email: null,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: {
+          organizationName: organization.name,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      // Delete the organization (cascades to all related data)
+      await storage.deleteOrganization(organizationId);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting organization:", error);
+      res.status(500).json({ message: "Failed to delete organization" });
+    }
+  });
+
   // Invitation routes
   app.post('/api/invitations/:organizationId', isAuthenticated, requireMfaCompliance, async (req: any, res) => {
     try {
