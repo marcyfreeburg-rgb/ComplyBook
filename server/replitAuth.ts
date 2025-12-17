@@ -352,15 +352,17 @@ async function setupLocalAuth(app: Express) {
             return res.status(500).json({ message: "Login failed" });
           }
           
-          // Check if user has MFA enabled
+          // Check if user has MFA enabled or required
           const dbUser = await storage.getUser(user.claims.sub);
+          
           if (dbUser?.mfaEnabled) {
-            // MFA is required - return pending status
+            // MFA is enabled - user needs to verify TOTP code
             (req.session as any).mfaPending = true;
             (req.session as any).mfaVerified = false;
             return res.json({ 
               success: true,
               mfaRequired: true,
+              mfaSetupRequired: false,
               user: {
                 id: user.claims.sub,
                 email: user.claims.email,
@@ -370,12 +372,35 @@ async function setupLocalAuth(app: Express) {
             });
           }
           
+          // Check if MFA is required but not yet set up (grace period expired)
+          if (dbUser?.mfaRequired && dbUser?.mfaGracePeriodEnd) {
+            const gracePeriodExpired = new Date() > new Date(dbUser.mfaGracePeriodEnd);
+            if (gracePeriodExpired) {
+              // MFA is required and grace period expired - user must set up MFA
+              (req.session as any).mfaPending = true;
+              (req.session as any).mfaVerified = false;
+              (req.session as any).mfaSetupRequired = true;
+              return res.json({ 
+                success: true, 
+                mfaRequired: true,
+                mfaSetupRequired: true,
+                user: {
+                  id: user.claims.sub,
+                  email: user.claims.email,
+                  firstName: user.claims.first_name,
+                  lastName: user.claims.last_name,
+                }
+              });
+            }
+          }
+          
           // No MFA required
           (req.session as any).mfaVerified = true;
           (req.session as any).mfaPending = false;
           return res.json({ 
             success: true, 
             mfaRequired: false,
+            mfaSetupRequired: false,
             user: {
               id: user.claims.sub,
               email: user.claims.email,

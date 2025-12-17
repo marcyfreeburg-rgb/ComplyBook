@@ -44,8 +44,13 @@ export default function Login() {
         queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         
         if (data.mfaRequired) {
-          // Redirect to MFA verification page
-          setLocation("/mfa-verify");
+          if (data.mfaSetupRequired) {
+            // Redirect to MFA setup page - user needs to set up MFA first
+            setLocation("/mfa-setup");
+          } else {
+            // Redirect to MFA verification page - user already has MFA set up
+            setLocation("/mfa-verify");
+          }
         } else {
           toast({
             title: "Login successful",

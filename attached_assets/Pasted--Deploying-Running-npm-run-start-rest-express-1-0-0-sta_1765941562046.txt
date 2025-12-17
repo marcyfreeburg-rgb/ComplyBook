@@ -1,0 +1,71 @@
+     ==> Deploying...
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+Initializing Stripe integration...
+[Auth] Non-Replit environment detected, using local authentication
+[Auth] Local authentication mode enabled (Replit environment not detected)
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+2:22:31 AM [express] serving on port 10000
+     ==> Your service is live 🎉
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+     ==> 
+     ==> Available at your primary URL https://complybook.net + 2 more domains
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 25 total (25 active, 0 archived)
+     ==> Detected service running on port 10000
+     ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+     ==> Deploying...
+Initializing Stripe integration...
+[Auth] Non-Replit environment detected, using local authentication
+[Auth] Local authentication mode enabled (Replit environment not detected)
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+3:11:38 AM [express] serving on port 10000
+     ==> Your service is live 🎉
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+     ==> 
+     ==> Available at your primary URL https://complybook.net + 2 more domains
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 25 total (25 active, 0 archived)
+3:14:34 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+3:14:38 AM [express] GET /api/auth/mode 200 in 1ms :: {"mode":"local"}
+3:14:44 AM [express] POST /api/login 200 in 1819ms :: {"success":true,"mfaRequired":false,"user":{"i…
+3:14:44 AM [express] GET /api/auth/user 200 in 192ms :: {"id":"local_admin_default","email":"admin@c…
+3:14:44 AM [express] GET /api/security/mfa/status 200 in 348ms :: {"mfaEnabled":false,"mfaRequired":…
+3:14:45 AM [express] GET /api/organizations 200 in 612ms :: [{"id":168,"name":"C Cubed Training","ty…
+3:14:45 AM [express] GET /api/notifications/168/unread-count 200 in 214ms :: {"count":"0"}
+3:14:45 AM [express] GET /api/dashboard/168 200 in 616ms :: {"totalIncome":"0","totalExpenses":"0","…
+3:14:46 AM [express] GET /api/dashboard/168/monthly-trends 200 in 1312ms :: [{"month":"Jul 2025","in…
+3:14:47 AM [express] GET /api/budgets/168 200 in 2607ms :: []
+3:14:48 AM [express] GET /api/dashboard/168/category-breakdown 200 in 2808ms :: {"incomeByCategory":…
+3:15:16 AM [express] GET /api/notifications/168/unread-count 304 in 801ms :: {"count":"0"}
+3:15:47 AM [express] GET /api/notifications/168/unread-count 304 in 809ms :: {"count":"0"}
+3:16:18 AM [express] GET /api/notifications/168/unread-count 304 in 789ms :: {"count":"0"}
+     ==> Detected service running on port 10000
+     ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+3:18:11 AM [express] GET /api/auth/user 401 in 133ms :: {"message":"Unauthorized"}
+3:18:18 AM [express] GET /api/auth/mode 304 in 131ms :: {"mode":"local"}
+3:18:24 AM [express] POST /api/login 200 in 3112ms :: {"success":true,"mfaRequired":false,"user":{"i…
+3:18:24 AM [express] GET /api/auth/user 200 in 199ms :: {"id":"local_admin_default","email":"admin@c…
+3:18:24 AM [express] GET /api/organizations 200 in 218ms :: [{"id":168,"name":"C Cubed Training","ty…
+3:18:25 AM [express] GET /api/dashboard/168/category-breakdown 304 in 437ms :: {"incomeByCategory":[…
+3:18:25 AM [express] GET /api/budgets/168 304 in 606ms :: []
+3:18:25 AM [express] GET /api/notifications/168/unread-count 304 in 829ms :: {"count":"0"}
+3:18:27 AM [express] GET /api/security/mfa/status 304 in 2930ms :: {"mfaEnabled":false,"mfaRequired"…
+3:18:27 AM [express] GET /api/dashboard/168 304 in 2806ms :: {"totalIncome":"0","totalExpenses":"0",…
+3:18:28 AM [express] GET /api/dashboard/168/monthly-trends 304 in 3324ms :: [{"month":"Jul 2025","in…
+3:18:31 AM [express] GET /api/notifications/167/unread-count 304 in 195ms :: {"count":"0"}
+3:18:31 AM [express] GET /api/budgets/167 304 in 216ms :: []
+3:18:31 AM [express] GET /api/dashboard/167/category-breakdown 304 in 396ms :: {"incomeByCategory":[…
+3:18:31 AM [express] GET /api/dashboard/167 304 in 605ms :: {"totalIncome":"0","totalExpenses":"0","…
+3:18:32 AM [express] GET /api/dashboard/167/monthly-trends 304 in 1135ms :: [{"month":"Jul 2025","in…
