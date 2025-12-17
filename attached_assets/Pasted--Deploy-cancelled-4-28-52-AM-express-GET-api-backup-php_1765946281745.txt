@@ -1,0 +1,36 @@
+     Deploy cancelled
+4:28:52 AM [express] GET /api/backup/phpinfo.php 200 in 1ms
+     ==> Deploying...
+> NODE_ENV=production node dist/index.js
+Initializing Stripe integration...
+[Auth] Non-Replit environment detected, using local authentication
+[Auth] Local authentication mode enabled (Replit environment not detected)
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+4:30:31 AM [express] serving on port 10000
+     ==> Your service is live 🎉
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+     ==> 
+     ==> Available at your primary URL https://complybook.net + 2 more domains
+     ==> 
+     ==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 25 total (25 active, 0 archived)
+     ==> Detected service running on port 10000
+     ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+4:36:30 AM [express] GET /api/auth/user 401 in 473ms :: {"message":"Session expired due to inactivit…
+4:36:33 AM [express] GET /api/auth/mode 304 in 65ms :: {"mode":"local"}
+4:36:37 AM [express] POST /api/login 200 in 786ms :: {"success":true,"mfaRequired":true,"mfaSetupReq…
+4:36:37 AM [express] GET /api/auth/user 403 in 134ms :: {"message":"MFA verification required","code…
+4:36:43 AM [express] GET /api/auth/mode 304 in 138ms :: {"mode":"local"}
+4:36:47 AM [express] POST /api/login 200 in 761ms :: {"success":true,"mfaRequired":true,"mfaSetupReq…
+4:36:47 AM [express] GET /api/auth/user 403 in 133ms :: {"message":"MFA verification required","code…
+4:36:53 AM [express] GET /api/auth/mode 304 in 134ms :: {"mode":"local"}
+4:36:56 AM [express] POST /api/login 200 in 739ms :: {"success":true,"mfaRequired":true,"mfaSetupReq…
+4:36:56 AM [express] GET /api/auth/user 403 in 128ms :: {"message":"MFA verification required","code…
+4:37:06 AM [express] GET /api/auth/user 401 in 590ms :: {"message":"Session expired due to inactivit…
+4:37:10 AM [express] GET /api/auth/mode 304 in 65ms :: {"mode":"local"}
+4:37:13 AM [express] POST /api/login 200 in 738ms :: {"success":true,"mfaRequired":true,"mfaSetupReq…
+4:37:13 AM [express] GET /api/auth/user 403 in 131ms :: {"message":"MFA verification required","code…

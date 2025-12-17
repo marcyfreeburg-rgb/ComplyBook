@@ -57,6 +57,7 @@ import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
 import MfaSetup from "@/pages/mfa-setup";
 import MfaVerify from "@/pages/mfa-verify";
+import MfaSetupLogin from "@/pages/mfa-setup-login";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
 import type { Organization } from "@shared/schema";
@@ -481,6 +482,15 @@ function Router() {
       return <MfaVerify />;
     }
     return <Landing />;
+  }
+
+  // Handle MFA setup login page for users who need to set up MFA during login
+  if (location === '/mfa-setup-login') {
+    if (isLoading) {
+      return <Landing />;
+    }
+    // Allow access even if not fully authenticated (MFA pending)
+    return <MfaSetupLogin />;
   }
 
   if (isLoading) {

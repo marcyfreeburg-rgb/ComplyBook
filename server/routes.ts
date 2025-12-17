@@ -7549,7 +7549,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // MFA enforcement endpoints (NIST 800-53 IA-2(1), IA-2(2))
-  app.get('/api/security/mfa/status', isAuthenticated, async (req: any, res) => {
+  // Use isAuthenticatedAllowPendingMfa to allow users in MFA setup flow to access this
+  app.get('/api/security/mfa/status', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -7617,7 +7618,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MFA TOTP implementation endpoints (NIST 800-53 IA-2(1))
   
   // Begin MFA setup - generates secret and QR code
-  app.post('/api/security/mfa/setup', isAuthenticated, async (req: any, res) => {
+  // Use isAuthenticatedAllowPendingMfa to allow users in MFA setup flow to access this
+  app.post('/api/security/mfa/setup', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -7652,7 +7654,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Verify MFA code and complete setup
-  app.post('/api/security/mfa/verify-setup', isAuthenticated, async (req: any, res) => {
+  // Use isAuthenticatedAllowPendingMfa to allow users in MFA setup flow to access this
+  app.post('/api/security/mfa/verify-setup', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { code } = req.body;
@@ -7700,6 +7703,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedBackupCodes = backupCodes.map(hashBackupCode);
       
       await storage.enableMfa(userId, hashedBackupCodes);
+      
+      // Clear MFA pending state - user has now completed MFA setup
+      (req.session as any).mfaPending = false;
+      (req.session as any).mfaVerified = true;
+      (req.session as any).mfaSetupRequired = false;
       
       await storage.logSecurityEvent({
         eventType: 'login_success',

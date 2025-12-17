@@ -45,8 +45,8 @@ export default function Login() {
         
         if (data.mfaRequired) {
           if (data.mfaSetupRequired) {
-            // Redirect to MFA setup page - user needs to set up MFA first
-            setLocation("/mfa-setup");
+            // Redirect to MFA setup login page - user needs to set up MFA first
+            setLocation("/mfa-setup-login");
           } else {
             // Redirect to MFA verification page - user already has MFA set up
             setLocation("/mfa-verify");
