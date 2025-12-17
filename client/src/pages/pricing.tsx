@@ -139,9 +139,13 @@ export default function PricingPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-4" data-testid="text-pricing-title">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
             Choose the plan that fits your organization. All plans include core financial management features.
           </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium mb-4">
+            <Sparkles className="h-4 w-4" />
+            <span>Start with a 30-day free trial - full access, no charge until day 31</span>
+          </div>
           
           <div className="flex items-center justify-center gap-4 mb-8">
             <Label htmlFor="billing-toggle" className={!isAnnual ? 'font-semibold' : 'text-muted-foreground'}>
@@ -277,7 +281,9 @@ export default function PricingPage() {
                       disabled={checkoutMutation.isPending}
                       data-testid={`button-select-${tier}`}
                     >
-                      {checkoutMutation.isPending ? 'Loading...' : isUpgrade ? 'Upgrade' : 'Select Plan'}
+                      {checkoutMutation.isPending ? 'Loading...' : 
+                       currentTier === 'free' && !user?.subscriptionStatus ? 'Start Free Trial' :
+                       isUpgrade ? 'Upgrade' : 'Select Plan'}
                     </Button>
                   )}
                 </CardFooter>
