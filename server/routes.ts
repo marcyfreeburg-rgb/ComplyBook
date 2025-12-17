@@ -10955,14 +10955,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Price ID or tier/interval is required' });
       }
 
-      // Create checkout session
+      // Check if user already had a subscription (no trial for returning customers)
+      const hadPreviousSubscription = user.stripeSubscriptionId || user.subscriptionStatus === 'cancelled';
+      const trialDays = hadPreviousSubscription ? 0 : 30; // 30-day trial for new subscribers only
+
+      // Create checkout session with trial
       const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
       const session = await stripeService.createCheckoutSession(
         customerId,
         finalPriceId,
-        `${baseUrl}/checkout/success?tier=${tier || ''}&interval=${interval || ''}`,
+        `${baseUrl}/checkout/success?tier=${tier || ''}&interval=${interval || ''}&trial=${trialDays > 0 ? 'true' : 'false'}`,
         `${baseUrl}/pricing`,
-        { userId, tier: tier || '', interval: interval || '', organizationId: organizationId?.toString() || '' }
+        { userId, tier: tier || '', interval: interval || '', organizationId: organizationId?.toString() || '' },
+        trialDays
       );
 
       res.json({ url: session.url });

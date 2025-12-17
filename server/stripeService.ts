@@ -17,7 +17,8 @@ export class StripeService {
     priceId: string, 
     successUrl: string, 
     cancelUrl: string,
-    metadata?: Record<string, string>
+    metadata?: Record<string, string>,
+    trialDays?: number
   ) {
     const stripe = await getUncachableStripeClient();
     return await stripe.checkout.sessions.create({
@@ -28,6 +29,11 @@ export class StripeService {
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata,
+      ...(trialDays && trialDays > 0 ? {
+        subscription_data: {
+          trial_period_days: trialDays,
+        }
+      } : {}),
     });
   }
 

@@ -89,6 +89,9 @@ export class WebhookHandlers {
       case 'invoice.payment_failed':
         await WebhookHandlers.handlePaymentFailed(event.data.object);
         break;
+      case 'customer.subscription.trial_will_end':
+        await WebhookHandlers.handleTrialWillEnd(event.data.object);
+        break;
       default:
         console.log(`Unhandled webhook event type: ${event.type}`);
     }
@@ -120,16 +123,20 @@ export class WebhookHandlers {
         subscriptionTier = tier as SubscriptionTier;
       }
 
-      // Update user subscription info
+      // Determine if this is a trial subscription
+      const isTrialing = subscription.status === 'trialing';
+      const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+
+      // Update user subscription info - grant full tier access even during trial
       await storage.updateUser(userId, {
         stripeSubscriptionId: session.subscription,
-        subscriptionTier,
-        subscriptionStatus: subscription.status,
-        subscriptionCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        subscriptionTier, // Full tier access during trial
+        subscriptionStatus: subscription.status, // 'trialing' or 'active'
+        subscriptionCurrentPeriodEnd: trialEnd || new Date(subscription.current_period_end * 1000),
         billingInterval: interval || (subscription.items.data[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly'),
       });
 
-      console.log(`Updated user ${userId} to tier ${subscriptionTier}`);
+      console.log(`Updated user ${userId} to tier ${subscriptionTier}${isTrialing ? ' (trial)' : ''}`);
     }
   }
 
@@ -192,5 +199,27 @@ export class WebhookHandlers {
   static async handlePaymentFailed(invoice: any): Promise<void> {
     console.log('Payment failed for invoice:', invoice.id);
     // Could send notification email, update subscription status, etc.
+  }
+
+  static async handleTrialWillEnd(subscription: any): Promise<void> {
+    console.log('Trial ending soon for subscription:', subscription.id);
+    
+    // Find user by subscription ID
+    const user = await storage.getUserByStripeSubscriptionId(subscription.id);
+    if (!user) {
+      console.log('No user found for subscription, skipping trial reminder');
+      return;
+    }
+
+    // Calculate days remaining
+    const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+    const daysRemaining = trialEnd 
+      ? Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    console.log(`User ${user.email} trial ending in ${daysRemaining} days`);
+    
+    // TODO: Send email reminder about trial ending
+    // This webhook fires 3 days before trial ends by default
   }
 }
