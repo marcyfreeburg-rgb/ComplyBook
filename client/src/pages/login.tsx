@@ -42,11 +42,17 @@ export default function Login() {
       
       if (data.success) {
         queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        toast({
-          title: "Login successful",
-          description: "Welcome back!",
-        });
-        setLocation("/");
+        
+        if (data.mfaRequired) {
+          // Redirect to MFA verification page
+          setLocation("/mfa-verify");
+        } else {
+          toast({
+            title: "Login successful",
+            description: "Welcome back!",
+          });
+          setLocation("/");
+        }
       }
     } catch (error: any) {
       toast({
