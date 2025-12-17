@@ -10,11 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SUBSCRIPTION_TIERS, type SubscriptionTier } from "@shared/schema";
 
-const TIER_ORDER: SubscriptionTier[] = ['free', 'starter', 'professional', 'growth', 'enterprise'];
+const TIER_ORDER: SubscriptionTier[] = ['free', 'core', 'professional', 'growth', 'enterprise'];
 
 const TIER_ICONS: Record<SubscriptionTier, typeof Sparkles> = {
   free: Sparkles,
-  starter: Building2,
+  core: Building2,
   professional: Users,
   growth: Zap,
   enterprise: Crown,
@@ -38,6 +38,10 @@ const FEATURE_LABELS: Record<keyof typeof SUBSCRIPTION_TIERS.free.features, stri
   prioritySupport: 'Priority Support',
   dedicatedOnboarding: 'Dedicated Onboarding',
   customIntegrations: 'Custom Integrations',
+  recurringTransactions: 'Recurring Transactions',
+  expenseApprovals: 'Expense Approvals',
+  donorBasics: 'Donor Management',
+  fundraisingBasics: 'Fundraising Tools',
 };
 
 const SUPPORT_LABELS: Record<string, string> = {

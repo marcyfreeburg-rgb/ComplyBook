@@ -10900,10 +10900,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Tier pricing configuration (matching shared/schema.ts)
       const tierPricing: Record<string, { monthly: number; annual: number; name: string }> = {
-        starter: { monthly: 3500, annual: 2900, name: 'Starter' },
-        professional: { monthly: 9500, annual: 7900, name: 'Professional' },
-        growth: { monthly: 18900, annual: 15900, name: 'Growth' },
-        enterprise: { monthly: 34900, annual: 34900, name: 'Enterprise' },
+        core: { monthly: 4900, annual: 3900, name: 'Core' },
+        professional: { monthly: 12900, annual: 9900, name: 'Professional' },
+        growth: { monthly: 24900, annual: 19900, name: 'Growth' },
+        enterprise: { monthly: 0, annual: 0, name: 'Enterprise' }, // Custom pricing
       };
 
       let finalPriceId = priceId;

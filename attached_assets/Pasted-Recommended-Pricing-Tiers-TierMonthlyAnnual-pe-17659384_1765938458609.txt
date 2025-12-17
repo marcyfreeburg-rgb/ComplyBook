@@ -1,0 +1,77 @@
+Recommended Pricing Tiers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TierMonthlyAnnual (per mo)Best ForKey LimitsIncluded FeaturesFree$0$0Tiny/testing nonprofits1 org, 2 users, 500 transactions/mo, basic reportsCore shared features (dashboard, transactions, invoices, bills, basic bank recon, Plaid sandbox only)Core$49$39Small nonprofits (<$750k budget)5 orgs, 10 users, unlimited transactionsEverything in Free + Live Plaid/Stripe, recurring, expense approvals, full reports/analytics, donor/fundraising basicsProfessional$129$99Growing nonprofits & contractorsUnlimited orgs, 25 usersEverything in Core + Full fund accounting, grants/government grants/programs, Form 990/Functional Expense/SF-425 reports, DCAA time tracking, compliance dashboardGrowth$249$199Scaling orgs with payroll/API needsUnlimited orgs, 75 usersEverything in Professional + Payroll, indirect rates, advanced forecasting/cash flow, API access, custom reportsEnterpriseCustomCustomLarge/multi-entity orgsUnlimited everythingEverything in Growth + White-label, dedicated onboarding/support, custom integrations
+Key Feature Progression (Clear Upgrade Path)
+
+Free — Basic shared tools + sandbox integrations (great for trials).
+Core — Real-world integrations + unlimited data (hooks most small users).
+Professional — Nonprofit-specific compliance + government contractor tools (your big differentiator: Form 990, grants, DCAA).
+Growth — Advanced ops like payroll/API (high-value add-ons).
+Enterprise — Premium support/customization (quote-based for big wins).
+
+Why This is Better
+
+Fewer tiers (4 paid + Free) → Easier decisions; competitors like Aplos (~$79–$199/mo for 3–4 tiers) and Araize (~$50–$300+) show 3–4 works well.
+Competitive pricing — Starts higher than bare-bones free tools but justifies value with deep nonprofit/contractor features (e.g., Form 990 + DCAA in mid-tier).
+Annual incentives — ~20% off encourages longer commitments (common in SaaS).
+Upsell-friendly — Clear value jumps (e.g., compliance tools unlock at Professional).
+Flexible for your dual audience — Nonprofits get donor/grant tools earlier; contractors get DCAA/gov features in Professional+.
+
+Additional Suggestions
+
+Offer a 14–30 day free trial on paid tiers (no card required) to reduce barriers.
+Highlight nonprofit discounts (e.g., via TechSoup) or intro offers on the site.
+Add a comparison table on your pricing page showing what’s included per tier (like the one above).
+Consider per-org or per-user add-ons later if needed (e.g., extra users $10/mo).

@@ -64,7 +64,7 @@ export function requireFeature(feature: keyof TierFeatures) {
 
 // Middleware to require a specific subscription tier
 export function requireTier(minimumTier: SubscriptionTier) {
-  const tierOrder: SubscriptionTier[] = ['free', 'starter', 'professional', 'growth', 'enterprise'];
+  const tierOrder: SubscriptionTier[] = ['free', 'core', 'professional', 'growth', 'enterprise'];
   
   return async (req: Request, res: Response, next: NextFunction) => {
     try {

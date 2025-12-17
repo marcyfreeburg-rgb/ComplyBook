@@ -135,7 +135,7 @@ export const scanStatusEnum = pgEnum('scan_status', [
 // Subscription tier enum
 export const subscriptionTierEnum = pgEnum('subscription_tier', [
   'free',
-  'starter',
+  'core',
   'professional',
   'growth',
   'enterprise'
@@ -145,14 +145,54 @@ export const subscriptionTierEnum = pgEnum('subscription_tier', [
 // SUBSCRIPTION TIER CONFIGURATION
 // ============================================
 
-export const SUBSCRIPTION_TIERS = {
+// Define feature keys explicitly for proper type inference
+export const TIER_FEATURE_KEYS = [
+  'basicReports',
+  'plaidSandbox',
+  'plaidLive',
+  'stripeInvoicing',
+  'fundAccounting',
+  'form990Export',
+  'sf425Export',
+  'grantTracking',
+  'dcaaTimeTracking',
+  'payrollModule',
+  'indirectRateCalcs',
+  'advancedForecasting',
+  'apiAccess',
+  'whiteLabel',
+  'prioritySupport',
+  'dedicatedOnboarding',
+  'customIntegrations',
+  'recurringTransactions',
+  'expenseApprovals',
+  'donorBasics',
+  'fundraisingBasics',
+] as const;
+
+export type TierFeatureKey = typeof TIER_FEATURE_KEYS[number];
+export type TierFeatures = Record<TierFeatureKey, boolean>;
+
+export const SUBSCRIPTION_TIERS: Record<string, {
+  name: string;
+  monthlyPrice: number | null;
+  annualPrice: number | null;
+  stripePriceIdMonthly?: string | null;
+  stripePriceIdAnnual?: string | null;
+  maxOrganizations: number | null;
+  maxUsers: number | null;
+  maxTransactionsPerMonth: number | null;
+  features: TierFeatures;
+  supportLevel: string;
+  description: string;
+}> = {
   free: {
-    name: 'Free Forever',
+    name: 'Free',
     monthlyPrice: 0,
     annualPrice: 0,
     maxOrganizations: 1,
     maxUsers: 2,
-    maxTransactionsPerMonth: 200,
+    maxTransactionsPerMonth: 500,
     features: {
       basicReports: true,
       plaidSandbox: true,
@@ -171,18 +211,22 @@ export const SUBSCRIPTION_TIERS = {
       prioritySupport: false,
       dedicatedOnboarding: false,
       customIntegrations: false,
+      recurringTransactions: false,
+      expenseApprovals: false,
+      donorBasics: false,
+      fundraisingBasics: false,
     },
     supportLevel: 'community',
-    description: 'For tiny nonprofits testing the platform',
+    description: 'For tiny/testing nonprofits - Core shared features with sandbox integrations',
   },
-  starter: {
-    name: 'Starter',
-    monthlyPrice: 35,
-    annualPrice: 29,
-    stripePriceIdMonthly: null as string | null, // Set after creating in Stripe
+  core: {
+    name: 'Core',
+    monthlyPrice: 49,
+    annualPrice: 39,
+    stripePriceIdMonthly: null as string | null,
     stripePriceIdAnnual: null as string | null,
-    maxOrganizations: 3,
-    maxUsers: 5,
+    maxOrganizations: 5,
+    maxUsers: 10,
     maxTransactionsPerMonth: null, // Unlimited
     features: {
       basicReports: true,
@@ -202,18 +246,22 @@ export const SUBSCRIPTION_TIERS = {
       prioritySupport: false,
       dedicatedOnboarding: false,
       customIntegrations: false,
+      recurringTransactions: true,
+      expenseApprovals: true,
+      donorBasics: true,
+      fundraisingBasics: true,
     },
     supportLevel: 'email',
-    description: 'For small nonprofits < $500k budget',
+    description: 'For small nonprofits (<$750k budget) - Live integrations + unlimited data',
   },
   professional: {
     name: 'Professional',
-    monthlyPrice: 95,
-    annualPrice: 79,
+    monthlyPrice: 129,
+    annualPrice: 99,
     stripePriceIdMonthly: null as string | null,
     stripePriceIdAnnual: null as string | null,
     maxOrganizations: null, // Unlimited
-    maxUsers: 15,
+    maxUsers: 25,
     maxTransactionsPerMonth: null,
     features: {
       basicReports: true,
@@ -226,25 +274,29 @@ export const SUBSCRIPTION_TIERS = {
       grantTracking: true,
       dcaaTimeTracking: true,
       payrollModule: false,
-      indirectRateCalcs: false,
+      indirectRateCalcs: true,
       advancedForecasting: false,
       apiAccess: false,
       whiteLabel: false,
       prioritySupport: true,
       dedicatedOnboarding: false,
       customIntegrations: false,
+      recurringTransactions: true,
+      expenseApprovals: true,
+      donorBasics: true,
+      fundraisingBasics: true,
     },
     supportLevel: 'priority_chat_email',
-    description: 'Most popular - 80% of customers',
+    description: 'For growing nonprofits & contractors - Compliance tools (Form 990, grants, DCAA)',
   },
   growth: {
     name: 'Growth',
-    monthlyPrice: 189,
-    annualPrice: 159,
+    monthlyPrice: 249,
+    annualPrice: 199,
     stripePriceIdMonthly: null as string | null,
     stripePriceIdAnnual: null as string | null,
     maxOrganizations: null,
-    maxUsers: 50,
+    maxUsers: 100,
     maxTransactionsPerMonth: null,
     features: {
       basicReports: true,
@@ -259,19 +311,23 @@ export const SUBSCRIPTION_TIERS = {
       payrollModule: true,
       indirectRateCalcs: true,
       advancedForecasting: true,
-      apiAccess: false,
+      apiAccess: true,
       whiteLabel: false,
       prioritySupport: true,
       dedicatedOnboarding: false,
       customIntegrations: false,
+      recurringTransactions: true,
+      expenseApprovals: true,
+      donorBasics: true,
+      fundraisingBasics: true,
     },
     supportLevel: '4hr_email_sla',
-    description: 'For nonprofits $750k-$3M or gov contractors with 5-30 staff',
+    description: 'For scaling orgs - Payroll, API access, advanced forecasting',
   },
   enterprise: {
-    name: 'Scale / Enterprise',
-    monthlyPrice: 349, // Starting price
-    annualPrice: 349,
+    name: 'Enterprise',
+    monthlyPrice: null, // Custom pricing
+    annualPrice: null,
     stripePriceIdMonthly: null as string | null,
     stripePriceIdAnnual: null as string | null,
     maxOrganizations: null,
@@ -295,15 +351,18 @@ export const SUBSCRIPTION_TIERS = {
       prioritySupport: true,
       dedicatedOnboarding: true,
       customIntegrations: true,
+      recurringTransactions: true,
+      expenseApprovals: true,
+      donorBasics: true,
+      fundraisingBasics: true,
     },
     supportLevel: 'phone_sla',
-    description: 'For orgs > $3M or complex multi-entity/DCAA audit needs',
+    description: 'For large orgs - White-label, dedicated onboarding, custom integrations',
   },
-} as const;
+};
 
 export type SubscriptionTier = keyof typeof SUBSCRIPTION_TIERS;
 export type TierConfig = typeof SUBSCRIPTION_TIERS[SubscriptionTier];
-export type TierFeatures = TierConfig['features'];
 
 // ============================================
 // SESSION & USER TABLES (Required for Replit Auth)

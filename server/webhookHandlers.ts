@@ -8,7 +8,7 @@ import type { SubscriptionTier } from '@shared/schema';
 // Map Stripe price metadata tier to our subscription tier
 function mapPriceToTier(priceMetadata: Record<string, string> | null | undefined): SubscriptionTier {
   const tier = priceMetadata?.tier;
-  if (tier && ['free', 'starter', 'professional', 'growth', 'enterprise'].includes(tier)) {
+  if (tier && ['free', 'core', 'professional', 'growth', 'enterprise'].includes(tier)) {
     return tier as SubscriptionTier;
   }
   return 'free';
@@ -91,7 +91,7 @@ export class WebhookHandlers {
       }
 
       // If tier was passed in session metadata, use that
-      if (tier && ['starter', 'professional', 'growth', 'enterprise'].includes(tier)) {
+      if (tier && ['core', 'professional', 'growth', 'enterprise'].includes(tier)) {
         subscriptionTier = tier as SubscriptionTier;
       }
 
