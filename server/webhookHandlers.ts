@@ -5,13 +5,39 @@ import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
 import type { SubscriptionTier } from '@shared/schema';
 
-// Map Stripe price metadata tier to our subscription tier
-function mapPriceToTier(priceMetadata: Record<string, string> | null | undefined): SubscriptionTier {
-  const tier = priceMetadata?.tier;
+// Map Stripe metadata tier to our subscription tier
+function mapMetadataToTier(metadata: Record<string, string> | null | undefined): SubscriptionTier | null {
+  const tier = metadata?.tier;
   if (tier && ['free', 'core', 'professional', 'growth', 'enterprise'].includes(tier)) {
     return tier as SubscriptionTier;
   }
-  return 'free';
+  return null;
+}
+
+// Get tier from price, checking price metadata first, then product metadata
+async function getTierFromPrice(stripe: any, priceId: string): Promise<SubscriptionTier> {
+  try {
+    const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+    
+    // First check price metadata
+    const priceTier = mapMetadataToTier(price.metadata);
+    if (priceTier) {
+      return priceTier;
+    }
+    
+    // Then check product metadata
+    if (price.product && typeof price.product === 'object') {
+      const productTier = mapMetadataToTier(price.product.metadata);
+      if (productTier) {
+        return productTier;
+      }
+    }
+    
+    return 'free';
+  } catch (error) {
+    console.error('Error retrieving price/product:', error);
+    return 'free';
+  }
 }
 
 export class WebhookHandlers {
@@ -81,16 +107,15 @@ export class WebhookHandlers {
     if (session.subscription) {
       const subscription = await stripe.subscriptions.retrieve(session.subscription);
       
-      // Get the tier from the price metadata
+      // Get the tier from the price/product metadata
       const priceId = subscription.items.data[0]?.price?.id;
       let subscriptionTier: SubscriptionTier = 'free';
       
       if (priceId) {
-        const price = await stripe.prices.retrieve(priceId);
-        subscriptionTier = mapPriceToTier(price.metadata);
+        subscriptionTier = await getTierFromPrice(stripe, priceId);
       }
 
-      // If tier was passed in session metadata, use that
+      // If tier was passed in session metadata, use that as override
       if (tier && ['core', 'professional', 'growth', 'enterprise'].includes(tier)) {
         subscriptionTier = tier as SubscriptionTier;
       }
@@ -118,13 +143,12 @@ export class WebhookHandlers {
       return;
     }
 
-    // Get the tier from the price metadata
+    // Get the tier from the price/product metadata
     const priceId = subscription.items.data[0]?.price?.id;
     let subscriptionTier: SubscriptionTier = 'free';
 
     if (priceId) {
-      const price = await stripe.prices.retrieve(priceId);
-      subscriptionTier = mapPriceToTier(price.metadata);
+      subscriptionTier = await getTierFromPrice(stripe, priceId);
     }
 
     // Update user subscription info
