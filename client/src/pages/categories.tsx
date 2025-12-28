@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Tag, ArrowLeft, Pencil, FolderPlus } from "lucide-react";
+import { Plus, Trash2, Tag, ArrowLeft, Pencil, FolderPlus, Receipt } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Category, Organization } from "@shared/schema";
@@ -23,11 +24,13 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
+  const [newCategoryTaxDeductible, setNewCategoryTaxDeductible] = useState(true);
   
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCategoryName, setEditCategoryName] = useState("");
   const [editCategoryType, setEditCategoryType] = useState<"income" | "expense">("expense");
   const [editParentCategoryId, setEditParentCategoryId] = useState<number | null>(null);
+  const [editCategoryTaxDeductible, setEditCategoryTaxDeductible] = useState(true);
   
   const [creatingSubcategoryFor, setCreatingSubcategoryFor] = useState<Category | null>(null);
   const [subcategoryName, setSubcategoryName] = useState("");
@@ -45,6 +48,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
         organizationId: currentOrganization.id,
         name: newCategoryName.trim(),
         type: newCategoryType,
+        taxDeductible: newCategoryTaxDeductible,
         createdBy: userId,
       });
     },
@@ -57,6 +61,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       setIsCreateDialogOpen(false);
       setNewCategoryName("");
       setNewCategoryType("expense");
+      setNewCategoryTaxDeductible(true);
     },
     onError: (error: any) => {
       toast({
@@ -96,6 +101,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
         name: editCategoryName.trim(),
         type: editCategoryType,
         parentCategoryId: editParentCategoryId,
+        taxDeductible: editCategoryTaxDeductible,
       });
     },
     onSuccess: () => {
@@ -108,6 +114,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       setEditCategoryName("");
       setEditCategoryType("expense");
       setEditParentCategoryId(null);
+      setEditCategoryTaxDeductible(true);
     },
     onError: (error: any) => {
       toast({
@@ -154,6 +161,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
     setEditCategoryName(category.name);
     setEditCategoryType(category.type);
     setEditParentCategoryId(category.parentCategoryId ?? null);
+    setEditCategoryTaxDeductible(category.taxDeductible);
   };
 
   // Separate parent and child categories, sorted alphabetically
@@ -225,6 +233,19 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                   </SelectContent>
                 </Select>
               </div>
+              {newCategoryType === "expense" && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="category-tax-deductible"
+                    checked={newCategoryTaxDeductible}
+                    onCheckedChange={(checked) => setNewCategoryTaxDeductible(checked === true)}
+                    data-testid="checkbox-category-tax-deductible"
+                  />
+                  <Label htmlFor="category-tax-deductible" className="text-sm font-normal cursor-pointer">
+                    Tax deductible expense
+                  </Label>
+                </div>
+              )}
               <Button
                 onClick={() => createCategoryMutation.mutate()}
                 disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
@@ -273,6 +294,19 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                 </SelectContent>
               </Select>
             </div>
+            {editCategoryType === "expense" && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-category-tax-deductible"
+                  checked={editCategoryTaxDeductible}
+                  onCheckedChange={(checked) => setEditCategoryTaxDeductible(checked === true)}
+                  data-testid="checkbox-edit-category-tax-deductible"
+                />
+                <Label htmlFor="edit-category-tax-deductible" className="text-sm font-normal cursor-pointer">
+                  Tax deductible expense
+                </Label>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="edit-parent-category">Parent Category (Optional)</Label>
               <Select

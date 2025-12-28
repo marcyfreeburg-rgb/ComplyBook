@@ -993,20 +993,6 @@ export default function Reports({ currentOrganization }: ReportsProps) {
         </>
       )}
 
-      {/* Coming Soon Messages */}
-      {reportType === 'balance-sheet' && (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium text-foreground mb-1">Coming Soon</p>
-              <p className="text-sm text-muted-foreground">
-                This report type will be available in a future update
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

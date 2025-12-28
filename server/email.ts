@@ -498,3 +498,121 @@ Questions? Contact us at ${organizationEmail}
 
   await client.send(msg);
 }
+
+// Trial ending reminder email
+interface TrialEndingEmailParams {
+  to: string;
+  firstName?: string;
+  daysRemaining: number;
+  trialEndDate: Date;
+  tierName: string;
+  manageSubscriptionUrl: string;
+}
+
+export async function sendTrialEndingEmail({
+  to,
+  firstName,
+  daysRemaining,
+  trialEndDate,
+  tierName,
+  manageSubscriptionUrl
+}: TrialEndingEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+  
+  const formattedEndDate = trialEndDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  const greeting = firstName ? `Hi ${firstName}` : 'Hi there';
+  const urgencyText = daysRemaining <= 1 
+    ? 'Your trial ends tomorrow!' 
+    : `Your trial ends in ${daysRemaining} days`;
+  
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `${urgencyText} - ComplyBook ${tierName} Plan`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Trial Ending Reminder</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 8px; padding: 30px; margin-bottom: 20px; color: white;">
+            <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">${urgencyText}</h1>
+            <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">Your ComplyBook ${tierName} trial is almost over</p>
+          </div>
+          
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px; margin-bottom: 20px;">
+            <p style="color: #1a1a1a; margin: 0 0 15px 0; font-size: 16px;">${greeting},</p>
+            
+            <p style="color: #666; margin: 0 0 15px 0; font-size: 15px;">
+              We hope you've been enjoying ComplyBook! Your free trial of the <strong>${tierName}</strong> plan 
+              will end on <strong>${formattedEndDate}</strong>.
+            </p>
+            
+            <p style="color: #666; margin: 0 0 20px 0; font-size: 15px;">
+              After your trial ends, your payment method will be charged automatically and you'll continue 
+              to have full access to all ${tierName} features.
+            </p>
+            
+            <div style="background-color: #f0f9ff; border-left: 4px solid #6366f1; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+              <p style="color: #1a1a1a; margin: 0; font-size: 14px;">
+                <strong>What happens next?</strong><br>
+                Your subscription will automatically continue after the trial. No action needed if you want to keep using ComplyBook!
+              </p>
+            </div>
+            
+            <p style="color: #666; margin: 0 0 20px 0; font-size: 15px;">
+              If you'd like to change your plan or cancel before the trial ends, you can manage your subscription anytime:
+            </p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${manageSubscriptionUrl}" 
+                 style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                Manage Subscription
+              </a>
+            </div>
+          </div>
+          
+          <div style="text-align: center; color: #666; font-size: 12px;">
+            <p style="margin: 0 0 10px 0;">
+              Questions? Just reply to this email - we're here to help!
+            </p>
+            <p style="margin: 0;">
+              ComplyBook - Financial Management Made Simple
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+${urgencyText}
+
+${greeting},
+
+We hope you've been enjoying ComplyBook! Your free trial of the ${tierName} plan will end on ${formattedEndDate}.
+
+After your trial ends, your payment method will be charged automatically and you'll continue to have full access to all ${tierName} features.
+
+What happens next?
+Your subscription will automatically continue after the trial. No action needed if you want to keep using ComplyBook!
+
+If you'd like to change your plan or cancel before the trial ends, you can manage your subscription anytime:
+${manageSubscriptionUrl}
+
+Questions? Just reply to this email - we're here to help!
+
+ComplyBook - Financial Management Made Simple
+    `.trim()
+  };
+
+  await client.send(msg);
+  console.log(`Trial ending reminder sent to ${to}`);
+}

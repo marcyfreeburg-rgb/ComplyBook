@@ -4,6 +4,7 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
 import type { SubscriptionTier } from '@shared/schema';
+import { sendTrialEndingEmail } from './email';
 
 // Map Stripe metadata tier to our subscription tier
 function mapMetadataToTier(metadata: Record<string, string> | null | undefined): SubscriptionTier | null {
@@ -219,7 +220,37 @@ export class WebhookHandlers {
 
     console.log(`User ${user.email} trial ending in ${daysRemaining} days`);
     
-    // TODO: Send email reminder about trial ending
-    // This webhook fires 3 days before trial ends by default
+    // Get tier name for email
+    const tierNames: Record<string, string> = {
+      'core': 'Core',
+      'professional': 'Professional',
+      'growth': 'Growth',
+      'enterprise': 'Enterprise',
+      'free': 'Free'
+    };
+    const tierName = tierNames[user.subscriptionTier] || 'Professional';
+    
+    // Send trial ending reminder email
+    if (user.email && trialEnd) {
+      try {
+        // Determine the base URL for manage subscription link
+        const baseUrl = process.env.RENDER_EXTERNAL_URL || process.env.REPLIT_DOMAINS?.split(',')[0] || 'https://complybook.net';
+        const manageUrl = `${baseUrl.startsWith('http') ? baseUrl : 'https://' + baseUrl}/settings`;
+        
+        await sendTrialEndingEmail({
+          to: user.email,
+          firstName: user.firstName || undefined,
+          daysRemaining,
+          trialEndDate: trialEnd,
+          tierName,
+          manageSubscriptionUrl: manageUrl
+        });
+        
+        console.log(`Trial reminder email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error('Failed to send trial reminder email:', emailError);
+        // Don't throw - email failure shouldn't break webhook processing
+      }
+    }
   }
 }

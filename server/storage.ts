@@ -4847,12 +4847,18 @@ export class DatabaseStorage implements IStorage {
       endDate
     );
 
+    // Get all categories to check tax deductibility
+    const orgCategories = await this.getCategories(organizationId);
+    const categoryMap = new Map(orgCategories.map(c => [c.id, c]));
+
     // Calculate totals
     let totalIncome = 0;
     let totalExpenses = 0;
     let totalDeductions = 0;
 
     const categoryTotals: Record<string, number> = {};
+    const deductibleByCategory: Record<string, number> = {};
+    const nonDeductibleByCategory: Record<string, number> = {};
 
     yearTransactions.forEach(tx => {
       const amount = parseFloat(tx.amount);
@@ -4860,8 +4866,21 @@ export class DatabaseStorage implements IStorage {
         totalIncome += amount;
       } else {
         totalExpenses += amount;
-        // TODO: Check if expense is tax deductible based on category
-        totalDeductions += amount; // For now, all expenses are deductible
+        
+        // Check if expense is tax deductible based on category
+        const category = tx.categoryId ? categoryMap.get(tx.categoryId) : null;
+        const isDeductible = category ? category.taxDeductible : true; // Default to deductible if no category
+        
+        if (isDeductible) {
+          totalDeductions += amount;
+          if (tx.categoryId) {
+            deductibleByCategory[tx.categoryId] = (deductibleByCategory[tx.categoryId] || 0) + amount;
+          }
+        } else {
+          if (tx.categoryId) {
+            nonDeductibleByCategory[tx.categoryId] = (nonDeductibleByCategory[tx.categoryId] || 0) + amount;
+          }
+        }
       }
 
       // Track by category
@@ -4889,9 +4908,12 @@ export class DatabaseStorage implements IStorage {
         netIncome: netIncome.toFixed(2),
         reportData: {
           categoryTotals,
+          deductibleByCategory,
+          nonDeductibleByCategory,
+          totalNonDeductible: totalExpenses - totalDeductions,
           transactionCount: yearTransactions.length,
         },
-        generatedBy: 'system', // TODO: Pass in actual user ID
+        generatedBy: 'system',
       })
       .returning();
 
