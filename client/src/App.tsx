@@ -473,15 +473,14 @@ function Router() {
     return <Pricing />;
   }
 
-  // Handle MFA verification page for authenticated users with pending MFA
+  // Handle MFA verification page for users with pending MFA
+  // Don't check isAuthenticated here because /api/auth/user returns 403 during MFA pending state
   if (location === '/mfa-verify') {
     if (isLoading) {
       return <Landing />;
     }
-    if (isAuthenticated) {
-      return <MfaVerify />;
-    }
-    return <Landing />;
+    // Allow access - MfaVerify component will check /api/auth/mfa/login-status to validate
+    return <MfaVerify />;
   }
 
   // Handle MFA setup login page for users who need to set up MFA during login
