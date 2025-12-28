@@ -208,6 +208,13 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string }): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
+  updateUser(userId: string, updates: Partial<{
+    stripeSubscriptionId: string | null;
+    subscriptionTier: 'free' | 'core' | 'professional' | 'growth' | 'enterprise';
+    subscriptionStatus: string | null;
+    subscriptionCurrentPeriodEnd: Date | null;
+    billingInterval: string | null;
+  }>): Promise<User>;
   
   // MFA enforcement (NIST 800-53 IA-2(1), IA-2(2))
   setMfaRequired(userId: string, required: boolean, gracePeriodDays?: number): Promise<User>;
@@ -939,6 +946,24 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({
         passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUser(userId: string, updates: Partial<{
+    stripeSubscriptionId: string | null;
+    subscriptionTier: 'free' | 'core' | 'professional' | 'growth' | 'enterprise';
+    subscriptionStatus: string | null;
+    subscriptionCurrentPeriodEnd: Date | null;
+    billingInterval: string | null;
+  }>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...updates,
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId))
