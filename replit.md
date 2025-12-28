@@ -1,6 +1,31 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## Recent Updates (December 16, 2025)
+## Recent Updates (December 28, 2025)
+
+**Tax Deductible Expense Categorization - COMPLETED**
+- Added `taxDeductible` boolean field to categories table (defaults to true)
+- Expense categories can now be marked as tax deductible or non-deductible
+- UI: Checkbox appears in create/edit category dialogs (expense type only)
+- Tax reporting now separates deductible vs non-deductible expenses in reportData
+
+**Trial Ending Email Reminder - COMPLETED**
+- Integrated with Stripe's `trial_will_end` webhook event (fires 3 days before trial ends)
+- `handleTrialWillEnd` handler in `server/webhookHandlers.ts` sends reminder email
+- Email sent via SendGrid using `sendTrialEndingEmail` function
+
+**Balance Sheet Report Fix - COMPLETED**
+- Removed duplicate "Coming Soon" overlay that was hiding the fully implemented balance sheet
+- Balance sheet now displays Assets, Liabilities, Equity sections with totals
+- Includes accounting equation validation (Assets = Liabilities + Equity)
+- CSV and PDF export functionality working
+
+**Stripe Webhook Subscription Handling Fix - COMPLETED**
+- Added missing `updateUser` method to storage interface
+- Fixed checkout.session.completed, customer.subscription.updated, customer.subscription.deleted webhook handlers
+
+---
+
+## Previous Updates (December 16, 2025)
 
 **TOTP-Based Multi-Factor Authentication - COMPLETED**
 - Full TOTP-based MFA implementation using authenticator apps (Google Authenticator, Authy, etc.)
