@@ -57,19 +57,19 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   });
 
   const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: [`/api/categories`, currentOrganization.id],
+    queryKey: [`/api/categories/${currentOrganization.id}`],
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: [`/api/vendors`, currentOrganization.id],
+    queryKey: [`/api/vendors/${currentOrganization.id}`],
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: [`/api/clients`, currentOrganization.id],
+    queryKey: [`/api/clients/${currentOrganization.id}`],
   });
 
   const { data: donors = [] } = useQuery<Donor[]>({
-    queryKey: [`/api/donors`, currentOrganization.id],
+    queryKey: [`/api/donors/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
   });
 
@@ -421,12 +421,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
             </div>
             <div>
               <Label htmlFor="edit-category">Category</Label>
-              <Select value={editForm.categoryId} onValueChange={(value) => setEditForm({ ...editForm, categoryId: value })}>
+              <Select value={editForm.categoryId || "none"} onValueChange={(value) => setEditForm({ ...editForm, categoryId: value === "none" ? "" : value })}>
                 <SelectTrigger id="edit-category" data-testid="select-edit-category">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Uncategorized</SelectItem>
+                  <SelectItem value="none">Uncategorized</SelectItem>
                   {categories.filter(c => c.type === editForm.type).map((category) => (
                     <SelectItem key={category.id} value={category.id.toString()}>
                       {category.name}
@@ -438,12 +438,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
             {editForm.type === "expense" && (
               <div>
                 <Label htmlFor="edit-vendor">Vendor</Label>
-                <Select value={editForm.vendorId} onValueChange={(value) => setEditForm({ ...editForm, vendorId: value })}>
+                <Select value={editForm.vendorId || "none"} onValueChange={(value) => setEditForm({ ...editForm, vendorId: value === "none" ? "" : value })}>
                   <SelectTrigger id="edit-vendor" data-testid="select-edit-vendor">
                     <SelectValue placeholder="Select vendor" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {vendors.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id.toString()}>
                         {vendor.name}
@@ -457,12 +457,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               <>
                 <div>
                   <Label htmlFor="edit-client">Client</Label>
-                  <Select value={editForm.clientId} onValueChange={(value) => setEditForm({ ...editForm, clientId: value })}>
+                  <Select value={editForm.clientId || "none"} onValueChange={(value) => setEditForm({ ...editForm, clientId: value === "none" ? "" : value })}>
                     <SelectTrigger id="edit-client" data-testid="select-edit-client">
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {clients.map((client) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.name}
@@ -474,12 +474,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 {currentOrganization.type === 'nonprofit' && (
                   <div>
                     <Label htmlFor="edit-donor">Donor</Label>
-                    <Select value={editForm.donorId} onValueChange={(value) => setEditForm({ ...editForm, donorId: value })}>
+                    <Select value={editForm.donorId || "none"} onValueChange={(value) => setEditForm({ ...editForm, donorId: value === "none" ? "" : value })}>
                       <SelectTrigger id="edit-donor" data-testid="select-edit-donor">
                         <SelectValue placeholder="Select donor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {donors.map((donor) => (
                           <SelectItem key={donor.id} value={donor.id.toString()}>
                             {donor.name}
