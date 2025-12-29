@@ -507,11 +507,13 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                                                 : [...prev, category.id]
                                             );
                                           }}
+                                          onClick={(e) => e.stopPropagation()}
                                           data-testid={`checkbox-category-${category.id}`}
                                         />
                                         <label
                                           htmlFor={`category-${category.id}`}
                                           className="text-sm cursor-pointer flex-1"
+                                          onClick={(e) => e.stopPropagation()}
                                         >
                                           {isSubcategory ? category.name : <span className="font-medium">{category.name}</span>}
                                         </label>
