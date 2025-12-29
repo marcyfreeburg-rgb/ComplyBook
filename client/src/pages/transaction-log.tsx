@@ -456,11 +456,11 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               No transactions found. Import transactions or connect your bank.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[60vh]">
               <table className="w-full">
-                <thead>
+                <thead className="sticky top-0 bg-card z-20">
                   <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium w-10">
+                    <th className="text-left py-3 px-2 font-medium w-10 bg-card">
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={handleSelectAll}
@@ -468,16 +468,16 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                         data-testid="checkbox-select-all"
                       />
                     </th>
-                    <th className="text-left py-3 px-2 font-medium">Date</th>
-                    <th className="text-left py-3 px-2 font-medium">Description</th>
-                    <th className="text-left py-3 px-2 font-medium">Category</th>
+                    <th className="text-left py-3 px-2 font-medium bg-card">Date</th>
+                    <th className="text-left py-3 px-2 font-medium bg-card">Description</th>
+                    <th className="text-left py-3 px-2 font-medium bg-card">Category</th>
                     {currentOrganization.type === 'nonprofit' && (
-                      <th className="text-left py-3 px-2 font-medium">Grant</th>
+                      <th className="text-left py-3 px-2 font-medium bg-card">Grant</th>
                     )}
-                    <th className="text-left py-3 px-2 font-medium">Type</th>
-                    <th className="text-left py-3 px-2 font-medium">Source</th>
-                    <th className="text-right py-3 px-2 font-medium">Amount</th>
-                    <th className="text-right py-3 px-2 font-medium sticky right-0 bg-card z-10">Actions</th>
+                    <th className="text-left py-3 px-2 font-medium bg-card">Type</th>
+                    <th className="text-left py-3 px-2 font-medium bg-card">Source</th>
+                    <th className="text-right py-3 px-2 font-medium bg-card">Amount</th>
+                    <th className="text-right py-3 px-2 font-medium sticky right-0 bg-card z-30">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
