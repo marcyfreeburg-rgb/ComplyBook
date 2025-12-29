@@ -1,6 +1,29 @@
 # ComplyBook - Multi-Tenant Financial Management Application
 
-## Recent Updates (December 28, 2025)
+## Recent Updates (December 29, 2025)
+
+**AI Category Suggestions with Learning - COMPLETED**
+- Enhanced AI categorization to learn from existing categorized transactions
+- AI now includes up to 5 example transactions per category to improve accuracy
+- Added sparkles button (✨) next to "Uncategorized" transactions in Transaction Log
+- One-click category suggestion: AI analyzes the transaction and applies best matching category
+- Uses Replit AI Integrations (OpenAI-compatible API) via `server/aiCategorization.ts`
+- Displays confidence score and category name in success toast
+
+**Wave Apps CSV Import Support - COMPLETED**
+- Updated CSV import to support Wave Apps accounting export format
+- Handles column names with "(In Business Currency)" suffix
+- Properly skips metadata rows (Starting Balance, Totals, Balance Change)
+- Works with QuickBooks import option
+
+**Compliance Dashboard SQL Fix - COMPLETED**
+- Fixed SQL queries referencing non-existent database columns
+- `timeEffortReports` now checks `certification_date` (null = pending, not null = certified)
+- `auditPrepItems` now uses correct `completion_status` column name
+
+---
+
+## Previous Updates (December 28, 2025)
 
 **Tax Deductible Expense Categorization - COMPLETED**
 - Added `taxDeductible` boolean field to categories table (defaults to true)
