@@ -4809,6 +4809,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         country_codes: ['US' as any],
         language: 'en',
         webhook: webhookUrl,
+        // Enable additional Auth flows for increased conversion
+        auth: {
+          // Enable Same Day Micro-deposits (1 business day, manual code entry)
+          same_day_microdeposits_enabled: true,
+          // Enable Instant Micro-deposits (RTP/FedNow - seconds, for supported banks)
+          instant_microdeposits_enabled: true,
+          // Enable Automated Micro-deposits (1-2 days, auto-verified)
+          automated_microdeposits_enabled: true,
+          // Enable Database Auth (instant validation against Plaid network)
+          database_match_enabled: true,
+        },
       });
 
       res.json({ link_token: response.data.link_token });

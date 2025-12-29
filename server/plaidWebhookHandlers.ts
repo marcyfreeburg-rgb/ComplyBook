@@ -39,7 +39,7 @@ export class PlaidWebhookHandlers {
         console.log('Liabilities webhook received (not implemented)');
         break;
       case 'AUTH':
-        console.log('Auth webhook received (not implemented)');
+        await this.handleAuthWebhook(payload);
         break;
       case 'IDENTITY':
         console.log('Identity webhook received (not implemented)');
@@ -201,6 +201,54 @@ export class PlaidWebhookHandlers {
         break;
       default:
         console.log(`Unknown link webhook code: ${webhook_code}`);
+    }
+  }
+
+  static async handleAuthWebhook(payload: PlaidWebhookPayload): Promise<void> {
+    const { webhook_code, item_id, account_id } = payload;
+
+    console.log(`[AUTH] Webhook received: ${webhook_code} for item ${item_id}`);
+
+    const plaidItem = await storage.getPlaidItemByPlaidId(item_id);
+    if (!plaidItem) {
+      console.log(`[AUTH] No Plaid item found for item_id: ${item_id}`);
+      return;
+    }
+
+    switch (webhook_code) {
+      case 'AUTOMATICALLY_VERIFIED':
+        console.log(`[AUTH] Account automatically verified for item ${item_id}`);
+        await storage.updatePlaidItemStatus(plaidItem.id, {
+          status: 'active',
+          errorCode: null,
+          errorMessage: null,
+        });
+        break;
+
+      case 'VERIFICATION_EXPIRED':
+        console.log(`[AUTH] Verification expired for item ${item_id}`);
+        await storage.updatePlaidItemStatus(plaidItem.id, {
+          status: 'error',
+          errorCode: 'VERIFICATION_EXPIRED',
+          errorMessage: 'Bank verification expired. Please reconnect your account.',
+        });
+        break;
+
+      case 'DATABASE_MATCHED':
+        console.log(`[AUTH] Database match verified for item ${item_id}`);
+        await storage.updatePlaidItemStatus(plaidItem.id, {
+          status: 'active',
+          errorCode: null,
+          errorMessage: null,
+        });
+        break;
+
+      case 'DATABASE_INSIGHTS_COMPLETE':
+        console.log(`[AUTH] Database insights complete for item ${item_id}`);
+        break;
+
+      default:
+        console.log(`[AUTH] Unknown auth webhook code: ${webhook_code}`);
     }
   }
 
