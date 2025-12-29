@@ -4882,12 +4882,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
-      const { public_token } = req.body;
+      const { public_token, metadata } = req.body;
 
       // Check user has access to this organization
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
         return res.status(403).json({ message: "Only owners and admins can connect bank accounts" });
+      }
+
+      // --- Duplicate Item Detection ---
+      // Check for duplicate institution connection before exchanging token
+      const existingItems = await storage.getPlaidItems(organizationId);
+      
+      // If metadata is provided from onSuccess callback, check for duplicates
+      if (metadata?.institution?.institution_id) {
+        const duplicateInstitution = existingItems.find(
+          item => item.institutionId === metadata.institution.institution_id && item.status !== 'error'
+        );
+        
+        if (duplicateInstitution) {
+          console.log(`[DUPLICATE DETECTION] Institution ${metadata.institution.name} already connected for org ${organizationId}`);
+          return res.status(409).json({ 
+            message: `This bank (${metadata.institution.name || 'institution'}) is already connected. To reconnect, please remove the existing connection first.`,
+            isDuplicate: true,
+            existingItemId: duplicateInstitution.id,
+            institutionName: duplicateInstitution.institutionName
+          });
+        }
       }
 
       // Exchange public token for access token
@@ -4918,6 +4939,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Secondary duplicate check after token exchange (in case metadata wasn't provided)
+      if (institutionId) {
+        const duplicateInstitution = existingItems.find(
+          item => item.institutionId === institutionId && item.status !== 'error'
+        );
+        
+        if (duplicateInstitution) {
+          console.log(`[DUPLICATE DETECTION] Post-exchange: Institution ${institutionId} already connected for org ${organizationId}`);
+          // Remove the newly created item from Plaid to avoid orphaned connections
+          try {
+            await plaidClient.itemRemove({ access_token: accessToken });
+            console.log(`[DUPLICATE DETECTION] Removed duplicate Plaid item ${itemId}`);
+          } catch (removeError) {
+            console.error(`[DUPLICATE DETECTION] Failed to remove duplicate item:`, removeError);
+          }
+          return res.status(409).json({ 
+            message: `This bank (${institutionName || 'institution'}) is already connected. To reconnect, please remove the existing connection first.`,
+            isDuplicate: true,
+            existingItemId: duplicateInstitution.id,
+            institutionName: duplicateInstitution.institutionName
+          });
+        }
+      }
+
+      // Get accounts before storing to check for account-level duplicates
+      const accountsResponse = await plaidClient.accountsGet({
+        access_token: accessToken,
+      });
+
+      // Check for duplicate accounts by mask + type across all existing accounts
+      const existingAccounts = await storage.getAllPlaidAccounts(organizationId);
+      const newAccounts = accountsResponse.data.accounts;
+      
+      const duplicateAccounts = newAccounts.filter(newAcc => 
+        existingAccounts.some(existingAcc => 
+          existingAcc.mask === newAcc.mask && 
+          existingAcc.type === newAcc.type &&
+          existingAcc.name?.toLowerCase() === newAcc.name?.toLowerCase()
+        )
+      );
+
+      if (duplicateAccounts.length > 0) {
+        console.log(`[DUPLICATE DETECTION] Found ${duplicateAccounts.length} duplicate accounts for org ${organizationId}`);
+        // Log but don't block - user might be reconnecting with different credentials
+        // This is informational for now
+      }
+
       // Store the Plaid item (access token is encrypted by storage layer)
       const plaidItem = await storage.createPlaidItem({
         organizationId,
@@ -4928,12 +4996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: userId,
       });
 
-      // Get accounts
-      const accountsResponse = await plaidClient.accountsGet({
-        access_token: accessToken,
-      });
-
-      // Store accounts
+      // Store accounts (including persistent_account_id if available)
       for (const account of accountsResponse.data.accounts) {
         await storage.createPlaidAccount({
           plaidItemId: plaidItem.id,
@@ -4946,10 +5009,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentBalance: account.balances.current?.toString() || null,
           availableBalance: account.balances.available?.toString() || null,
           isoCurrencyCode: account.balances.iso_currency_code || null,
+          persistentAccountId: (account as any).persistent_account_id || null,
         });
       }
 
-      res.json({ success: true, accounts: accountsResponse.data.accounts.length });
+      res.json({ 
+        success: true, 
+        accounts: accountsResponse.data.accounts.length,
+        duplicateAccountsWarning: duplicateAccounts.length > 0 ? 
+          `${duplicateAccounts.length} account(s) may already be connected under a different bank connection.` : null
+      });
     } catch (error) {
       console.error("Error exchanging token:", error);
       res.status(500).json({ message: "Failed to connect bank account" });

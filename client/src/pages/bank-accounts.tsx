@@ -159,25 +159,43 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
 
   // Exchange token mutation
   const exchangeToken = useMutation({
-    mutationFn: async (publicToken: string) => {
-      return await apiRequest('POST', `/api/plaid/exchange-token/${currentOrganization.id}`, {
+    mutationFn: async ({ publicToken, metadata }: { publicToken: string; metadata?: any }) => {
+      const response = await apiRequest('POST', `/api/plaid/exchange-token/${currentOrganization.id}`, {
         public_token: publicToken,
+        metadata: metadata,
       });
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/items/${currentOrganization.id}`] });
+      let description = "Bank account connected successfully!";
+      if (data.duplicateAccountsWarning) {
+        description += ` Note: ${data.duplicateAccountsWarning}`;
+      }
       toast({
         title: "Success",
-        description: "Bank account connected successfully!",
+        description,
       });
       setLinkToken(null);
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to connect bank account. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      let description = "Failed to connect bank account. Please try again.";
+      // Check if this is a duplicate detection error
+      if (error?.response?.status === 409 || error?.message?.includes('already connected')) {
+        description = error.message || "This bank is already connected. To reconnect, please remove the existing connection first.";
+        toast({
+          title: "Bank Already Connected",
+          description,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -275,8 +293,9 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Plaid Link configuration (for new connections)
   const { open, ready } = usePlaidLink({
     token: linkToken,
-    onSuccess: (public_token) => {
-      exchangeToken.mutate(public_token);
+    onSuccess: (public_token, metadata) => {
+      // Pass metadata for duplicate Item detection
+      exchangeToken.mutate({ publicToken: public_token, metadata });
       setHasAttemptedAutoOpen(false);
     },
     onExit: () => {

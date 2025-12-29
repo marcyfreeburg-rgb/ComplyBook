@@ -1064,6 +1064,7 @@ export const plaidAccounts = pgTable("plaid_accounts", {
   currentBalance: numeric("current_balance", { precision: 12, scale: 2 }),
   availableBalance: numeric("available_balance", { precision: 12, scale: 2 }),
   isoCurrencyCode: varchar("iso_currency_code", { length: 3 }),
+  persistentAccountId: varchar("persistent_account_id", { length: 255 }),
   accountNumberEncrypted: text("account_number_encrypted"),
   routingNumberEncrypted: text("routing_number_encrypted"),
   wireRoutingNumberEncrypted: text("wire_routing_number_encrypted"),
