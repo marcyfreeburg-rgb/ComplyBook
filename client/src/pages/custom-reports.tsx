@@ -770,34 +770,101 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
             {reportResults && reportResults.length === 0 && (
               <div className="text-center py-4 text-muted-foreground">No results found</div>
             )}
-            {reportResults && reportResults.length > 0 && (
-              <div className="border rounded-lg overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {Object.keys(reportResults[0]).map((key) => (
-                        <TableHead key={key}>{key}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reportResults.map((row, idx) => (
-                      <TableRow key={idx} data-testid={`row-result-${idx}`}>
-                        {Object.values(row).map((value: any, colIdx) => (
-                          <TableCell key={colIdx}>
-                            {value instanceof Date
-                              ? format(value, "PP")
-                              : typeof value === "object"
-                              ? JSON.stringify(value)
-                              : String(value)}
-                          </TableCell>
+            {reportResults && reportResults.length > 0 && (() => {
+              const hasAmountField = reportResults[0] && ('amount' in reportResults[0] || 'Amount' in reportResults[0]);
+              const hasTypeField = reportResults[0] && ('type' in reportResults[0] || 'Type' in reportResults[0]);
+              const amountKey = reportResults[0] && 'amount' in reportResults[0] ? 'amount' : 'Amount';
+              const typeKey = reportResults[0] && 'type' in reportResults[0] ? 'type' : 'Type';
+              
+              let totalIncome = 0;
+              let totalExpenses = 0;
+              
+              if (hasAmountField && hasTypeField) {
+                reportResults.forEach((row: any) => {
+                  const amount = parseFloat(row[amountKey]) || 0;
+                  const type = String(row[typeKey]).toLowerCase();
+                  if (type === 'income') {
+                    totalIncome += amount;
+                  } else if (type === 'expense') {
+                    totalExpenses += amount;
+                  }
+                });
+              }
+              
+              const grandTotal = totalIncome - totalExpenses;
+              const formatAmount = (value: number) => {
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+              };
+              
+              return (
+                <div className="space-y-4">
+                  <div className="border rounded-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {Object.keys(reportResults[0]).map((key) => (
+                            <TableHead key={key}>{key}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reportResults.map((row, idx) => (
+                          <TableRow key={idx} data-testid={`row-result-${idx}`}>
+                            {Object.entries(row).map(([key, value]: [string, any], colIdx) => {
+                              const isAmountField = key.toLowerCase() === 'amount';
+                              const numValue = isAmountField ? parseFloat(value) : NaN;
+                              const isNegative = isAmountField && !isNaN(numValue) && numValue < 0;
+                              
+                              return (
+                                <TableCell key={colIdx} className={isNegative ? 'text-red-600 dark:text-red-400' : ''}>
+                                  {value instanceof Date
+                                    ? format(value, "PP")
+                                    : typeof value === "object"
+                                    ? JSON.stringify(value)
+                                    : isAmountField && !isNaN(numValue)
+                                    ? formatAmount(numValue)
+                                    : String(value)}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
                         ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {hasAmountField && hasTypeField && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Report Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950">
+                            <p className="text-sm text-muted-foreground">Total Income</p>
+                            <p className="text-xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-income">
+                              {formatAmount(totalIncome)}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950">
+                            <p className="text-sm text-muted-foreground">Total Expenses</p>
+                            <p className="text-xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-expenses">
+                              {formatAmount(totalExpenses)}
+                            </p>
+                          </div>
+                          <div className={`p-3 rounded-lg ${grandTotal >= 0 ? 'bg-blue-50 dark:bg-blue-950' : 'bg-red-50 dark:bg-red-950'}`}>
+                            <p className="text-sm text-muted-foreground">Net Total</p>
+                            <p className={`text-xl font-bold ${grandTotal >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-grand-total">
+                              {formatAmount(grandTotal)}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
