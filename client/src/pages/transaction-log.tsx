@@ -339,7 +339,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                     <th className="text-left py-3 px-2 font-medium">Type</th>
                     <th className="text-left py-3 px-2 font-medium">Source</th>
                     <th className="text-right py-3 px-2 font-medium">Amount</th>
-                    <th className="text-right py-3 px-2 font-medium">Actions</th>
+                    <th className="text-right py-3 px-2 font-medium sticky right-0 bg-card z-10">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -368,7 +368,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                       <td className={`py-3 px-2 text-right font-medium ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(parseFloat(transaction.amount))}
                       </td>
-                      <td className="py-3 px-2 text-right">
+                      <td className="py-3 px-2 text-right sticky right-0 bg-card z-10">
                         <div className="flex justify-end gap-1">
                           <Button
                             size="icon"
