@@ -165,7 +165,6 @@ export class WebhookHandlers {
       billingInterval: subscription.items.data[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly',
     });
 
-    console.log(`Updated user ${user.id} subscription to tier ${subscriptionTier}, status ${subscription.status}`);
   }
 
   static async handleSubscriptionDeleted(subscription: any): Promise<void> {
