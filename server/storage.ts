@@ -194,7 +194,7 @@ import {
   type InsertVendorPaymentDetails,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, lt, sql, desc, inArray } from "drizzle-orm";
 import memoize from "memoizee";
 import { encryptField, decryptField } from './encryption';
 import { computeAuditLogHash, verifyAuditLogChain as verifyChain } from './auditChain';
@@ -2769,12 +2769,12 @@ export class DatabaseStorage implements IStorage {
     const results = [];
     
     for (const grant of activeGrants) {
-      // Time/Effort Reports
+      // Time/Effort Reports - uses certificationDate (null = pending, not null = certified)
       const [timeEffortStats] = await db
         .select({
           total: sql<number>`COUNT(*)::int`,
-          pending: sql<number>`COUNT(CASE WHEN ${timeEffortReports.certificationStatus} = 'pending' THEN 1 END)::int`,
-          certified: sql<number>`COUNT(CASE WHEN ${timeEffortReports.certificationStatus} = 'certified' THEN 1 END)::int`,
+          pending: sql<number>`COUNT(CASE WHEN certification_date IS NULL THEN 1 END)::int`,
+          certified: sql<number>`COUNT(CASE WHEN certification_date IS NOT NULL THEN 1 END)::int`,
         })
         .from(timeEffortReports)
         .where(eq(timeEffortReports.grantId, grant.id));
@@ -2783,8 +2783,8 @@ export class DatabaseStorage implements IStorage {
       const [costStats] = await db
         .select({
           total: sql<number>`COUNT(*)::int`,
-          pending: sql<number>`COUNT(CASE WHEN ${costAllowabilityChecks.allowabilityStatus} = 'pending' THEN 1 END)::int`,
-          approved: sql<number>`COUNT(CASE WHEN ${costAllowabilityChecks.allowabilityStatus} = 'allowable' THEN 1 END)::int`,
+          pending: sql<number>`COUNT(CASE WHEN allowability_status = 'pending' THEN 1 END)::int`,
+          approved: sql<number>`COUNT(CASE WHEN allowability_status = 'allowable' THEN 1 END)::int`,
         })
         .from(costAllowabilityChecks)
         .where(eq(costAllowabilityChecks.grantId, grant.id));
@@ -2793,18 +2793,18 @@ export class DatabaseStorage implements IStorage {
       const [reportsStats] = await db
         .select({
           total: sql<number>`COUNT(*)::int`,
-          pending: sql<number>`COUNT(CASE WHEN ${federalFinancialReports.status} IN ('draft', 'under_review') THEN 1 END)::int`,
-          submitted: sql<number>`COUNT(CASE WHEN ${federalFinancialReports.status} = 'submitted' THEN 1 END)::int`,
+          pending: sql<number>`COUNT(CASE WHEN status IN ('draft', 'under_review') THEN 1 END)::int`,
+          submitted: sql<number>`COUNT(CASE WHEN status = 'submitted' THEN 1 END)::int`,
         })
         .from(federalFinancialReports)
         .where(eq(federalFinancialReports.grantId, grant.id));
 
-      // Audit Prep Items
+      // Audit Prep Items - uses completion_status field
       const [auditStats] = await db
         .select({
           total: sql<number>`COUNT(*)::int`,
-          pending: sql<number>`COUNT(CASE WHEN ${auditPrepItems.status} IN ('not_started', 'in_progress') THEN 1 END)::int`,
-          completed: sql<number>`COUNT(CASE WHEN ${auditPrepItems.status} = 'completed' THEN 1 END)::int`,
+          pending: sql<number>`COUNT(CASE WHEN completion_status IN ('not_started', 'in_progress') THEN 1 END)::int`,
+          completed: sql<number>`COUNT(CASE WHEN completion_status = 'completed' THEN 1 END)::int`,
         })
         .from(auditPrepItems)
         .where(eq(auditPrepItems.grantId, grant.id));

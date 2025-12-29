@@ -1,0 +1,39 @@
+4:38:47 AM [express] GET /api/notifications/168/unread-count 304 in 879ms :: {"count":"0"}
+4:39:18 AM [express] GET /api/notifications/168/unread-count 304 in 462ms :: {"count":"0"}
+4:39:49 AM [express] GET /api/notifications/168/unread-count 304 in 846ms :: {"count":"0"}
+4:40:20 AM [express] GET /api/notifications/168/unread-count 304 in 844ms :: {"count":"0"}
+4:40:46 AM [express] GET /api/budgets/168 304 in 852ms :: []
+4:40:46 AM [express] GET /api/dashboard/168 304 in 1055ms :: {"totalIncome":"18468.62","totalExpense…
+4:40:46 AM [express] GET /api/dashboard/168/category-breakdown 304 in 1043ms :: {"incomeByCategory":…
+4:40:47 AM [express] GET /api/dashboard/168/monthly-trends 304 in 1602ms :: [{"month":"Jul 2025","in…
+4:40:50 AM [express] GET /api/notifications/168/unread-count 304 in 263ms :: {"count":"0"}
+Error fetching grant compliance: error: syntax error at or near "="
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getGrantCompliance (file:///opt/render/project/src/dist/index.js:4726:37)
+    at async file:///opt/render/project/src/dist/index.js:12372:31 {
+  length: 90,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '40',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+4:40:59 AM [express] GET /api/compliance/168/grants 500 in 328ms :: {"message":"Failed to fetch gran…
+Error fetching compliance metrics: ReferenceError: lt is not defined
+    at DatabaseStorage.getComplianceMetrics (file:///opt/render/project/src/dist/index.js:4700:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:12357:23
+4:40:59 AM [express] GET /api/compliance/168/metrics 500 in 908ms :: {"message":"Failed to fetch com…
