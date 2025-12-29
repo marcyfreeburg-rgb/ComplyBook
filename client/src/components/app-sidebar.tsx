@@ -3,7 +3,7 @@ import {
   Tag, Clock, Truck, Users, File, FileX, FileSliders, BarChart3, Calculator, 
   ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, 
   DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, 
-  Award, ShieldCheck, Sparkles, Database, Shield, FileSpreadsheet,
+  Award, ShieldCheck, Sparkles, Database, Shield, FileSpreadsheet, List,
   ChevronDown, ArrowDownCircle, ArrowUpCircle, LineChart, Cog, HandHeart
 } from "lucide-react";
 import {
@@ -119,6 +119,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: Landmark,
       items: [
         { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+        { title: "Transaction Log", url: "/transaction-log", icon: List },
         { title: "Bank Reconciliation", url: "/bank-reconciliation", icon: CheckSquare },
         { title: "Accounting Imports", url: "/accounting-imports", icon: FileSpreadsheet },
       ],
@@ -220,6 +221,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: Landmark,
       items: [
         { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+        { title: "Transaction Log", url: "/transaction-log", icon: List },
         { title: "Bank Reconciliation", url: "/bank-reconciliation", icon: CheckSquare },
         { title: "Accounting Imports", url: "/accounting-imports", icon: FileSpreadsheet },
       ],

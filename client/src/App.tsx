@@ -55,6 +55,7 @@ import GovernmentContractsHub from "@/pages/government-contracts-hub";
 import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
+import TransactionLog from "@/pages/transaction-log";
 import MfaSetup from "@/pages/mfa-setup";
 import MfaVerify from "@/pages/mfa-verify";
 import MfaSetupLogin from "@/pages/mfa-setup-login";
@@ -413,6 +414,12 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/accounting-imports">
                 <AccountingImports organizationId={currentOrganization.id} />
+              </Route>
+              <Route path="/transaction-log">
+                <TransactionLog 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
               </Route>
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/fundraising-hub">
