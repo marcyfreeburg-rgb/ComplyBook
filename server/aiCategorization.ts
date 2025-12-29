@@ -46,12 +46,31 @@ export async function suggestCategory(
       return null;
     }
 
-    // Build the prompt for AI
-    const categoryList = relevantCategories.map(cat => 
-      `- ID: ${cat.id}, Name: "${cat.name}", Description: "${cat.description || 'No description'}"`
-    ).join('\n');
+    // Get existing categorized transactions to learn from (up to 5 examples per category)
+    const existingTransactions = await storage.getTransactions(organizationId);
+    const categorizedExamples: Map<number, string[]> = new Map();
+    
+    for (const cat of relevantCategories) {
+      const catTransactions = existingTransactions
+        .filter(t => t.categoryId === cat.id && t.description)
+        .slice(0, 5)
+        .map(t => t.description);
+      if (catTransactions.length > 0) {
+        categorizedExamples.set(cat.id, catTransactions);
+      }
+    }
+
+    // Build the prompt for AI with learning examples
+    const categoryList = relevantCategories.map(cat => {
+      const examples = categorizedExamples.get(cat.id);
+      const examplesText = examples && examples.length > 0 
+        ? `\n    Examples: ${examples.map(e => `"${e}"`).join(', ')}`
+        : '';
+      return `- ID: ${cat.id}, Name: "${cat.name}", Description: "${cat.description || 'No description'}"${examplesText}`;
+    }).join('\n');
 
     const prompt = `You are a financial categorization expert. Analyze this transaction and suggest the most appropriate category.
+Learn from the examples provided for each category - they show how similar transactions have been categorized previously.
 
 Transaction Details:
 - Description: "${transactionDescription}"

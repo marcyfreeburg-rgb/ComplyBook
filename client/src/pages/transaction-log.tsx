@@ -20,7 +20,9 @@ import {
   CreditCard,
   Upload,
   RefreshCw,
-  Plus
+  Plus,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant } from "@shared/schema";
 import { format } from "date-fns";
@@ -52,6 +54,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     donorId: "",
     grantId: "",
   });
+  
+  const [suggestingForTransaction, setSuggestingForTransaction] = useState<number | null>(null);
 
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
@@ -121,6 +125,58 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         description: error.message || "Failed to delete transaction.",
         variant: "destructive",
       });
+    },
+  });
+
+  const suggestCategoryMutation = useMutation({
+    mutationFn: async (transaction: Transaction) => {
+      // Get AI suggestion
+      const response = await apiRequest('POST', `/api/ai/suggest-category/${currentOrganization.id}`, {
+        description: transaction.description,
+        amount: transaction.amount,
+        type: transaction.type,
+      });
+      const suggestionResponse = await response.json();
+      
+      const suggestion = suggestionResponse?.suggestion;
+      if (!suggestion?.categoryId) {
+        return { transactionId: transaction.id, suggestion: null, applied: false };
+      }
+      
+      // Apply the suggestion directly via PATCH
+      await apiRequest('PATCH', `/api/transactions/${transaction.id}`, {
+        categoryId: suggestion.categoryId
+      });
+      
+      return { transactionId: transaction.id, suggestion, applied: true };
+    },
+    onMutate: (transaction) => {
+      setSuggestingForTransaction(transaction.id);
+    },
+    onSuccess: (data) => {
+      if (data.applied && data.suggestion) {
+        queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+        toast({
+          title: "Category Applied",
+          description: `Applied "${data.suggestion.categoryName}" (${data.suggestion.confidence}% confidence)`,
+        });
+      } else {
+        toast({
+          title: "No Suggestion",
+          description: "AI couldn't determine a suitable category for this transaction.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get category suggestion.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setSuggestingForTransaction(null);
     },
   });
 
@@ -350,7 +406,26 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                       </td>
                       <td className="py-3 px-2">{transaction.description}</td>
                       <td className="py-3 px-2">
-                        <Badge variant="outline">{getCategoryName(transaction.categoryId)}</Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline">{getCategoryName(transaction.categoryId)}</Badge>
+                          {!transaction.categoryId && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={() => suggestCategoryMutation.mutate(transaction)}
+                              disabled={suggestingForTransaction === transaction.id}
+                              title="AI Suggest Category"
+                              data-testid={`button-suggest-category-${transaction.id}`}
+                            >
+                              {suggestingForTransaction === transaction.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3 w-3 text-amber-500" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </td>
                       {currentOrganization.type === 'nonprofit' && (
                         <td className="py-3 px-2">
