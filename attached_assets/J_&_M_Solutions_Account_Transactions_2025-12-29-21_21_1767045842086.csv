@@ -1,0 +1,790 @@
+﻿Account Transactions
+J & M Solutions
+Date Range: 2025-01-01 to 2025-12-29
+Report Type: Accrual (Paid & Unpaid)
+ACCOUNT NUMBER,DATE,DESCRIPTION,DEBIT (In Business Currency),CREDIT (In Business Currency),BALANCE (In Business Currency)
+,S09 - Free Business Checking,,,,
+Starting Balance,,,,,"$1,066.15"
+Checking,2025-01-01,To bring account current,"$6,836.72",,"$7,902.87"
+Checking,2025-01-02,Wave PYRL : PAYROLL : 2981044,,$209.91,"$7,692.96"
+Checking,2025-01-03,Square Payment,$96.40,,"$7,789.36"
+Checking,2025-01-13,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,368.53"
+Checking,2025-01-17,Wave PYRL : PAYROLL : 2981044,,$420.83,"$6,947.70"
+Checking,2025-01-17,Invoice payment from C Cubed,"$2,000.00",,"$8,947.70"
+Checking,2025-01-22,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,526.87"
+Checking,2025-01-30,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,106.04"
+Checking,2025-02-01,Wave Payroll,,$20.00,"$8,086.04"
+Checking,2025-02-01,Wave Payroll,,$32.00,"$8,054.04"
+Checking,2025-02-03,Snow Shoveling,,$400.00,"$7,654.04"
+Checking,2025-02-06,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,233.21"
+Checking,2025-02-13,Wave PYRL : PAYROLL : 2981044,,$420.83,"$6,812.38"
+Checking,2025-02-13,Square Deposit,$96.40,,"$6,908.78"
+Checking,2025-02-17,Invoice #2 Payment from C3,"$2,000.00",,"$8,908.78"
+Checking,2025-02-20,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,487.95"
+Checking,2025-02-27,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,067.12"
+Checking,2025-03-01,Wave Payroll,,$32.00,"$8,035.12"
+Checking,2025-03-05,Square Payment,$96.40,,"$8,131.52"
+Checking,2025-03-06,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,710.69"
+Checking,2025-03-13,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,289.86"
+Checking,2025-03-18,Payment for Invoice,"$2,000.00",,"$9,289.86"
+Checking,2025-03-20,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,869.03"
+Checking,2025-03-23,Public Data Lookup,,$1.00,"$8,868.03"
+Checking,2025-03-27,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,447.20"
+Checking,2025-03-27,Square Payment,$96.40,,"$8,543.60"
+Checking,2025-03-30,Public Data Information,,$29.96,"$8,513.64"
+Checking,2025-04-01,Wave Payroll,,$32.00,"$8,481.64"
+Checking,2025-04-04,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,060.81"
+Checking,2025-04-11,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,639.98"
+Checking,2025-04-17,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,219.15"
+Checking,2025-04-17,Payment for Teaching Services,"$2,000.00",,"$9,219.15"
+Checking,2025-04-24,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,798.32"
+Checking,2025-04-28,Square Invoice,$96.40,,"$8,894.72"
+Checking,2025-04-29,Public Data Check,,$29.96,"$8,864.76"
+Checking,2025-05-01,Wave Payroll Fee,,$32.00,"$8,832.76"
+Checking,2025-05-08,Queensboro,,$87.63,"$8,745.13"
+Checking,2025-05-12,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,324.30"
+Checking,2025-05-12,Wave PYRL : PAYROLL : 2981044,,$420.83,"$7,903.47"
+Checking,2025-05-17,Payment for Teaching Services,"$2,000.00",,"$9,903.47"
+Checking,2025-05-19,Wave PYRL : PAYROLL : 2981044,,$420.83,"$9,482.64"
+Checking,2025-05-27,Wave PYRL : PAYROLL : 2981044,,$420.83,"$9,061.81"
+Checking,2025-05-29,Public Data Check,,$29.96,"$9,031.85"
+Checking,2025-06-01,Wave Payroll,,$32.00,"$8,999.85"
+Checking,2025-06-02,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,579.02"
+Checking,2025-06-09,DEP PRENOTIFICATION FROM Check P,,$0.00,"$8,579.02"
+Checking,2025-06-09,DEP PRENOTIFICATION FROM Check P,,$0.00,"$8,579.02"
+Checking,2025-06-12,Wave PYRL : PAYROLL : 2981044,,$420.83,"$8,158.19"
+Checking,2025-06-14,C Cubed Training - Student payment,"$1,000.00",,"$9,158.19"
+Checking,2025-06-16,Cash Withdrawal for Student Pay,,"$1,000.00","$8,158.19"
+Checking,2025-06-18,Teacher Services Payment,"$2,000.00",,"$10,158.19"
+Checking,2025-06-23,DEP PRENOTIFICATION FROM Check P,,$0.00,"$10,158.19"
+Checking,2025-06-28,Public Data,,$29.96,"$10,128.23"
+Checking,2025-07-01,Wave-Payroll,,$32.00,"$10,096.23"
+Checking,2025-07-09,Cash Withdrawl,,"$2,000.00","$8,096.23"
+Checking,2025-07-17,Deposit Home Banking Transfer RE,"$1,700.00",,"$9,796.23"
+Checking,2025-07-17,C Cubed Training - Payment for Invoice #8,"$2,000.00",,"$11,796.23"
+Checking,2025-07-17,Payment to Interns for Camps,,"$1,700.00","$10,096.23"
+Checking,2025-07-28,Public Data Check,,$29.96,"$10,066.27"
+Checking,2025-07-31,Balance out,,"$15,175.38","-$5,109.11"
+Checking,2025-08-02,Payroll,,$32.00,"-$5,141.11"
+Checking,2025-08-17,Open AI,,$25.00,"-$5,166.11"
+Checking,2025-08-22,Wave Payroll : PCR : 12093060,,$549.57,"-$5,715.68"
+Checking,2025-08-22,OnPay Inc : ACCTVERIFY : 7581,$0.82,,"-$5,714.86"
+Checking,2025-08-22,OnPay Inc : ACCTVERIFY : 7581,,$0.11,"-$5,714.97"
+Checking,2025-08-22,OnPay Inc : ACCTVERIFY : 7581,,$0.71,"-$5,715.68"
+Checking,2025-08-22,Payment for Teachers,"$2,000.00",,"-$3,715.68"
+Checking,2025-08-28,Visa Check PUBLIC DATA CHECK 80,,$29.96,"-$3,745.64"
+Checking,2025-08-28,Wave Payroll : PCR : 12093060,,$549.57,"-$4,295.21"
+Checking,2025-08-30,SHADOWSCAPE SHADOWSCAPE.I ID Car,,"$2,379.00","-$6,674.21"
+Checking,2025-09-01,Visa Check WAVE - PAYROLL FEES,,$32.00,"-$6,706.21"
+Checking,2025-09-04,Wave Payroll : PCR : 12093060,,$549.57,"-$7,255.78"
+Checking,2025-09-04,Visa Check EVENT:CS5 EAST 2025,,$833.00,"-$8,088.78"
+Checking,2025-09-10,Wave Payroll : PCR : 12093060,,$549.57,"-$8,638.35"
+Checking,2025-09-11,Deposit Home Banking Transfer Fr,"$1,000.00",,"-$7,638.35"
+Checking,2025-09-11,FARMERS INS COMMERCIAL,,$149.40,"-$7,787.75"
+Checking,2025-09-11,FARMERS INS COMMERCIAL,,$108.00,"-$7,895.75"
+Checking,2025-09-12,Visa Check SOUTHWES 52623862720,,$248.36,"-$8,144.11"
+Checking,2025-09-17,Deposit Home Banking Transfer Fr,"$2,000.00",,"-$6,144.11"
+Checking,2025-09-17,Wave Payroll : PCR : 12093060,,$549.57,"-$6,693.68"
+Checking,2025-09-20,Visa Check POCKET PREP - IT/CYB,,$20.99,"-$6,714.67"
+Checking,2025-09-23,WAVE SV9T : : 1043,$194.20,,"-$6,520.47"
+Checking,2025-09-24,Wave Payroll : PCR : 12093060,,$549.57,"-$7,070.04"
+Checking,2025-09-25,Visa Check VISTAPRINT,,$29.07,"-$7,099.11"
+Checking,2025-09-25,Visa Check CO SECRETARY STATE F,,$25.00,"-$7,124.11"
+Checking,2025-09-28,Visa Check PUBLIC DATA CHECK 80,,$29.96,"-$7,154.07"
+Checking,2025-09-28,Visa Check MICROSOFT 40,,$129.99,"-$7,284.06"
+Checking,2025-09-29,Withdrawal Card Fee VISA INTERN,,$0.54,"-$7,284.60"
+Checking,2025-09-29,Visa Check IMSTECK1 SINGAPORE S,,$68.00,"-$7,352.60"
+Checking,2025-10-01,Wave Payroll : PCR : 12093060,,$549.57,"-$7,902.17"
+Checking,2025-10-01,Visa Check WAVE - PAYROLL FEES,,$32.00,"-$7,934.17"
+Checking,2025-10-08,Wave Payroll : PCR : 12093060,,$549.57,"-$8,483.74"
+Checking,2025-10-11,FARMERS INS COMMERCIAL,,$80.66,"-$8,564.40"
+Checking,2025-10-11,FARMERS INS COMMERCIAL,,$60.00,"-$8,624.40"
+Checking,2025-10-17,Deposit Home Banking Transfer Fr,"$2,000.00",,"-$6,624.40"
+Checking,2025-10-20,WAVE SV9T : : 1043,$194.20,,"-$6,430.20"
+Checking,2025-10-20,Visa Check POCKET PREP - IT/CYB,,$20.99,"-$6,451.19"
+Checking,2025-10-20,Visa Check BLD*MYPERFECTRESUME,,$2.95,"-$6,454.14"
+Checking,2025-10-21,Wave Payroll : PCR : 12093060,,$549.57,"-$7,003.71"
+Checking,2025-10-27,Visa Check PUBLIC DATA CHECK 80,,$29.96,"-$7,033.67"
+Checking,2025-10-28,Visa Check AMAZON MKTPL*N48B27K,,$19.53,"-$7,053.20"
+Checking,2025-10-29,Visa Check FINDRFP.COM MINNEAPO,,$29.95,"-$7,083.15"
+Checking,2025-11-01,Visa Check WAVE - PAYROLL FEES,,$32.00,"-$7,115.15"
+Checking,2025-11-03,Visa Check BLD*MYPERFECTRESUME,,$23.95,"-$7,139.10"
+Checking,2025-11-05,Visa Check POSTCARDMANIA CLEARW,,"$1,745.61","-$8,884.71"
+Checking,2025-11-06,GODADDY.COM,,$12.19,"-$8,896.90"
+Checking,2025-11-11,FARMERS INS COMMERCIAL,,$80.66,"-$8,977.56"
+Checking,2025-11-11,FARMERS INS COMMERCIAL,,$60.00,"-$9,037.56"
+Checking,2025-11-17,WAVE SV9T : : 1043,$194.20,,"-$8,843.36"
+Checking,2025-11-17,Deposit Home Banking Transfer Fr,"$2,000.00",,"-$6,843.36"
+Checking,2025-11-20,Wave Payroll : PCR : 12093060,,$549.57,"-$7,392.93"
+Checking,2025-11-26,C Cubed Training - Payment for Invoice #16,"$2,000.00",,"-$5,392.93"
+Checking,2025-11-26,Wave Payroll : PCR : 12093060,,$549.57,"-$5,942.50"
+Checking,2025-11-26,Visa Check PUBLIC DATA CHECK 80,,$29.96,"-$5,972.46"
+Checking,2025-11-26,GODADDY.COM,,$50.59,"-$6,023.05"
+Checking,2025-11-29,Visa Check FINDRFP.COM MINNEAPO,,$29.95,"-$6,053.00"
+Checking,2025-12-02,Visa Check BLD*MYPERFECTRESUME,,$23.95,"-$6,076.95"
+Checking,2025-12-04,Wave Payroll : PCR : 12093060,,$549.57,"-$6,626.52"
+Checking,2025-12-05,Deposit Home Banking Transfer RE,"$2,000.00",,"-$4,626.52"
+Checking,2025-12-06,Visa Check TWILIO SENDGRID WWW.,,$16.73,"-$4,643.25"
+Checking,2025-12-11,FARMERS INS COMMERCIAL,,$80.66,"-$4,723.91"
+Checking,2025-12-11,FARMERS INS COMMERCIAL,,$60.00,"-$4,783.91"
+Checking,2025-12-15,WAVE SV9T : : 1043,$194.20,,"-$4,589.71"
+Checking,2025-12-17,Deposit Home Banking Transfer Fr,"$2,000.00",,"-$2,589.71"
+Checking,2025-12-17,Wave Payroll : PCR : 12093060,,$549.57,"-$3,139.28"
+Checking,2025-12-22,Wave Payroll : PCR : 12093060,,$549.57,"-$3,688.85"
+Checking,2025-12-22,Check #1510 Withdrawal #0000001510,,$100.00,"-$3,788.85"
+Checking,2025-12-23,Withdrawal Home Banking Transfer,,$750.00,"-$4,538.85"
+Checking,2025-12-24,Visa Check DELTEK INC,,"$1,750.00","-$6,288.85"
+Checking,2025-12-26,Visa Check PUBLIC DATA CHECK 80,,$29.96,"-$6,318.81"
+Totals and Ending Balance,,,"$39,796.34","$47,181.30","-$6,318.81"
+Balance Change,,,"-$7,384.96",,
+""
+,Transfer Clearing,,,,
+Starting Balance,,,,,$0.00
+,2025-01-02,Wave PYRL : PAYROLL : 2981044,$209.91,,$209.91
+,2025-01-02,Transfer from transfer clearing account to payroll clearing account,,$209.91,$0.00
+,2025-01-13,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-01-13,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-01-17,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-01-17,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-01-22,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-01-22,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-01-30,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-01-30,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-02-06,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-02-06,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-02-13,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-02-13,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-02-20,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-02-20,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-02-27,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-02-27,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-03-06,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-03-06,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-03-13,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-03-13,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-03-20,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-03-20,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-03-27,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-03-27,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-04-04,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-04-04,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-04-11,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-04-11,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-04-17,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-04-17,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-04-24,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-04-24,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-05-12,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-05-12,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-05-12,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-05-12,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-05-19,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-05-19,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-05-27,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-05-27,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-06-02,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-06-02,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-06-12,Wave PYRL : PAYROLL : 2981044,$420.83,,$420.83
+,2025-06-12,Transfer from transfer clearing account to payroll clearing account,,$420.83,$0.00
+,2025-08-22,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-08-22,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-08-28,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-08-28,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-09-04,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-09-04,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-09-10,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-09-10,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-09-17,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-09-17,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-09-23,WAVE SV9T : : 1043,,$194.20,-$194.20
+,2025-09-23,Transfer from Wave Payments to your bank account,$194.20,,$0.00
+,2025-09-24,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-09-24,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-10-01,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-10-01,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-10-08,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-10-08,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-10-20,WAVE SV9T : : 1043,,$194.20,-$194.20
+,2025-10-20,Transfer from Wave Payments to your bank account,$194.20,,$0.00
+,2025-10-21,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-10-21,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-11-17,WAVE SV9T : : 1043,,$194.20,-$194.20
+,2025-11-17,Transfer from Wave Payments to your bank account,$194.20,,$0.00
+,2025-11-20,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-11-20,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-11-26,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-11-26,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-12-04,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-12-04,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-12-15,WAVE SV9T : : 1043,,$194.20,-$194.20
+,2025-12-15,Transfer from Wave Payments to your bank account,$194.20,,$0.00
+,2025-12-17,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-12-17,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+,2025-12-22,Wave Payroll : PCR : 12093060,$549.57,,$549.57
+,2025-12-22,Transfer from transfer clearing account to payroll clearing account,,$549.57,$0.00
+Totals and Ending Balance,,,"$17,938.95","$17,938.95",$0.00
+Balance Change,,,$0.00,,
+""
+,Wave Payments,,,,
+Starting Balance,,,,,$0.00
+,2025-09-19,Ashley Skilling - Payment for Invoice #13,$194.20,,$194.20
+,2025-09-23,Transfer from Wave Payments to your bank account,,$194.20,$0.00
+,2025-10-16,Ashley Skilling - Payment for Invoice #15,$194.20,,$194.20
+,2025-10-20,Transfer from Wave Payments to your bank account,,$194.20,$0.00
+,2025-11-13,Ashley Skilling - Payment for Invoice #17,$194.20,,$194.20
+,2025-11-17,Transfer from Wave Payments to your bank account,,$194.20,$0.00
+,2025-12-11,Ashley Skilling - Payment for Invoice #20,$194.20,,$194.20
+,2025-12-15,Transfer from Wave Payments to your bank account,,$194.20,$0.00
+Totals and Ending Balance,,,$776.80,$776.80,$0.00
+Balance Change,,,$0.00,,
+""
+,Wave Payroll Clearing,,,,
+Starting Balance,,,,,"-$3,241.29"
+,2025-01-02,"Payroll period ending Jan 3, 2025",,$209.91,"-$3,451.20"
+,2025-01-02,Transfer from transfer clearing account to payroll clearing account,$209.91,,"-$3,241.29"
+,2025-01-13,"Payroll period ending Jan 10, 2025",,$420.83,"-$3,662.12"
+,2025-01-13,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-01-16,"Payroll period ending Jan 17, 2025",,$420.83,"-$3,662.12"
+,2025-01-17,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-01-22,"Payroll period ending Jan 24, 2025",,$420.83,"-$3,662.12"
+,2025-01-22,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-01-29,"Payroll period ending Jan 31, 2025",,$420.83,"-$3,662.12"
+,2025-01-30,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-02-05,"Payroll period ending Feb 7, 2025",,$420.83,"-$3,662.12"
+,2025-02-06,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-02-12,"Payroll period ending Feb 14, 2025",,$420.83,"-$3,662.12"
+,2025-02-13,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-02-19,"Payroll period ending Feb 21, 2025",,$420.83,"-$3,662.12"
+,2025-02-20,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-02-26,"Payroll period ending Feb 28, 2025",,$420.83,"-$3,662.12"
+,2025-02-27,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-03-05,"Payroll period ending Mar 7, 2025",,$420.83,"-$3,662.12"
+,2025-03-06,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-03-12,"Payroll period ending Mar 14, 2025",,$420.83,"-$3,662.12"
+,2025-03-13,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-03-19,"Payroll period ending Mar 21, 2025",,$420.83,"-$3,662.12"
+,2025-03-20,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-03-26,"Payroll period ending Mar 28, 2025",,$420.83,"-$3,662.12"
+,2025-03-27,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-04-03,"Payroll period ending Apr 4, 2025",,$420.83,"-$3,662.12"
+,2025-04-04,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-04-10,"Payroll period ending Apr 11, 2025",,$420.83,"-$3,662.12"
+,2025-04-11,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-04-16,"Payroll period ending Apr 18, 2025",,$420.83,"-$3,662.12"
+,2025-04-17,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-04-23,"Payroll period ending Apr 25, 2025",,$420.83,"-$3,662.12"
+,2025-04-24,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-05-12,"Payroll period ending May 2, 2025",,$420.83,"-$3,662.12"
+,2025-05-12,"Payroll period ending May 9, 2025",,$420.83,"-$4,082.95"
+,2025-05-12,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,662.12"
+,2025-05-12,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-05-19,"Payroll period ending May 16, 2025",,$420.83,"-$3,662.12"
+,2025-05-19,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-05-27,"Payroll period ending May 23, 2025",,$420.83,"-$3,662.12"
+,2025-05-27,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-06-02,"Payroll period ending May 30, 2025",,$420.83,"-$3,662.12"
+,2025-06-02,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-06-11,"Payroll period ending Jun 6, 2025",,$420.83,"-$3,662.12"
+,2025-06-12,Transfer from transfer clearing account to payroll clearing account,$420.83,,"-$3,241.29"
+,2025-08-22,Payroll period ending 2025-08-22,,$549.57,"-$3,790.86"
+,2025-08-22,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$3,241.29"
+,2025-08-28,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-08-28,Payroll period ending 2025-08-29,,$549.57,"-$3,241.29"
+,2025-09-04,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-09-04,Payroll period ending 2025-09-05,,$549.57,"-$3,241.29"
+,2025-09-10,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-09-10,Payroll period ending 2025-09-12,,$549.57,"-$3,241.29"
+,2025-09-17,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-09-17,Payroll period ending 2025-09-19,,$549.57,"-$3,241.29"
+,2025-09-24,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-09-24,Payroll period ending 2025-09-26,,$549.57,"-$3,241.29"
+,2025-10-01,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-10-01,Payroll period ending 2025-10-03,,$549.57,"-$3,241.29"
+,2025-10-08,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-10-08,Payroll period ending 2025-10-10,,$549.57,"-$3,241.29"
+,2025-10-20,Payroll period ending 2025-10-17,,$549.57,"-$3,790.86"
+,2025-10-21,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$3,241.29"
+,2025-11-20,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-11-20,Payroll period ending 2025-10-24,,$549.57,"-$3,241.29"
+,2025-11-26,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-11-26,Payroll period ending 2025-10-31,,$549.57,"-$3,241.29"
+,2025-12-04,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-12-04,Payroll period ending 2025-11-07,,$549.57,"-$3,241.29"
+,2025-12-17,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-12-17,Payroll period ending 2025-11-14,,$549.57,"-$3,241.29"
+,2025-12-22,Transfer from transfer clearing account to payroll clearing account,$549.57,,"-$2,691.72"
+,2025-12-22,Payroll period ending 2025-11-21,,$549.57,"-$3,241.29"
+Totals and Ending Balance,,,"$17,162.15","$17,162.15","-$3,241.29"
+Balance Change,,,$0.00,,
+""
+,Accounts Receivable,,,,
+Starting Balance,,,,,-$43.04
+,2025-01-01,C Cubed Training - 1,"$2,000.00",,"$1,956.96"
+,2025-01-17,Invoice payment from C Cubed,,"$2,000.00",-$43.04
+,2025-02-01,C Cubed Training - 2,"$2,000.00",,"$1,956.96"
+,2025-02-17,Invoice #2 Payment from C3,,"$2,000.00",-$43.04
+,2025-03-01,C Cubed Training - 3,"$2,000.00",,"$1,956.96"
+,2025-03-18,Payment for Invoice,,"$2,000.00",-$43.04
+,2025-04-01,C Cubed Training - 4,"$2,000.00",,"$1,956.96"
+,2025-04-17,Payment for Teaching Services,,"$2,000.00",-$43.04
+,2025-05-01,C Cubed Training - 5,"$2,000.00",,"$1,956.96"
+,2025-05-17,Payment for Teaching Services,,"$2,000.00",-$43.04
+,2025-06-01,C Cubed Training - 6,"$2,000.00",,"$1,956.96"
+,2025-06-14,C Cubed Training - 7,"$1,000.00",,"$2,956.96"
+,2025-06-14,C Cubed Training - Student payment,,"$1,000.00","$1,956.96"
+,2025-06-18,Teacher Services Payment,,"$2,000.00",-$43.04
+,2025-06-25,C Cubed Training - 8,"$2,000.00",,"$1,956.96"
+,2025-07-17,C Cubed Training - Payment for Invoice #8,,"$2,000.00",-$43.04
+,2025-08-01,C Cubed Training - 11,"$2,000.00",,"$1,956.96"
+,2025-08-22,Payment for Teachers,,"$2,000.00",-$43.04
+,2025-09-01,C Cubed Training - 12,"$2,000.00",,"$1,956.96"
+,2025-09-11,Ashley Skilling - 13,$200.00,,"$2,156.96"
+,2025-09-17,Deposit Home Banking Transfer Fr,,"$2,000.00",$156.96
+,2025-09-19,Ashley Skilling - Payment for Invoice #13,,$200.00,-$43.04
+,2025-10-01,C Cubed Training - 14,"$2,000.00",,"$1,956.96"
+,2025-10-10,Ashley Skilling - 15,$200.00,,"$2,156.96"
+,2025-10-16,Ashley Skilling - Payment for Invoice #15,,$200.00,"$1,956.96"
+,2025-10-17,Deposit Home Banking Transfer Fr,,"$2,000.00",-$43.04
+,2025-11-01,C Cubed Training - 16,"$2,000.00",,"$1,956.96"
+,2025-11-10,Ashley Skilling - 17,$200.00,,"$2,156.96"
+,2025-11-13,Ashley Skilling - Payment for Invoice #17,,$200.00,"$1,956.96"
+,2025-11-22,PuebloPlex - 18,"$1,600.00",,"$3,556.96"
+,2025-11-26,C Cubed Training - Payment for Invoice #16,,"$2,000.00","$1,556.96"
+,2025-12-01,C Cubed Training - 19,"$2,000.00",,"$3,556.96"
+,2025-12-10,Ashley Skilling - 20,$200.00,,"$3,756.96"
+,2025-12-11,Ashley Skilling - Payment for Invoice #20,,$200.00,"$3,556.96"
+Totals and Ending Balance,,,"$27,400.00","$23,800.00","$3,556.96"
+Balance Change,,,"$3,600.00",,
+""
+,Payroll Liabilities,,,,
+Starting Balance,,,,,"$15,417.44"
+,2025-01-02,"Payroll period ending Jan 3, 2025",$209.91,,"$15,207.53"
+,2025-01-03,Total net pay owing to employees,,$209.91,"$15,417.44"
+,2025-01-03,Total employee tax owing to third parties,,$30.47,"$15,447.91"
+,2025-01-03,Total employer tax owing to third parties,,$19.87,"$15,467.78"
+,2025-01-10,Total net pay owing to employees,,$420.83,"$15,888.61"
+,2025-01-10,Total employee tax owing to third parties,,$59.94,"$15,948.55"
+,2025-01-10,Total employer tax owing to third parties,,$39.74,"$15,988.29"
+,2025-01-13,"Payroll period ending Jan 10, 2025",$420.83,,"$15,567.46"
+,2025-01-16,"Payroll period ending Jan 17, 2025",$420.83,,"$15,146.63"
+,2025-01-17,Total net pay owing to employees,,$420.83,"$15,567.46"
+,2025-01-17,Total employee tax owing to third parties,,$59.94,"$15,627.40"
+,2025-01-17,Total employer tax owing to third parties,,$39.74,"$15,667.14"
+,2025-01-22,"Payroll period ending Jan 24, 2025",$420.83,,"$15,246.31"
+,2025-01-24,Total net pay owing to employees,,$420.83,"$15,667.14"
+,2025-01-24,Total employee tax owing to third parties,,$59.94,"$15,727.08"
+,2025-01-24,Total employer tax owing to third parties,,$39.74,"$15,766.82"
+,2025-01-29,"Payroll period ending Jan 31, 2025",$420.83,,"$15,345.99"
+,2025-01-31,Total net pay owing to employees,,$420.83,"$15,766.82"
+,2025-01-31,Total employee tax owing to third parties,,$59.94,"$15,826.76"
+,2025-01-31,Total employer tax owing to third parties,,$39.74,"$15,866.50"
+,2025-02-05,"Payroll period ending Feb 7, 2025",$420.83,,"$15,445.67"
+,2025-02-07,Total net pay owing to employees,,$420.83,"$15,866.50"
+,2025-02-07,Total employee tax owing to third parties,,$59.94,"$15,926.44"
+,2025-02-07,Total employer tax owing to third parties,,$39.74,"$15,966.18"
+,2025-02-12,"Payroll period ending Feb 14, 2025",$420.83,,"$15,545.35"
+,2025-02-14,Total net pay owing to employees,,$420.83,"$15,966.18"
+,2025-02-14,Total employee tax owing to third parties,,$59.94,"$16,026.12"
+,2025-02-14,Total employer tax owing to third parties,,$39.74,"$16,065.86"
+,2025-02-19,"Payroll period ending Feb 21, 2025",$420.83,,"$15,645.03"
+,2025-02-21,Total net pay owing to employees,,$420.83,"$16,065.86"
+,2025-02-21,Total employee tax owing to third parties,,$59.94,"$16,125.80"
+,2025-02-21,Total employer tax owing to third parties,,$39.74,"$16,165.54"
+,2025-02-26,"Payroll period ending Feb 28, 2025",$420.83,,"$15,744.71"
+,2025-02-28,Total net pay owing to employees,,$420.83,"$16,165.54"
+,2025-02-28,Total employee tax owing to third parties,,$59.94,"$16,225.48"
+,2025-02-28,Total employer tax owing to third parties,,$39.74,"$16,265.22"
+,2025-03-05,"Payroll period ending Mar 7, 2025",$420.83,,"$15,844.39"
+,2025-03-07,Total net pay owing to employees,,$420.83,"$16,265.22"
+,2025-03-07,Total employee tax owing to third parties,,$59.94,"$16,325.16"
+,2025-03-07,Total employer tax owing to third parties,,$39.74,"$16,364.90"
+,2025-03-12,"Payroll period ending Mar 14, 2025",$420.83,,"$15,944.07"
+,2025-03-14,Total net pay owing to employees,,$420.83,"$16,364.90"
+,2025-03-14,Total employee tax owing to third parties,,$59.94,"$16,424.84"
+,2025-03-14,Total employer tax owing to third parties,,$39.74,"$16,464.58"
+,2025-03-19,"Payroll period ending Mar 21, 2025",$420.83,,"$16,043.75"
+,2025-03-21,Total net pay owing to employees,,$420.83,"$16,464.58"
+,2025-03-21,Total employee tax owing to third parties,,$59.94,"$16,524.52"
+,2025-03-21,Total employer tax owing to third parties,,$39.74,"$16,564.26"
+,2025-03-26,"Payroll period ending Mar 28, 2025",$420.83,,"$16,143.43"
+,2025-03-28,Total net pay owing to employees,,$420.83,"$16,564.26"
+,2025-03-28,Total employee tax owing to third parties,,$59.94,"$16,624.20"
+,2025-03-28,Total employer tax owing to third parties,,$39.74,"$16,663.94"
+,2025-04-03,"Payroll period ending Apr 4, 2025",$420.83,,"$16,243.11"
+,2025-04-04,Total net pay owing to employees,,$420.83,"$16,663.94"
+,2025-04-04,Total employee tax owing to third parties,,$59.94,"$16,723.88"
+,2025-04-04,Total employer tax owing to third parties,,$39.74,"$16,763.62"
+,2025-04-10,"Payroll period ending Apr 11, 2025",$420.83,,"$16,342.79"
+,2025-04-11,Total net pay owing to employees,,$420.83,"$16,763.62"
+,2025-04-11,Total employee tax owing to third parties,,$59.94,"$16,823.56"
+,2025-04-11,Total employer tax owing to third parties,,$39.74,"$16,863.30"
+,2025-04-16,"Payroll period ending Apr 18, 2025",$420.83,,"$16,442.47"
+,2025-04-18,Total net pay owing to employees,,$420.83,"$16,863.30"
+,2025-04-18,Total employee tax owing to third parties,,$59.94,"$16,923.24"
+,2025-04-18,Total employer tax owing to third parties,,$37.03,"$16,960.27"
+,2025-04-23,"Payroll period ending Apr 25, 2025",$420.83,,"$16,539.44"
+,2025-04-25,Total net pay owing to employees,,$420.83,"$16,960.27"
+,2025-04-25,Total employee tax owing to third parties,,$59.94,"$17,020.21"
+,2025-04-25,Total employer tax owing to third parties,,$36.86,"$17,057.07"
+,2025-05-02,Total net pay owing to employees,,$420.83,"$17,477.90"
+,2025-05-02,Total employee tax owing to third parties,,$59.94,"$17,537.84"
+,2025-05-02,Total employer tax owing to third parties,,$36.86,"$17,574.70"
+,2025-05-09,Total net pay owing to employees,,$420.83,"$17,995.53"
+,2025-05-09,Total employee tax owing to third parties,,$59.94,"$18,055.47"
+,2025-05-09,Total employer tax owing to third parties,,$36.86,"$18,092.33"
+,2025-05-12,"Payroll period ending May 2, 2025",$420.83,,"$17,671.50"
+,2025-05-12,"Payroll period ending May 9, 2025",$420.83,,"$17,250.67"
+,2025-05-16,Total net pay owing to employees,,$420.83,"$17,671.50"
+,2025-05-16,Total employee tax owing to third parties,,$59.94,"$17,731.44"
+,2025-05-16,Total employer tax owing to third parties,,$36.86,"$17,768.30"
+,2025-05-19,"Payroll period ending May 16, 2025",$420.83,,"$17,347.47"
+,2025-05-23,Total net pay owing to employees,,$420.83,"$17,768.30"
+,2025-05-23,Total employee tax owing to third parties,,$59.94,"$17,828.24"
+,2025-05-23,Total employer tax owing to third parties,,$44.17,"$17,872.41"
+,2025-05-27,"Payroll period ending May 23, 2025",$420.83,,"$17,451.58"
+,2025-05-30,Total net pay owing to employees,,$420.83,"$17,872.41"
+,2025-05-30,Total employee tax owing to third parties,,$59.94,"$17,932.35"
+,2025-05-30,Total employer tax owing to third parties,,$44.17,"$17,976.52"
+,2025-06-02,"Payroll period ending May 30, 2025",$420.83,,"$17,555.69"
+,2025-06-06,Total net pay owing to employees,,$420.83,"$17,976.52"
+,2025-06-06,Total employee tax owing to third parties,,$59.94,"$18,036.46"
+,2025-06-06,Total employer tax owing to third parties,,$44.17,"$18,080.63"
+,2025-06-11,"Payroll period ending Jun 6, 2025",$420.83,,"$17,659.80"
+,2025-08-22,Total net pay owing to employees,,$407.80,"$18,067.60"
+,2025-08-22,Total employee tax owing to third parties,,$72.97,"$18,140.57"
+,2025-08-22,Total employer tax owing to third parties,,$68.80,"$18,209.37"
+,2025-08-22,Payroll period ending 2025-08-22,$549.57,,"$17,659.80"
+,2025-08-28,Payroll period ending 2025-08-29,$549.57,,"$17,110.23"
+,2025-08-29,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-08-29,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-08-29,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-09-04,Payroll period ending 2025-09-05,$549.57,,"$17,110.23"
+,2025-09-05,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-09-05,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-09-05,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-09-10,Payroll period ending 2025-09-12,$549.57,,"$17,110.23"
+,2025-09-12,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-09-12,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-09-12,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-09-17,Payroll period ending 2025-09-19,$549.57,,"$17,110.23"
+,2025-09-19,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-09-19,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-09-19,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-09-24,Payroll period ending 2025-09-26,$549.57,,"$17,110.23"
+,2025-09-26,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-09-26,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-09-26,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-10-01,Payroll period ending 2025-10-03,$549.57,,"$17,110.23"
+,2025-10-03,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-10-03,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-10-03,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-10-08,Payroll period ending 2025-10-10,$549.57,,"$17,110.23"
+,2025-10-10,Total net pay owing to employees,,$407.80,"$17,518.03"
+,2025-10-10,Total employee tax owing to third parties,,$72.97,"$17,591.00"
+,2025-10-10,Total employer tax owing to third parties,,$68.80,"$17,659.80"
+,2025-10-17,Total net pay owing to employees,,$407.80,"$18,067.60"
+,2025-10-17,Total employee tax owing to third parties,,$72.97,"$18,140.57"
+,2025-10-17,Total employer tax owing to third parties,,$68.80,"$18,209.37"
+,2025-10-20,Payroll period ending 2025-10-17,$549.57,,"$17,659.80"
+,2025-10-24,Total net pay owing to employees,,$407.80,"$18,067.60"
+,2025-10-24,Total employee tax owing to third parties,,$72.97,"$18,140.57"
+,2025-10-24,Total employer tax owing to third parties,,$68.80,"$18,209.37"
+,2025-10-31,Total net pay owing to employees,,$407.80,"$18,617.17"
+,2025-10-31,Total employee tax owing to third parties,,$72.97,"$18,690.14"
+,2025-10-31,Total employer tax owing to third parties,,$68.80,"$18,758.94"
+,2025-11-07,Total net pay owing to employees,,$407.80,"$19,166.74"
+,2025-11-07,Total employee tax owing to third parties,,$72.97,"$19,239.71"
+,2025-11-07,Total employer tax owing to third parties,,$68.80,"$19,308.51"
+,2025-11-14,Total net pay owing to employees,,$407.80,"$19,716.31"
+,2025-11-14,Total employee tax owing to third parties,,$72.97,"$19,789.28"
+,2025-11-14,Total employer tax owing to third parties,,$68.80,"$19,858.08"
+,2025-11-20,Payroll period ending 2025-10-24,$549.57,,"$19,308.51"
+,2025-11-21,Total net pay owing to employees,,$407.80,"$19,716.31"
+,2025-11-21,Total employee tax owing to third parties,,$72.97,"$19,789.28"
+,2025-11-21,Total employer tax owing to third parties,,$68.80,"$19,858.08"
+,2025-11-26,Payroll period ending 2025-10-31,$549.57,,"$19,308.51"
+,2025-12-04,Payroll period ending 2025-11-07,$549.57,,"$18,758.94"
+,2025-12-17,Payroll period ending 2025-11-14,$549.57,,"$18,209.37"
+,2025-12-22,Payroll period ending 2025-11-21,$549.57,,"$17,659.80"
+Totals and Ending Balance,,,"$17,162.15","$19,404.51","$17,659.80"
+Balance Change,,,"$2,242.36",,
+""
+,Accounting,,,,
+Starting Balance,,,,,$0.00
+,2025-09-11,Deposit Home Banking Transfer Fr,,"$1,000.00","$1,000.00"
+Totals and Ending Balance,,,$0.00,"$1,000.00","$1,000.00"
+Balance Change,,,"$1,000.00",,
+""
+,Job Income,,,,
+Starting Balance,,,,,$275.00
+,2025-01-01,To bring account current,,"$6,836.72","$7,111.72"
+Totals and Ending Balance,,,$0.00,"$6,836.72","$7,111.72"
+Balance Change,,,"$6,836.72",,
+""
+,Monthly Pay Students - Homeschool Program,,,,
+Starting Balance,,,,,$0.00
+,2025-01-03,Square Payment,,$96.40,$96.40
+,2025-02-13,Square Deposit,,$96.40,$192.80
+,2025-03-05,Square Payment,,$96.40,$289.20
+,2025-03-27,Square Payment,,$96.40,$385.60
+,2025-04-28,Square Invoice,,$96.40,$482.00
+Totals and Ending Balance,,,$0.00,$482.00,$482.00
+Balance Change,,,$482.00,,
+""
+,Sales,,,,
+Starting Balance,,,,,$150.00
+,2025-01-01,C Cubed Training - 1 - Training Services,,"$2,000.00","$2,150.00"
+,2025-02-01,C Cubed Training - 2 - Training Services,,"$2,000.00","$4,150.00"
+,2025-03-01,C Cubed Training - 3 - Training Services,,"$2,000.00","$6,150.00"
+,2025-04-01,C Cubed Training - 4 - Training Services,,"$2,000.00","$8,150.00"
+,2025-05-01,C Cubed Training - 5 - Training Services,,"$2,000.00","$10,150.00"
+,2025-06-01,C Cubed Training - 6 - Training Services,,"$2,000.00","$12,150.00"
+,2025-06-14,C Cubed Training - 7 - Summer Camp Workers,,"$1,000.00","$13,150.00"
+,2025-06-25,C Cubed Training - 8 - Summer Camp Workers,,"$1,500.00","$14,650.00"
+,2025-06-25,C Cubed Training - 8 - Summer Camp Workers,,$500.00,"$15,150.00"
+,2025-08-01,C Cubed Training - 11 - Training Services,,"$2,000.00","$17,150.00"
+,2025-09-01,C Cubed Training - 12 - Training Services,,"$2,000.00","$19,150.00"
+,2025-09-11,Ashley Skilling - 13 - Cybersecurity Class,,$200.00,"$19,350.00"
+,2025-10-01,C Cubed Training - 14 - Training Services,,"$2,000.00","$21,350.00"
+,2025-10-10,Ashley Skilling - 15 - Cybersecurity Class,,$200.00,"$21,550.00"
+,2025-11-01,C Cubed Training - 16 - Training Services,,"$2,000.00","$23,550.00"
+,2025-11-10,Ashley Skilling - 17 - Cybersecurity Class,,$200.00,"$23,750.00"
+,2025-11-22,PuebloPlex - 18 - Microsoft Teams Training Session,,$800.00,"$24,550.00"
+,2025-11-22,PuebloPlex - 18 - Training Preparation,,$800.00,"$25,350.00"
+,2025-12-01,C Cubed Training - 19 - Training Services,,"$2,000.00","$27,350.00"
+,2025-12-10,Ashley Skilling - 20 - Cybersecurity Class,,$200.00,"$27,550.00"
+Totals and Ending Balance,,,$0.00,"$27,400.00","$27,550.00"
+Balance Change,,,"$27,400.00",,
+""
+,Uncategorized Income,,,,
+Starting Balance,,,,,"$34,731.91"
+,2025-07-17,Deposit Home Banking Transfer RE,,"$1,700.00","$36,431.91"
+,2025-08-22,OnPay Inc : ACCTVERIFY : 7581,,$0.82,"$36,432.73"
+,2025-11-17,Deposit Home Banking Transfer Fr,,"$2,000.00","$38,432.73"
+,2025-12-05,Deposit Home Banking Transfer RE,,"$2,000.00","$40,432.73"
+,2025-12-17,Deposit Home Banking Transfer Fr,,"$2,000.00","$42,432.73"
+Totals and Ending Balance,,,$0.00,"$7,700.82","$42,432.73"
+Balance Change,,,"$7,700.82",,
+""
+,Certification Class,,,,
+Starting Balance,,,,,$0.00
+,2025-08-30,SHADOWSCAPE SHADOWSCAPE.I ID Car,"$2,379.00",,"$2,379.00"
+Totals and Ending Balance,,,"$2,379.00",$0.00,"$2,379.00"
+Balance Change,,,"$2,379.00",,
+""
+,Clothing (uniform),,,,
+Starting Balance,,,,,"$2,891.83"
+,2025-05-08,Queensboro,$87.63,,"$2,979.46"
+Totals and Ending Balance,,,$87.63,$0.00,"$2,979.46"
+Balance Change,,,$87.63,,
+""
+,Conference,,,,
+Starting Balance,,,,,"$1,123.29"
+,2025-09-04,Visa Check EVENT:CS5 EAST 2025,$833.00,,"$1,956.29"
+Totals and Ending Balance,,,$833.00,$0.00,"$1,956.29"
+Balance Change,,,$833.00,,
+""
+,Legal Expenses,,,,
+Starting Balance,,,,,$1.00
+,2025-03-23,Public Data Lookup,$1.00,,$2.00
+,2025-03-30,Public Data Information,$29.96,,$31.96
+,2025-04-29,Public Data Check,$29.96,,$61.92
+,2025-06-28,Public Data,$29.96,,$91.88
+,2025-07-28,Public Data Check,$29.96,,$121.84
+Totals and Ending Balance,,,$120.84,$0.00,$121.84
+Balance Change,,,$120.84,,
+""
+,Operating Insurance,,,,
+Starting Balance,,,,,$0.00
+,2025-09-11,FARMERS INS COMMERCIAL,$149.40,,$149.40
+,2025-10-11,FARMERS INS COMMERCIAL,$80.66,,$230.06
+,2025-10-11,FARMERS INS COMMERCIAL,$60.00,,$290.06
+,2025-11-11,FARMERS INS COMMERCIAL,$80.66,,$370.72
+,2025-11-11,FARMERS INS COMMERCIAL,$60.00,,$430.72
+,2025-12-11,FARMERS INS COMMERCIAL,$80.66,,$511.38
+,2025-12-11,FARMERS INS COMMERCIAL,$60.00,,$571.38
+Totals and Ending Balance,,,$571.38,$0.00,$571.38
+Balance Change,,,$571.38,,
+""
+,Repairs & Maintenance,,,,
+Starting Balance,,,,,"$2,928.95"
+,2025-02-03,Snow Shoveling,$400.00,,"$3,328.95"
+Totals and Ending Balance,,,$400.00,$0.00,"$3,328.95"
+Balance Change,,,$400.00,,
+""
+,Software Build,,,,
+Starting Balance,,,,,$0.00
+,2025-08-17,Open AI,$25.00,,$25.00
+Totals and Ending Balance,,,$25.00,$0.00,$25.00
+Balance Change,,,$25.00,,
+""
+,Subscriptions,,,,
+Starting Balance,,,,,$0.00
+,2025-05-29,Public Data Check,$29.96,,$29.96
+Totals and Ending Balance,,,$29.96,$0.00,$29.96
+Balance Change,,,$29.96,,
+""
+,Teacher Pay,,,,
+Starting Balance,,,,,$0.00
+,2025-06-16,Cash Withdrawal for Student Pay,"$1,000.00",,"$1,000.00"
+,2025-07-09,Cash Withdrawl,"$2,000.00",,"$3,000.00"
+,2025-07-17,Payment to Interns for Camps,"$1,700.00",,"$4,700.00"
+Totals and Ending Balance,,,"$4,700.00",$0.00,"$4,700.00"
+Balance Change,,,"$4,700.00",,
+""
+,Balance Out,,,,
+Starting Balance,,,,,$0.00
+,2025-07-31,Balance out,"$15,175.38",,"$15,175.38"
+Totals and Ending Balance,,,"$15,175.38",$0.00,"$15,175.38"
+Balance Change,,,"$15,175.38",,
+""
+,Merchant Account Fees,,,,
+Starting Balance,,,,,$0.00
+,2025-09-19,Ashley Skilling - Payment for Invoice #13,$5.80,,$5.80
+,2025-10-16,Ashley Skilling - Payment for Invoice #15,$5.80,,$11.60
+,2025-11-13,Ashley Skilling - Payment for Invoice #17,$5.80,,$17.40
+,2025-12-11,Ashley Skilling - Payment for Invoice #20,$5.80,,$23.20
+Totals and Ending Balance,,,$23.20,$0.00,$23.20
+Balance Change,,,$23.20,,
+""
+,Insurance – Worker's Compensation,,,,
+Starting Balance,,,,,$100.38
+,2025-09-11,FARMERS INS COMMERCIAL,$108.00,,$208.38
+Totals and Ending Balance,,,$108.00,$0.00,$208.38
+Balance Change,,,$108.00,,
+""
+,Payroll Employer Taxes,,,,
+Starting Balance,,,,,"$7,048.57"
+,2025-01-03,Total employer tax expense,$19.87,,"$7,068.44"
+,2025-01-10,Total employer tax expense,$39.74,,"$7,108.18"
+,2025-01-17,Total employer tax expense,$39.74,,"$7,147.92"
+,2025-01-24,Total employer tax expense,$39.74,,"$7,187.66"
+,2025-01-31,Total employer tax expense,$39.74,,"$7,227.40"
+,2025-02-07,Total employer tax expense,$39.74,,"$7,267.14"
+,2025-02-14,Total employer tax expense,$39.74,,"$7,306.88"
+,2025-02-21,Total employer tax expense,$39.74,,"$7,346.62"
+,2025-02-28,Total employer tax expense,$39.74,,"$7,386.36"
+,2025-03-07,Total employer tax expense,$39.74,,"$7,426.10"
+,2025-03-14,Total employer tax expense,$39.74,,"$7,465.84"
+,2025-03-21,Total employer tax expense,$39.74,,"$7,505.58"
+,2025-03-28,Total employer tax expense,$39.74,,"$7,545.32"
+,2025-04-04,Total employer tax expense,$39.74,,"$7,585.06"
+,2025-04-11,Total employer tax expense,$39.74,,"$7,624.80"
+,2025-04-18,Total employer tax expense,$37.03,,"$7,661.83"
+,2025-04-25,Total employer tax expense,$36.86,,"$7,698.69"
+,2025-05-02,Total employer tax expense,$36.86,,"$7,735.55"
+,2025-05-09,Total employer tax expense,$36.86,,"$7,772.41"
+,2025-05-16,Total employer tax expense,$36.86,,"$7,809.27"
+,2025-05-23,Total employer tax expense,$44.17,,"$7,853.44"
+,2025-05-30,Total employer tax expense,$44.17,,"$7,897.61"
+,2025-06-06,Total employer tax expense,$44.17,,"$7,941.78"
+,2025-08-22,Total employer tax expense,$68.80,,"$8,010.58"
+,2025-08-29,Total employer tax expense,$68.80,,"$8,079.38"
+,2025-09-05,Total employer tax expense,$68.80,,"$8,148.18"
+,2025-09-12,Total employer tax expense,$68.80,,"$8,216.98"
+,2025-09-19,Total employer tax expense,$68.80,,"$8,285.78"
+,2025-09-26,Total employer tax expense,$68.80,,"$8,354.58"
+,2025-10-03,Total employer tax expense,$68.80,,"$8,423.38"
+,2025-10-10,Total employer tax expense,$68.80,,"$8,492.18"
+,2025-10-17,Total employer tax expense,$68.80,,"$8,560.98"
+,2025-10-24,Total employer tax expense,$68.80,,"$8,629.78"
+,2025-10-31,Total employer tax expense,$68.80,,"$8,698.58"
+,2025-11-07,Total employer tax expense,$68.80,,"$8,767.38"
+,2025-11-14,Total employer tax expense,$68.80,,"$8,836.18"
+,2025-11-21,Total employer tax expense,$68.80,,"$8,904.98"
+Totals and Ending Balance,,,"$1,856.41",$0.00,"$8,904.98"
+Balance Change,,,"$1,856.41",,
+""
+,Payroll Fee,,,,
+Starting Balance,,,,,$26.00
+,2025-02-01,Wave Payroll,$20.00,,$46.00
+,2025-02-01,Wave Payroll,$32.00,,$78.00
+,2025-03-01,Wave Payroll,$32.00,,$110.00
+,2025-04-01,Wave Payroll,$32.00,,$142.00
+,2025-05-01,Wave Payroll Fee,$32.00,,$174.00
+,2025-06-01,Wave Payroll,$32.00,,$206.00
+,2025-07-01,Wave-Payroll,$32.00,,$238.00
+,2025-08-02,Payroll,$32.00,,$270.00
+Totals and Ending Balance,,,$244.00,$0.00,$270.00
+Balance Change,,,$244.00,,
+""
+,Payroll Gross Pay,,,,
+Starting Balance,,,,,"$25,705.22"
+,2025-01-03,Total gross pay expense before deductions and taxes,$240.38,,"$25,945.60"
+,2025-01-10,Total gross pay expense before deductions and taxes,$480.77,,"$26,426.37"
+,2025-01-17,Total gross pay expense before deductions and taxes,$480.77,,"$26,907.14"
+,2025-01-24,Total gross pay expense before deductions and taxes,$480.77,,"$27,387.91"
+,2025-01-31,Total gross pay expense before deductions and taxes,$480.77,,"$27,868.68"
+,2025-02-07,Total gross pay expense before deductions and taxes,$480.77,,"$28,349.45"
+,2025-02-14,Total gross pay expense before deductions and taxes,$480.77,,"$28,830.22"
+,2025-02-21,Total gross pay expense before deductions and taxes,$480.77,,"$29,310.99"
+,2025-02-28,Total gross pay expense before deductions and taxes,$480.77,,"$29,791.76"
+,2025-03-07,Total gross pay expense before deductions and taxes,$480.77,,"$30,272.53"
+,2025-03-14,Total gross pay expense before deductions and taxes,$480.77,,"$30,753.30"
+,2025-03-21,Total gross pay expense before deductions and taxes,$480.77,,"$31,234.07"
+,2025-03-28,Total gross pay expense before deductions and taxes,$480.77,,"$31,714.84"
+,2025-04-04,Total gross pay expense before deductions and taxes,$480.77,,"$32,195.61"
+,2025-04-11,Total gross pay expense before deductions and taxes,$480.77,,"$32,676.38"
+,2025-04-18,Total gross pay expense before deductions and taxes,$480.77,,"$33,157.15"
+,2025-04-25,Total gross pay expense before deductions and taxes,$480.77,,"$33,637.92"
+,2025-05-02,Total gross pay expense before deductions and taxes,$480.77,,"$34,118.69"
+,2025-05-09,Total gross pay expense before deductions and taxes,$480.77,,"$34,599.46"
+,2025-05-16,Total gross pay expense before deductions and taxes,$480.77,,"$35,080.23"
+,2025-05-23,Total gross pay expense before deductions and taxes,$480.77,,"$35,561.00"
+,2025-05-30,Total gross pay expense before deductions and taxes,$480.77,,"$36,041.77"
+,2025-06-06,Total gross pay expense before deductions and taxes,$480.77,,"$36,522.54"
+,2025-08-22,Total gross pay expense before deductions and taxes,$480.77,,"$37,003.31"
+,2025-08-29,Total gross pay expense before deductions and taxes,$480.77,,"$37,484.08"
+,2025-09-05,Total gross pay expense before deductions and taxes,$480.77,,"$37,964.85"
+,2025-09-12,Total gross pay expense before deductions and taxes,$480.77,,"$38,445.62"
+,2025-09-19,Total gross pay expense before deductions and taxes,$480.77,,"$38,926.39"
+,2025-09-26,Total gross pay expense before deductions and taxes,$480.77,,"$39,407.16"
+,2025-10-03,Total gross pay expense before deductions and taxes,$480.77,,"$39,887.93"
+,2025-10-10,Total gross pay expense before deductions and taxes,$480.77,,"$40,368.70"
+,2025-10-17,Total gross pay expense before deductions and taxes,$480.77,,"$40,849.47"
+,2025-10-24,Total gross pay expense before deductions and taxes,$480.77,,"$41,330.24"
+,2025-10-31,Total gross pay expense before deductions and taxes,$480.77,,"$41,811.01"
+,2025-11-07,Total gross pay expense before deductions and taxes,$480.77,,"$42,291.78"
+,2025-11-14,Total gross pay expense before deductions and taxes,$480.77,,"$42,772.55"
+,2025-11-21,Total gross pay expense before deductions and taxes,$480.77,,"$43,253.32"
+Totals and Ending Balance,,,"$17,548.10",$0.00,"$43,253.32"
+Balance Change,,,"$17,548.10",,
+""
+,Uncategorized Expense,,,,
+Starting Balance,,,,,"$6,972.78"
+,2025-06-09,DEP PRENOTIFICATION FROM Check P,$0.00,,"$6,972.78"
+,2025-06-09,DEP PRENOTIFICATION FROM Check P,$0.00,,"$6,972.78"
+,2025-06-23,DEP PRENOTIFICATION FROM Check P,$0.00,,"$6,972.78"
+,2025-08-22,OnPay Inc : ACCTVERIFY : 7581,$0.11,,"$6,972.89"
+,2025-08-22,OnPay Inc : ACCTVERIFY : 7581,$0.71,,"$6,973.60"
+,2025-08-28,Visa Check PUBLIC DATA CHECK 80,$29.96,,"$7,003.56"
+,2025-09-01,Visa Check WAVE - PAYROLL FEES,$32.00,,"$7,035.56"
+,2025-09-12,Visa Check SOUTHWES 52623862720,$248.36,,"$7,283.92"
+,2025-09-20,Visa Check POCKET PREP - IT/CYB,$20.99,,"$7,304.91"
+,2025-09-25,Visa Check VISTAPRINT,$29.07,,"$7,333.98"
+,2025-09-25,Visa Check CO SECRETARY STATE F,$25.00,,"$7,358.98"
+,2025-09-28,Visa Check PUBLIC DATA CHECK 80,$29.96,,"$7,388.94"
+,2025-09-28,Visa Check MICROSOFT 40,$129.99,,"$7,518.93"
+,2025-09-29,Withdrawal Card Fee VISA INTERN,$0.54,,"$7,519.47"
+,2025-09-29,Visa Check IMSTECK1 SINGAPORE S,$68.00,,"$7,587.47"
+,2025-10-01,Visa Check WAVE - PAYROLL FEES,$32.00,,"$7,619.47"
+,2025-10-20,Visa Check POCKET PREP - IT/CYB,$20.99,,"$7,640.46"
+,2025-10-20,Visa Check BLD*MYPERFECTRESUME,$2.95,,"$7,643.41"
+,2025-10-27,Visa Check PUBLIC DATA CHECK 80,$29.96,,"$7,673.37"
+,2025-10-28,Visa Check AMAZON MKTPL*N48B27K,$19.53,,"$7,692.90"
+,2025-10-29,Visa Check FINDRFP.COM MINNEAPO,$29.95,,"$7,722.85"
+,2025-11-01,Visa Check WAVE - PAYROLL FEES,$32.00,,"$7,754.85"
+,2025-11-03,Visa Check BLD*MYPERFECTRESUME,$23.95,,"$7,778.80"
+,2025-11-05,Visa Check POSTCARDMANIA CLEARW,"$1,745.61",,"$9,524.41"
+,2025-11-06,GODADDY.COM,$12.19,,"$9,536.60"
+,2025-11-26,Visa Check PUBLIC DATA CHECK 80,$29.96,,"$9,566.56"
+,2025-11-26,GODADDY.COM,$50.59,,"$9,617.15"
+,2025-11-29,Visa Check FINDRFP.COM MINNEAPO,$29.95,,"$9,647.10"
+,2025-12-02,Visa Check BLD*MYPERFECTRESUME,$23.95,,"$9,671.05"
+,2025-12-06,Visa Check TWILIO SENDGRID WWW.,$16.73,,"$9,687.78"
+,2025-12-22,Check #1510 Withdrawal #0000001510,$100.00,,"$9,787.78"
+,2025-12-23,Withdrawal Home Banking Transfer,$750.00,,"$10,537.78"
+,2025-12-24,Visa Check DELTEK INC,"$1,750.00",,"$12,287.78"
+,2025-12-26,Visa Check PUBLIC DATA CHECK 80,$29.96,,"$12,317.74"
+Totals and Ending Balance,,,"$5,344.96",$0.00,"$12,317.74"
+Balance Change,,,"$5,344.96",,

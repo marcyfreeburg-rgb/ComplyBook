@@ -2918,12 +2918,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               // Skip metadata rows (Wave Apps format) - be more aggressive
               const descLower = description.toLowerCase().trim();
-              const accountNumber = (row['ACCOUNT NUMBER'] || row['Account Number'] || '').toLowerCase();
-              if (descLower.includes('starting balance') || 
-                  descLower.includes('totals and ending balance') || 
+              const accountNumber = (row['ACCOUNT NUMBER'] || row['Account Number'] || '').toLowerCase().trim();
+              
+              // Stop processing when we hit end-of-section markers
+              if (descLower.includes('totals and ending balance') || 
                   descLower.includes('balance change') ||
-                  descLower.includes('ending balance') ||
-                  descLower.includes('totals') ||
+                  descLower === 'totals' ||
+                  descLower.includes('ending balance')) {
+                console.log(`[Wave Import] Stopping at end-of-section marker: "${description}"`);
+                break; // Stop processing - everything after this is a different section
+              }
+              
+              // Skip rows that indicate a new section (e.g., "Transfer Clearing", empty first col with section name)
+              if (accountNumber === '' && description.toLowerCase().includes('clearing')) {
+                console.log(`[Wave Import] Stopping at section: "${description}"`);
+                break;
+              }
+              
+              // Skip other metadata rows
+              if (descLower.includes('starting balance') || 
                   accountNumber.includes('starting balance') ||
                   description.trim() === '') {
                 skipped.push(`Row ${i + 1}: Metadata row (${description || 'Empty description'})`);
@@ -2936,23 +2949,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const debitNum = parseFloat(cleanDebit) || 0;
               const creditNum = parseFloat(cleanCredit) || 0;
               
-              // IMPORTANT: Each row should have EITHER a debit OR a credit, not both
-              // Create ONE transaction: Debit = expense, Credit = income
+              // Wave Apps bank account perspective:
+              // DEBIT = money coming INTO the bank account = INCOME
+              // CREDIT = money going OUT of the bank account = EXPENSE
+              // Create ONE transaction per row (only debit OR credit should have a value)
               if (debitNum > 0 && creditNum === 0) {
                 rawAmount = cleanDebit;
-                transactionType = 'expense';
+                transactionType = 'income'; // DEBIT to bank = money received
               } else if (creditNum > 0 && debitNum === 0) {
                 rawAmount = cleanCredit;
-                transactionType = 'income';
+                transactionType = 'expense'; // CREDIT to bank = money paid out
               } else if (debitNum > 0 && creditNum > 0) {
-                // Both have values - this shouldn't happen in Wave format
-                // Use the larger value, net them
+                // Both have values - unusual, net them
                 if (debitNum > creditNum) {
                   rawAmount = String(debitNum - creditNum);
-                  transactionType = 'expense';
+                  transactionType = 'income';
                 } else {
                   rawAmount = String(creditNum - debitNum);
-                  transactionType = 'income';
+                  transactionType = 'expense';
                 }
               } else {
                 skipped.push(`Row ${i + 1}: No debit or credit amount`);

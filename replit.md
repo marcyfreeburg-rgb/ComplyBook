@@ -20,10 +20,11 @@
 **Wave Apps CSV Import Support - FIXED & ENHANCED**
 - Updated CSV import to properly support Wave Apps accounting export format
 - Detects Wave format via "ACCOUNT NUMBER" column or "(In Business Currency)" suffix
-- Column mapping: Date (B), Description (C), Debit (D) = expense, Credit (E) = income
-- **BALANCE column (F) is now completely IGNORED** - prevents duplicate imports
+- Column mapping: Date (B), Description (C), Debit (D) = income, Credit (E) = expense
+  - Wave uses bank account perspective: DEBIT = money IN, CREDIT = money OUT
+- **BALANCE column (F) is completely IGNORED**
+- **Stops processing at "Totals and Ending Balance"** - prevents duplicate imports from Transfer Clearing section
 - Each row creates ONE transaction only (either debit OR credit, not both)
-- Properly skips metadata rows (Starting Balance, Totals, Balance Change, Ending Balance)
 - Categories left blank as requested - user categorizes after import
 - Works with QuickBooks import option
 
