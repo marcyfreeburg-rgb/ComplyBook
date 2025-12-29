@@ -42,6 +42,7 @@ export const taxFormTypeEnum = pgEnum('tax_form_type', ['1099_nec', '1099_misc',
 export const cashFlowScenarioTypeEnum = pgEnum('cash_flow_scenario_type', ['optimistic', 'realistic', 'pessimistic', 'custom']);
 export const auditActionEnum = pgEnum('audit_action', ['create', 'update', 'delete']);
 export const reconciliationStatusEnum = pgEnum('reconciliation_status', ['unreconciled', 'reconciled', 'pending']);
+export const transactionSourceEnum = pgEnum('transaction_source', ['manual', 'csv_import', 'plaid', 'quickbooks', 'xero']);
 export const employmentTypeEnum = pgEnum('employment_type', ['full_time', 'part_time', 'contractor']);
 export const payTypeEnum = pgEnum('pay_type', ['salary', 'hourly']);
 export const payScheduleEnum = pgEnum('pay_schedule', ['weekly', 'biweekly', 'semimonthly', 'monthly']);
@@ -881,6 +882,9 @@ export const transactions = pgTable("transactions", {
   reconciliationStatus: reconciliationStatusEnum("reconciliation_status").notNull().default('unreconciled'),
   reconciledDate: timestamp("reconciled_date"),
   reconciledBy: varchar("reconciled_by").references(() => users.id),
+  source: transactionSourceEnum("source").notNull().default('manual'),
+  externalId: varchar("external_id", { length: 255 }),
+  importBatchId: varchar("import_batch_id", { length: 255 }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
