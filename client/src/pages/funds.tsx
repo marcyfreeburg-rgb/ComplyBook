@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Wallet, TrendingUp, TrendingDown, Edit2, DollarSign, List } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Fund, Organization, Transaction } from "@shared/schema";
+import type { Fund, Organization, Transaction, Grant } from "@shared/schema";
 import { formatCurrency } from "@/lib/utils";
 
 interface FundsProps {
@@ -37,6 +37,15 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
 
   const { data: funds = [], isLoading } = useQuery<Fund[]>({
     queryKey: [`/api/funds`, currentOrganization.id],
+  });
+
+  // Fetch grants to include in fund accounting totals
+  interface GrantWithSpent extends Grant {
+    totalSpent: string;
+  }
+  const { data: grants = [] } = useQuery<GrantWithSpent[]>({
+    queryKey: [`/api/grants/${currentOrganization.id}`],
+    enabled: currentOrganization.type === 'nonprofit',
   });
 
   const { data: fundTransactions = [], isLoading: isLoadingTransactions } = useQuery<Transaction[]>({
@@ -176,16 +185,35 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     }
   };
 
-  // Calculate totals by fund type
-  const totalUnrestricted = funds
+  // Calculate totals by fund type (including grants)
+  const fundsUnrestricted = funds
     .filter(f => f.fundType === "unrestricted")
     .reduce((sum, f) => sum + parseFloat(f.currentBalance), 0);
 
-  const totalRestricted = funds
+  const fundsRestricted = funds
     .filter(f => f.fundType !== "unrestricted")
     .reduce((sum, f) => sum + parseFloat(f.currentBalance), 0);
 
-  const totalAllFunds = funds.reduce((sum, f) => sum + parseFloat(f.currentBalance), 0);
+  // Calculate grant balances (amount - spent) by fund type
+  // Guard against NaN and negative remaining amounts
+  const getGrantRemaining = (g: GrantWithSpent) => {
+    const amount = parseFloat(g.amount) || 0;
+    const spent = parseFloat(g.totalSpent) || 0;
+    return Math.max(0, amount - spent); // Clamp to 0 if overspent
+  };
+
+  const grantsUnrestricted = grants
+    .filter(g => g.fundType === "unrestricted")
+    .reduce((sum, g) => sum + getGrantRemaining(g), 0);
+
+  const grantsRestricted = grants
+    .filter(g => g.fundType === "restricted")
+    .reduce((sum, g) => sum + getGrantRemaining(g), 0);
+
+  // Combined totals
+  const totalUnrestricted = fundsUnrestricted + grantsUnrestricted;
+  const totalRestricted = fundsRestricted + grantsRestricted;
+  const totalAllFunds = totalUnrestricted + totalRestricted;
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="page-funds">
@@ -297,7 +325,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
             <CardTitle className="text-sm font-medium">Total Unrestricted</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -308,10 +336,16 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
             <p className="text-xs text-muted-foreground">
               Available for general use
             </p>
+            {(grantsUnrestricted > 0 || fundsUnrestricted > 0) && (
+              <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                {fundsUnrestricted > 0 && <div>Funds: {formatCurrency(fundsUnrestricted, currentOrganization.currency)}</div>}
+                {grantsUnrestricted > 0 && <div>Grants: {formatCurrency(grantsUnrestricted, currentOrganization.currency)}</div>}
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
             <CardTitle className="text-sm font-medium">Total Restricted</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -322,10 +356,16 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
             <p className="text-xs text-muted-foreground">
               With donor restrictions
             </p>
+            {(grantsRestricted > 0 || fundsRestricted > 0) && (
+              <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                {fundsRestricted > 0 && <div>Funds: {formatCurrency(fundsRestricted, currentOrganization.currency)}</div>}
+                {grantsRestricted > 0 && <div>Grants: {formatCurrency(grantsRestricted, currentOrganization.currency)}</div>}
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
             <CardTitle className="text-sm font-medium">Total Net Assets</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -334,7 +374,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
               {formatCurrency(totalAllFunds, currentOrganization.currency)}
             </div>
             <p className="text-xs text-muted-foreground">
-              All funds combined
+              All funds and grants combined
             </p>
           </CardContent>
         </Card>
