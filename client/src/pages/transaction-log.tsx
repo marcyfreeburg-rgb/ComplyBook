@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
@@ -42,6 +43,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   const [editForm, setEditForm] = useState({
     date: "",
@@ -127,6 +130,42 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       });
     },
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (transactionIds: number[]) => {
+      return await apiRequest('POST', `/api/transactions/bulk-delete`, {
+        organizationId: currentOrganization.id,
+        transactionIds,
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      setSelectedTransactions(new Set());
+      setIsDeleteDialogOpen(false);
+      toast({
+        title: "Transactions Deleted",
+        description: `Successfully deleted ${variables.length} transactions.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete transactions.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSelectTransaction = (id: number, checked: boolean) => {
+    const newSelected = new Set(selectedTransactions);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedTransactions(newSelected);
+  };
 
   const suggestCategoryMutation = useMutation({
     mutationFn: async (transaction: Transaction) => {
@@ -263,6 +302,24 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     return matchesSearch && matchesSource && matchesType;
   });
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedTransactions(new Set(filteredTransactions.map(t => t.id)));
+    } else {
+      setSelectedTransactions(new Set());
+    }
+  };
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedTransactions);
+    if (ids.length > 0) {
+      bulkDeleteMutation.mutate(ids);
+    }
+  };
+
+  const isAllSelected = filteredTransactions.length > 0 && 
+    filteredTransactions.every(t => selectedTransactions.has(t.id));
+
   const totals = filteredTransactions.reduce(
     (acc, t) => {
       const amount = parseFloat(t.amount);
@@ -334,10 +391,27 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
             <div>
               <CardTitle>All Transactions</CardTitle>
               <CardDescription>
-                {filteredTransactions.length} transactions found
+                {selectedTransactions.size > 0 
+                  ? `${selectedTransactions.size} of ${filteredTransactions.length} selected`
+                  : `${filteredTransactions.length} transactions found`}
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
+              {selectedTransactions.size > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={bulkDeleteMutation.isPending}
+                  data-testid="button-bulk-delete"
+                >
+                  {bulkDeleteMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete {selectedTransactions.size} Selected
+                </Button>
+              )}
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -386,6 +460,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 px-2 font-medium w-10">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all transactions"
+                        data-testid="checkbox-select-all"
+                      />
+                    </th>
                     <th className="text-left py-3 px-2 font-medium">Date</th>
                     <th className="text-left py-3 px-2 font-medium">Description</th>
                     <th className="text-left py-3 px-2 font-medium">Category</th>
@@ -400,7 +482,15 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 </thead>
                 <tbody>
                   {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b hover:bg-muted/50" data-testid={`row-transaction-${transaction.id}`}>
+                    <tr key={transaction.id} className={`border-b hover:bg-muted/50 ${selectedTransactions.has(transaction.id) ? 'bg-muted/30' : ''}`} data-testid={`row-transaction-${transaction.id}`}>
+                      <td className="py-3 px-2">
+                        <Checkbox
+                          checked={selectedTransactions.has(transaction.id)}
+                          onCheckedChange={(checked) => handleSelectTransaction(transaction.id, checked as boolean)}
+                          aria-label={`Select transaction ${transaction.description}`}
+                          data-testid={`checkbox-transaction-${transaction.id}`}
+                        />
+                      </td>
                       <td className="py-3 px-2">
                         {format(new Date(transaction.date), "MMM d, yyyy")}
                       </td>
@@ -641,6 +731,44 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               data-testid="button-save-edit"
             >
               {updateTransactionMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {selectedTransactions.size} Transactions</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedTransactions.size} selected transaction{selectedTransactions.size !== 1 ? 's' : ''}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              data-testid="button-cancel-bulk-delete"
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleteMutation.isPending}
+              data-testid="button-confirm-bulk-delete"
+            >
+              {bulkDeleteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete {selectedTransactions.size} Transactions
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
