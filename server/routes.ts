@@ -2865,15 +2865,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let accountInfo = '';
 
           if (source === 'quickbooks') {
-            // QuickBooks column mapping
-            rawDate = row['Date'] || row['date'] || row['Transaction Date'] || '';
-            description = row['Memo/Description'] || row['Memo'] || row['Description'] || row['Memo/Desc'] || '';
+            // QuickBooks/Wave Apps column mapping
+            rawDate = row['Date'] || row['date'] || row['DATE'] || row['Transaction Date'] || '';
+            description = row['Memo/Description'] || row['Memo'] || row['Description'] || row['DESCRIPTION'] || row['Memo/Desc'] || '';
             payeeName = row['Name'] || row['Payee'] || row['Customer/Vendor'] || '';
-            accountInfo = row['Split'] || row['Account'] || row['Category'] || '';
+            accountInfo = row['Split'] || row['Account'] || row['Category'] || row['ACCOUNT NUMBER'] || '';
             
-            // Handle QuickBooks Debit/Credit format
-            const debitCol = row['Debit'] || row['debit'] || row['DEBIT'] || '';
-            const creditCol = row['Credit'] || row['credit'] || row['CREDIT'] || '';
+            // Skip metadata rows (Wave Apps format)
+            const descLower = description.toLowerCase();
+            if (descLower.includes('starting balance') || 
+                descLower.includes('totals and ending balance') || 
+                descLower.includes('balance change') ||
+                descLower === '' && (row['ACCOUNT NUMBER'] || '').includes('Starting Balance')) {
+              skipped.push(`Row ${i + 1}: Metadata row (${description || 'Starting Balance'})`);
+              continue;
+            }
+            
+            // Find debit/credit columns - support Wave Apps format with "(In Business Currency)" suffix
+            let debitCol = '';
+            let creditCol = '';
+            
+            // Check for exact matches first
+            debitCol = row['Debit'] || row['debit'] || row['DEBIT'] || '';
+            creditCol = row['Credit'] || row['credit'] || row['CREDIT'] || '';
+            
+            // If not found, look for columns with partial matches (Wave Apps format)
+            if (!debitCol && !creditCol) {
+              for (const key of Object.keys(row)) {
+                const keyUpper = key.toUpperCase();
+                if (keyUpper.includes('DEBIT') && !debitCol) {
+                  debitCol = row[key] || '';
+                }
+                if (keyUpper.includes('CREDIT') && !creditCol) {
+                  creditCol = row[key] || '';
+                }
+              }
+            }
             
             if (debitCol && debitCol !== '') {
               rawAmount = String(debitCol);
