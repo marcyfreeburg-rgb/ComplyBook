@@ -348,7 +348,7 @@ export interface IStorage {
   }>>;
 
   // Grant operations
-  getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>>;
+  getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string; totalIncome: string; remainingBalance: string }>>;
   createGrant(grant: InsertGrant): Promise<Grant>;
 
   // Budget operations
@@ -2360,19 +2360,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Grant operations
-  async getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string }>> {
+  async getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string; totalIncome: string; remainingBalance: string }>> {
     const grantsData = await db
       .select()
       .from(grants)
       .where(eq(grants.organizationId, organizationId))
       .orderBy(desc(grants.createdAt));
 
-    // Calculate spent amount for each grant
-    const grantsWithSpent = await Promise.all(
+    // Calculate spent and income amount for each grant
+    const grantsWithBalances = await Promise.all(
       grantsData.map(async (grant) => {
-        const [result] = await db
+        const [expenseResult] = await db
           .select({
-            totalSpent: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+            totalSpent: sql<string>`COALESCE(SUM(ABS(${transactions.amount})), 0)`,
           })
           .from(transactions)
           .where(
@@ -2382,14 +2382,35 @@ export class DatabaseStorage implements IStorage {
             )
           );
 
+        const [incomeResult] = await db
+          .select({
+            totalIncome: sql<string>`COALESCE(SUM(ABS(${transactions.amount})), 0)`,
+          })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.grantId, grant.id),
+              eq(transactions.type, 'income')
+            )
+          );
+
+        const grantAmount = parseFloat(grant.amount) || 0;
+        const totalIncome = parseFloat(incomeResult?.totalIncome || '0');
+        const totalSpent = parseFloat(expenseResult?.totalSpent || '0');
+        // Remaining balance = grant amount + additional income - expenses
+        // Clamped to 0 to prevent negative display, but raw values are also available
+        const remainingBalance = grantAmount + totalIncome - totalSpent;
+
         return {
           ...grant,
-          totalSpent: result?.totalSpent || '0',
+          totalSpent: expenseResult?.totalSpent || '0',
+          totalIncome: incomeResult?.totalIncome || '0',
+          remainingBalance: remainingBalance.toFixed(2),
         };
       })
     );
 
-    return grantsWithSpent;
+    return grantsWithBalances;
   }
 
   async createGrant(grantData: InsertGrant): Promise<Grant> {

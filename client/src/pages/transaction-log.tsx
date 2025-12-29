@@ -22,7 +22,7 @@ import {
   RefreshCw,
   Plus
 } from "lucide-react";
-import type { Organization, Transaction, Category, Vendor, Client, Donor } from "@shared/schema";
+import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant } from "@shared/schema";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
 
@@ -50,6 +50,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     vendorId: "",
     clientId: "",
     donorId: "",
+    grantId: "",
   });
 
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
@@ -73,12 +74,19 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     enabled: currentOrganization.type === 'nonprofit',
   });
 
+  type GrantWithBalances = Grant & { totalSpent: string; totalIncome: string; remainingBalance: string };
+  const { data: grants = [] } = useQuery<GrantWithBalances[]>({
+    queryKey: [`/api/grants/${currentOrganization.id}`],
+    enabled: currentOrganization.type === 'nonprofit',
+  });
+
   const updateTransactionMutation = useMutation({
     mutationFn: async (data: { id: number; updates: Partial<Transaction> }) => {
       return await apiRequest('PATCH', `/api/transactions/${data.id}`, data.updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       setIsEditDialogOpen(false);
       setEditingTransaction(null);
       toast({
@@ -101,6 +109,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction Deleted",
         description: "The transaction has been removed.",
@@ -126,6 +135,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       vendorId: transaction.vendorId?.toString() || "",
       clientId: transaction.clientId?.toString() || "",
       donorId: transaction.donorId?.toString() || "",
+      grantId: transaction.grantId?.toString() || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -140,12 +150,24 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         description: editForm.description,
         amount: editForm.amount,
         type: editForm.type,
-        categoryId: editForm.categoryId ? parseInt(editForm.categoryId) : null,
-        vendorId: editForm.vendorId ? parseInt(editForm.vendorId) : null,
-        clientId: editForm.clientId ? parseInt(editForm.clientId) : null,
-        donorId: editForm.donorId ? parseInt(editForm.donorId) : null,
+        categoryId: editForm.categoryId && editForm.categoryId !== "none" ? parseInt(editForm.categoryId) : null,
+        vendorId: editForm.vendorId && editForm.vendorId !== "none" ? parseInt(editForm.vendorId) : null,
+        clientId: editForm.clientId && editForm.clientId !== "none" ? parseInt(editForm.clientId) : null,
+        donorId: editForm.donorId && editForm.donorId !== "none" ? parseInt(editForm.donorId) : null,
+        grantId: editForm.grantId && editForm.grantId !== "none" ? parseInt(editForm.grantId) : null,
       },
     });
+  };
+
+  const getGrantName = (grantId: number | null) => {
+    if (!grantId) return null;
+    const grant = grants.find(g => g.id === grantId);
+    return grant?.name || null;
+  };
+
+  const getSelectedGrant = () => {
+    if (!editForm.grantId) return null;
+    return grants.find(g => g.id === parseInt(editForm.grantId));
   };
 
   const getSourceBadge = (source: string | null) => {
@@ -311,6 +333,9 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                     <th className="text-left py-3 px-2 font-medium">Date</th>
                     <th className="text-left py-3 px-2 font-medium">Description</th>
                     <th className="text-left py-3 px-2 font-medium">Category</th>
+                    {currentOrganization.type === 'nonprofit' && (
+                      <th className="text-left py-3 px-2 font-medium">Grant</th>
+                    )}
                     <th className="text-left py-3 px-2 font-medium">Type</th>
                     <th className="text-left py-3 px-2 font-medium">Source</th>
                     <th className="text-right py-3 px-2 font-medium">Amount</th>
@@ -327,6 +352,17 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                       <td className="py-3 px-2">
                         <Badge variant="outline">{getCategoryName(transaction.categoryId)}</Badge>
                       </td>
+                      {currentOrganization.type === 'nonprofit' && (
+                        <td className="py-3 px-2">
+                          {transaction.grantId ? (
+                            <Badge variant={grants.find(g => g.id === transaction.grantId)?.fundType === 'restricted' ? 'default' : 'secondary'}>
+                              {getGrantName(transaction.grantId)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </td>
+                      )}
                       <td className="py-3 px-2">{getTypeBadge(transaction.type)}</td>
                       <td className="py-3 px-2">{getSourceBadge(transaction.source)}</td>
                       <td className={`py-3 px-2 text-right font-medium ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -490,6 +526,34 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                   </div>
                 )}
               </>
+            )}
+            {currentOrganization.type === 'nonprofit' && (
+              <div>
+                <Label htmlFor="edit-grant">Grant / Fund</Label>
+                <Select value={editForm.grantId || "none"} onValueChange={(value) => setEditForm({ ...editForm, grantId: value === "none" ? "" : value })}>
+                  <SelectTrigger id="edit-grant" data-testid="select-edit-grant">
+                    <SelectValue placeholder="Select grant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Grant (Unrestricted)</SelectItem>
+                    {grants.map((grant) => (
+                      <SelectItem key={grant.id} value={grant.id.toString()}>
+                        {grant.name} ({grant.fundType === 'restricted' ? 'Restricted' : 'Unrestricted'}) - {formatCurrency(parseFloat(grant.remainingBalance))} remaining
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {getSelectedGrant() && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Badge variant={getSelectedGrant()?.fundType === 'restricted' ? 'default' : 'secondary'}>
+                      {getSelectedGrant()?.fundType === 'restricted' ? 'Restricted Fund' : 'Unrestricted Fund'}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      Remaining: {formatCurrency(parseFloat(getSelectedGrant()?.remainingBalance || '0'))}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <DialogFooter className="gap-2">

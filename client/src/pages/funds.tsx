@@ -40,10 +40,12 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
   });
 
   // Fetch grants to include in fund accounting totals
-  interface GrantWithSpent extends Grant {
+  interface GrantWithBalances extends Grant {
     totalSpent: string;
+    totalIncome: string;
+    remainingBalance: string;
   }
-  const { data: grants = [] } = useQuery<GrantWithSpent[]>({
+  const { data: grants = [] } = useQuery<GrantWithBalances[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
   });
@@ -194,12 +196,10 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     .filter(f => f.fundType !== "unrestricted")
     .reduce((sum, f) => sum + parseFloat(f.currentBalance), 0);
 
-  // Calculate grant balances (amount - spent) by fund type
-  // Guard against NaN and negative remaining amounts
-  const getGrantRemaining = (g: GrantWithSpent) => {
-    const amount = parseFloat(g.amount) || 0;
-    const spent = parseFloat(g.totalSpent) || 0;
-    return Math.max(0, amount - spent); // Clamp to 0 if overspent
+  // Calculate grant balances by fund type using the remainingBalance from the API
+  // remainingBalance already includes: grant amount + income - expenses
+  const getGrantRemaining = (g: GrantWithBalances) => {
+    return parseFloat(g.remainingBalance) || 0;
   };
 
   const grantsUnrestricted = grants
