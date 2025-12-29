@@ -4890,6 +4890,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const response = await plaidClient.linkTokenCreate(linkConfig);
 
+      // Log for troubleshooting (Plaid recommended identifiers)
+      console.log(`[Plaid] Link token created - link_session_id: ${response.data.link_token.substring(0, 20)}..., org: ${organizationId}, request_id: ${response.data.request_id}`);
+
       res.json({ link_token: response.data.link_token });
     } catch (error: any) {
       console.error("Error creating link token:", error);
@@ -4938,6 +4941,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         language: 'en',
         webhook: webhookUrl,
       });
+
+      // Log for troubleshooting (Plaid recommended identifiers)
+      console.log(`[Plaid] Update link token created - item_id: ${plaidItem.itemId}, request_id: ${response.data.request_id}`);
 
       res.json({ link_token: response.data.link_token });
     } catch (error) {
@@ -5054,6 +5060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accessToken = tokenResponse.data.access_token;
       const itemId = tokenResponse.data.item_id;
 
+      // Log for troubleshooting (Plaid recommended identifiers)
+      console.log(`[Plaid] Token exchanged - item_id: ${itemId}, request_id: ${tokenResponse.data.request_id}, org: ${organizationId}`);
+
       // Get institution info
       const itemResponse = await plaidClient.itemGet({
         access_token: accessToken,
@@ -5102,6 +5111,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accountsResponse = await plaidClient.accountsGet({
         access_token: accessToken,
       });
+
+      // Log for troubleshooting (Plaid recommended identifiers)
+      const accountIds = accountsResponse.data.accounts.map(a => a.account_id).join(', ');
+      console.log(`[Plaid] Accounts fetched - item_id: ${itemId}, account_ids: [${accountIds}], request_id: ${accountsResponse.data.request_id}`);
 
       // Check for duplicate accounts by mask + type across all existing accounts
       const existingAccounts = await storage.getAllPlaidAccounts(organizationId);
@@ -5218,9 +5231,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Remove the item from Plaid
       try {
-        await plaidClient.itemRemove({
+        const removeResponse = await plaidClient.itemRemove({
           access_token: plaidItem.accessToken,
         });
+        // Log for troubleshooting (Plaid recommended identifiers)
+        console.log(`[Plaid] Item removed - item_id: ${plaidItem.itemId}, request_id: ${removeResponse.data.request_id}`);
       } catch (error) {
         console.error("Error removing item from Plaid:", error);
       }
@@ -5272,6 +5287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               offset: 0,
             },
           });
+
+          // Log for troubleshooting (Plaid recommended identifiers)
+          console.log(`[Plaid] Transactions fetched - item_id: ${plaidItem.itemId}, count: ${transactionsResponse.data.transactions.length}, request_id: ${transactionsResponse.data.request_id}`);
 
           // Update account balances
           for (const account of transactionsResponse.data.accounts) {

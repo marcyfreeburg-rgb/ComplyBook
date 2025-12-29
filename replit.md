@@ -2,6 +2,13 @@
 
 ## Recent Updates (December 29, 2025)
 
+**Plaid Troubleshooting Logging - COMPLETED**
+- Added server-side console logging for all key Plaid identifiers (per Plaid best practices)
+- Logged identifiers: item_id, request_id, account_id, link_session_id (truncated)
+- Coverage: Link token creation, token exchange, accounts fetch, transactions sync, item removal
+- Webhook handlers already had comprehensive item_id logging in place
+- Logs are for internal troubleshooting only (not exposed to audit trail)
+
 **AI Category Suggestions with Learning - COMPLETED**
 - Enhanced AI categorization to learn from existing categorized transactions
 - AI now includes up to 5 example transactions per category to improve accuracy
