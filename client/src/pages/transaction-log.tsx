@@ -344,7 +344,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 </thead>
                 <tbody>
                   {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b hover-elevate" data-testid={`row-transaction-${transaction.id}`}>
+                    <tr key={transaction.id} className="border-b hover:bg-muted/50" data-testid={`row-transaction-${transaction.id}`}>
                       <td className="py-3 px-2">
                         {format(new Date(transaction.date), "MMM d, yyyy")}
                       </td>
