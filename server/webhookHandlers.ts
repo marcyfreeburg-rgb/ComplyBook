@@ -136,8 +136,6 @@ export class WebhookHandlers {
         subscriptionCurrentPeriodEnd: trialEnd || new Date(subscription.current_period_end * 1000),
         billingInterval: interval || (subscription.items.data[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly'),
       });
-
-      console.log(`Updated user ${userId} to tier ${subscriptionTier}${isTrialing ? ' (trial)' : ''}`);
     }
   }
 
