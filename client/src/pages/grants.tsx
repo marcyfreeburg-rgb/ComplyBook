@@ -58,6 +58,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
     organizationId: currentOrganization.id,
     name: '',
     amount: '',
+    fundType: 'unrestricted' as 'restricted' | 'unrestricted',
     restrictions: '',
     status: 'active' as 'active' | 'completed' | 'pending',
     startDate: null as string | null,
@@ -185,6 +186,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
       organizationId: currentOrganization.id,
       name: '',
       amount: '',
+      fundType: 'unrestricted' as 'restricted' | 'unrestricted',
       restrictions: '',
       status: 'active' as 'active' | 'completed' | 'pending',
       startDate: null as string | null,
@@ -198,6 +200,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
       organizationId: grant.organizationId,
       name: grant.name,
       amount: grant.amount,
+      fundType: grant.fundType || 'unrestricted',
       restrictions: grant.restrictions || '',
       status: grant.status,
       startDate: grant.startDate ? (typeof grant.startDate === 'string' ? grant.startDate : grant.startDate.toISOString().split('T')[0]) : null,
@@ -327,21 +330,39 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: 'active' | 'completed' | 'pending') => setFormData({ ...formData, status: value })}
-                >
-                  <SelectTrigger id="status" data-testid="select-grant-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value: 'active' | 'completed' | 'pending') => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger id="status" data-testid="select-grant-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fundType">Fund Type</Label>
+                  <Select
+                    value={formData.fundType}
+                    onValueChange={(value: 'restricted' | 'unrestricted') => setFormData({ ...formData, fundType: value })}
+                  >
+                    <SelectTrigger id="fundType" data-testid="select-grant-fund-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unrestricted">Unrestricted</SelectItem>
+                      <SelectItem value="restricted">Restricted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -433,6 +454,9 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{grant.name}</CardTitle>
                     <div className="flex items-center gap-2">
+                      <Badge variant={grant.fundType === 'restricted' ? 'secondary' : 'outline'}>
+                        {grant.fundType === 'restricted' ? 'Restricted' : 'Unrestricted'}
+                      </Badge>
                       <Badge variant={getStatusVariant(grant.status)}>
                         {grant.status}
                       </Badge>

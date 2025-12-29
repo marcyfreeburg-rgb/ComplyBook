@@ -931,6 +931,7 @@ export const grants = pgTable("grants", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 255 }).notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  fundType: fundTypeEnum("fund_type").notNull().default('unrestricted'), // For fund accounting rollup
   restrictions: text("restrictions"),
   status: grantStatusEnum("status").notNull().default('active'),
   startDate: timestamp("start_date"),
