@@ -778,15 +778,20 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
               
               let totalIncome = 0;
               let totalExpenses = 0;
+              let totalAmount = 0;
               
-              if (hasAmountField && hasTypeField) {
+              if (hasAmountField) {
                 reportResults.forEach((row: any) => {
                   const amount = parseFloat(row[amountKey]) || 0;
-                  const type = String(row[typeKey]).toLowerCase();
-                  if (type === 'income') {
-                    totalIncome += amount;
-                  } else if (type === 'expense') {
-                    totalExpenses += amount;
+                  totalAmount += amount;
+                  
+                  if (hasTypeField) {
+                    const type = String(row[typeKey]).toLowerCase();
+                    if (type === 'income') {
+                      totalIncome += amount;
+                    } else if (type === 'expense') {
+                      totalExpenses += amount;
+                    }
                   }
                 });
               }
@@ -833,32 +838,46 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                     </Table>
                   </div>
                   
-                  {hasAmountField && hasTypeField && (
+                  {hasAmountField && (
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base">Report Summary</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950">
-                            <p className="text-sm text-muted-foreground">Total Income</p>
-                            <p className="text-xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-income">
-                              {formatAmount(totalIncome)}
+                        {hasTypeField ? (
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950">
+                              <p className="text-sm text-muted-foreground">Total Income</p>
+                              <p className="text-xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-income">
+                                {formatAmount(totalIncome)}
+                              </p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950">
+                              <p className="text-sm text-muted-foreground">Total Expenses</p>
+                              <p className="text-xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-expenses">
+                                {formatAmount(totalExpenses)}
+                              </p>
+                            </div>
+                            <div className={`p-3 rounded-lg ${grandTotal >= 0 ? 'bg-blue-50 dark:bg-blue-950' : 'bg-red-50 dark:bg-red-950'}`}>
+                              <p className="text-sm text-muted-foreground">Net Total</p>
+                              <p className={`text-xl font-bold ${grandTotal >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-grand-total">
+                                {formatAmount(grandTotal)}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <div className={`p-3 rounded-lg ${totalAmount >= 0 ? 'bg-blue-50 dark:bg-blue-950' : 'bg-red-50 dark:bg-red-950'}`}>
+                              <p className="text-sm text-muted-foreground">Total Amount</p>
+                              <p className={`text-xl font-bold ${totalAmount >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-total-amount">
+                                {formatAmount(totalAmount)}
+                              </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Tip: Include the "Type" field to see income vs expense breakdown
                             </p>
                           </div>
-                          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950">
-                            <p className="text-sm text-muted-foreground">Total Expenses</p>
-                            <p className="text-xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-expenses">
-                              {formatAmount(totalExpenses)}
-                            </p>
-                          </div>
-                          <div className={`p-3 rounded-lg ${grandTotal >= 0 ? 'bg-blue-50 dark:bg-blue-950' : 'bg-red-50 dark:bg-red-950'}`}>
-                            <p className="text-sm text-muted-foreground">Net Total</p>
-                            <p className={`text-xl font-bold ${grandTotal >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-grand-total">
-                              {formatAmount(grandTotal)}
-                            </p>
-                          </div>
-                        </div>
+                        )}
                       </CardContent>
                     </Card>
                   )}
