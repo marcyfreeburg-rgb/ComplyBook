@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft, CreditCard, User, Phone, Mail, MapPin, Key, AlertTriangle } from "lucide-react";
+import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft, CreditCard, User, Phone, Mail, MapPin, Key, AlertTriangle, Shield, Clock, FileText, TrendingUp } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
 import {
@@ -290,24 +290,73 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
     },
   });
 
+  // Log Plaid Link events for analytics
+  const logPlaidEvent = async (eventName: string, metadata: any) => {
+    try {
+      await apiRequest('POST', `/api/plaid/log-event/${currentOrganization.id}`, {
+        eventName,
+        metadata: {
+          ...metadata,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      // Silent fail - don't disrupt user flow for analytics
+      console.debug('Plaid event logging failed:', eventName);
+    }
+  };
+
   // Plaid Link configuration (for new connections)
   const { open, ready } = usePlaidLink({
     token: linkToken,
     onSuccess: (public_token, metadata) => {
+      // Log success event (no PII - omit institution name)
+      logPlaidEvent('SUCCESS', {
+        institutionId: metadata?.institution?.institution_id,
+        // Do NOT log: institution name (full)
+        accountsCount: metadata?.accounts?.length,
+      });
       // Pass metadata for duplicate Item detection
       exchangeToken.mutate({ publicToken: public_token, metadata });
       setHasAttemptedAutoOpen(false);
     },
-    onExit: () => {
+    onExit: (error, metadata) => {
+      // Log exit event with reason (no PII - omit session IDs and full institution names)
+      logPlaidEvent('EXIT', {
+        errorType: error?.error_type,
+        errorCode: error?.error_code,
+        exitStatus: metadata?.status,
+        institutionId: metadata?.institution?.institution_id,
+        // Do NOT log: institution name (full), link_session_id
+      });
       setLinkToken(null);
       setHasAttemptedAutoOpen(false);
+    },
+    onEvent: (eventName, metadata) => {
+      // Log all Link events for conversion analytics
+      // Note: Only log non-PII fields - never log session IDs, search queries, or full institution names
+      logPlaidEvent(eventName, {
+        viewName: metadata?.view_name,
+        institutionId: metadata?.institution_id,
+        // Do NOT log: institution_name (full), institution_search_query, link_session_id (PII/sensitive)
+        errorType: metadata?.error_type,
+        errorCode: metadata?.error_code,
+        exitStatus: metadata?.exit_status,
+        mfaType: metadata?.mfa_type,
+      });
     },
   });
 
   // Plaid Link configuration (for update mode)
   const { open: openUpdate, ready: readyUpdate } = usePlaidLink({
     token: updateLinkToken,
-    onSuccess: () => {
+    onSuccess: (_, metadata) => {
+      // Log update success (no PII - omit institution name)
+      logPlaidEvent('UPDATE_SUCCESS', {
+        institutionId: metadata?.institution?.institution_id,
+        // Do NOT log: institution name (full)
+        mode: 'update',
+      });
       // Update mode doesn't return a public token - just invalidate queries to refresh status
       queryClient.invalidateQueries({ queryKey: [`/api/plaid/items/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
@@ -318,9 +367,26 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
       setUpdateLinkToken(null);
       setUpdateModeItemId(null);
     },
-    onExit: () => {
+    onExit: (error, metadata) => {
+      // Log update exit
+      logPlaidEvent('UPDATE_EXIT', {
+        errorType: error?.error_type,
+        errorCode: error?.error_code,
+        exitStatus: metadata?.status,
+        mode: 'update',
+      });
       setUpdateLinkToken(null);
       setUpdateModeItemId(null);
+    },
+    onEvent: (eventName, metadata) => {
+      // Log update mode events (no PII - omit session IDs)
+      logPlaidEvent(`UPDATE_${eventName}`, {
+        viewName: metadata?.view_name,
+        institutionId: metadata?.institution_id,
+        errorType: metadata?.error_type,
+        errorCode: metadata?.error_code,
+        mode: 'update',
+      });
     },
   });
 
@@ -470,27 +536,110 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
         </div>
       )}
 
-      {/* Empty State */}
+      {/* Empty State with Benefits Explainer */}
       {!isLoading && (!accounts || accounts.length === 0) && (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No Bank Accounts Connected</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your bank account to automatically import transactions
-              </p>
-              <Button
-                onClick={() => createLinkToken.mutate()}
-                disabled={createLinkToken.isPending}
-                data-testid="button-connect-first-bank"
-              >
-                <Building2 className="h-4 w-4 mr-2" />
-                Connect Your First Bank
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {/* Benefits Card - Differentiated by org type */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                {currentOrganization.type === 'nonprofit' 
+                  ? 'Secure Bank Connection for Grant Compliance'
+                  : 'Secure Bank Connection for Your Business'}
+              </CardTitle>
+              <CardDescription>
+                {currentOrganization.type === 'nonprofit'
+                  ? 'Automatically import and categorize transactions for accurate grant reporting and audit readiness.'
+                  : 'Save hours each week by automatically importing and categorizing your business transactions.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                    <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">Save Time</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {currentOrganization.type === 'nonprofit'
+                        ? 'Automatic transaction import eliminates manual data entry for grant reconciliation.'
+                        : 'No more manual entry. Transactions sync automatically.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">
+                      {currentOrganization.type === 'nonprofit' ? 'Audit Ready' : 'Accurate Records'}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {currentOrganization.type === 'nonprofit'
+                        ? 'Complete transaction history with NIST-compliant audit trails for DCAA requirements.'
+                        : 'Clean, categorized records ready for tax season.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                    <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">
+                      {currentOrganization.type === 'nonprofit' ? 'Grant Tracking' : 'Cash Flow Insights'}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {currentOrganization.type === 'nonprofit'
+                        ? 'Easily allocate expenses to grants and track fund balances in real-time.'
+                        : 'Real-time visibility into your income and expenses.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 p-3 rounded-lg bg-muted/50 flex items-center gap-3">
+                <Shield className="h-5 w-5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  <strong>Bank-level security:</strong> Your credentials are never stored. Connections are secured with 256-bit encryption via Plaid, trusted by major financial institutions.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Connect CTA Card */}
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Bank Accounts Connected</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Connect your bank to start importing transactions automatically
+                </p>
+                <Button
+                  onClick={() => createLinkToken.mutate()}
+                  disabled={createLinkToken.isPending}
+                  data-testid="button-connect-first-bank"
+                  size="lg"
+                >
+                  {createLinkToken.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Connect Your First Bank
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Connected Accounts with Tabs */}

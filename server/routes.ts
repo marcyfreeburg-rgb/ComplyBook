@@ -4795,12 +4795,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const webhookBaseUrl = process.env.REPLIT_DOMAINS?.split(',')[0];
       const webhookUrl = webhookBaseUrl ? `https://${webhookBaseUrl}/api/plaid/webhook` : undefined;
 
-      // Note: Products available depend on Plaid dashboard settings
-      // Currently using auth and identity - add 'transactions' when enabled in Plaid dashboard
-      const plaidProducts = ['auth', 'identity'] as any[];
-      console.log('Requesting Plaid products:', plaidProducts);
+      // Get organization to customize Link experience
+      const organization = await storage.getOrganization(organizationId);
       
-      const response = await plaidClient.linkTokenCreate({
+      // Optimize products array based on organization needs
+      // - 'auth' is always needed for account verification and ACH details
+      // - 'identity' is included for DCAA compliance (owner verification for government contracts)
+      // - 'transactions' can be added if enabled in Plaid Dashboard
+      // Note: Each additional product adds to API costs, so we only request what's needed
+      const plaidProducts: string[] = ['auth'];
+      
+      // Add identity for nonprofits (grant compliance) and organizations with government contracts
+      // Identity provides account owner information useful for audit trails
+      if (organization?.type === 'nonprofit' || organization?.type === 'forprofit') {
+        plaidProducts.push('identity');
+      }
+      
+      // Transactions product - check if enabled (would need to be enabled in Plaid Dashboard)
+      // For now, we sync transactions via Auth which works for most use cases
+      // Uncomment below to enable direct Plaid transaction syncing:
+      // plaidProducts.push('transactions');
+      
+      console.log('Requesting Plaid products:', plaidProducts, 'for org type:', organization?.type);
+      
+      // Build Link configuration with conversion optimizations
+      const linkConfig: any = {
         user: {
           client_user_id: userId,
         },
@@ -4809,6 +4828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         country_codes: ['US' as any],
         language: 'en',
         webhook: webhookUrl,
+        
         // Enable additional Auth flows for increased conversion
         auth: {
           // Enable Same Day Micro-deposits (1 business day, manual code entry)
@@ -4820,7 +4840,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Enable Database Auth (instant validation against Plaid network)
           database_match_enabled: true,
         },
-      });
+        
+        // Account selection: Allow multiple accounts for financial management use cases
+        // This provides flexibility while avoiding overwhelming users
+        account_filters: {
+          depository: {
+            account_subtypes: ['checking', 'savings', 'money market', 'cd'],
+          },
+          credit: {
+            account_subtypes: ['credit card'],
+          },
+        },
+        
+        // Link customization for better UX
+        link_customization_name: organization?.type === 'nonprofit' 
+          ? 'nonprofit_flow'  // Can be configured in Plaid Dashboard
+          : 'default',
+      };
+      
+      const response = await plaidClient.linkTokenCreate(linkConfig);
 
       res.json({ link_token: response.data.link_token });
     } catch (error: any) {
@@ -4875,6 +4913,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating update link token:", error);
       res.status(500).json({ message: "Failed to create update link token" });
+    }
+  });
+
+  // Log Plaid Link events for conversion analytics
+  // Allowed fields whitelist - ONLY these fields are logged, everything else is stripped
+  const PLAID_EVENT_ALLOWED_FIELDS = [
+    'viewName', 'institutionId', 'errorType', 'errorCode', 
+    'exitStatus', 'accountsCount', 'mfaType', 'mode'
+  ];
+
+  app.post('/api/plaid/log-event/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { eventName, metadata } = req.body;
+
+      // Validate eventName
+      if (!eventName || typeof eventName !== 'string') {
+        return res.json({ success: true }); // Silent fail for invalid events
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Build sanitized metadata using ONLY whitelisted fields
+      // This ensures no PII (session IDs, search queries, names) can ever be logged
+      const sanitizedMetadata: Record<string, any> = {
+        eventName: eventName.substring(0, 50), // Truncate for safety
+      };
+
+      if (metadata && typeof metadata === 'object') {
+        for (const field of PLAID_EVENT_ALLOWED_FIELDS) {
+          const value = metadata[field];
+          if (value !== undefined && value !== null) {
+            // Type validation for each allowed field
+            if (field === 'accountsCount') {
+              if (typeof value === 'number' && value >= 0 && value <= 100) {
+                sanitizedMetadata[field] = value;
+              }
+            } else if (typeof value === 'string' && value.length <= 100) {
+              sanitizedMetadata[field] = value;
+            }
+          }
+        }
+      }
+
+      // Log to audit log for NIST AU compliance
+      await storage.createAuditLog({
+        organizationId,
+        userId,
+        action: 'view',
+        entityType: 'plaid_link',
+        entityId: `event_${Date.now()}`,
+        newValues: sanitizedMetadata,
+        changes: `Plaid Link event: ${sanitizedMetadata.eventName}`,
+        ipAddress: (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error logging Plaid event:", error);
+      // Return success anyway - don't fail the user flow for analytics
+      res.json({ success: true });
     }
   });
 
