@@ -2865,54 +2865,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let accountInfo = '';
 
           if (source === 'quickbooks') {
-            // QuickBooks/Wave Apps column mapping
-            rawDate = row['Date'] || row['date'] || row['DATE'] || row['Transaction Date'] || '';
-            description = row['Memo/Description'] || row['Memo'] || row['Description'] || row['DESCRIPTION'] || row['Memo/Desc'] || '';
-            payeeName = row['Name'] || row['Payee'] || row['Customer/Vendor'] || '';
-            accountInfo = row['Split'] || row['Account'] || row['Category'] || row['ACCOUNT NUMBER'] || '';
+            // Detect Wave Apps format: has "Account Type" column (Column A)
+            const isWaveAppsFormat = Object.keys(row).some(key => 
+              key.toUpperCase().includes('ACCOUNT TYPE') || key.toUpperCase() === 'ACCOUNT'
+            );
             
-            // Skip metadata rows (Wave Apps format)
-            const descLower = description.toLowerCase();
-            if (descLower.includes('starting balance') || 
-                descLower.includes('totals and ending balance') || 
-                descLower.includes('balance change') ||
-                descLower === '' && (row['ACCOUNT NUMBER'] || '').includes('Starting Balance')) {
-              skipped.push(`Row ${i + 1}: Metadata row (${description || 'Starting Balance'})`);
-              continue;
-            }
-            
-            // Find debit/credit columns - support Wave Apps format with "(In Business Currency)" suffix
-            let debitCol = '';
-            let creditCol = '';
-            
-            // Check for exact matches first
-            debitCol = row['Debit'] || row['debit'] || row['DEBIT'] || '';
-            creditCol = row['Credit'] || row['credit'] || row['CREDIT'] || '';
-            
-            // If not found, look for columns with partial matches (Wave Apps format)
-            if (!debitCol && !creditCol) {
+            if (isWaveAppsFormat) {
+              // Wave Apps format: Account Type (A), Date (B), Description (C), Debit (D), Credit (E), Balance (F)
+              // Find columns by checking headers for Wave Apps specific names
+              let dateVal = '';
+              let descVal = '';
+              let debitVal = '';
+              let creditVal = '';
+              
               for (const key of Object.keys(row)) {
-                const keyUpper = key.toUpperCase();
-                if (keyUpper.includes('DEBIT') && !debitCol) {
-                  debitCol = row[key] || '';
+                const keyUpper = key.toUpperCase().trim();
+                if (keyUpper === 'DATE' || keyUpper.includes('DATE')) {
+                  if (!keyUpper.includes('ACCOUNT')) { // Avoid "Account Date" type columns
+                    dateVal = row[key] || '';
+                  }
                 }
-                if (keyUpper.includes('CREDIT') && !creditCol) {
-                  creditCol = row[key] || '';
+                if (keyUpper === 'DESCRIPTION' || keyUpper.includes('DESCRIPTION')) {
+                  descVal = row[key] || '';
+                }
+                if (keyUpper.includes('DEBIT')) {
+                  debitVal = row[key] || '';
+                }
+                if (keyUpper.includes('CREDIT')) {
+                  creditVal = row[key] || '';
                 }
               }
-            }
-            
-            if (debitCol && debitCol !== '') {
-              rawAmount = String(debitCol);
-              transactionType = 'expense'; // Debit in QB typically = expense from bank perspective
-            } else if (creditCol && creditCol !== '') {
-              rawAmount = String(creditCol);
-              transactionType = 'income'; // Credit in QB typically = deposit
+              
+              rawDate = dateVal;
+              description = descVal;
+              payeeName = ''; // Wave Apps doesn't have a separate payee column
+              accountInfo = ''; // Leave category blank as requested
+              
+              // Skip metadata rows (Wave Apps format)
+              const descLower = description.toLowerCase();
+              if (descLower.includes('starting balance') || 
+                  descLower.includes('totals and ending balance') || 
+                  descLower.includes('balance change') ||
+                  descLower.includes('ending balance') ||
+                  description.trim() === '') {
+                skipped.push(`Row ${i + 1}: Metadata row (${description || 'Empty description'})`);
+                continue;
+              }
+              
+              // Determine type and amount: Debit = expense, Credit = income
+              const cleanDebit = String(debitVal).replace(/[$,\s]/g, '').trim();
+              const cleanCredit = String(creditVal).replace(/[$,\s]/g, '').trim();
+              const debitNum = parseFloat(cleanDebit) || 0;
+              const creditNum = parseFloat(cleanCredit) || 0;
+              
+              if (debitNum > 0) {
+                rawAmount = cleanDebit;
+                transactionType = 'expense';
+              } else if (creditNum > 0) {
+                rawAmount = cleanCredit;
+                transactionType = 'income';
+              } else {
+                skipped.push(`Row ${i + 1}: No debit or credit amount`);
+                continue;
+              }
             } else {
-              // Single amount column
-              rawAmount = row['Amount'] || row['amount'] || '0';
-              const hasNegativeSign = String(rawAmount).includes('-');
-              transactionType = hasNegativeSign ? 'expense' : 'income';
+              // Standard QuickBooks column mapping
+              rawDate = row['Date'] || row['date'] || row['DATE'] || row['Transaction Date'] || '';
+              description = row['Memo/Description'] || row['Memo'] || row['Description'] || row['DESCRIPTION'] || row['Memo/Desc'] || '';
+              payeeName = row['Name'] || row['Payee'] || row['Customer/Vendor'] || '';
+              accountInfo = row['Split'] || row['Account'] || row['Category'] || row['ACCOUNT NUMBER'] || '';
+              
+              // Skip metadata rows (Wave Apps format)
+              const descLower = description.toLowerCase();
+              if (descLower.includes('starting balance') || 
+                  descLower.includes('totals and ending balance') || 
+                  descLower.includes('balance change') ||
+                  descLower === '' && (row['ACCOUNT NUMBER'] || '').includes('Starting Balance')) {
+                skipped.push(`Row ${i + 1}: Metadata row (${description || 'Starting Balance'})`);
+                continue;
+              }
+              
+              // Find debit/credit columns - support Wave Apps format with "(In Business Currency)" suffix
+              let debitCol = '';
+              let creditCol = '';
+              
+              // Check for exact matches first
+              debitCol = row['Debit'] || row['debit'] || row['DEBIT'] || '';
+              creditCol = row['Credit'] || row['credit'] || row['CREDIT'] || '';
+              
+              // If not found, look for columns with partial matches (Wave Apps format)
+              if (!debitCol && !creditCol) {
+                for (const key of Object.keys(row)) {
+                  const keyUpper = key.toUpperCase();
+                  if (keyUpper.includes('DEBIT') && !debitCol) {
+                    debitCol = row[key] || '';
+                  }
+                  if (keyUpper.includes('CREDIT') && !creditCol) {
+                    creditCol = row[key] || '';
+                  }
+                }
+              }
+              
+              if (debitCol && debitCol !== '') {
+                rawAmount = String(debitCol);
+                transactionType = 'expense'; // Debit in QB typically = expense from bank perspective
+              } else if (creditCol && creditCol !== '') {
+                rawAmount = String(creditCol);
+                transactionType = 'income'; // Credit in QB typically = deposit
+              } else {
+                // Single amount column
+                rawAmount = row['Amount'] || row['amount'] || '0';
+                const hasNegativeSign = String(rawAmount).includes('-');
+                transactionType = hasNegativeSign ? 'expense' : 'income';
+              }
             }
           } else {
             // Xero column mapping
