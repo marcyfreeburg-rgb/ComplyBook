@@ -2865,14 +2865,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let accountInfo = '';
 
           if (source === 'quickbooks') {
-            // Detect Wave Apps format: has "Account Type" column (Column A)
-            const isWaveAppsFormat = Object.keys(row).some(key => 
-              key.toUpperCase().includes('ACCOUNT TYPE') || key.toUpperCase() === 'ACCOUNT'
-            );
+            // Detect Wave Apps format: has "ACCOUNT NUMBER" column or columns with "(In Business Currency)" suffix
+            const isWaveAppsFormat = Object.keys(row).some(key => {
+              const keyUpper = key.toUpperCase().trim();
+              return keyUpper === 'ACCOUNT NUMBER' || 
+                     keyUpper.includes('ACCOUNT NUMBER') ||
+                     keyUpper.includes('IN BUSINESS CURRENCY');
+            });
             
             if (isWaveAppsFormat) {
-              // Wave Apps format: Account Type (A), Date (B), Description (C), Debit (D), Credit (E), Balance (F)
-              // Find columns by checking headers for Wave Apps specific names
+              // Wave Apps format: 
+              // Column A: ACCOUNT NUMBER (e.g., "Checking")
+              // Column B: DATE
+              // Column C: DESCRIPTION
+              // Column D: DEBIT (In Business Currency) → expense
+              // Column E: CREDIT (In Business Currency) → income  
+              // Column F: BALANCE (In Business Currency) → IGNORE completely
+              
               let dateVal = '';
               let descVal = '';
               let debitVal = '';
@@ -2880,18 +2889,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               for (const key of Object.keys(row)) {
                 const keyUpper = key.toUpperCase().trim();
-                if (keyUpper === 'DATE' || keyUpper.includes('DATE')) {
-                  if (!keyUpper.includes('ACCOUNT')) { // Avoid "Account Date" type columns
-                    dateVal = row[key] || '';
-                  }
+                
+                // Get DATE column (but not if it's part of account name)
+                if ((keyUpper === 'DATE' || keyUpper.includes('DATE')) && !keyUpper.includes('ACCOUNT')) {
+                  dateVal = row[key] || '';
                 }
+                
+                // Get DESCRIPTION column
                 if (keyUpper === 'DESCRIPTION' || keyUpper.includes('DESCRIPTION')) {
                   descVal = row[key] || '';
                 }
-                if (keyUpper.includes('DEBIT')) {
+                
+                // Get DEBIT column - but NOT BALANCE
+                if (keyUpper.includes('DEBIT') && !keyUpper.includes('BALANCE')) {
                   debitVal = row[key] || '';
                 }
-                if (keyUpper.includes('CREDIT')) {
+                
+                // Get CREDIT column - but NOT BALANCE
+                if (keyUpper.includes('CREDIT') && !keyUpper.includes('BALANCE')) {
                   creditVal = row[key] || '';
                 }
               }
@@ -2901,29 +2916,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
               payeeName = ''; // Wave Apps doesn't have a separate payee column
               accountInfo = ''; // Leave category blank as requested
               
-              // Skip metadata rows (Wave Apps format)
-              const descLower = description.toLowerCase();
+              // Skip metadata rows (Wave Apps format) - be more aggressive
+              const descLower = description.toLowerCase().trim();
+              const accountNumber = (row['ACCOUNT NUMBER'] || row['Account Number'] || '').toLowerCase();
               if (descLower.includes('starting balance') || 
                   descLower.includes('totals and ending balance') || 
                   descLower.includes('balance change') ||
                   descLower.includes('ending balance') ||
+                  descLower.includes('totals') ||
+                  accountNumber.includes('starting balance') ||
                   description.trim() === '') {
                 skipped.push(`Row ${i + 1}: Metadata row (${description || 'Empty description'})`);
                 continue;
               }
               
-              // Determine type and amount: Debit = expense, Credit = income
+              // Clean the debit/credit values
               const cleanDebit = String(debitVal).replace(/[$,\s]/g, '').trim();
               const cleanCredit = String(creditVal).replace(/[$,\s]/g, '').trim();
               const debitNum = parseFloat(cleanDebit) || 0;
               const creditNum = parseFloat(cleanCredit) || 0;
               
-              if (debitNum > 0) {
+              // IMPORTANT: Each row should have EITHER a debit OR a credit, not both
+              // Create ONE transaction: Debit = expense, Credit = income
+              if (debitNum > 0 && creditNum === 0) {
                 rawAmount = cleanDebit;
                 transactionType = 'expense';
-              } else if (creditNum > 0) {
+              } else if (creditNum > 0 && debitNum === 0) {
                 rawAmount = cleanCredit;
                 transactionType = 'income';
+              } else if (debitNum > 0 && creditNum > 0) {
+                // Both have values - this shouldn't happen in Wave format
+                // Use the larger value, net them
+                if (debitNum > creditNum) {
+                  rawAmount = String(debitNum - creditNum);
+                  transactionType = 'expense';
+                } else {
+                  rawAmount = String(creditNum - debitNum);
+                  transactionType = 'income';
+                }
               } else {
                 skipped.push(`Row ${i + 1}: No debit or credit amount`);
                 continue;

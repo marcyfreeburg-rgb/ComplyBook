@@ -10,10 +10,14 @@
 - Uses Replit AI Integrations (OpenAI-compatible API) via `server/aiCategorization.ts`
 - Displays confidence score and category name in success toast
 
-**Wave Apps CSV Import Support - COMPLETED**
-- Updated CSV import to support Wave Apps accounting export format
-- Handles column names with "(In Business Currency)" suffix
-- Properly skips metadata rows (Starting Balance, Totals, Balance Change)
+**Wave Apps CSV Import Support - FIXED & ENHANCED**
+- Updated CSV import to properly support Wave Apps accounting export format
+- Detects Wave format via "ACCOUNT NUMBER" column or "(In Business Currency)" suffix
+- Column mapping: Date (B), Description (C), Debit (D) = expense, Credit (E) = income
+- **BALANCE column (F) is now completely IGNORED** - prevents duplicate imports
+- Each row creates ONE transaction only (either debit OR credit, not both)
+- Properly skips metadata rows (Starting Balance, Totals, Balance Change, Ending Balance)
+- Categories left blank as requested - user categorizes after import
 - Works with QuickBooks import option
 
 **Compliance Dashboard SQL Fix - COMPLETED**
