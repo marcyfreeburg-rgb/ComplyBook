@@ -2865,15 +2865,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let accountInfo = '';
 
           if (source === 'quickbooks') {
-            // Detect Wave Apps format: has "ACCOUNT NUMBER" column or columns with "(In Business Currency)" suffix
-            const isWaveAppsFormat = Object.keys(row).some(key => {
+            // Detect Wave Journal format: has "Transaction ID" and "Account Type" columns
+            // This is a double-entry format where each transaction has 2 rows
+            const isWaveJournalFormat = Object.keys(row).some(key => 
+              key.toUpperCase().trim() === 'TRANSACTION ID'
+            ) && Object.keys(row).some(key => 
+              key.toUpperCase().trim() === 'ACCOUNT TYPE'
+            );
+            
+            // Detect Wave Apps Account Transactions format: has "ACCOUNT NUMBER" column or columns with "(In Business Currency)" suffix
+            const isWaveAppsFormat = !isWaveJournalFormat && Object.keys(row).some(key => {
               const keyUpper = key.toUpperCase().trim();
               return keyUpper === 'ACCOUNT NUMBER' || 
                      keyUpper.includes('ACCOUNT NUMBER') ||
                      keyUpper.includes('IN BUSINESS CURRENCY');
             });
             
-            if (isWaveAppsFormat) {
+            if (isWaveJournalFormat) {
+              // Wave Journal Export format (double-entry):
+              // Each transaction has 2 rows - one for bank account, one for expense/income account
+              // We only want to import rows where Account Type = "Cash and Bank"
+              
+              const accountType = (row['Account Type'] || '').trim();
+              const accountGroup = (row['Account Group'] || '').trim();
+              
+              // Only process bank account rows (skip the corresponding expense/income rows)
+              if (accountType !== 'Cash and Bank') {
+                // Skip this row - it's the journal entry counterpart
+                continue;
+              }
+              
+              // Skip beginning balance entries
+              const transactionDesc = (row['Transaction Description'] || '').toLowerCase();
+              if (transactionDesc.includes('beginning balance') || transactionDesc.includes('begining balance')) {
+                skipped.push(`Row ${i + 1}: Beginning balance entry`);
+                continue;
+              }
+              
+              rawDate = row['Transaction Date'] || '';
+              description = row['Transaction Description'] || row['Transaction Line Description'] || '';
+              payeeName = row['Customer'] || row['Vendor'] || '';
+              accountInfo = row['Other Accounts for this Transaction'] || ''; // This is the category name
+              
+              // Use "Amount (One column)" - negative = expense, positive = income
+              const amountOneCol = row['Amount (One column)'] || row['Amount'] || '';
+              const cleanAmount = String(amountOneCol).replace(/[$,\s]/g, '').trim();
+              const amountNum = parseFloat(cleanAmount) || 0;
+              
+              if (amountNum === 0) {
+                skipped.push(`Row ${i + 1}: Zero amount`);
+                continue;
+              }
+              
+              // Negative amount = money out = expense, Positive = money in = income
+              if (amountNum < 0) {
+                rawAmount = String(Math.abs(amountNum));
+                transactionType = 'expense';
+              } else {
+                rawAmount = String(amountNum);
+                transactionType = 'income';
+              }
+            } else if (isWaveAppsFormat) {
               // Wave Apps format: 
               // Column A: ACCOUNT NUMBER (e.g., "Checking")
               // Column B: DATE

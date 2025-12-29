@@ -18,14 +18,13 @@
 - Displays confidence score and category name in success toast
 
 **Wave Apps CSV Import Support - FIXED & ENHANCED**
-- Updated CSV import to properly support Wave Apps accounting export format
-- Detects Wave format via "ACCOUNT NUMBER" column or "(In Business Currency)" suffix
-- Column mapping: Date (B), Description (C), Debit (D) = income, Credit (E) = expense
-  - Wave uses bank account perspective: DEBIT = money IN, CREDIT = money OUT
-- **BALANCE column (F) is completely IGNORED**
-- **Stops processing at "Totals and Ending Balance"** - prevents duplicate imports from Transfer Clearing section
-- Each row creates ONE transaction only (either debit OR credit, not both)
-- Categories left blank as requested - user categorizes after import
+- Supports TWO Wave export formats:
+  1. **Account Transactions format** (ACCOUNT NUMBER column): Debit = income, Credit = expense
+  2. **Journal Export format** (Transaction ID + Account Type columns): Double-entry style with 2 rows per transaction
+- Journal format: Only imports "Cash and Bank" rows, skips expense/income counterparts
+- Account Transactions format: Stops at "Totals and Ending Balance" to prevent Transfer Clearing duplicates
+- "Amount (One column)" in journal format: negative = expense, positive = income
+- Categories left blank - user categorizes after import
 - Works with QuickBooks import option
 
 **Compliance Dashboard SQL Fix - COMPLETED**
