@@ -23,7 +23,10 @@ import {
   RefreshCw,
   Plus,
   Sparkles,
-  Loader2
+  Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant } from "@shared/schema";
 import { format } from "date-fns";
@@ -45,6 +48,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Sorting state
+  type SortColumn = 'date' | 'description' | 'category' | 'grant' | 'type' | 'source' | 'amount';
+  type SortDirection = 'asc' | 'desc';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
   const [editForm, setEditForm] = useState({
     date: "",
@@ -287,12 +296,6 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     });
   };
 
-  const getGrantName = (grantId: number | null) => {
-    if (!grantId) return null;
-    const grant = grants.find(g => g.id === grantId);
-    return grant?.name || null;
-  };
-
   const getSelectedGrant = () => {
     if (!editForm.grantId) return null;
     return grants.find(g => g.id === parseInt(editForm.grantId));
@@ -327,6 +330,32 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     return category?.name || "Unknown";
   };
 
+  const getGrantName = (grantId: number | null) => {
+    if (!grantId) return "";
+    const grant = grants.find(g => g.id === grantId);
+    return grant?.name || "Unknown";
+  };
+
+  // Handle column header click for sorting
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   const filteredTransactions = transactions
     .filter(transaction => {
       const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -335,17 +364,51 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       const matchesType = typeFilter === "all" || transaction.type === typeFilter;
       return matchesSearch && matchesSource && matchesType;
     })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'date':
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'description':
+          comparison = a.description.localeCompare(b.description);
+          break;
+        case 'category':
+          comparison = getCategoryName(a.categoryId).localeCompare(getCategoryName(b.categoryId));
+          break;
+        case 'grant':
+          comparison = getGrantName(a.grantId).localeCompare(getGrantName(b.grantId));
+          break;
+        case 'type':
+          comparison = a.type.localeCompare(b.type);
+          break;
+        case 'source':
+          comparison = (a.source || 'manual').localeCompare(b.source || 'manual');
+          break;
+        case 'amount':
+          comparison = parseFloat(a.amount) - parseFloat(b.amount);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
 
   // Calculate running balance for each transaction (like a check register)
-  const transactionsWithBalance = filteredTransactions.map((transaction, index) => {
-    const previousTransactions = filteredTransactions.slice(0, index + 1);
-    const balance = previousTransactions.reduce((acc, t) => {
-      const amount = parseFloat(t.amount);
-      return t.type === 'income' ? acc + amount : acc - amount;
-    }, 0);
-    return { ...transaction, runningBalance: balance };
+  // Balance is always calculated chronologically regardless of display sort
+  const chronologicalTransactions = [...filteredTransactions].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  const balanceMap = new Map<number, number>();
+  let runningBalance = 0;
+  chronologicalTransactions.forEach(t => {
+    const amount = parseFloat(t.amount);
+    runningBalance += t.type === 'income' ? amount : -amount;
+    balanceMap.set(t.id, runningBalance);
   });
+
+  const transactionsWithBalance = filteredTransactions.map(transaction => ({
+    ...transaction,
+    runningBalance: balanceMap.get(transaction.id) || 0
+  }));
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -528,15 +591,57 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                         data-testid="checkbox-select-all"
                       />
                     </th>
-                    <th className="text-left py-3 px-2 font-medium bg-card">Date</th>
-                    <th className="text-left py-3 px-2 font-medium bg-card">Description</th>
-                    <th className="text-left py-3 px-2 font-medium bg-card">Category</th>
+                    <th 
+                      className="text-left py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('date')}
+                      data-testid="header-sort-date"
+                    >
+                      <div className="flex items-center">Date<SortIcon column="date" /></div>
+                    </th>
+                    <th 
+                      className="text-left py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('description')}
+                      data-testid="header-sort-description"
+                    >
+                      <div className="flex items-center">Description<SortIcon column="description" /></div>
+                    </th>
+                    <th 
+                      className="text-left py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('category')}
+                      data-testid="header-sort-category"
+                    >
+                      <div className="flex items-center">Category<SortIcon column="category" /></div>
+                    </th>
                     {currentOrganization.type === 'nonprofit' && (
-                      <th className="text-left py-3 px-2 font-medium bg-card">Grant</th>
+                      <th 
+                        className="text-left py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                        onClick={() => handleSort('grant')}
+                        data-testid="header-sort-grant"
+                      >
+                        <div className="flex items-center">Grant<SortIcon column="grant" /></div>
+                      </th>
                     )}
-                    <th className="text-left py-3 px-2 font-medium bg-card">Type</th>
-                    <th className="text-left py-3 px-2 font-medium bg-card">Source</th>
-                    <th className="text-right py-3 px-2 font-medium bg-card">Amount</th>
+                    <th 
+                      className="text-left py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('type')}
+                      data-testid="header-sort-type"
+                    >
+                      <div className="flex items-center">Type<SortIcon column="type" /></div>
+                    </th>
+                    <th 
+                      className="text-left py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('source')}
+                      data-testid="header-sort-source"
+                    >
+                      <div className="flex items-center">Source<SortIcon column="source" /></div>
+                    </th>
+                    <th 
+                      className="text-right py-3 px-2 font-medium bg-card cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('amount')}
+                      data-testid="header-sort-amount"
+                    >
+                      <div className="flex items-center justify-end">Amount<SortIcon column="amount" /></div>
+                    </th>
                     <th className="text-right py-3 px-2 font-medium bg-card">Balance</th>
                     <th className="text-right py-3 px-2 font-medium sticky right-0 bg-card z-30">Actions</th>
                   </tr>
