@@ -310,6 +310,7 @@ export interface IStorage {
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
+  getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
   getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
@@ -1799,6 +1800,19 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(transactions.date));
+  }
+
+  async getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.externalId, externalId)
+        )
+      );
+    return transaction;
   }
 
   async getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]> {

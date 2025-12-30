@@ -5369,23 +5369,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
           }
 
-          // Import transactions
+          // Import transactions - use Plaid's unique transaction_id for deduplication
           for (const plaidTx of transactionsResponse.data.transactions) {
-            // Check if transaction already exists by looking for similar transactions
-            // (same amount, date, and description)
-            const existingTxs = await storage.getTransactionsByDateRange(
-              organizationId,
-              new Date(plaidTx.date),
-              new Date(plaidTx.date)
-            );
-
-            const isDuplicate = existingTxs.some(tx => 
-              Math.abs(parseFloat(tx.amount) - Math.abs(plaidTx.amount)) < 0.01 &&
-              tx.description === plaidTx.name
-            );
-
-            if (isDuplicate) {
-              continue;
+            // Check if this exact Plaid transaction was already imported (by externalId)
+            const existingTx = await storage.getTransactionByExternalId(organizationId, plaidTx.transaction_id);
+            if (existingTx) {
+              continue; // Skip - already imported
             }
 
             // Determine transaction type (income vs expense)
@@ -5393,7 +5382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const isIncome = plaidTx.amount < 0;
             const amount = Math.abs(plaidTx.amount);
 
-            // Create transaction
+            // Create transaction with Plaid's transaction_id stored in externalId
             await storage.createTransaction({
               organizationId,
               date: new Date(plaidTx.date),
@@ -5403,6 +5392,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               categoryId: null,
               grantId: null,
               createdBy: userId,
+              source: 'plaid',
+              externalId: plaidTx.transaction_id,
             });
 
             totalImported++;
