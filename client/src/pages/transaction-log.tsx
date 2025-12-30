@@ -59,6 +59,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   });
   
   const [suggestingForTransaction, setSuggestingForTransaction] = useState<number | null>(null);
+  const [isSyncingPlaid, setIsSyncingPlaid] = useState(false);
 
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
@@ -85,6 +86,38 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const { data: grants = [] } = useQuery<GrantWithBalances[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
+  });
+
+  // Check if organization has connected bank accounts
+  const { data: plaidItems = [] } = useQuery<{ id: number; itemId: string; institutionName: string }[]>({
+    queryKey: [`/api/plaid/items/${currentOrganization.id}`],
+  });
+
+  const syncPlaidTransactionsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/plaid/sync-transactions/${currentOrganization.id}`, {});
+      return await response.json();
+    },
+    onMutate: () => {
+      setIsSyncingPlaid(true);
+    },
+    onSuccess: (data: { totalAdded?: number; totalModified?: number; totalRemoved?: number }) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      toast({
+        title: "Transactions Synced",
+        description: `Successfully synced ${data.totalAdded || 0} new transactions from your bank accounts.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync transactions from bank.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsSyncingPlaid(false);
+    },
   });
 
   const updateTransactionMutation = useMutation({
@@ -343,6 +376,21 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {plaidItems.length > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={() => syncPlaidTransactionsMutation.mutate()}
+              disabled={isSyncingPlaid}
+              data-testid="button-sync-plaid"
+            >
+              {isSyncingPlaid ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sync Bank Transactions
+            </Button>
+          )}
           <Button variant="outline" asChild data-testid="button-import-link">
             <a href="/accounting-imports">
               <Upload className="h-4 w-4 mr-2" />
