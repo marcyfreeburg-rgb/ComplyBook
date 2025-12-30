@@ -327,12 +327,24 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     return category?.name || "Unknown";
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSource = sourceFilter === "all" || (transaction.source || "manual") === sourceFilter;
-    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-    return matchesSearch && matchesSource && matchesType;
+  const filteredTransactions = transactions
+    .filter(transaction => {
+      const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSource = sourceFilter === "all" || (transaction.source || "manual") === sourceFilter;
+      const matchesType = typeFilter === "all" || transaction.type === typeFilter;
+      return matchesSearch && matchesSource && matchesType;
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Calculate running balance for each transaction (like a check register)
+  const transactionsWithBalance = filteredTransactions.map((transaction, index) => {
+    const previousTransactions = filteredTransactions.slice(0, index + 1);
+    const balance = previousTransactions.reduce((acc, t) => {
+      const amount = parseFloat(t.amount);
+      return t.type === 'income' ? acc + amount : acc - amount;
+    }, 0);
+    return { ...transaction, runningBalance: balance };
   });
 
   const handleSelectAll = (checked: boolean) => {
@@ -525,11 +537,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                     <th className="text-left py-3 px-2 font-medium bg-card">Type</th>
                     <th className="text-left py-3 px-2 font-medium bg-card">Source</th>
                     <th className="text-right py-3 px-2 font-medium bg-card">Amount</th>
+                    <th className="text-right py-3 px-2 font-medium bg-card">Balance</th>
                     <th className="text-right py-3 px-2 font-medium sticky right-0 bg-card z-30">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransactions.map((transaction) => (
+                  {transactionsWithBalance.map((transaction) => (
                     <tr key={transaction.id} className={`border-b hover:bg-muted/50 ${selectedTransactions.has(transaction.id) ? 'bg-muted/30' : ''}`} data-testid={`row-transaction-${transaction.id}`}>
                       <td className="py-3 px-2">
                         <Checkbox
@@ -580,6 +593,9 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                       <td className="py-3 px-2">{getSourceBadge(transaction.source)}</td>
                       <td className={`py-3 px-2 text-right font-medium ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {transaction.type === 'income' ? '+' : '-'}{formatCurrency(parseFloat(transaction.amount))}
+                      </td>
+                      <td className={`py-3 px-2 text-right font-medium ${transaction.runningBalance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`} data-testid={`balance-transaction-${transaction.id}`}>
+                        {formatCurrency(transaction.runningBalance)}
                       </td>
                       <td className="py-3 px-2 text-right sticky right-0 bg-card z-10">
                         <div className="flex justify-end gap-1">
