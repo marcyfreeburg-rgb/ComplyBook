@@ -2,6 +2,14 @@
 
 ## Recent Updates (December 29, 2025)
 
+**Plaid Transaction Sync Button - COMPLETED**
+- Added "Sync Bank Transactions" button to transaction log page
+- Button only appears when organization has connected Plaid bank accounts
+- Works for both for-profit and non-profit organizations
+- Calls `/api/plaid/sync-transactions/:organizationId` endpoint
+- Shows loading spinner during sync, displays success toast with transaction count
+- AI categorization sparkles button already existed for uncategorized transactions
+
 **Plaid Troubleshooting Logging - COMPLETED**
 - Added server-side console logging for all key Plaid identifiers (per Plaid best practices)
 - Logged identifiers: item_id, request_id, account_id, link_session_id (truncated)
