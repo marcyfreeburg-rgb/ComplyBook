@@ -4933,11 +4933,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             account_subtypes: ['credit card'],
           },
         },
-        
-        // Link customization for better UX
-        link_customization_name: organization?.type === 'nonprofit' 
-          ? 'nonprofit_flow'  // Can be configured in Plaid Dashboard
-          : 'default',
       };
       
       // Only enable microdeposit auth flows when 'auth' is the ONLY product
