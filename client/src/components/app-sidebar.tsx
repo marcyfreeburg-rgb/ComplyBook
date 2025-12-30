@@ -288,7 +288,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent className="p-2">
         <SidebarGroup>
           <SidebarGroupContent>
