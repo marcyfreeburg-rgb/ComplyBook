@@ -4933,6 +4933,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             account_subtypes: ['credit card'],
           },
         },
+        
+        // Request up to 24 months (730 days) of transaction history
+        // Default is only 90 days - we want more for comprehensive financial management
+        transactions: {
+          days_requested: 730,
+        },
       };
       
       // Only enable microdeposit auth flows when 'auth' is the ONLY product
