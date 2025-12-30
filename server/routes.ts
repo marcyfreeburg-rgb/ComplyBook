@@ -4907,10 +4907,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         plaidProducts.push('identity');
       }
       
-      // Transactions product - check if enabled (would need to be enabled in Plaid Dashboard)
-      // For now, we sync transactions via Auth which works for most use cases
-      // Uncomment below to enable direct Plaid transaction syncing:
-      // plaidProducts.push('transactions');
+      // Transactions product - required for transaction syncing
+      plaidProducts.push('transactions');
       
       console.log('Requesting Plaid products:', plaidProducts, 'for org type:', organization?.type);
       
