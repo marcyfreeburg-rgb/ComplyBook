@@ -312,6 +312,7 @@ export interface IStorage {
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
   findMatchingManualTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
+  findAnyMatchingTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
   getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
@@ -1863,6 +1864,53 @@ export class DatabaseStorage implements IStorage {
           txDesc.includes(plaidDesc) || 
           plaidDesc.includes(txDesc) ||
           txDesc.split(' ').some(word => word.length > 3 && plaidDesc.includes(word))) {
+        return tx;
+      }
+    }
+
+    // If no description match, return the first match by date/amount
+    return results[0];
+  }
+
+  async findAnyMatchingTransaction(
+    organizationId: number,
+    date: Date,
+    amount: string,
+    description: string,
+    type: 'income' | 'expense'
+  ): Promise<Transaction | undefined> {
+    // Find ANY transaction (manual or Plaid) that matches by date, amount, and type
+    // Used for CSV import duplicate detection
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const results = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.amount, amount),
+          eq(transactions.type, type),
+          gte(transactions.date, startOfDay),
+          lte(transactions.date, endOfDay)
+        )
+      );
+
+    if (results.length === 0) {
+      return undefined;
+    }
+
+    // Look for exact or close description match
+    for (const tx of results) {
+      const txDesc = tx.description.toLowerCase().trim();
+      const importDesc = description.toLowerCase().trim();
+      if (txDesc === importDesc || 
+          txDesc.includes(importDesc) || 
+          importDesc.includes(txDesc) ||
+          txDesc.split(' ').some(word => word.length > 3 && importDesc.includes(word))) {
         return tx;
       }
     }

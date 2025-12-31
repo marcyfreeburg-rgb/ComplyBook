@@ -2655,7 +2655,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             // CSV uses single amount column
             rawAmount = row.amount || row.Amount || row.AMOUNT || '0';
-            const hasNegativeSign = String(rawAmount).includes('-');
+            const amountStr = String(rawAmount);
+            // Handle parentheses format like ($549.57) which indicates negative/expense
+            const hasParentheses = amountStr.includes('(') && amountStr.includes(')');
+            const hasNegativeSign = amountStr.includes('-') || hasParentheses;
             
             // Determine transaction type from type column or amount sign
             const rawType = (row.type || row.Type || row.TYPE || '').toString().toLowerCase().trim();
@@ -2685,8 +2688,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Clean amount: remove currency symbols, commas, and convert to number
-          const cleanAmount = String(rawAmount).replace(/[$,\-]/g, '').trim();
+          // Clean amount: remove currency symbols, commas, parentheses, and convert to number
+          const cleanAmount = String(rawAmount).replace(/[$,\-\(\)]/g, '').trim();
           const parsedAmount = parseFloat(cleanAmount);
           const validAmount = isNaN(parsedAmount) ? 0 : Math.abs(parsedAmount);
 
@@ -2717,6 +2720,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             parsedDate = new Date().toISOString().split('T')[0];
           }
 
+          // Check for duplicate transaction before creating
+          // Match by date, amount, type, and similar description (to avoid duplicating Plaid imports)
+          const existingMatch = await storage.findAnyMatchingTransaction(
+            organizationId,
+            new Date(parsedDate),
+            validAmount.toFixed(2),
+            desc || 'Imported transaction',
+            transactionType
+          );
+
+          if (existingMatch) {
+            skipped.push({ row: i + 1, reason: `Duplicate: matches existing transaction #${existingMatch.id}` });
+            continue;
+          }
+
           // Map CSV columns to transaction schema
           const transactionData = {
             organizationId,
@@ -2731,6 +2749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fundId: row.fundId || row.FundId || null,
             programId: row.programId || row.ProgramId || null,
             functionalCategory: row.functionalCategory || row.FunctionalCategory || null,
+            source: 'manual' as const,
           };
 
           const validated = insertTransactionSchema.parse(transactionData);
