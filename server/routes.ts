@@ -5070,7 +5070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createAuditLog({
         organizationId,
         userId,
-        action: 'view',
+        action: 'create',
         entityType: 'plaid_link',
         entityId: `event_${Date.now()}`,
         newValues: sanitizedMetadata,

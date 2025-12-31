@@ -1,0 +1,259 @@
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 447 total (447 active, 0 archived)
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1804ms :: {"success":true}
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1859ms :: {"success":true}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1898ms :: {"success":true}
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1976ms :: {"success":true}
+[Plaid] Accounts fetched - item_id: BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev, account_ids: [OpLnJ48nDQh3m0PkA6jQf7JDKZonP6I3rDeAb, Mpwnab8n6ZhNQjAyBdmOtwLJQnxd3giVxqO1e], request_id: egLB3NHPdWZ5Nzf
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 2031ms :: {"success":true}
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1082ms :: {"success":true}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1137ms :: {"success":true}
+3:50:01 AM [express] POST /api/plaid/exchange-token/167 200 in 2469ms :: {"success":true,"accounts":…
+3:50:02 AM [express] GET /api/plaid/items/167 200 in 262ms :: [{"id":8,"organizationId":167,"itemId"…
+3:50:02 AM [express] GET /api/plaid/accounts/167 200 in 267ms :: [{"id":16,"plaidItemId":8,"accountI…
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:02 AM [express] POST /api/plaid/log-event/167 200 in 456ms :: {"success":true}
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:02 AM [express] POST /api/plaid/log-event/167 200 in 457ms :: {"success":true}
+Received Plaid webhook: TRANSACTIONS/INITIAL_UPDATE for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Processing Plaid webhook: TRANSACTIONS/INITIAL_UPDATE for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Initial update received for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Syncing transactions for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev...
+Synced 15 new transactions for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
