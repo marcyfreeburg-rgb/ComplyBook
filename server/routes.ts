@@ -3117,15 +3117,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          // Clean and parse amount
-          const cleanAmount = String(rawAmount).replace(/[$,\-]/g, '').trim();
+          // Clean and parse amount - handle parentheses as negative (e.g., "($549.57)")
+          const rawAmountStr = String(rawAmount).trim();
+          const hasParentheses = rawAmountStr.includes('(') && rawAmountStr.includes(')');
+          const cleanAmount = rawAmountStr.replace(/[$,\-\(\)]/g, '').trim();
           const parsedAmount = parseFloat(cleanAmount);
           const validAmount = isNaN(parsedAmount) ? 0 : Math.abs(parsedAmount);
+          
+          // If amount was in parentheses, it's an expense
+          if (hasParentheses && validAmount > 0) {
+            transactionType = 'expense';
+          }
 
           if (validAmount === 0) {
             skipped.push(`Row ${i + 1}: Zero or invalid amount`);
             continue;
           }
+
+          // Build description for duplicate check
+          const finalDescription = description || payeeName || `Imported from ${source}`;
 
           // Parse date
           let parsedDate = '';
@@ -3142,6 +3152,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } else {
             parsedDate = new Date().toISOString().split('T')[0];
+          }
+
+          // Check for duplicate transaction before creating
+          const existingMatch = await storage.findAnyMatchingTransaction(
+            organizationId,
+            new Date(parsedDate),
+            validAmount.toFixed(2),
+            finalDescription,
+            transactionType
+          );
+
+          if (existingMatch) {
+            skipped.push(`Row ${i + 1}: Duplicate - matches existing #${existingMatch.id}`);
+            continue;
           }
 
           // Try to match vendor by name
@@ -3176,13 +3200,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: parsedDate,
             type: transactionType,
             amount: validAmount,
-            description: description || payeeName || `Imported from ${source}`,
+            description: finalDescription,
             categoryId: matchedCategoryId,
             vendorId: matchedVendorId,
             clientId: null,
             fundId: null,
             programId: null,
             functionalCategory: null,
+            source: 'manual' as const,
           };
 
           const validated = insertTransactionSchema.parse(transactionData);
