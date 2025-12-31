@@ -1904,6 +1904,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Look for exact or close description match
+    // Only consider it a duplicate if descriptions are similar
     for (const tx of results) {
       const txDesc = tx.description.toLowerCase().trim();
       const importDesc = description.toLowerCase().trim();
@@ -1915,8 +1916,8 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // If no description match, return the first match by date/amount
-    return results[0];
+    // If no description match, NOT a duplicate - different transactions with same amount/date
+    return undefined;
   }
 
   async getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]> {
