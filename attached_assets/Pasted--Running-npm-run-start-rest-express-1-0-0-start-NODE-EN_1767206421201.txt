@@ -1,0 +1,52 @@
+ Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+[Plaid] Initializing with environment: production
+[Plaid] Base path: https://production.plaid.com
+[Plaid] Client ID configured: true
+[Plaid] Secret configured: true
+[AI Categorization] Environment check - Replit AI: false, OpenAI Key Present: true
+[AI Categorization] Using OpenAI API
+Initializing Stripe integration...
+[Auth] Non-Replit environment detected, using local authentication
+[Auth] Local authentication mode enabled (Replit environment not detected)
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+6:35:16 PM [express] serving on port 10000
+==> Your service is live 🎉
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 566 total (566 active, 0 archived)
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+6:35:43 PM [express] GET /api/notifications/167/unread-count 200 in 888ms :: {"count":"0"}
+6:36:14 PM [express] GET /api/notifications/167/unread-count 304 in 873ms :: {"count":"0"}
+6:36:45 PM [express] GET /api/notifications/167/unread-count 304 in 884ms :: {"count":"0"}
+6:37:16 PM [express] GET /api/notifications/167/unread-count 304 in 872ms :: {"count":"0"}
+6:37:47 PM [express] GET /api/notifications/167/unread-count 304 in 892ms :: {"count":"0"}
+6:38:18 PM [express] GET /api/notifications/167/unread-count 304 in 868ms :: {"count":"0"}
+6:38:49 PM [express] GET /api/notifications/167/unread-count 304 in 875ms :: {"count":"0"}
+6:39:20 PM [express] GET /api/notifications/167/unread-count 304 in 881ms :: {"count":"0"}
+6:39:25 PM [express] GET /api/auth/user 200 in 203ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+6:39:25 PM [express] GET /api/organizations 304 in 311ms :: [{"id":168,"name":"C Cubed Training","ty…
+6:39:26 PM [express] GET /api/security/mfa/status 304 in 788ms :: {"mfaEnabled":true,"mfaRequired":t…
+6:39:26 PM [express] GET /api/projects/167 304 in 478ms :: [{"id":5,"organizationId":167,"contractId…
+6:39:26 PM [express] GET /api/notifications/167/unread-count 304 in 475ms :: {"count":"0"}
+6:39:26 PM [express] GET /api/contracts/167 304 in 483ms :: [{"id":13,"organizationId":167,"contract…
+6:39:26 PM [express] GET /api/indirect-rates/167 200 in 533ms
+6:39:26 PM [express] GET /api/milestones/167 200 in 535ms
+6:39:26 PM [express] GET /api/time-entries/167 304 in 671ms :: [{"id":10,"organizationId":167,"userI…
+6:39:38 PM [express] DELETE /api/contracts/13 200 in 1892ms :: {"message":"Contract deleted successf…
+6:39:38 PM [express] GET /api/contracts/167 200 in 268ms :: []
+6:39:43 PM [express] DELETE /api/time-entries/10 404 in 199ms :: {"message":"Time entry not found"}
+6:39:46 PM [express] GET /api/project-costs/167 200 in 131ms
+6:39:49 PM [express] GET /api/invoices/167 304 in 275ms :: []
+6:39:50 PM [express] GET /api/clients/167 304 in 672ms :: []
+6:39:51 PM [express] GET /api/indirect-rates/167 304 in 133ms
+6:39:51 PM [express] GET /api/milestones/167 304 in 132ms
+6:39:55 PM [express] DELETE /api/time-entries/10 404 in 202ms :: {"message":"Time entry not found"}
+6:39:56 PM [express] GET /api/notifications/167/unread-count 304 in 270ms :: {"count":"0"}
