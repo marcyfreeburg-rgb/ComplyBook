@@ -2,11 +2,22 @@
 import OpenAI from "openai";
 import { storage } from "./storage";
 
-// This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own OpenAI API key.
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-});
+// Support both Replit's AI Integrations and standard OpenAI API
+// - On Replit: Uses AI_INTEGRATIONS_OPENAI_BASE_URL and AI_INTEGRATIONS_OPENAI_API_KEY
+// - On external deployments (Render, etc.): Uses OPENAI_API_KEY with standard OpenAI endpoint
+const isReplitEnvironment = !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+
+const openai = isReplitEnvironment 
+  ? new OpenAI({
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+    })
+  : new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+// Log which AI provider is being used
+console.log(`[AI Categorization] Using ${isReplitEnvironment ? 'Replit AI Integrations' : 'OpenAI API'}`);
 
 export interface CategorySuggestion {
   categoryId: number;
@@ -93,9 +104,10 @@ Respond ONLY with valid JSON in this exact format:
   "reasoning": "<brief explanation>"
 }`;
 
-    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+    // Use gpt-4o for standard OpenAI API (widely available), gpt-5 for Replit AI Integrations
+    const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: modelName,
       messages: [
         { 
           role: "system", 
