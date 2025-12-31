@@ -217,9 +217,9 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         amount: transaction.amount,
         type: transaction.type,
       });
-      const suggestionResponse = await response.json();
+      const suggestion = await response.json();
       
-      const suggestion = suggestionResponse?.suggestion;
+      // Backend returns { categoryId, categoryName, confidence, reasoning, historyId } directly
       if (!suggestion?.categoryId) {
         return { transactionId: transaction.id, suggestion: null, applied: false };
       }

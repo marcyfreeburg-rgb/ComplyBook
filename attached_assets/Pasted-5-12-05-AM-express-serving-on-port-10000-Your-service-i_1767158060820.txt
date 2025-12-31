@@ -1,0 +1,39 @@
+5:12:05 AM [express] serving on port 10000
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 456 total (456 active, 0 archived)
+==> 
+==> ///////////////////////////////////////////////////////////
+5:13:30 AM [express] GET /api/auth/user 401 in 130ms :: {"message":"Unauthorized"}
+5:13:35 AM [express] GET /api/auth/mode 304 in 130ms :: {"mode":"local"}
+5:13:38 AM [express] POST /api/login 200 in 1091ms :: {"success":true,"mfaRequired":true,"mfaSetupRe…
+5:13:38 AM [express] GET /api/auth/user 403 in 129ms :: {"message":"MFA verification required","code…
+5:13:39 AM [express] GET /api/auth/mfa/login-status 200 in 197ms :: {"mfaPending":true,"mfaVerified"…
+[MFA] TOTP validation result: delta=0, token=35****, serverTime=2025-12-31T05:13:43.869Z
+5:13:44 AM [express] POST /api/auth/mfa/verify-login 200 in 430ms :: {"success":true,"message":"Logi…
+5:13:44 AM [express] GET /api/auth/mfa/login-status 200 in 195ms :: {"mfaPending":false,"mfaVerified…
+5:13:44 AM [express] GET /api/auth/user 200 in 609ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+5:13:45 AM [express] GET /api/organizations 304 in 288ms :: [{"id":168,"name":"C Cubed Training","ty…
+5:13:45 AM [express] GET /api/security/mfa/status 304 in 547ms :: {"mfaEnabled":true,"mfaRequired":t…
+5:13:45 AM [express] GET /api/budgets/167 304 in 272ms :: []
+5:13:45 AM [express] GET /api/notifications/167/unread-count 304 in 488ms :: {"count":"0"}
+5:13:46 AM [express] GET /api/dashboard/167 304 in 509ms :: {"totalIncome":"8388.40","totalExpenses"…
+5:13:48 AM [express] GET /api/dashboard/167/category-breakdown 304 in 2897ms :: {"incomeByCategory":…
+5:13:48 AM [express] GET /api/dashboard/167/monthly-trends 200 in 3380ms :: [{"month":"Jul 2025","in…
+5:13:49 AM [express] GET /api/clients/167 304 in 268ms :: [{"id":27,"organizationId":167,"name":"TES…
+5:13:49 AM [express] GET /api/vendors/167 304 in 265ms :: []
+5:13:49 AM [express] GET /api/transactions/167 304 in 338ms :: [{"id":38714,"organizationId":167,"da…
+5:13:49 AM [express] GET /api/plaid/items/167 304 in 492ms :: [{"id":8,"organizationId":167,"itemId"…
+5:13:49 AM [express] GET /api/categories/167 304 in 539ms :: [{"id":269,"organizationId":167,"name":…
+[AI Categorization] Raw AI response for "WAVE - PAYROLL FEES WAVEAPPS.COM CO 09/01/25 Card 0872 Visa Check": {
+  "categoryId": 351,
+  "categoryName": "Payroll Fee",
+  "confidence": 95,
+  "reasoning": "The transaction description includes 'PAYROLL FEES' and 'WAVEAPPS.COM', indicating it is related to payroll processing fees. The 'Payroll Fee' category is specifically for such expenses, making it the most appropriate choice."
+}
+[AI Categorization] Suggested category "Payroll Fee" with 95% confidence
+5:13:53 AM [express] POST /api/ai/suggest-category/167 200 in 2345ms :: {"categoryId":351,"categoryN…
