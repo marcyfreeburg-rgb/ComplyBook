@@ -53,7 +53,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   type SortColumn = 'date' | 'description' | 'category' | 'grant' | 'type' | 'source' | 'amount';
   type SortDirection = 'asc' | 'desc';
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
   const [editForm, setEditForm] = useState({
     date: "",
