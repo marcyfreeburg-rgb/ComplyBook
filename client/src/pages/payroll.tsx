@@ -530,37 +530,100 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Show onboarding card when neither Gusto nor Finch is connected */}
+      {!gustoConnection?.connected && finchConnections.length === 0 && (
+        <Card data-testid="card-payroll-onboarding">
+          <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
                 <DollarSign className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Gusto Payroll Integration</CardTitle>
+                <CardTitle className="text-lg">Connect Your Payroll</CardTitle>
                 <CardDescription>
-                  Connect to Gusto for automated payroll processing
+                  Sync employee data and streamline payroll processing
                 </CardDescription>
               </div>
             </div>
-            {isLoadingGustoConnection ? (
-              <Badge variant="secondary">
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Checking...
-              </Badge>
-            ) : gustoConnection?.connected ? (
-              <Badge variant="default" className="bg-green-600">
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Finch - Already have payroll */}
+              <div className="border rounded-lg p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold">Already running payroll?</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Sync with your existing payroll provider. We connect to 200+ systems including ADP, Paychex, BambooHR, Paylocity, and more.
+                </p>
+                <Button
+                  onClick={() => connectFinchMutation.mutate()}
+                  disabled={connectFinchMutation.isPending}
+                  className="w-full"
+                  data-testid="button-connect-finch"
+                >
+                  {connectFinchMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Link2 className="h-4 w-4 mr-2" />
+                  )}
+                  Sync with Finch
+                </Button>
+              </div>
+
+              {/* Gusto - New to payroll */}
+              <div className="border rounded-lg p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <h3 className="font-semibold">New to payroll?</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Sign up with Gusto for full-service payroll, benefits, and HR. Perfect for growing businesses.
+                </p>
+                <Button
+                  onClick={() => connectGustoMutation.mutate()}
+                  disabled={connectGustoMutation.isPending}
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-connect-gusto"
+                >
+                  {connectGustoMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Link2 className="h-4 w-4 mr-2" />
+                  )}
+                  Sign up with Gusto
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Show Gusto connection details when connected */}
+      {gustoConnection?.connected && (
+        <Card data-testid="card-gusto-connected">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
+                  <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Gusto Payroll</CardTitle>
+                  <CardDescription>
+                    Connected to Gusto for automated payroll processing
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="default" className="bg-green-600" data-testid="badge-gusto-connected">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Connected
               </Badge>
-            ) : (
-              <Badge variant="secondary">Not Connected</Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {gustoConnection?.connected ? (
+            </div>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-md">
                 <div>
@@ -642,59 +705,33 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                 </Button>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                Connect your Gusto account to sync employees, run payroll, and manage benefits directly from ComplyBook.
-              </p>
-              <Button
-                onClick={() => connectGustoMutation.mutate()}
-                disabled={connectGustoMutation.isPending}
-                data-testid="button-connect-gusto"
-              >
-                {connectGustoMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Link2 className="h-4 w-4 mr-2" />
-                )}
-                Connect to Gusto
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card data-testid="card-finch-integration">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      {/* Show Finch connection details when connected */}
+      {finchConnections.length > 0 && (
+        <Card data-testid="card-finch-integration">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Finch Payroll Connections</CardTitle>
+                  <CardDescription>
+                    Synced with your payroll providers
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-lg">Finch Payroll Connector</CardTitle>
-                <CardDescription>
-                  Connect to 200+ payroll providers (ADP, Paychex, BambooHR, etc.)
-                </CardDescription>
-              </div>
-            </div>
-            {isLoadingFinchConnections ? (
-              <Badge variant="secondary" data-testid="badge-finch-loading">
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Checking...
-              </Badge>
-            ) : finchConnections.length > 0 ? (
               <Badge variant="default" className="bg-blue-600" data-testid="badge-finch-connected">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 {finchConnections.length} Connected
               </Badge>
-            ) : (
-              <Badge variant="secondary" data-testid="badge-finch-not-connected">Not Connected</Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {finchConnections.length > 0 ? (
+            </div>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
               {finchConnections.map((conn) => (
                 <div key={conn.id} className="border rounded-md p-4" data-testid={`card-finch-connection-${conn.id}`}>
@@ -770,29 +807,9 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                 Add Another Provider
               </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                Finch connects to over 200 payroll and HR systems including ADP, Paychex, BambooHR, Paylocity, Rippling, and many more. 
-                Use Finch if your payroll provider isn't Gusto.
-              </p>
-              <Button
-                onClick={() => connectFinchMutation.mutate()}
-                disabled={connectFinchMutation.isPending}
-                variant="outline"
-                data-testid="button-connect-finch"
-              >
-                {connectFinchMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Link2 className="h-4 w-4 mr-2" />
-                )}
-                Connect Payroll Provider
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
