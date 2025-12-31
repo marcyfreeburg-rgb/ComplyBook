@@ -1,0 +1,37 @@
+6:19:29 PM [express] GET /api/notifications/167/unread-count 304 in 847ms :: {"count":"0"}
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+6:19:42 PM [express] POST /api/projects 201 in 1300ms :: {"id":5,"organizationId":167,"contractId":1…
+6:19:43 PM [express] GET /api/projects/167 200 in 259ms :: [{"id":5,"organizationId":167,"contractId…
+6:20:00 PM [express] GET /api/notifications/167/unread-count 304 in 858ms :: {"count":"0"}
+6:20:31 PM [express] GET /api/notifications/167/unread-count 304 in 842ms :: {"count":"0"}
+6:20:38 PM [express] POST /api/time-entries 201 in 619ms :: {"id":10,"organizationId":167,"userId":"…
+6:20:38 PM [express] GET /api/time-entries/167 200 in 257ms :: [{"id":10,"organizationId":167,"userI…
+6:20:46 PM [express] GET /api/project-costs/167 304 in 127ms
+6:21:02 PM [express] GET /api/notifications/167/unread-count 304 in 859ms :: {"count":"0"}
+Error creating project cost: error: invalid input syntax for type numeric: ""
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.createProjectCost (file:///opt/render/project/src/dist/index.js:7136:27)
+    at async file:///opt/render/project/src/dist/index.js:17329:20 {
+  length: 131,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $8 = ''",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numeric.c',
+  line: '800',
+  routine: 'numeric_in'
+}
+6:21:18 PM [express] POST /api/project-costs 500 in 894ms :: {"message":"Failed to create project co…
+6:21:33 PM [express] GET /api/notifications/167/unread-count 304 in 854ms :: {"count":"0"}

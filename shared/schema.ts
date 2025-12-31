@@ -2024,8 +2024,8 @@ export const insertProjectCostSchema = createInsertSchema(projectCosts).omit({
   updatedAt: true,
 }).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
-  quantity: z.string().or(z.number()).transform(val => String(val)).optional(),
-  unitCost: z.string().or(z.number()).transform(val => String(val)).optional(),
+  quantity: z.string().or(z.number()).nullable().optional().transform(val => val === '' || val === null || val === undefined ? null : String(val)),
+  unitCost: z.string().or(z.number()).nullable().optional().transform(val => val === '' || val === null || val === undefined ? null : String(val)),
   costDate: z.coerce.date(),
 });
 
