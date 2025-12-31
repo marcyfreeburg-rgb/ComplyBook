@@ -1832,12 +1832,12 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  budget: z.string().or(z.number()).transform(val => String(val)).optional(),
-  actualCost: z.string().or(z.number()).transform(val => String(val)).optional(),
-  laborRate: z.string().or(z.number()).transform(val => String(val)).optional(),
-  overheadRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  budget: z.string().or(z.number()).transform(val => String(val)).nullable().optional(),
+  actualCost: z.string().or(z.number()).transform(val => String(val)).nullable().optional(),
+  laborRate: z.string().or(z.number()).transform(val => String(val)).nullable().optional(),
+  overheadRate: z.string().or(z.number()).transform(val => String(val)).nullable().optional(),
   startDate: z.coerce.date(),
-  endDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().nullable().optional(),
 });
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;

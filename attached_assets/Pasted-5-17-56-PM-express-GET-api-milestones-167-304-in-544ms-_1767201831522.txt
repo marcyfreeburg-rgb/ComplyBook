@@ -1,0 +1,137 @@
+5:17:56 PM [express] GET /api/milestones/167 304 in 544ms
+5:18:13 PM [express] GET /api/notifications/167/unread-count 304 in 891ms :: {"count":"0"}
+5:18:44 PM [express] GET /api/notifications/167/unread-count 304 in 894ms :: {"count":"0"}
+5:18:57 PM [express] GET /api/indirect-rates/167 304 in 546ms
+5:18:57 PM [express] GET /api/milestones/167 304 in 558ms
+5:19:15 PM [express] GET /api/notifications/167/unread-count 304 in 897ms :: {"count":"0"}
+5:19:46 PM [express] GET /api/notifications/167/unread-count 304 in 877ms :: {"count":"0"}
+5:20:17 PM [express] GET /api/notifications/167/unread-count 304 in 867ms :: {"count":"0"}
+5:20:48 PM [express] GET /api/notifications/167/unread-count 304 in 852ms :: {"count":"0"}
+5:21:16 PM [express] PUT /api/contracts/13 200 in 1246ms :: {"id":13,"organizationId":167,"contractN…
+5:21:16 PM [express] GET /api/contracts/167 200 in 260ms :: [{"id":13,"organizationId":167,"contract…
+5:21:19 PM [express] GET /api/notifications/167/unread-count 304 in 259ms :: {"count":"0"}
+5:21:50 PM [express] GET /api/notifications/167/unread-count 304 in 891ms :: {"count":"0"}
+5:22:21 PM [express] GET /api/notifications/167/unread-count 304 in 888ms :: {"count":"0"}
+5:22:24 PM [express] GET /api/project-costs/167 200 in 136ms
+5:22:41 PM [express] POST /api/projects/validate-number 200 in 868ms :: {"exists":false,"available":…
+5:22:52 PM [express] GET /api/notifications/167/unread-count 304 in 883ms :: {"count":"0"}
+Error creating project: ZodError: [
+  {
+    "code": "invalid_union",
+    "unionErrors": [
+      {
+        "issues": [
+          {
+            "code": "invalid_type",
+            "expected": "string",
+            "received": "null",
+            "path": [
+              "budget"
+            ],
+            "message": "Expected string, received null"
+          }
+        ],
+        "name": "ZodError"
+      },
+      {
+        "issues": [
+          {
+            "code": "invalid_type",
+            "expected": "number",
+            "received": "null",
+            "path": [
+              "budget"
+            ],
+            "message": "Expected number, received null"
+          }
+        ],
+        "name": "ZodError"
+      }
+    ],
+    "path": [
+      "budget"
+    ],
+    "message": "Invalid input"
+  }
+]
+    at get error (file:///opt/render/project/src/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///opt/render/project/src/node_modules/zod/v3/types.js:114:22)
+    at file:///opt/render/project/src/dist/index.js:16745:49
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  issues: [
+    {
+      code: 'invalid_union',
+      unionErrors: [Array],
+      path: [Array],
+      message: 'Invalid input'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_union',
+      unionErrors: [Array],
+      path: [Array],
+      message: 'Invalid input'
+    }
+  ]
+}
+Request body: {
+  organizationId: 167,
+  createdBy: '43852944',
+  contractId: 13,
+  projectNumber: '1111',
+  projectName: 'TESTOR',
+  description: 'Cost reimbursement contract with fixed fee component. JUST TESTING',
+  startDate: '2025-12-31',
+  endDate: '2026-12-31',
+  budget: '',
+  projectManager: 'ME',
+  projectType: 'Cost Plus Fixed Fee',
+  billingMethod: 'cost_plus',
+  laborRate: '75.00',
+  overheadRate: '35.00',
+  notes: 'THIS IS A TEST',
+  status: 'active'
+}
+Zod validation errors: [
+  {
+    "code": "invalid_union",
+    "unionErrors": [
+      {
+        "issues": [
+          {
+            "code": "invalid_type",
+            "expected": "string",
+            "received": "null",
+            "path": [
+              "budget"
+            ],
+            "message": "Expected string, received null"
+          }
+        ],
+        "name": "ZodError"
+      },
+      {
+        "issues": [
+          {
+            "code": "invalid_type",
+            "expected": "number",
+            "received": "null",
+            "path": [
+              "budget"
+            ],
+            "message": "Expected number, received null"
+          }
+        ],
+        "name": "ZodError"
+      }
+    ],
+    "path": [
+      "budget"
+    ],
+    "message": "Invalid input"
+  }
+]
+5:23:06 PM [express] POST /api/projects 400 in 814ms :: {"message":"Invalid project data","errors":[…
