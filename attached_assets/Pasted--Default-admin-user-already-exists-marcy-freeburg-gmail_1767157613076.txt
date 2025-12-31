@@ -1,0 +1,44 @@
+] Default admin user already exists: marcy.freeburg@gmail.com
+5:04:25 AM [express] serving on port 10000
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 455 total (455 active, 0 archived)
+5:04:44 AM [express] GET /api/auth/user 401 in 132ms :: {"message":"Unauthorized"}
+5:04:50 AM [express] GET /api/auth/mode 304 in 126ms :: {"mode":"local"}
+5:04:57 AM [express] POST /api/login 200 in 1061ms :: {"success":true,"mfaRequired":true,"mfaSetupRe…
+5:04:58 AM [express] GET /api/auth/user 403 in 126ms :: {"message":"MFA verification required","code…
+5:04:58 AM [express] GET /api/auth/mfa/login-status 200 in 192ms :: {"mfaPending":true,"mfaVerified"…
+[MFA] TOTP validation result: delta=0, token=45****, serverTime=2025-12-31T05:05:08.872Z
+5:05:09 AM [express] POST /api/auth/mfa/verify-login 200 in 635ms :: {"success":true,"message":"Logi…
+5:05:09 AM [express] GET /api/auth/user 200 in 191ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+5:05:09 AM [express] GET /api/security/mfa/status 304 in 322ms :: {"mfaEnabled":true,"mfaRequired":t…
+5:05:10 AM [express] GET /api/auth/mfa/login-status 200 in 797ms :: {"mfaPending":false,"mfaVerified…
+5:05:10 AM [express] GET /api/organizations 304 in 666ms :: [{"id":168,"name":"C Cubed Training","ty…
+5:05:10 AM [express] GET /api/notifications/167/unread-count 304 in 275ms :: {"count":"0"}
+5:05:10 AM [express] GET /api/dashboard/167/category-breakdown 304 in 491ms :: {"incomeByCategory":[…
+5:05:11 AM [express] GET /api/budgets/167 304 in 645ms :: []
+5:05:11 AM [express] GET /api/dashboard/167 304 in 850ms :: {"totalIncome":"8388.40","totalExpenses"…
+5:05:12 AM [express] GET /api/dashboard/167/monthly-trends 304 in 1589ms :: [{"month":"Jul 2025","in…
+5:05:17 AM [express] GET /api/plaid/accounts/167 200 in 269ms :: [{"id":16,"plaidItemId":8,"accountI…
+5:05:17 AM [express] GET /api/plaid/items/167 304 in 275ms :: [{"id":8,"organizationId":167,"itemId"…
+5:05:19 AM [express] GET /api/vendors/167 304 in 262ms :: []
+5:05:19 AM [express] GET /api/transactions/167 304 in 320ms :: [{"id":38714,"organizationId":167,"da…
+5:05:19 AM [express] GET /api/categories/167 304 in 328ms :: [{"id":269,"organizationId":167,"name":…
+5:05:19 AM [express] GET /api/clients/167 304 in 473ms :: [{"id":27,"organizationId":167,"name":"TES…
+5:05:33 AM [express] GET /api/organizations/167 200 in 512ms
+5:05:33 AM [express] GET /api/categories/167 304 in 947ms :: [{"id":269,"organizationId":167,"name":…
+[QUICKBOOKS Import] Starting import for organization: 167
+[QUICKBOOKS Import] File received: ENTdownloadJ_M.csv Size: 5256
+[QUICKBOOKS Import] Parsed 60 rows
+[QUICKBOOKS Import] Column headers: [ 'Date', 'Description', 'Check Number', 'Amount', 'Balance' ]
+5:05:41 AM [express] GET /api/notifications/167/unread-count 304 in 458ms :: {"count":"0"}
+[QUICKBOOKS Import] Complete - Created: 38 Skipped: 22 Errors: 0
+5:05:47 AM [express] POST /api/transactions/import-accounting/167 200 in 7342ms :: {"message":"Impor…
+5:05:58 AM [express] GET /api/transactions/167 200 in 524ms :: [{"id":38714,"organizationId":167,"da…
+5:06:12 AM [express] GET /api/notifications/167/unread-count 304 in 853ms :: {"count":"0"}
