@@ -66,6 +66,8 @@ export default function AccountingImports({ organizationId }: AccountingImportsP
     onSuccess: (data: ImportResult) => {
       setImportResult(data);
       setSelectedFile(null);
+      // Invalidate both query key formats to ensure cache is refreshed
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${organizationId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions', organizationId] });
       toast({
         title: "Import Complete",
