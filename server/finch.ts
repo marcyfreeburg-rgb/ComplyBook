@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
-import { encryptField, decryptField, isFieldEncrypted } from './encryption';
+import { encryptAccessToken, decryptAccessToken, isTokenEncrypted } from './encryption';
 
 const router = Router();
 
@@ -168,7 +168,7 @@ router.get('/callback', async (req: Request, res: Response) => {
     const existingConnection = await storage.getFinchConnectionByConnectionId(tokenData.connection_id);
     if (existingConnection) {
       await storage.updateFinchConnection(existingConnection.id, {
-        accessToken: encryptField(tokenData.access_token),
+        accessToken: encryptAccessToken(tokenData.access_token),
         status: 'active',
         errorMessage: null,
         products: tokenData.products,
@@ -181,7 +181,7 @@ router.get('/callback', async (req: Request, res: Response) => {
         companyId: tokenData.company_id,
         providerId: tokenData.provider_id,
         providerName,
-        accessToken: encryptField(tokenData.access_token),
+        accessToken: encryptAccessToken(tokenData.access_token),
         products: tokenData.products,
         status: 'active',
         createdBy: finchState.userId,
@@ -253,8 +253,8 @@ router.get('/company/:connectionId', isAuthenticated, async (req: Request, res: 
     }
 
     let accessToken = connection.accessToken;
-    if (isFieldEncrypted(accessToken)) {
-      accessToken = decryptField(accessToken);
+    if (isTokenEncrypted(accessToken)) {
+      accessToken = decryptAccessToken(accessToken);
     }
 
     const companyResponse = await fetch(`${FINCH_API_BASE}/employer/company`, {
@@ -295,8 +295,8 @@ router.get('/directory/:connectionId', isAuthenticated, async (req: Request, res
     }
 
     let accessToken = connection.accessToken;
-    if (isFieldEncrypted(accessToken)) {
-      accessToken = decryptField(accessToken);
+    if (isTokenEncrypted(accessToken)) {
+      accessToken = decryptAccessToken(accessToken);
     }
 
     console.log('[Finch] Fetching directory for connection:', connectionId);
@@ -344,8 +344,8 @@ router.delete('/disconnect/:connectionId', isAuthenticated, async (req: Request,
     }
 
     let accessToken = connection.accessToken;
-    if (isFieldEncrypted(accessToken)) {
-      accessToken = decryptField(accessToken);
+    if (isTokenEncrypted(accessToken)) {
+      accessToken = decryptAccessToken(accessToken);
     }
 
     console.log('[Finch] Disconnecting connection:', connectionId);

@@ -664,7 +664,7 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-testid="card-finch-integration">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -679,17 +679,17 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
               </div>
             </div>
             {isLoadingFinchConnections ? (
-              <Badge variant="secondary">
+              <Badge variant="secondary" data-testid="badge-finch-loading">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                 Checking...
               </Badge>
             ) : finchConnections.length > 0 ? (
-              <Badge variant="default" className="bg-blue-600">
+              <Badge variant="default" className="bg-blue-600" data-testid="badge-finch-connected">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 {finchConnections.length} Connected
               </Badge>
             ) : (
-              <Badge variant="secondary">Not Connected</Badge>
+              <Badge variant="secondary" data-testid="badge-finch-not-connected">Not Connected</Badge>
             )}
           </div>
         </CardHeader>
@@ -697,15 +697,15 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
           {finchConnections.length > 0 ? (
             <div className="space-y-4">
               {finchConnections.map((conn) => (
-                <div key={conn.id} className="border rounded-md p-4">
+                <div key={conn.id} className="border rounded-md p-4" data-testid={`card-finch-connection-${conn.id}`}>
                   <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
                     <div>
-                      <h4 className="font-semibold">{conn.providerName || conn.providerId || 'Unknown Provider'}</h4>
+                      <h4 className="font-semibold" data-testid={`text-finch-provider-${conn.id}`}>{conn.providerName || conn.providerId || 'Unknown Provider'}</h4>
                       <p className="text-sm text-muted-foreground">
                         Connected {new Date(conn.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <Badge variant={conn.status === 'active' ? 'default' : 'destructive'}>
+                    <Badge variant={conn.status === 'active' ? 'default' : 'destructive'} data-testid={`badge-finch-status-${conn.id}`}>
                       {conn.status}
                     </Badge>
                   </div>
