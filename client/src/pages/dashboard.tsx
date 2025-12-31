@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart, Rocket } from "lucide-react";
+import { Link } from "wouter";
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { useLocation } from "wouter";
 import type { Organization, Transaction, Budget } from "@shared/schema";
@@ -142,11 +143,19 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {currentOrganization.name} • {currentMonth}
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {currentOrganization.name} • {currentMonth}
+          </p>
+        </div>
+        <Link href="/getting-started">
+          <Button variant="outline" data-testid="button-getting-started">
+            <Rocket className="h-4 w-4 mr-2" />
+            Getting Started Guide
+          </Button>
+        </Link>
       </div>
 
       {/* Metrics Cards */}

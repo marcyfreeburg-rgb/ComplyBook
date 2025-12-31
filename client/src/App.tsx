@@ -61,6 +61,8 @@ import MfaVerify from "@/pages/mfa-verify";
 import MfaSetupLogin from "@/pages/mfa-setup-login";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
+import GettingStartedNonprofit from "@/pages/getting-started-nonprofit";
+import GettingStartedForprofit from "@/pages/getting-started-forprofit";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -222,6 +224,16 @@ function AuthenticatedApp() {
               <Route path="/">
                 <Dashboard currentOrganization={currentOrganization} />
               </Route>
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/getting-started">
+                  <GettingStartedNonprofit currentOrganization={currentOrganization} />
+                </Route>
+              )}
+              {currentOrganization.type === 'forprofit' && (
+                <Route path="/getting-started">
+                  <GettingStartedForprofit currentOrganization={currentOrganization} />
+                </Route>
+              )}
               <Route path="/transactions">
                 <Transactions 
                   currentOrganization={currentOrganization}
