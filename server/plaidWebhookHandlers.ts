@@ -258,19 +258,37 @@ export class PlaidWebhookHandlers {
 
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
+      startDate.setDate(startDate.getDate() - 730); // 24 months of transaction history
 
-      const transactionsResponse = await plaidClient.transactionsGet({
-        access_token: plaidItem.accessToken,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        options: {
-          count: 500,
-          offset: 0,
-        },
-      });
+      // Fetch all transactions with pagination (Plaid returns max 500 per request)
+      let allTransactions: any[] = [];
+      let allAccounts: any[] = [];
+      let offset = 0;
+      const count = 500;
+      let totalTransactions = 0;
 
-      for (const account of transactionsResponse.data.accounts) {
+      do {
+        const transactionsResponse = await plaidClient.transactionsGet({
+          access_token: plaidItem.accessToken,
+          start_date: startDate.toISOString().split('T')[0],
+          end_date: endDate.toISOString().split('T')[0],
+          options: {
+            count,
+            offset,
+          },
+        });
+
+        allTransactions = allTransactions.concat(transactionsResponse.data.transactions);
+        if (offset === 0) {
+          allAccounts = transactionsResponse.data.accounts;
+          totalTransactions = transactionsResponse.data.total_transactions;
+        }
+        offset += count;
+      } while (offset < totalTransactions);
+
+      console.log(`[Plaid] Fetched ${allTransactions.length} total transactions for item ${plaidItem.itemId}`);
+
+      for (const account of allAccounts) {
         await storage.updatePlaidAccountBalances(
           account.account_id,
           account.balances.current?.toString() || '0',
@@ -279,7 +297,7 @@ export class PlaidWebhookHandlers {
       }
 
       let imported = 0;
-      for (const plaidTx of transactionsResponse.data.transactions) {
+      for (const plaidTx of allTransactions) {
         const existingTxs = await storage.getTransactionsByDateRange(
           plaidItem.organizationId,
           new Date(plaidTx.date),

@@ -5397,26 +5397,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sync transactions for each plaid item
       for (const plaidItem of plaidItems) {
         try {
-          // Get transactions from last 30 days
+          // Get transactions from last 24 months (730 days)
           const endDate = new Date();
           const startDate = new Date();
-          startDate.setDate(startDate.getDate() - 30);
+          startDate.setDate(startDate.getDate() - 730);
 
-          const transactionsResponse = await plaidClient.transactionsGet({
-            access_token: plaidItem.accessToken,
-            start_date: startDate.toISOString().split('T')[0],
-            end_date: endDate.toISOString().split('T')[0],
-            options: {
-              count: 500,
-              offset: 0,
-            },
-          });
+          // Fetch all transactions with pagination (Plaid returns max 500 per request)
+          let allTransactions: any[] = [];
+          let allAccounts: any[] = [];
+          let offset = 0;
+          const count = 500;
+          let totalTransactions = 0;
+
+          do {
+            const transactionsResponse = await plaidClient.transactionsGet({
+              access_token: plaidItem.accessToken,
+              start_date: startDate.toISOString().split('T')[0],
+              end_date: endDate.toISOString().split('T')[0],
+              options: {
+                count,
+                offset,
+              },
+            });
+
+            allTransactions = allTransactions.concat(transactionsResponse.data.transactions);
+            if (offset === 0) {
+              allAccounts = transactionsResponse.data.accounts;
+              totalTransactions = transactionsResponse.data.total_transactions;
+            }
+            offset += count;
+          } while (offset < totalTransactions);
 
           // Log for troubleshooting (Plaid recommended identifiers)
-          console.log(`[Plaid] Transactions fetched - item_id: ${plaidItem.itemId}, count: ${transactionsResponse.data.transactions.length}, request_id: ${transactionsResponse.data.request_id}`);
+          console.log(`[Plaid] Transactions fetched - item_id: ${plaidItem.itemId}, total_count: ${allTransactions.length}`);
 
           // Update account balances
-          for (const account of transactionsResponse.data.accounts) {
+          for (const account of allAccounts) {
             await storage.updatePlaidAccountBalances(
               account.account_id,
               account.balances.current?.toString() || '0',
@@ -5425,7 +5441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Import transactions - use Plaid's unique transaction_id for deduplication
-          for (const plaidTx of transactionsResponse.data.transactions) {
+          for (const plaidTx of allTransactions) {
             // Check if this exact Plaid transaction was already imported (by externalId)
             const existingTx = await storage.getTransactionByExternalId(organizationId, plaidTx.transaction_id);
             if (existingTx) {
