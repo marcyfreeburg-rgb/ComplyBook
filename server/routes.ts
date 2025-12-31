@@ -2722,15 +2722,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Check for duplicate transaction before creating
           // Match by date, amount, type, and similar description (to avoid duplicating Plaid imports)
+          const searchDesc = desc || 'Imported transaction';
+          console.log(`[QUICKBOOKS Import] Row ${i + 1}: Checking for duplicate - Date: ${parsedDate}, Amount: ${validAmount.toFixed(2)}, Type: ${transactionType}, Desc: "${searchDesc.substring(0, 30)}..."`);
+          
           const existingMatch = await storage.findAnyMatchingTransaction(
             organizationId,
             new Date(parsedDate),
             validAmount.toFixed(2),
-            desc || 'Imported transaction',
+            searchDesc,
             transactionType
           );
 
           if (existingMatch) {
+            console.log(`[QUICKBOOKS Import] Row ${i + 1}: SKIPPED - Matches existing #${existingMatch.id} ("${existingMatch.description.substring(0, 30)}...")`);
             skipped.push({ row: i + 1, reason: `Duplicate: matches existing transaction #${existingMatch.id}` });
             continue;
           }
