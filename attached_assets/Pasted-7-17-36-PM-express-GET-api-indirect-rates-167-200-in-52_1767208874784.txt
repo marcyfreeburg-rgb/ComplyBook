@@ -1,0 +1,50 @@
+7:17:36 PM [express] GET /api/indirect-rates/167 200 in 520ms
+7:17:36 PM [express] GET /api/milestones/167 200 in 522ms
+7:17:36 PM [express] GET /api/contracts/167 304 in 649ms :: []
+7:17:36 PM [express] GET /api/projects/167 200 in 663ms :: []
+7:17:36 PM [express] GET /api/time-entries/167 200 in 699ms :: []
+7:17:39 PM [express] GET /api/budgets/167 304 in 495ms :: []
+7:17:40 PM [express] GET /api/dashboard/167/category-breakdown 304 in 566ms :: {"incomeByCategory":[…
+7:17:40 PM [express] GET /api/dashboard/167 304 in 687ms :: {"totalIncome":"4194.20","totalExpenses"…
+7:17:40 PM [express] GET /api/dashboard/167/monthly-trends 304 in 1003ms :: [{"month":"Jul 2025","in…
+7:18:06 PM [express] GET /api/notifications/167/unread-count 304 in 867ms :: {"count":"0"}
+7:18:22 PM [express] GET /api/clients/167 304 in 867ms :: []
+7:18:22 PM [express] GET /api/invoices/167 304 in 862ms :: []
+7:18:23 PM [express] GET /api/clients/167 304 in 260ms :: []
+7:18:24 PM [express] GET /api/recurring-transactions/167 304 in 264ms :: []
+7:18:24 PM [express] GET /api/categories/167 304 in 326ms :: [{"id":269,"organizationId":167,"name":…
+7:18:37 PM [express] GET /api/notifications/167/unread-count 304 in 848ms :: {"count":"0"}
+7:19:04 PM [express] POST /api/recurring-transactions 201 in 883ms :: {"id":3,"organizationId":167,"…
+7:19:04 PM [express] GET /api/recurring-transactions/167 200 in 262ms :: [{"id":3,"organizationId":1…
+7:19:08 PM [express] GET /api/notifications/167/unread-count 304 in 261ms :: {"count":"0"}
+7:19:12 PM [express] DELETE /api/recurring-transactions/3 200 in 327ms :: {"message":"Recurring tran…
+7:19:12 PM [express] GET /api/recurring-transactions/167 200 in 260ms :: []
+7:19:13 PM [express] GET /api/milestones/167 304 in 133ms
+7:19:13 PM [express] GET /api/indirect-rates/167 304 in 540ms
+7:19:15 PM [express] GET /api/proposals/167 304 in 207ms :: []
+7:19:15 PM [express] GET /api/subcontractors/167 304 in 417ms :: []
+7:19:15 PM [express] GET /api/change-orders/167 304 in 608ms :: []
+7:19:17 PM [express] GET /api/vendors/167 304 in 262ms :: []
+7:19:17 PM [express] GET /api/transactions/167 304 in 334ms :: [{"id":38888,"organizationId":167,"da…
+7:19:18 PM [express] GET /api/bank-reconciliations/167/last 304 in 479ms
+7:19:19 PM [express] GET /api/bills/167 200 in 271ms :: []
+7:19:19 PM [express] GET /api/vendors/167 304 in 265ms :: []
+7:19:20 PM [express] GET /api/auto-pay-rules/167 200 in 278ms :: []
+7:19:20 PM [express] GET /api/bill-payments/167 200 in 278ms :: []
+7:19:20 PM [express] GET /api/scheduled-payments/167 200 in 268ms :: []
+7:19:26 PM [express] GET /api/expense-approvals/167 200 in 268ms :: []
+7:19:26 PM [express] GET /api/categories/167 304 in 326ms :: [{"id":269,"organizationId":167,"name":…
+7:19:39 PM [express] GET /api/notifications/167/unread-count 304 in 863ms :: {"count":"0"}
+7:19:53 PM [express] POST /api/expense-approvals/167 201 in 876ms :: {"id":5,"organizationId":167,"d…
+7:19:54 PM [express] GET /api/expense-approvals/167 200 in 264ms :: [{"id":5,"organizationId":167,"d…
+7:20:09 PM [express] POST /api/expense-approvals/5/reject 200 in 935ms :: {"id":5,"organizationId":1…
+7:20:10 PM [express] GET /api/expense-approvals/167 200 in 265ms :: [{"id":5,"organizationId":167,"d…
+7:20:10 PM [express] GET /api/notifications/167/unread-count 304 in 666ms :: {"count":"0"}
+7:20:31 PM [express] GET /api/gusto/connection/167 304 in 843ms :: {"connected":false}
+7:20:31 PM [express] GET /api/employees/167/active 304 in 910ms :: []
+7:20:31 PM [express] GET /api/deductions/167/active 304 in 894ms :: []
+7:20:31 PM [express] GET /api/payroll-runs/167 304 in 886ms :: []
+7:20:31 PM [express] GET /api/finch/connection/167 304 in 883ms :: []
+7:20:37 PM [express] POST /api/finch/create-session/167 500 in 131ms :: {"error":"Finch credentials …
+7:20:40 PM [express] GET /api/notifications/167/unread-count 304 in 261ms :: {"count":"0"}
+7:20:42 PM [express] GET /api/gusto/authorize/167 500 in 130ms :: {"error":"Gusto client ID not conf…
