@@ -6,18 +6,23 @@ import { storage } from "./storage";
 // - On Replit: Uses AI_INTEGRATIONS_OPENAI_BASE_URL and AI_INTEGRATIONS_OPENAI_API_KEY
 // - On external deployments (Render, etc.): Uses OPENAI_API_KEY with standard OpenAI endpoint
 const isReplitEnvironment = !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+
+// Log which AI provider is being used
+console.log(`[AI Categorization] Environment check - Replit AI: ${isReplitEnvironment}, OpenAI Key Present: ${hasOpenAIKey}`);
 
 const openai = isReplitEnvironment 
   ? new OpenAI({
       baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
     })
-  : new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+  : hasOpenAIKey 
+    ? new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      })
+    : null;
 
-// Log which AI provider is being used
-console.log(`[AI Categorization] Using ${isReplitEnvironment ? 'Replit AI Integrations' : 'OpenAI API'}`);
+console.log(`[AI Categorization] Using ${isReplitEnvironment ? 'Replit AI Integrations' : hasOpenAIKey ? 'OpenAI API' : 'DISABLED (no API key)'}`);
 
 export interface CategorySuggestion {
   categoryId: number;
@@ -32,6 +37,12 @@ export async function suggestCategory(
   transactionAmount: number,
   transactionType: 'income' | 'expense'
 ): Promise<CategorySuggestion | null> {
+  // Check if AI is available
+  if (!openai) {
+    console.log('[AI Categorization] AI not available - no API key configured');
+    return null;
+  }
+
   try {
     // Get all categories for this organization
     const categories = await storage.getCategories(organizationId);
@@ -157,6 +168,12 @@ export async function suggestCategoryBulk(
 ): Promise<Map<number, CategorySuggestion>> {
   const suggestions = new Map<number, CategorySuggestion>();
   
+  // Check if AI is available before processing
+  if (!openai) {
+    console.log('[AI Categorization] AI not available - no API key configured');
+    return suggestions;
+  }
+
   // Process transactions one at a time to avoid rate limits
   for (const transaction of transactions) {
     const suggestion = await suggestCategory(
