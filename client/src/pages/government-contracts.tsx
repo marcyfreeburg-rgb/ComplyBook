@@ -207,8 +207,13 @@ export default function GovernmentContracts({ currentOrganization, userId }: Gov
       return await apiRequest('DELETE', `/api/contracts/${id}`, {});
     },
     onSuccess: () => {
+      // Invalidate all related queries since cascade delete removes projects, time entries, etc.
       queryClient.invalidateQueries({ queryKey: [`/api/contracts/${currentOrganization.id}`] });
-      toast({ title: "Contract deleted", description: "Contract deleted successfully." });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/time-entries/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/milestones/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/project-costs/${currentOrganization.id}`] });
+      toast({ title: "Contract deleted", description: "Contract and all related data deleted successfully." });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to delete contract.", variant: "destructive" });
