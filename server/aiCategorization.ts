@@ -139,12 +139,26 @@ Respond ONLY with valid JSON in this exact format:
       return null;
     }
 
+    console.log(`[AI Categorization] Raw AI response for "${transactionDescription}": ${responseText}`);
+    
     const suggestion = JSON.parse(responseText) as CategorySuggestion;
     
-    // Validate the suggestion
-    const categoryExists = relevantCategories.find(cat => cat.id === suggestion.categoryId);
+    // Validate the suggestion - check if category ID exists
+    let categoryExists = relevantCategories.find(cat => cat.id === suggestion.categoryId);
+    
+    // If category ID doesn't match, try to find by name (AI sometimes returns wrong ID but correct name)
+    if (!categoryExists && suggestion.categoryName) {
+      categoryExists = relevantCategories.find(cat => 
+        cat.name.toLowerCase() === suggestion.categoryName.toLowerCase()
+      );
+      if (categoryExists) {
+        console.log(`[AI Categorization] Fixed category ID mismatch: "${suggestion.categoryName}" -> ID ${categoryExists.id}`);
+        suggestion.categoryId = categoryExists.id;
+      }
+    }
+    
     if (!categoryExists) {
-      console.error('[AI Categorization] AI suggested invalid category ID');
+      console.error(`[AI Categorization] AI suggested invalid category: ID=${suggestion.categoryId}, Name="${suggestion.categoryName}". Available categories: ${relevantCategories.map(c => `${c.id}:${c.name}`).join(', ')}`);
       return null;
     }
 
