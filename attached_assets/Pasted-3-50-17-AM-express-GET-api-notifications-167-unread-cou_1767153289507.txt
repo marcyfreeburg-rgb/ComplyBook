@@ -1,0 +1,123 @@
+3:50:17 AM [express] GET /api/notifications/167/unread-count 304 in 665ms :: {"count":"0"}
+3:50:48 AM [express] GET /api/notifications/167/unread-count 304 in 862ms :: {"count":"0"}
+3:51:19 AM [express] GET /api/notifications/167/unread-count 304 in 893ms :: {"count":"0"}
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1082ms :: {"success":true}
+3:50:01 AM [express] POST /api/plaid/log-event/167 200 in 1137ms :: {"success":true}
+3:50:01 AM [express] POST /api/plaid/exchange-token/167 200 in 2469ms :: {"success":true,"accounts":…
+3:50:02 AM [express] GET /api/plaid/items/167 200 in 262ms :: [{"id":8,"organizationId":167,"itemId"…
+3:50:02 AM [express] GET /api/plaid/accounts/167 200 in 267ms :: [{"id":16,"plaidItemId":8,"accountI…
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:02 AM [express] POST /api/plaid/log-event/167 200 in 456ms :: {"success":true}
+Error logging Plaid event: error: invalid input value for enum audit_action: "view"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 136,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+3:50:02 AM [express] POST /api/plaid/log-event/167 200 in 457ms :: {"success":true}
+Received Plaid webhook: TRANSACTIONS/INITIAL_UPDATE for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Processing Plaid webhook: TRANSACTIONS/INITIAL_UPDATE for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Initial update received for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Syncing transactions for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev...
+Synced 15 new transactions for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Received Plaid webhook: TRANSACTIONS/HISTORICAL_UPDATE for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Processing Plaid webhook: TRANSACTIONS/HISTORICAL_UPDATE for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Historical update received for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+Syncing transactions for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev...
+Synced 15 new transactions for item BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+3:50:17 AM [express] GET /api/notifications/167/unread-count 304 in 665ms :: {"count":"0"}
+3:50:48 AM [express] GET /api/notifications/167/unread-count 304 in 862ms :: {"count":"0"}
+3:51:19 AM [express] GET /api/notifications/167/unread-count 304 in 893ms :: {"count":"0"}
+3:52:20 AM [express] GET /api/notifications/167/unread-count 304 in 856ms :: {"count":"0"}
+3:52:51 AM [express] GET /api/notifications/167/unread-count 304 in 933ms :: {"count":"0"}
+[Plaid] Transactions fetched - item_id: BXEPBO4PKySDam8JL1n0hj87B3bM3LF9mJdev, count: 15, request_id: aNDIekB4dwzmtbr
+[Plaid Sync] Linked existing manual transaction 38714 to Plaid transaction kO0A3j6AZxf3gQX46x5Yfe8j4BK4MgSdwmpPb
+[Plaid Sync] Linked existing manual transaction 38715 to Plaid transaction KY50r480dvUV5qKpLmkEiVgrk1Pk9Xt5YjLVE
+[Plaid Sync] Linked existing manual transaction 38716 to Plaid transaction ybo8ZEj8PXhZj5AMBbOohLeDNkzNr9H71VDzO
+[Plaid Sync] Linked existing manual transaction 38717 to Plaid transaction 3XvBENLBmRSZBNjPA1K4hznjdVAdNqfJZ5zvD
+[Plaid Sync] Linked existing manual transaction 38718 to Plaid transaction BXEPBO4PKySDam8JL1n0hjqwKk9K85Haqp8Dx
+[Plaid Sync] Linked existing manual transaction 38719 to Plaid transaction qbY80gB8J1h0K94Mdbq7ha470xE0bLcoZYxjz
+[Plaid Sync] Linked existing manual transaction 38720 to Plaid transaction 1XNPOmwPv4SN1LnDK9V0tbqV5yK5LEIQBvoV5
+[Plaid Sync] Linked existing manual transaction 38721 to Plaid transaction PpDn8amn1jhyBd3AnLrKUxgDyakyNVUrQxayB
+[Plaid Sync] Linked existing manual transaction 38722 to Plaid transaction DpvBy48BAkh3DMkwO51QfY7MQXNQkKHpvazNj
+[Plaid Sync] Linked existing manual transaction 38723 to Plaid transaction 6XNKn7PKarSRarP3jmvDc0kgZxjZAvIkoJVe1
+[Plaid Sync] Linked existing manual transaction 38724 to Plaid transaction LNdj4Y8jwEcP7z1pEyAYu69MqLdqnPHDKMdL6
+[Plaid Sync] Linked existing manual transaction 38725 to Plaid transaction wb98JEv8DKhe8xgMnbEqfZ3nYJ6Y8yHq64eE8
+[Plaid Sync] Linked existing manual transaction 38726 to Plaid transaction dO4P6jnPRxf6Y5MKDqv7S18RNgANxPhV3n8q5
+[Plaid Sync] Linked existing manual transaction 38727 to Plaid transaction mNr0K8D0owcKrYJOv4meUQ19dnmdwrIJD5m01
+[Plaid Sync] Linked existing manual transaction 38728 to Plaid transaction zbjV5ErVqXh5qNjM3QXyH4ar9kY9VDCqZwzmD
+3:53:00 AM [express] POST /api/plaid/sync-transactions/167 200 in 4357ms :: {"imported":15,"message"…
+3:53:22 AM [express] GET /api/notifications/167/unread-count 304 in 876ms :: {"count":"0"}
