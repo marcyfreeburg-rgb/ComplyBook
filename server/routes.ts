@@ -11535,6 +11535,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============== PROPOSALS/BID MANAGEMENT ==============
+  
+  // Get all proposals for an organization
+  app.get("/api/proposals/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const organizationId = parseInt(req.params.organizationId);
+      const proposals = await storage.getProposals(organizationId);
+      res.json(proposals);
+    } catch (error: any) {
+      console.error("Error fetching proposals:", error);
+      res.status(500).json({ message: "Failed to fetch proposals" });
+    }
+  });
+
+  // Create a new proposal
+  app.post("/api/proposals", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const proposal = await storage.createProposal(req.body);
+      res.status(201).json(proposal);
+    } catch (error: any) {
+      console.error("Error creating proposal:", error);
+      res.status(500).json({ message: "Failed to create proposal" });
+    }
+  });
+
+  // Update a proposal
+  app.put("/api/proposals/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const proposal = await storage.updateProposal(id, req.body);
+      res.json(proposal);
+    } catch (error: any) {
+      console.error("Error updating proposal:", error);
+      res.status(500).json({ message: "Failed to update proposal" });
+    }
+  });
+
+  // Delete a proposal
+  app.delete("/api/proposals/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProposal(id);
+      res.json({ message: "Proposal deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting proposal:", error);
+      res.status(500).json({ message: "Failed to delete proposal" });
+    }
+  });
+
+  // ============== SUBCONTRACTOR MANAGEMENT ==============
+  
+  // Get all subcontractors for an organization
+  app.get("/api/subcontractors/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const organizationId = parseInt(req.params.organizationId);
+      const subcontractors = await storage.getSubcontractors(organizationId);
+      res.json(subcontractors);
+    } catch (error: any) {
+      console.error("Error fetching subcontractors:", error);
+      res.status(500).json({ message: "Failed to fetch subcontractors" });
+    }
+  });
+
+  // Create a new subcontractor
+  app.post("/api/subcontractors", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const subcontractor = await storage.createSubcontractor(req.body);
+      res.status(201).json(subcontractor);
+    } catch (error: any) {
+      console.error("Error creating subcontractor:", error);
+      res.status(500).json({ message: "Failed to create subcontractor" });
+    }
+  });
+
+  // Update a subcontractor
+  app.put("/api/subcontractors/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const subcontractor = await storage.updateSubcontractor(id, req.body);
+      res.json(subcontractor);
+    } catch (error: any) {
+      console.error("Error updating subcontractor:", error);
+      res.status(500).json({ message: "Failed to update subcontractor" });
+    }
+  });
+
+  // Delete a subcontractor
+  app.delete("/api/subcontractors/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSubcontractor(id);
+      res.json({ message: "Subcontractor deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting subcontractor:", error);
+      res.status(500).json({ message: "Failed to delete subcontractor" });
+    }
+  });
+
+  // ============== CHANGE ORDER MANAGEMENT ==============
+  
+  // Get all change orders for an organization
+  app.get("/api/change-orders/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const organizationId = parseInt(req.params.organizationId);
+      const changeOrders = await storage.getChangeOrders(organizationId);
+      res.json(changeOrders);
+    } catch (error: any) {
+      console.error("Error fetching change orders:", error);
+      res.status(500).json({ message: "Failed to fetch change orders" });
+    }
+  });
+
+  // Create a new change order
+  app.post("/api/change-orders", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const changeOrder = await storage.createChangeOrder(req.body);
+      res.status(201).json(changeOrder);
+    } catch (error: any) {
+      console.error("Error creating change order:", error);
+      res.status(500).json({ message: "Failed to create change order" });
+    }
+  });
+
+  // Update a change order
+  app.put("/api/change-orders/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const changeOrder = await storage.updateChangeOrder(id, req.body);
+      res.json(changeOrder);
+    } catch (error: any) {
+      console.error("Error updating change order:", error);
+      res.status(500).json({ message: "Failed to update change order" });
+    }
+  });
+
+  // Delete a change order
+  app.delete("/api/change-orders/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteChangeOrder(id);
+      res.json({ message: "Change order deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting change order:", error);
+      res.status(500).json({ message: "Failed to delete change order" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
