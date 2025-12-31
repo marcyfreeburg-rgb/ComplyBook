@@ -73,6 +73,21 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
     enabled: gustoConnection?.connected === true,
   });
 
+  const { data: finchConnections = [], isLoading: isLoadingFinchConnections } = useQuery<Array<{
+    id: number;
+    connectionId: string;
+    companyId: string | null;
+    providerId: string | null;
+    providerName: string | null;
+    products: string[] | null;
+    status: string;
+    errorMessage: string | null;
+    lastSyncedAt: string | null;
+    createdAt: string;
+  }>>({
+    queryKey: [`/api/finch/connection/${currentOrganization.id}`],
+  });
+
   const connectGustoMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('GET', `/api/gusto/authorize/${currentOrganization.id}`, undefined);
@@ -109,6 +124,46 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to disconnect from Gusto",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const connectFinchMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/finch/create-session/${currentOrganization.id}`, {});
+      const data = await response.json();
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.connectUrl) {
+        window.location.href = data.connectUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to connect payroll provider",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectFinchMutation = useMutation({
+    mutationFn: async (connectionId: string) => {
+      return await apiRequest('DELETE', `/api/finch/disconnect/${connectionId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/finch/connection/${currentOrganization.id}`] });
+      toast({
+        title: "Disconnected",
+        description: "Successfully disconnected payroll provider",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect payroll provider",
         variant: "destructive",
       });
     },
@@ -603,6 +658,136 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                   <Link2 className="h-4 w-4 mr-2" />
                 )}
                 Connect to Gusto
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Finch Payroll Connector</CardTitle>
+                <CardDescription>
+                  Connect to 200+ payroll providers (ADP, Paychex, BambooHR, etc.)
+                </CardDescription>
+              </div>
+            </div>
+            {isLoadingFinchConnections ? (
+              <Badge variant="secondary">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Checking...
+              </Badge>
+            ) : finchConnections.length > 0 ? (
+              <Badge variant="default" className="bg-blue-600">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                {finchConnections.length} Connected
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Not Connected</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {finchConnections.length > 0 ? (
+            <div className="space-y-4">
+              {finchConnections.map((conn) => (
+                <div key={conn.id} className="border rounded-md p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+                    <div>
+                      <h4 className="font-semibold">{conn.providerName || conn.providerId || 'Unknown Provider'}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Connected {new Date(conn.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant={conn.status === 'active' ? 'default' : 'destructive'}>
+                      {conn.status}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-muted rounded-md mb-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Products</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {conn.products?.slice(0, 3).map((product) => (
+                          <Badge key={product} variant="outline" className="text-xs">
+                            {product}
+                          </Badge>
+                        ))}
+                        {(conn.products?.length || 0) > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{(conn.products?.length || 0) - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      <p className="font-semibold capitalize">{conn.status}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Last Synced</p>
+                      <p className="font-semibold">
+                        {conn.lastSyncedAt 
+                          ? new Date(conn.lastSyncedAt).toLocaleDateString()
+                          : 'Never'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => disconnectFinchMutation.mutate(conn.connectionId)}
+                      disabled={disconnectFinchMutation.isPending}
+                      data-testid={`button-disconnect-finch-${conn.id}`}
+                    >
+                      {disconnectFinchMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Unlink className="h-4 w-4 mr-2" />
+                      )}
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                onClick={() => connectFinchMutation.mutate()}
+                disabled={connectFinchMutation.isPending}
+                data-testid="button-add-finch-provider"
+              >
+                {connectFinchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Add Another Provider
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Finch connects to over 200 payroll and HR systems including ADP, Paychex, BambooHR, Paylocity, Rippling, and many more. 
+                Use Finch if your payroll provider isn't Gusto.
+              </p>
+              <Button
+                onClick={() => connectFinchMutation.mutate()}
+                disabled={connectFinchMutation.isPending}
+                variant="outline"
+                data-testid="button-connect-finch"
+              >
+                {connectFinchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4 mr-2" />
+                )}
+                Connect Payroll Provider
               </Button>
             </div>
           )}

@@ -17,6 +17,7 @@ import { sendInvoiceEmail } from "./email";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import gustoRoutes from "./gusto";
+import finchRoutes from "./finch";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
@@ -254,6 +255,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Gusto payroll integration routes
   app.use('/api/gusto', gustoRoutes);
+
+  // Finch payroll/HRIS integration routes
+  app.use('/api/finch', finchRoutes);
 
   // Serve object storage files (logos, uploads, etc.) - Replit only
   // Only serves PUBLIC files - private files require authentication

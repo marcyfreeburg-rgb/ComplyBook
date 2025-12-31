@@ -3079,6 +3079,40 @@ export type InsertGustoConnection = z.infer<typeof insertGustoConnectionSchema>;
 export type GustoConnection = typeof gustoConnections.$inferSelect;
 
 // ============================================
+// FINCH PAYROLL/HRIS INTEGRATION
+// ============================================
+
+export const finchConnectionStatusEnum = pgEnum('finch_connection_status', ['active', 'disconnected', 'pending_reauth', 'error']);
+
+export const finchConnections = pgTable("finch_connections", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  connectionId: varchar("connection_id", { length: 255 }).notNull().unique(),
+  companyId: varchar("company_id", { length: 255 }),
+  providerId: varchar("provider_id", { length: 100 }),
+  providerName: varchar("provider_name", { length: 255 }),
+  accessToken: text("access_token").notNull(),
+  products: text("products").array(),
+  status: finchConnectionStatusEnum("status").default("active").notNull(),
+  errorMessage: text("error_message"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_finch_connections_org_id").on(table.organizationId),
+]);
+
+export const insertFinchConnectionSchema = createInsertSchema(finchConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFinchConnection = z.infer<typeof insertFinchConnectionSchema>;
+export type FinchConnection = typeof finchConnections.$inferSelect;
+
+// ============================================
 // RELATIONS
 // ============================================
 

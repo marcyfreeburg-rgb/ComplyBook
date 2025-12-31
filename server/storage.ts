@@ -195,6 +195,9 @@ import {
   gustoConnections,
   type GustoConnection,
   type InsertGustoConnection,
+  finchConnections,
+  type FinchConnection,
+  type InsertFinchConnection,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull } from "drizzle-orm";
@@ -574,6 +577,14 @@ export interface IStorage {
   createGustoConnection(connection: InsertGustoConnection): Promise<GustoConnection>;
   updateGustoConnection(id: number, updates: Partial<InsertGustoConnection>): Promise<GustoConnection>;
   deleteGustoConnection(id: number): Promise<void>;
+
+  // Finch connection operations
+  getFinchConnectionsByOrganization(organizationId: number): Promise<FinchConnection[]>;
+  getFinchConnectionByConnectionId(connectionId: string): Promise<FinchConnection | undefined>;
+  getFinchConnectionById(id: number): Promise<FinchConnection | undefined>;
+  createFinchConnection(connection: InsertFinchConnection): Promise<FinchConnection>;
+  updateFinchConnection(id: number, updates: Partial<InsertFinchConnection>): Promise<FinchConnection>;
+  deleteFinchConnection(id: number): Promise<void>;
 
   // Expense approval operations
   getExpenseApprovals(organizationId: number): Promise<Array<ExpenseApproval & { requestedByName: string; categoryName: string | null; vendorName: string | null }>>;
@@ -4642,6 +4653,47 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGustoConnection(id: number): Promise<void> {
     await db.delete(gustoConnections).where(eq(gustoConnections.id, id));
+  }
+
+  // ============================================
+  // FINCH CONNECTION OPERATIONS
+  // ============================================
+
+  async getFinchConnectionsByOrganization(organizationId: number): Promise<FinchConnection[]> {
+    return await db.select().from(finchConnections)
+      .where(eq(finchConnections.organizationId, organizationId))
+      .orderBy(desc(finchConnections.createdAt));
+  }
+
+  async getFinchConnectionByConnectionId(connectionId: string): Promise<FinchConnection | undefined> {
+    const result = await db.select().from(finchConnections)
+      .where(eq(finchConnections.connectionId, connectionId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getFinchConnectionById(id: number): Promise<FinchConnection | undefined> {
+    const result = await db.select().from(finchConnections)
+      .where(eq(finchConnections.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async createFinchConnection(connection: InsertFinchConnection): Promise<FinchConnection> {
+    const result = await db.insert(finchConnections).values(connection).returning();
+    return result[0];
+  }
+
+  async updateFinchConnection(id: number, updates: Partial<InsertFinchConnection>): Promise<FinchConnection> {
+    const result = await db.update(finchConnections)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(finchConnections.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteFinchConnection(id: number): Promise<void> {
+    await db.delete(finchConnections).where(eq(finchConnections.id, id));
   }
 
   // ============================================
