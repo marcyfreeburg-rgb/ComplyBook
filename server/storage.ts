@@ -198,6 +198,16 @@ import {
   finchConnections,
   type FinchConnection,
   type InsertFinchConnection,
+  // For-profit: Proposals, Subcontractors, Change Orders
+  proposals,
+  type Proposal,
+  type InsertProposal,
+  subcontractors,
+  type Subcontractor,
+  type InsertSubcontractor,
+  changeOrders,
+  type ChangeOrder,
+  type InsertChangeOrder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull } from "drizzle-orm";
@@ -901,6 +911,27 @@ export interface IStorage {
   markAllNotificationsAsRead(userId: string, organizationId: number): Promise<void>;
   getUnreadNotificationCount(userId: string, organizationId: number): Promise<number>;
   deleteNotification(id: number): Promise<void>;
+
+  // For-profit: Proposal/Bid Management operations
+  getProposals(organizationId: number): Promise<Proposal[]>;
+  getProposal(id: number): Promise<Proposal | undefined>;
+  createProposal(proposal: InsertProposal): Promise<Proposal>;
+  updateProposal(id: number, updates: Partial<InsertProposal>): Promise<Proposal>;
+  deleteProposal(id: number): Promise<void>;
+
+  // For-profit: Subcontractor Management operations
+  getSubcontractors(organizationId: number): Promise<Subcontractor[]>;
+  getSubcontractor(id: number): Promise<Subcontractor | undefined>;
+  createSubcontractor(subcontractor: InsertSubcontractor): Promise<Subcontractor>;
+  updateSubcontractor(id: number, updates: Partial<InsertSubcontractor>): Promise<Subcontractor>;
+  deleteSubcontractor(id: number): Promise<void>;
+
+  // For-profit: Change Order Management operations
+  getChangeOrders(organizationId: number): Promise<ChangeOrder[]>;
+  getChangeOrder(id: number): Promise<ChangeOrder | undefined>;
+  createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder>;
+  updateChangeOrder(id: number, updates: Partial<InsertChangeOrder>): Promise<ChangeOrder>;
+  deleteChangeOrder(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -7155,6 +7186,93 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNotification(id: number): Promise<void> {
     await db.delete(notifications).where(eq(notifications.id, id));
+  }
+
+  // For-profit: Proposal/Bid Management operations
+  async getProposals(organizationId: number): Promise<Proposal[]> {
+    return await db.select().from(proposals)
+      .where(eq(proposals.organizationId, organizationId))
+      .orderBy(desc(proposals.createdAt));
+  }
+
+  async getProposal(id: number): Promise<Proposal | undefined> {
+    const [proposal] = await db.select().from(proposals).where(eq(proposals.id, id));
+    return proposal;
+  }
+
+  async createProposal(proposal: InsertProposal): Promise<Proposal> {
+    const [newProposal] = await db.insert(proposals).values(proposal).returning();
+    return newProposal;
+  }
+
+  async updateProposal(id: number, updates: Partial<InsertProposal>): Promise<Proposal> {
+    const [updated] = await db.update(proposals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(proposals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProposal(id: number): Promise<void> {
+    await db.delete(proposals).where(eq(proposals.id, id));
+  }
+
+  // For-profit: Subcontractor Management operations
+  async getSubcontractors(organizationId: number): Promise<Subcontractor[]> {
+    return await db.select().from(subcontractors)
+      .where(eq(subcontractors.organizationId, organizationId))
+      .orderBy(desc(subcontractors.createdAt));
+  }
+
+  async getSubcontractor(id: number): Promise<Subcontractor | undefined> {
+    const [subcontractor] = await db.select().from(subcontractors).where(eq(subcontractors.id, id));
+    return subcontractor;
+  }
+
+  async createSubcontractor(subcontractor: InsertSubcontractor): Promise<Subcontractor> {
+    const [newSubcontractor] = await db.insert(subcontractors).values(subcontractor).returning();
+    return newSubcontractor;
+  }
+
+  async updateSubcontractor(id: number, updates: Partial<InsertSubcontractor>): Promise<Subcontractor> {
+    const [updated] = await db.update(subcontractors)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subcontractors.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSubcontractor(id: number): Promise<void> {
+    await db.delete(subcontractors).where(eq(subcontractors.id, id));
+  }
+
+  // For-profit: Change Order Management operations
+  async getChangeOrders(organizationId: number): Promise<ChangeOrder[]> {
+    return await db.select().from(changeOrders)
+      .where(eq(changeOrders.organizationId, organizationId))
+      .orderBy(desc(changeOrders.createdAt));
+  }
+
+  async getChangeOrder(id: number): Promise<ChangeOrder | undefined> {
+    const [changeOrder] = await db.select().from(changeOrders).where(eq(changeOrders.id, id));
+    return changeOrder;
+  }
+
+  async createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder> {
+    const [newChangeOrder] = await db.insert(changeOrders).values(changeOrder).returning();
+    return newChangeOrder;
+  }
+
+  async updateChangeOrder(id: number, updates: Partial<InsertChangeOrder>): Promise<ChangeOrder> {
+    const [updated] = await db.update(changeOrders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(changeOrders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteChangeOrder(id: number): Promise<void> {
+    await db.delete(changeOrders).where(eq(changeOrders.id, id));
   }
 }
 
