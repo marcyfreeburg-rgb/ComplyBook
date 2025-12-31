@@ -143,6 +143,8 @@ import {
   projectCosts,
   type ProjectCost,
   type InsertProjectCost,
+  projectBudgetBreakdowns,
+  projectRevenueLedger,
   // Government Grants (Nonprofit)
   timeEffortReports,
   type TimeEffortReport,

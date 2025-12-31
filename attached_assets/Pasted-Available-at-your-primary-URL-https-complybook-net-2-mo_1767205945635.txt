@@ -1,0 +1,25 @@
+Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+6:30:50 PM [express] GET /api/notifications/167/unread-count 200 in 699ms :: {"count":"0"}
+6:31:22 PM [express] GET /api/notifications/167/unread-count 304 in 901ms :: {"count":"0"}
+6:31:33 PM [express] GET /api/auth/user 200 in 413ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+6:31:34 PM [express] GET /api/security/mfa/status 304 in 342ms :: {"mfaEnabled":true,"mfaRequired":t…
+6:31:34 PM [express] GET /api/organizations 304 in 724ms :: [{"id":168,"name":"C Cubed Training","ty…
+6:31:35 PM [express] GET /api/time-entries/167 304 in 277ms :: [{"id":10,"organizationId":167,"userI…
+6:31:35 PM [express] GET /api/projects/167 304 in 486ms :: [{"id":5,"organizationId":167,"contractId…
+6:31:35 PM [express] GET /api/notifications/167/unread-count 304 in 493ms :: {"count":"0"}
+6:31:35 PM [express] GET /api/indirect-rates/167 200 in 558ms
+6:31:35 PM [express] GET /api/milestones/167 200 in 556ms
+6:31:35 PM [express] GET /api/contracts/167 304 in 678ms :: [{"id":13,"organizationId":167,"contract…
+Error deleting contract: ReferenceError: projectBudgetBreakdowns is not defined
+    at DatabaseStorage.deleteContract (file:///opt/render/project/src/dist/index.js:7056:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:17028:7
+6:31:40 PM [express] DELETE /api/contracts/13 500 in 808ms :: {"message":"Failed to delete contract"}
+Error deleting contract: ReferenceError: projectBudgetBreakdowns is not defined
+    at DatabaseStorage.deleteContract (file:///opt/render/project/src/dist/index.js:7056:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:17028:7
+6:32:01 PM [express] DELETE /api/contracts/13 500 in 1352ms :: {"message":"Failed to delete contract…
+6:32:05 PM [express] GET /api/notifications/167/unread-count 304 in 268ms :: {"count":"0"}
