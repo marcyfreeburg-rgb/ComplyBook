@@ -1,0 +1,56 @@
+6:27:08 PM [express] GET /api/indirect-rates/167 304 in 133ms
+6:27:08 PM [express] GET /api/milestones/167 304 in 132ms
+Error deleting contract: error: update or delete on table "contracts" violates foreign key constraint "projects_contract_id_contracts_id_fk" on table "projects"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async DatabaseStorage.deleteContract (file:///opt/render/project/src/dist/index.js:7053:9)
+    at async file:///opt/render/project/src/dist/index.js:17018:7 {
+  length: 311,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (id)=(13) is still referenced from table "projects".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'projects',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'projects_contract_id_contracts_id_fk',
+  file: 'ri_triggers.c',
+  line: '2621',
+  routine: 'ri_ReportViolation'
+}
+6:27:11 PM [express] DELETE /api/contracts/13 500 in 707ms :: {"message":"Failed to delete contract"}
+6:27:11 PM [express] GET /api/proposals/167 304 in 200ms :: []
+6:27:11 PM [express] GET /api/subcontractors/167 304 in 414ms :: []
+6:27:11 PM [express] GET /api/change-orders/167 304 in 593ms :: []
+6:27:14 PM [express] GET /api/notifications/167/unread-count 304 in 268ms :: {"count":"0"}
+6:27:14 PM [express] GET /api/indirect-rates/167 304 in 130ms
+6:27:14 PM [express] GET /api/milestones/167 304 in 134ms
+Error deleting contract: error: update or delete on table "contracts" violates foreign key constraint "projects_contract_id_contracts_id_fk" on table "projects"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async DatabaseStorage.deleteContract (file:///opt/render/project/src/dist/index.js:7053:9)
+    at async file:///opt/render/project/src/dist/index.js:17018:7 {
+  length: 311,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (id)=(13) is still referenced from table "projects".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'projects',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'projects_contract_id_contracts_id_fk',
+  file: 'ri_triggers.c',
+  line: '2621',
+  routine: 'ri_ReportViolation'
+}
+6:27:17 PM [express] DELETE /api/contracts/13 500 in 686ms :: {"message":"Failed to delete contract"}

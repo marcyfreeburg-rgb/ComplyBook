@@ -6338,6 +6338,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContract(id: number): Promise<void> {
+    // Cascade delete related records
+    // 1. Get all projects for this contract
+    const contractProjects = await db.select({ id: projects.id }).from(projects)
+      .where(eq(projects.contractId, id));
+    
+    // 2. Delete project costs for each project
+    for (const project of contractProjects) {
+      await db.delete(projectCosts).where(eq(projectCosts.projectId, project.id));
+      // Delete project budget breakdowns
+      await db.delete(projectBudgetBreakdowns).where(eq(projectBudgetBreakdowns.projectId, project.id));
+      // Delete project revenue ledger entries
+      await db.delete(projectRevenueLedger).where(eq(projectRevenueLedger.projectId, project.id));
+      // Delete time entries for this project
+      await db.delete(timeEntries).where(eq(timeEntries.projectId, project.id));
+    }
+    
+    // 3. Delete projects
+    await db.delete(projects).where(eq(projects.contractId, id));
+    
+    // 4. Delete milestones
+    await db.delete(contractMilestones).where(eq(contractMilestones.contractId, id));
+    
+    // 5. Delete change orders
+    await db.delete(changeOrders).where(eq(changeOrders.contractId, id));
+    
+    // 6. Finally delete the contract
     await db.delete(contracts).where(eq(contracts.id, id));
   }
 
