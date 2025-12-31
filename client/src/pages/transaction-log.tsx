@@ -327,7 +327,16 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const getCategoryName = (categoryId: number | null) => {
     if (!categoryId) return "Uncategorized";
     const category = categories.find(c => c.id === categoryId);
-    return category?.name || "Unknown";
+    if (!category) return "Unknown";
+    
+    // Show "Parent - Child" format for subcategories
+    if (category.parentCategoryId) {
+      const parentCategory = categories.find(c => c.id === category.parentCategoryId);
+      if (parentCategory) {
+        return `${parentCategory.name} - ${category.name}`;
+      }
+    }
+    return category.name;
   };
 
   const getGrantName = (grantId: number | null) => {

@@ -55,6 +55,23 @@ export function CategoryCombobox({
   // Filter and organize categories hierarchically
   const typeFilteredCategories = categories.filter(c => !type || c.type === type);
   
+  // Build a map of category id to category for parent lookups
+  const categoryMap = new Map<number, Category>();
+  typeFilteredCategories.forEach(cat => {
+    categoryMap.set(cat.id, cat);
+  });
+  
+  // Helper to get full display name with parent prefix
+  const getFullCategoryName = (category: Category): string => {
+    if (category.parentCategoryId) {
+      const parent = categoryMap.get(category.parentCategoryId);
+      if (parent) {
+        return `${parent.name} - ${category.name}`;
+      }
+    }
+    return category.name;
+  };
+  
   // Build a map for quick child lookups
   const childrenMap = new Map<number | null, Category[]>();
   typeFilteredCategories.forEach(cat => {
@@ -65,7 +82,7 @@ export function CategoryCombobox({
     childrenMap.get(key)!.push(cat);
   });
 
-  // Sort children within each parent
+  // Sort children within each parent alphabetically
   childrenMap.forEach(children => {
     children.sort((a, b) => a.name.localeCompare(b.name));
   });
@@ -89,8 +106,8 @@ export function CategoryCombobox({
   
   // Determine what to show in the trigger
   const getTriggerLabel = () => {
-    // Show category name if selected
-    if (selectedCategory) return selectedCategory.name;
+    // Show full category name (with parent prefix) if selected
+    if (selectedCategory) return getFullCategoryName(selectedCategory);
     
     // Check for explicitly selected "clear" option (separate from "none")
     if (value === null && allowClear && noneSentinel !== null) {
@@ -165,10 +182,11 @@ export function CategoryCombobox({
               )}
               {hierarchicalCategories.map((category) => {
                 const isSubcategory = category.parentCategoryId !== null;
+                const displayName = getFullCategoryName(category);
                 return (
                   <CommandItem
                     key={category.id}
-                    value={category.name}
+                    value={displayName}
                     onSelect={() => {
                       onValueChange(category.id);
                       setOpen(false);
@@ -182,7 +200,7 @@ export function CategoryCombobox({
                       )}
                     />
                     <span className={cn(isSubcategory && "ml-4")}>
-                      {category.name}
+                      {displayName}
                     </span>
                   </CommandItem>
                 );
