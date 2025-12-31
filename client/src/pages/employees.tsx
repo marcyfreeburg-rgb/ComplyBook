@@ -194,7 +194,7 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
     return schedule.charAt(0).toUpperCase() + schedule.slice(1);
   };
 
-  const EmployeeForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const renderEmployeeForm = (isEdit = false) => (
     <div className="space-y-4 mt-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -440,7 +440,7 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
                 Add a new employee to your organization
               </DialogDescription>
             </DialogHeader>
-            <EmployeeForm />
+            {renderEmployeeForm()}
           </DialogContent>
         </Dialog>
       </div>
@@ -453,7 +453,7 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
               Update employee information
             </DialogDescription>
           </DialogHeader>
-          <EmployeeForm isEdit={true} />
+          {renderEmployeeForm(true)}
         </DialogContent>
       </Dialog>
 
