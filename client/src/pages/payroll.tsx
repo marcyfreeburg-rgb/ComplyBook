@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus, Edit } from "lucide-react";
+import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus, Edit, Link2, Unlink, CheckCircle2, Loader2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   AlertDialog,
@@ -57,6 +57,61 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
 
   const { data: deductions = [] } = useQuery<Deduction[]>({
     queryKey: [`/api/deductions/${currentOrganization.id}/active`],
+  });
+
+  const { data: gustoConnection, isLoading: isLoadingGustoConnection } = useQuery<{
+    connected: boolean;
+    companyName?: string;
+    status?: string;
+    lastSyncedAt?: string;
+  }>({
+    queryKey: [`/api/gusto/connection/${currentOrganization.id}`],
+  });
+
+  const { data: gustoEmployees = [], isLoading: isLoadingGustoEmployees } = useQuery<any[]>({
+    queryKey: [`/api/gusto/employees/${currentOrganization.id}`],
+    enabled: gustoConnection?.connected === true,
+  });
+
+  const connectGustoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('GET', `/api/gusto/authorize/${currentOrganization.id}`, undefined);
+      const data = await response.json();
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to connect to Gusto",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectGustoMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('DELETE', `/api/gusto/disconnect/${currentOrganization.id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/gusto/connection/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/gusto/employees/${currentOrganization.id}`] });
+      toast({
+        title: "Disconnected",
+        description: "Successfully disconnected from Gusto",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disconnect from Gusto",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: payrollItems = [], isLoading: isLoadingItems } = useQuery<Array<PayrollItem & { employeeName: string; employeeNumber: string | null }>>({
@@ -419,6 +474,140 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <DollarSign className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Gusto Payroll Integration</CardTitle>
+                <CardDescription>
+                  Connect to Gusto for automated payroll processing
+                </CardDescription>
+              </div>
+            </div>
+            {isLoadingGustoConnection ? (
+              <Badge variant="secondary">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Checking...
+              </Badge>
+            ) : gustoConnection?.connected ? (
+              <Badge variant="default" className="bg-green-600">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Connected
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Not Connected</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {gustoConnection?.connected ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-md">
+                <div>
+                  <p className="text-sm text-muted-foreground">Company</p>
+                  <p className="font-semibold">{gustoConnection.companyName || 'Unknown'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-semibold capitalize">{gustoConnection.status || 'Active'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Last Synced</p>
+                  <p className="font-semibold">
+                    {gustoConnection.lastSyncedAt 
+                      ? new Date(gustoConnection.lastSyncedAt).toLocaleDateString()
+                      : 'Never'}
+                  </p>
+                </div>
+              </div>
+              
+              {isLoadingGustoEmployees ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                  Loading employees from Gusto...
+                </div>
+              ) : gustoEmployees.length > 0 ? (
+                <div>
+                  <h4 className="font-semibold mb-2">Gusto Employees ({gustoEmployees.length})</h4>
+                  <div className="max-h-48 overflow-y-auto border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Department</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {gustoEmployees.slice(0, 10).map((emp: any, index: number) => (
+                          <TableRow key={emp.uuid || index}>
+                            <TableCell className="font-medium">
+                              {emp.first_name} {emp.last_name}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {emp.email || '-'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {emp.department || '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {gustoEmployees.length > 10 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Showing 10 of {gustoEmployees.length} employees
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No employees found in Gusto</p>
+              )}
+              
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => disconnectGustoMutation.mutate()}
+                  disabled={disconnectGustoMutation.isPending}
+                  data-testid="button-disconnect-gusto"
+                >
+                  {disconnectGustoMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Unlink className="h-4 w-4 mr-2" />
+                  )}
+                  Disconnect Gusto
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Connect your Gusto account to sync employees, run payroll, and manage benefits directly from ComplyBook.
+              </p>
+              <Button
+                onClick={() => connectGustoMutation.mutate()}
+                disabled={connectGustoMutation.isPending}
+                data-testid="button-connect-gusto"
+              >
+                {connectGustoMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4 mr-2" />
+                )}
+                Connect to Gusto
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
