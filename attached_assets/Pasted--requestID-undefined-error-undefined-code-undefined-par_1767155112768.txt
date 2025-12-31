@@ -1,0 +1,300 @@
+ requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[AI Categorization] Error: APIConnectionError: Connection error.
+    at OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:294:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+    at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+    at async file:///opt/render/project/src/dist/index.js:12149:27 {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: TypeError: fetch failed
+      at node:internal/deps/undici/undici:13510:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async OpenAI.fetchWithTimeout (file:///opt/render/project/src/node_modules/openai/client.mjs:370:20)
+      at async OpenAI.makeRequest (file:///opt/render/project/src/node_modules/openai/client.mjs:261:26)
+      at async suggestCategory (file:///opt/render/project/src/dist/index.js:8760:24)
+      at async suggestCategoryBulk (file:///opt/render/project/src/dist/index.js:8796:24)
+      at async file:///opt/render/project/src/dist/index.js:12149:27 {
+    [cause]: AggregateError [ECONNREFUSED]: 
+        at internalConnectMultiple (node:net:1139:18)
+        at afterConnectMultiple (node:net:1714:7) {
+      code: 'ECONNREFUSED',
+      [errors]: [Array]
+    }
+  }
+}
+[Bulk Categorization] Organization 167 - Received 0 suggestions for 10 transactions
+4:24:33 AM [express] POST /api/ai/suggest-categories-bulk/167 200 in 17230ms :: {}
+4:24:41 AM [express] GET /api/notifications/167/unread-count 304 in 280ms :: {"count":"0"}
