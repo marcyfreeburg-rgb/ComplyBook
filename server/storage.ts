@@ -192,6 +192,9 @@ import {
   vendorPaymentDetails,
   type VendorPaymentDetails,
   type InsertVendorPaymentDetails,
+  gustoConnections,
+  type GustoConnection,
+  type InsertGustoConnection,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull } from "drizzle-orm";
@@ -563,6 +566,14 @@ export interface IStorage {
   createVendorPaymentDetails(details: InsertVendorPaymentDetails): Promise<VendorPaymentDetails>;
   updateVendorPaymentDetails(id: number, updates: Partial<InsertVendorPaymentDetails>): Promise<VendorPaymentDetails>;
   deleteVendorPaymentDetails(id: number): Promise<void>;
+
+  // Gusto connection operations
+  getGustoConnection(organizationId: number): Promise<GustoConnection | undefined>;
+  getGustoConnectionById(id: number): Promise<GustoConnection | undefined>;
+  getGustoConnectionByCompanyUuid(companyUuid: string): Promise<GustoConnection | undefined>;
+  createGustoConnection(connection: InsertGustoConnection): Promise<GustoConnection>;
+  updateGustoConnection(id: number, updates: Partial<InsertGustoConnection>): Promise<GustoConnection>;
+  deleteGustoConnection(id: number): Promise<void>;
 
   // Expense approval operations
   getExpenseApprovals(organizationId: number): Promise<Array<ExpenseApproval & { requestedByName: string; categoryName: string | null; vendorName: string | null }>>;
@@ -4589,6 +4600,48 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVendorPaymentDetails(id: number): Promise<void> {
     await db.delete(vendorPaymentDetails).where(eq(vendorPaymentDetails.id, id));
+  }
+
+  // ============================================
+  // GUSTO CONNECTION OPERATIONS
+  // ============================================
+
+  async getGustoConnection(organizationId: number): Promise<GustoConnection | undefined> {
+    const result = await db.select().from(gustoConnections)
+      .where(eq(gustoConnections.organizationId, organizationId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getGustoConnectionById(id: number): Promise<GustoConnection | undefined> {
+    const result = await db.select().from(gustoConnections)
+      .where(eq(gustoConnections.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getGustoConnectionByCompanyUuid(companyUuid: string): Promise<GustoConnection | undefined> {
+    const result = await db.select().from(gustoConnections)
+      .where(eq(gustoConnections.companyUuid, companyUuid))
+      .limit(1);
+    return result[0];
+  }
+
+  async createGustoConnection(connection: InsertGustoConnection): Promise<GustoConnection> {
+    const result = await db.insert(gustoConnections).values(connection).returning();
+    return result[0];
+  }
+
+  async updateGustoConnection(id: number, updates: Partial<InsertGustoConnection>): Promise<GustoConnection> {
+    const result = await db.update(gustoConnections)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(gustoConnections.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteGustoConnection(id: number): Promise<void> {
+    await db.delete(gustoConnections).where(eq(gustoConnections.id, id));
   }
 
   // ============================================
