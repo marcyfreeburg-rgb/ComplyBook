@@ -16,6 +16,7 @@ import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabi
 import { sendInvoiceEmail } from "./email";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
+import gustoRoutes from "./gusto";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
@@ -250,6 +251,9 @@ const getBalanceSheetCached = memoize(
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Gusto payroll integration routes
+  app.use('/api/gusto', gustoRoutes);
 
   // Serve object storage files (logos, uploads, etc.) - Replit only
   // Only serves PUBLIC files - private files require authentication
