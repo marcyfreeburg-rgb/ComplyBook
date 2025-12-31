@@ -194,7 +194,7 @@ import {
   type InsertVendorPaymentDetails,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, lt, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull } from "drizzle-orm";
 import memoize from "memoizee";
 import { encryptField, decryptField } from './encryption';
 import { computeAuditLogHash, verifyAuditLogChain as verifyChain } from './auditChain';
@@ -311,6 +311,7 @@ export interface IStorage {
   getTransactions(organizationId: number): Promise<Transaction[]>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
+  findMatchingManualTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
   getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
@@ -1813,6 +1814,61 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return transaction;
+  }
+
+  async findMatchingManualTransaction(
+    organizationId: number,
+    date: Date,
+    amount: string,
+    description: string,
+    type: 'income' | 'expense'
+  ): Promise<Transaction | undefined> {
+    // Find manual transactions (source = 'manual' or null, no externalId) 
+    // that match by date, amount, and type
+    // We normalize the date to compare just the date part (not time)
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const results = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.amount, amount),
+          eq(transactions.type, type),
+          gte(transactions.date, startOfDay),
+          lte(transactions.date, endOfDay),
+          isNull(transactions.externalId),
+          or(
+            eq(transactions.source, 'manual'),
+            isNull(transactions.source)
+          )
+        )
+      );
+
+    // If we found matches, try to find the best one by description similarity
+    if (results.length === 0) {
+      return undefined;
+    }
+
+    // Look for exact or close description match
+    for (const tx of results) {
+      const txDesc = tx.description.toLowerCase().trim();
+      const plaidDesc = description.toLowerCase().trim();
+      // Check if descriptions are similar (one contains the other, or close match)
+      if (txDesc === plaidDesc || 
+          txDesc.includes(plaidDesc) || 
+          plaidDesc.includes(txDesc) ||
+          txDesc.split(' ').some(word => word.length > 3 && plaidDesc.includes(word))) {
+        return tx;
+      }
+    }
+
+    // If no description match, return the first match by date/amount
+    return results[0];
   }
 
   async getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]> {

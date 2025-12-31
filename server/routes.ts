@@ -5380,11 +5380,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Plaid amounts are positive for money spent, negative for money received
             const isIncome = plaidTx.amount < 0;
             const amount = Math.abs(plaidTx.amount);
+            const transactionDate = new Date(plaidTx.date);
 
-            // Create transaction with Plaid's transaction_id stored in externalId
+            // Check for matching manual transaction (same date, amount, similar description)
+            // This prevents duplicates when users manually entered transactions before connecting Plaid
+            const matchingManualTx = await storage.findMatchingManualTransaction(
+              organizationId,
+              transactionDate,
+              amount.toString(),
+              plaidTx.name,
+              isIncome ? 'income' : 'expense'
+            );
+
+            if (matchingManualTx) {
+              // Update the existing manual transaction with Plaid's externalId and source
+              await storage.updateTransaction(matchingManualTx.id, {
+                externalId: plaidTx.transaction_id,
+                source: 'plaid',
+              });
+              console.log(`[Plaid Sync] Linked existing manual transaction ${matchingManualTx.id} to Plaid transaction ${plaidTx.transaction_id}`);
+              totalImported++;
+              continue;
+            }
+
+            // Create new transaction with Plaid's transaction_id stored in externalId
             await storage.createTransaction({
               organizationId,
-              date: new Date(plaidTx.date),
+              date: transactionDate,
               description: plaidTx.name,
               amount: amount.toString(),
               type: isIncome ? 'income' : 'expense',
