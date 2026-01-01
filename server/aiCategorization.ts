@@ -20,8 +20,6 @@ const openai = isReplitEnvironment
       })
     : null;
 
-console.log(`[AI Categorization] Using ${isReplitEnvironment ? 'Replit AI Integrations' : hasOpenAIKey ? 'OpenAI API' : 'DISABLED (no API key)'}`);
-
 export interface CategorySuggestion {
   categoryId: number;
   categoryName: string;
