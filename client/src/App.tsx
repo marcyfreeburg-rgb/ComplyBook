@@ -63,6 +63,7 @@ import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
 import GettingStartedNonprofit from "@/pages/getting-started-nonprofit";
 import GettingStartedForprofit from "@/pages/getting-started-forprofit";
+import DonorPortal from "@/pages/donor-portal";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -469,6 +470,7 @@ function AuthenticatedApp() {
               </Route>
               <Route path="/pricing" component={Pricing} />
               <Route path="/checkout/success" component={Pricing} />
+              <Route path="/donor-portal" component={DonorPortal} />
               <Route component={NotFound} />
             </Switch>
           </main>
@@ -520,6 +522,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
+        <Route path="/donor-portal" component={DonorPortal} />
         <Route component={Landing} />
       </Switch>
     );

@@ -2500,6 +2500,31 @@ export type InsertThankYouLetter = z.infer<typeof insertThankYouLetterSchema>;
 export type ThankYouLetter = typeof thankYouLetters.$inferSelect;
 
 // ============================================
+// DONOR PORTAL ACCESS TOKENS (Magic Link Auth)
+// ============================================
+
+export const donorAccessTokens = pgTable("donor_access_tokens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  donorId: integer("donor_id").notNull().references(() => donors.id, { onDelete: 'cascade' }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_donor_access_tokens_token").on(table.token),
+  index("idx_donor_access_tokens_donor_id").on(table.donorId),
+]);
+
+export const insertDonorAccessTokenSchema = createInsertSchema(donorAccessTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDonorAccessToken = z.infer<typeof insertDonorAccessTokenSchema>;
+export type DonorAccessToken = typeof donorAccessTokens.$inferSelect;
+
+// ============================================
 // FOR-PROFIT: PROPOSAL/BID MANAGEMENT
 // ============================================
 

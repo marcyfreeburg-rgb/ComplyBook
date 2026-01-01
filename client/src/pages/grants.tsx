@@ -36,9 +36,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Gift, ArrowLeft, Edit, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Gift, ArrowLeft, Edit, Trash2, TrendingUp, AlertTriangle, Calendar, DollarSign, PieChart, BarChart3 } from "lucide-react";
+import { format, differenceInDays, isAfter, isBefore, addDays } from "date-fns";
 import { Link } from "wouter";
+import { PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { Organization, Grant, InsertGrant } from "@shared/schema";
 
 interface GrantsProps {
@@ -266,22 +267,92 @@ export default function Grants({ currentOrganization }: GrantsProps) {
     }
   };
 
+  // Calculate dashboard metrics
+  const dashboardMetrics = grants ? {
+    totalGrants: grants.length,
+    activeGrants: grants.filter(g => g.status === 'active').length,
+    pendingGrants: grants.filter(g => g.status === 'pending').length,
+    completedGrants: grants.filter(g => g.status === 'completed').length,
+    totalFunding: grants.reduce((sum, g) => sum + parseFloat(g.amount), 0),
+    totalSpent: grants.reduce((sum, g) => sum + parseFloat(g.totalSpent), 0),
+    restrictedFunds: grants.filter(g => g.fundType === 'restricted').reduce((sum, g) => sum + parseFloat(g.amount), 0),
+    unrestrictedFunds: grants.filter(g => g.fundType === 'unrestricted').reduce((sum, g) => sum + parseFloat(g.amount), 0),
+  } : null;
+
+  // Status distribution for pie chart
+  const statusData = dashboardMetrics ? [
+    { name: 'Active', value: dashboardMetrics.activeGrants, color: 'hsl(var(--chart-2))' },
+    { name: 'Pending', value: dashboardMetrics.pendingGrants, color: 'hsl(var(--chart-4))' },
+    { name: 'Completed', value: dashboardMetrics.completedGrants, color: 'hsl(var(--chart-1))' },
+  ].filter(d => d.value > 0) : [];
+
+  // Fund type distribution
+  const fundTypeData = dashboardMetrics ? [
+    { name: 'Restricted', value: dashboardMetrics.restrictedFunds, color: 'hsl(var(--chart-3))' },
+    { name: 'Unrestricted', value: dashboardMetrics.unrestrictedFunds, color: 'hsl(var(--chart-5))' },
+  ].filter(d => d.value > 0) : [];
+
+  // Spending by grant for bar chart
+  const spendingData = grants ? grants.slice(0, 6).map(g => ({
+    name: g.name.length > 15 ? g.name.slice(0, 15) + '...' : g.name,
+    budget: parseFloat(g.amount),
+    spent: parseFloat(g.totalSpent),
+    remaining: parseFloat(g.amount) - parseFloat(g.totalSpent),
+  })) : [];
+
+  // Upcoming deadlines (grants ending within 90 days)
+  const today = new Date();
+  const upcomingDeadlines = grants ? grants
+    .filter(g => g.endDate && g.status === 'active')
+    .map(g => ({
+      ...g,
+      daysUntilEnd: differenceInDays(new Date(g.endDate!), today),
+    }))
+    .filter(g => g.daysUntilEnd > 0 && g.daysUntilEnd <= 90)
+    .sort((a, b) => a.daysUntilEnd - b.daysUntilEnd)
+    .slice(0, 5) : [];
+
+  // Compliance alerts (grants over 90% spent or nearing deadline)
+  const complianceAlerts = grants ? grants
+    .filter(g => g.status === 'active')
+    .map(g => {
+      const percentSpent = (parseFloat(g.totalSpent) / parseFloat(g.amount)) * 100;
+      const daysUntilEnd = g.endDate ? differenceInDays(new Date(g.endDate), today) : null;
+      const alerts: string[] = [];
+      
+      if (percentSpent >= 90) {
+        alerts.push(`${percentSpent.toFixed(0)}% of budget spent`);
+      }
+      if (daysUntilEnd !== null && daysUntilEnd <= 30 && daysUntilEnd > 0) {
+        alerts.push(`Ends in ${daysUntilEnd} days`);
+      }
+      if (daysUntilEnd !== null && daysUntilEnd <= 0) {
+        alerts.push('Grant period ended');
+      }
+      
+      return { grant: g, alerts, percentSpent, daysUntilEnd };
+    })
+    .filter(a => a.alerts.length > 0)
+    .slice(0, 5) : [];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground">Grants</h1>
+          <h1 className="text-3xl font-semibold text-foreground">Grant Portfolio</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {currentOrganization.name}
           </p>
         </div>
-        <Link href="/">
-          <Button variant="outline" size="sm" data-testid="button-back-dashboard">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/">
+            <Button variant="outline" size="sm" data-testid="button-back-dashboard">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           if (!open) handleCloseDialog();
           else setIsDialogOpen(open);
@@ -424,6 +495,250 @@ export default function Grants({ currentOrganization }: GrantsProps) {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Portfolio Dashboard */}
+      {grants && grants.length > 0 && dashboardMetrics && (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Grants</p>
+                    <p className="text-2xl font-bold" data-testid="metric-total-grants">
+                      {dashboardMetrics.totalGrants}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                    <Gift className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {dashboardMetrics.activeGrants} active, {dashboardMetrics.pendingGrants} pending
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Funding</p>
+                    <p className="text-2xl font-bold" data-testid="metric-total-funding">
+                      ${dashboardMetrics.totalFunding.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-md bg-chart-2/10 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-chart-2" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Across all grants
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Spent</p>
+                    <p className="text-2xl font-bold" data-testid="metric-total-spent">
+                      ${dashboardMetrics.totalSpent.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-md bg-chart-3/10 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-chart-3" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {((dashboardMetrics.totalSpent / dashboardMetrics.totalFunding) * 100).toFixed(1)}% of total budget
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Remaining</p>
+                    <p className="text-2xl font-bold text-chart-2" data-testid="metric-remaining">
+                      ${(dashboardMetrics.totalFunding - dashboardMetrics.totalSpent).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-md bg-chart-5/10 flex items-center justify-center">
+                    <BarChart3 className="h-5 w-5 text-chart-5" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Available to spend
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Status Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <PieChart className="h-4 w-4" />
+                  Grant Status
+                </CardTitle>
+                <CardDescription>Distribution by status</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {statusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <RechartsPieChart>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {statusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number) => [value, 'Grants']}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Legend />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[180px] flex items-center justify-center text-muted-foreground">
+                    No data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Spending by Grant */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Budget vs Spending
+                </CardTitle>
+                <CardDescription>Top grants by budget</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {spendingData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={spendingData} layout="vertical">
+                      <XAxis type="number" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                      <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Bar dataKey="spent" fill="hsl(var(--chart-3))" name="Spent" stackId="a" />
+                      <Bar dataKey="remaining" fill="hsl(var(--chart-2))" name="Remaining" stackId="a" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[180px] flex items-center justify-center text-muted-foreground">
+                    No data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Alerts and Deadlines Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Upcoming Deadlines */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Upcoming Deadlines
+                </CardTitle>
+                <CardDescription>Grants ending within 90 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {upcomingDeadlines.length > 0 ? (
+                  <div className="space-y-3">
+                    {upcomingDeadlines.map((grant) => (
+                      <div key={grant.id} className="flex items-center justify-between p-2 rounded-md border" data-testid={`deadline-${grant.id}`}>
+                        <div>
+                          <p className="font-medium text-sm">{grant.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Ends {format(new Date(grant.endDate!), 'MMM dd, yyyy')}
+                          </p>
+                        </div>
+                        <Badge variant={grant.daysUntilEnd <= 30 ? 'destructive' : 'secondary'}>
+                          {grant.daysUntilEnd} days
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No upcoming deadlines</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Compliance Alerts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Compliance Alerts
+                </CardTitle>
+                <CardDescription>Grants requiring attention</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {complianceAlerts.length > 0 ? (
+                  <div className="space-y-3">
+                    {complianceAlerts.map(({ grant, alerts, percentSpent }) => (
+                      <div key={grant.id} className="p-2 rounded-md border border-destructive/30 bg-destructive/5" data-testid={`alert-${grant.id}`}>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium text-sm">{grant.name}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {alerts.map((alert, idx) => (
+                                <Badge key={idx} variant="destructive" className="text-xs">
+                                  {alert}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <Progress value={Math.min(percentSpent, 100)} className="w-16 h-2 mt-1" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No compliance alerts</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* Grants Grid */}
       {!grants || grants.length === 0 ? (

@@ -200,6 +200,10 @@ import {
   finchConnections,
   type FinchConnection,
   type InsertFinchConnection,
+  // Donor Portal Access Tokens
+  donorAccessTokens,
+  type DonorAccessToken,
+  type InsertDonorAccessToken,
   // For-profit: Proposals, Subcontractors, Change Orders
   proposals,
   type Proposal,
@@ -742,6 +746,18 @@ export interface IStorage {
   getPledgePayments(pledgeId: number): Promise<PledgePayment[]>;
   getPledgePayment(id: number): Promise<PledgePayment | undefined>;
   deletePledgePayment(id: number): Promise<void>;
+
+  // Nonprofit-specific: Donor Portal Access Token operations
+  createDonorAccessToken(donorId: number, organizationId: number): Promise<DonorAccessToken>;
+  getDonorByAccessToken(token: string): Promise<{ donor: Donor; organizationId: number } | undefined>;
+  markDonorAccessTokenUsed(token: string): Promise<void>;
+  getDonorPortalData(donorId: number): Promise<{
+    donor: Donor;
+    pledges: Pledge[];
+    donationHistory: Transaction[];
+    letters: DonorLetter[];
+    organization: Organization;
+  }>;
 
   // Nonprofit-specific: Enhanced grant operations
   getGrant(id: number): Promise<Grant | undefined>;
@@ -6079,6 +6095,98 @@ export class DatabaseStorage implements IStorage {
     }
 
     await db.delete(pledgePayments).where(eq(pledgePayments.id, id));
+  }
+
+  // Donor Portal Access Token operations
+  async createDonorAccessToken(donorId: number, organizationId: number): Promise<DonorAccessToken> {
+    // Generate a secure random token
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Token expires in 7 days
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    const [newToken] = await db.insert(donorAccessTokens).values({
+      donorId,
+      organizationId,
+      token,
+      expiresAt,
+    }).returning();
+    
+    return newToken;
+  }
+
+  async getDonorByAccessToken(token: string): Promise<{ donor: Donor; organizationId: number } | undefined> {
+    const [result] = await db.select({
+      tokenData: donorAccessTokens,
+      donor: donors,
+    })
+      .from(donorAccessTokens)
+      .innerJoin(donors, eq(donorAccessTokens.donorId, donors.id))
+      .where(and(
+        eq(donorAccessTokens.token, token),
+        gt(donorAccessTokens.expiresAt, new Date())
+      ));
+    
+    if (!result) return undefined;
+    
+    // Decrypt sensitive fields
+    const decryptedDonor = {
+      ...result.donor,
+      taxId: result.donor.taxId ? decryptField(result.donor.taxId) : null,
+    };
+    
+    return { donor: decryptedDonor, organizationId: result.tokenData.organizationId };
+  }
+
+  async markDonorAccessTokenUsed(token: string): Promise<void> {
+    await db.update(donorAccessTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(donorAccessTokens.token, token));
+  }
+
+  async getDonorPortalData(donorId: number): Promise<{
+    donor: Donor;
+    pledges: Pledge[];
+    donationHistory: Transaction[];
+    letters: DonorLetter[];
+    organization: Organization;
+  }> {
+    const donor = await this.getDonor(donorId);
+    if (!donor) {
+      throw new Error('Donor not found');
+    }
+
+    const organization = await this.getOrganization(donor.organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    const pledgeList = await this.getPledgesByDonor(donorId);
+    
+    // Get donation history (transactions linked to this donor)
+    const donationHistory = await db.select()
+      .from(transactions)
+      .where(and(
+        eq(transactions.donorId, donorId),
+        eq(transactions.type, 'income')
+      ))
+      .orderBy(desc(transactions.date));
+
+    // Get donor letters
+    const letterResults = await db.select()
+      .from(donorLetters)
+      .where(eq(donorLetters.donorId, donorId))
+      .orderBy(desc(donorLetters.year));
+
+    return {
+      donor,
+      pledges: pledgeList,
+      donationHistory,
+      letters: letterResults,
+      organization,
+    };
   }
 
   // Enhanced grant operations

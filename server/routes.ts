@@ -1334,6 +1334,251 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // DONOR PORTAL ROUTES (Public-facing for donors)
+  // ============================================
+
+  // Send access link to donor (authenticated org users only)
+  app.post('/api/donor-portal/send-access-link/:donorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donorId = parseInt(req.params.donorId);
+      
+      const donor = await storage.getDonor(donorId);
+      if (!donor) {
+        return res.status(404).json({ message: "Donor not found" });
+      }
+      
+      if (!donor.email) {
+        return res.status(400).json({ message: "Donor does not have an email address" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, donor.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const organization = await storage.getOrganization(donor.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor portal is only available for nonprofit organizations" });
+      }
+      
+      // Create access token
+      const accessToken = await storage.createDonorAccessToken(donorId, donor.organizationId);
+      
+      // Send email with access link
+      const portalUrl = `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://complybook.net'}/donor-portal?token=${accessToken.token}`;
+      
+      // Use SendGrid to send the email
+      const sgMail = await import('@sendgrid/mail');
+      if (process.env.SENDGRID_API_KEY) {
+        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+        
+        const brandSettings = await storage.getBrandSettings(donor.organizationId);
+        const orgName = organization.name;
+        
+        await sgMail.default.send({
+          to: donor.email,
+          from: brandSettings?.primaryEmail || 'noreply@complybook.net',
+          subject: `Your Donor Portal Access - ${orgName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Hello ${donor.name},</h2>
+              <p>You have been granted access to the ${orgName} donor portal.</p>
+              <p>Click the button below to view your giving history, pledges, and tax letters:</p>
+              <p style="text-align: center; margin: 30px 0;">
+                <a href="${portalUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  Access Your Donor Portal
+                </a>
+              </p>
+              <p style="color: #666; font-size: 14px;">This link will expire in 7 days for security purposes.</p>
+              <p style="color: #666; font-size: 14px;">If you did not request this access, please ignore this email.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+              <p style="color: #999; font-size: 12px;">Sent by ${orgName} via ComplyBook</p>
+            </div>
+          `,
+        });
+        
+        res.json({ success: true, message: "Access link sent to donor's email" });
+      } else {
+        // No SendGrid configured - return the link directly
+        res.json({ 
+          success: true, 
+          message: "Email not configured. Share this link with the donor:",
+          portalUrl 
+        });
+      }
+    } catch (error) {
+      console.error("Error sending donor access link:", error);
+      res.status(500).json({ message: "Failed to send access link" });
+    }
+  });
+
+  // Validate donor access token (public route - no auth required)
+  app.get('/api/donor-portal/validate/:token', async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      const result = await storage.getDonorByAccessToken(token);
+      if (!result) {
+        return res.status(401).json({ message: "Invalid or expired access token" });
+      }
+      
+      // Mark token as used (for audit purposes)
+      await storage.markDonorAccessTokenUsed(token);
+      
+      res.json({ 
+        valid: true, 
+        donorId: result.donor.id,
+        donorName: result.donor.name 
+      });
+    } catch (error) {
+      console.error("Error validating donor token:", error);
+      res.status(500).json({ message: "Failed to validate token" });
+    }
+  });
+
+  // Get donor portal data (public route - token-based auth)
+  app.get('/api/donor-portal/data/:token', async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      const result = await storage.getDonorByAccessToken(token);
+      if (!result) {
+        return res.status(401).json({ message: "Invalid or expired access token" });
+      }
+      
+      const portalData = await storage.getDonorPortalData(result.donor.id);
+      
+      // Get brand settings for organization customization
+      const brandSettings = await storage.getBrandSettings(result.organizationId);
+      
+      res.json({
+        donor: {
+          id: portalData.donor.id,
+          name: portalData.donor.name,
+          email: portalData.donor.email,
+          phone: portalData.donor.phone,
+          address: portalData.donor.address,
+        },
+        organization: {
+          id: portalData.organization.id,
+          name: portalData.organization.name,
+        },
+        pledges: portalData.pledges.map(p => ({
+          id: p.id,
+          amount: p.amount,
+          pledgeDate: p.pledgeDate,
+          dueDate: p.dueDate,
+          status: p.status,
+          amountPaid: p.amountPaid,
+          notes: p.notes,
+        })),
+        donations: portalData.donationHistory.map(d => ({
+          id: d.id,
+          date: d.date,
+          amount: d.amount,
+          description: d.description,
+        })),
+        letters: portalData.letters.map(l => ({
+          id: l.id,
+          year: l.year,
+          letterType: l.letterType,
+          letterStatus: l.letterStatus,
+          donationAmount: l.donationAmount,
+          renderedHtml: l.renderedHtml,
+        })),
+        brandSettings: brandSettings ? {
+          primaryColor: brandSettings.primaryColor,
+          logoUrl: brandSettings.logoUrl,
+          organizationName: brandSettings.organizationName || portalData.organization.name,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error fetching donor portal data:", error);
+      res.status(500).json({ message: "Failed to fetch donor portal data" });
+    }
+  });
+
+  // Update donor contact info (public route - token-based auth)
+  // Simple rate limiting for donor portal updates
+  const donorPortalRateLimits = new Map<string, { count: number; resetTime: number }>();
+  
+  app.patch('/api/donor-portal/update-contact/:token', async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      // Rate limiting: max 5 updates per hour per token
+      const now = Date.now();
+      const rateLimit = donorPortalRateLimits.get(token);
+      if (rateLimit) {
+        if (now < rateLimit.resetTime) {
+          if (rateLimit.count >= 5) {
+            return res.status(429).json({ message: "Too many requests. Please try again later." });
+          }
+          rateLimit.count++;
+        } else {
+          donorPortalRateLimits.set(token, { count: 1, resetTime: now + 3600000 });
+        }
+      } else {
+        donorPortalRateLimits.set(token, { count: 1, resetTime: now + 3600000 });
+      }
+      
+      const result = await storage.getDonorByAccessToken(token);
+      if (!result) {
+        return res.status(401).json({ message: "Invalid or expired access token" });
+      }
+      
+      // Schema validation for contact updates - only allow specific fields
+      const { email, phone, address } = req.body;
+      const updates: { email?: string; phone?: string; address?: string } = {};
+      
+      // Validate email format if provided
+      if (email !== undefined) {
+        if (typeof email !== 'string' || (email.length > 0 && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))) {
+          return res.status(400).json({ message: "Invalid email format" });
+        }
+        updates.email = email.trim().slice(0, 255);
+      }
+      
+      // Validate phone if provided
+      if (phone !== undefined) {
+        if (typeof phone !== 'string') {
+          return res.status(400).json({ message: "Invalid phone format" });
+        }
+        updates.phone = phone.trim().slice(0, 50);
+      }
+      
+      // Validate address if provided
+      if (address !== undefined) {
+        if (typeof address !== 'string') {
+          return res.status(400).json({ message: "Invalid address format" });
+        }
+        updates.address = address.trim().slice(0, 500);
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      const updatedDonor = await storage.updateDonor(result.donor.id, updates);
+      
+      res.json({ 
+        success: true, 
+        donor: {
+          id: updatedDonor.id,
+          name: updatedDonor.name,
+          email: updatedDonor.email,
+          phone: updatedDonor.phone,
+          address: updatedDonor.address,
+        }
+      });
+    } catch (error) {
+      console.error("Error updating donor contact:", error);
+      res.status(500).json({ message: "Failed to update contact information" });
+    }
+  });
+
   // Donor Letter routes
   app.get('/api/donor-letters/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
@@ -9397,6 +9642,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating Form 990 report:", error);
       res.status(500).json({ message: "Failed to generate Form 990 report" });
+    }
+  });
+
+  // Form 990 AI Narrative Builder
+  app.post("/api/form-990/generate-narrative", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, narrativeType, taxYear, customContext } = req.body;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "Organization ID is required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      // Get organization details for context
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Check if AI is available
+      const isReplitEnvironment = !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+
+      if (!isReplitEnvironment && !hasOpenAIKey) {
+        return res.status(503).json({ 
+          message: "AI features are not available. Please configure OpenAI API key." 
+        });
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = isReplitEnvironment 
+        ? new OpenAI({
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+            apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+          })
+        : new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
+          });
+
+      // Get financial data for context
+      const form990Data = await storage.getForm990Data(organizationId, taxYear || new Date().getFullYear() - 1);
+      const programs = await storage.getPrograms(organizationId);
+      
+      // Build narrative type specific prompts
+      let systemPrompt = "";
+      let userPrompt = "";
+
+      // Safe access to form990Data with defaults
+      const revenue = form990Data?.totalRevenue || "0";
+      const expenses = form990Data?.totalExpenses || "0";
+      const programExpenses = form990Data?.programServiceExpenses || "0";
+      const programList = programs && programs.length > 0 ? programs.map(p => p.name).join(", ") : "";
+
+      const orgContext = `
+Organization: ${organization.name}
+Type: ${organization.organizationType || "nonprofit"}
+Tax Year: ${taxYear || new Date().getFullYear() - 1}
+Total Revenue: $${revenue}
+Total Expenses: $${expenses}
+Program Expenses: $${programExpenses}
+${programList ? `Programs: ${programList}` : ""}
+${customContext ? `Additional Context: ${customContext}` : ""}
+`;
+
+      switch (narrativeType) {
+        case "mission":
+          systemPrompt = `You are an expert nonprofit compliance writer specializing in IRS Form 990 preparation. 
+Write clear, concise mission statements that describe the organization's exempt purpose and primary activities.
+The statement should be suitable for Part I, Lines 1-2 of Form 990.
+Keep the response to 2-3 sentences that clearly explain what the organization does and who it serves.`;
+          userPrompt = `Based on the following organization details, write a compelling mission statement for Form 990:
+${orgContext}
+
+Write a mission statement that:
+1. Describes the organization's exempt purpose
+2. Identifies the primary activities
+3. Notes who benefits from these activities
+4. Uses clear, professional language appropriate for IRS filing`;
+          break;
+
+        case "accomplishments":
+          systemPrompt = `You are an expert nonprofit compliance writer specializing in IRS Form 990 preparation.
+Write detailed program accomplishments for Part III of Form 990.
+Include specific, measurable outcomes where possible.
+Each program description should explain: what was done, who was served, and what was achieved.`;
+          userPrompt = `Based on the following organization details, write program service accomplishments for Form 990 Part III:
+${orgContext}
+
+Write accomplishment descriptions that:
+1. Describe 2-3 major programs based on the context provided
+2. Include estimated numbers of people or communities served
+3. Mention measurable outcomes or impacts
+4. Are written in past tense for the tax year
+5. Total approximately 200-300 words`;
+          break;
+
+        case "governance":
+          systemPrompt = `You are an expert nonprofit compliance writer specializing in IRS Form 990 governance questions.
+Write descriptions of governance policies and practices for Part VI of Form 990.
+Focus on board oversight, conflict of interest policies, and organizational accountability.`;
+          userPrompt = `Based on the following organization details, write governance policy descriptions for Form 990 Part VI:
+${orgContext}
+
+Write governance descriptions covering:
+1. Board meeting frequency and oversight practices
+2. Conflict of interest policy and procedures
+3. Document retention and destruction policies
+4. Whistleblower policy
+5. How the governing body reviews Form 990 before filing
+Keep the response professional and factual, approximately 150-200 words.`;
+          break;
+
+        case "compensation":
+          systemPrompt = `You are an expert nonprofit compliance writer specializing in IRS Form 990 compensation disclosure.
+Write descriptions of compensation review processes for Part VI, Lines 15a-b.
+Focus on independent review, comparability data, and contemporaneous documentation.`;
+          userPrompt = `Based on the following organization details, write compensation review process descriptions for Form 990 Part VI:
+${orgContext}
+
+Describe the compensation review process including:
+1. Who reviews and approves executive compensation
+2. Whether independent review or compensation committee is used
+3. Use of comparability data from similar organizations
+4. How determinations are documented
+5. Process for reviewing key employee compensation
+Keep the response approximately 100-150 words.`;
+          break;
+
+        default:
+          return res.status(400).json({ message: "Invalid narrative type" });
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+
+      const narrative = completion.choices[0]?.message?.content || "";
+
+      // Log the AI generation for audit purposes
+      await storage.createAuditLog({
+        organizationId,
+        userId,
+        action: "ai_narrative_generated",
+        resourceType: "form990",
+        resourceId: narrativeType,
+        oldValue: null,
+        newValue: JSON.stringify({ narrativeType, taxYear }),
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+
+      res.json({ narrative, narrativeType });
+    } catch (error: any) {
+      console.error("Error generating Form 990 narrative:", error);
+      res.status(500).json({ message: error.message || "Failed to generate narrative" });
     }
   });
 

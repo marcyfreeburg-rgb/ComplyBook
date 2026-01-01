@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileText, DollarSign, TrendingUp, AlertCircle } from "lucide-react";
+import { Download, FileText, TrendingUp, AlertCircle, Sparkles, Copy, Check, RefreshCw } from "lucide-react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
 import { formatCurrency } from "@/lib/utils";
 
@@ -38,14 +42,71 @@ interface Form990Data {
   }>;
 }
 
+type NarrativeType = "mission" | "accomplishments" | "governance" | "compensation";
+
+interface NarrativeState {
+  mission: string;
+  accomplishments: string;
+  governance: string;
+  compensation: string;
+}
+
 export default function Form990Report({ currentOrganization, userId }: Form990ReportProps) {
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
   const [taxYear, setTaxYear] = useState(currentYear - 1);
+  const [activeNarrativeTab, setActiveNarrativeTab] = useState<NarrativeType>("mission");
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [narratives, setNarratives] = useState<NarrativeState>({
+    mission: "",
+    accomplishments: "",
+    governance: "",
+    compensation: "",
+  });
+  const [customContext, setCustomContext] = useState("");
 
   const { data: reportData, isLoading, error } = useQuery<Form990Data>({
     queryKey: [`/api/reports/form-990`, { taxYear }],
   });
+
+  const generateNarrativeMutation = useMutation({
+    mutationFn: async ({ narrativeType, context }: { narrativeType: NarrativeType; context?: string }) => {
+      const response = await apiRequest("POST", "/api/form-990/generate-narrative", {
+        organizationId: currentOrganization.id,
+        narrativeType,
+        taxYear,
+        customContext: context,
+      });
+      return response;
+    },
+    onSuccess: (data: { narrative: string; narrativeType: NarrativeType }) => {
+      setNarratives(prev => ({
+        ...prev,
+        [data.narrativeType]: data.narrative,
+      }));
+      toast({
+        title: "Narrative generated",
+        description: "The AI-powered narrative has been created. You can edit it before using.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error generating narrative",
+        description: error.message || "Failed to generate narrative. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyToClipboard = async (text: string, field: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+    toast({
+      title: "Copied",
+      description: "Narrative copied to clipboard.",
+    });
+  };
 
   const handleExportCSV = () => {
     if (!reportData) return;
@@ -137,6 +198,289 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Narrative Builder */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <CardTitle>AI Narrative Builder</CardTitle>
+              <Badge variant="secondary">AI-Powered</Badge>
+            </div>
+          </div>
+          <CardDescription>
+            Generate IRS-compliant narrative sections for your Form 990 using AI. 
+            Review and edit before including in your filing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeNarrativeTab} onValueChange={(v) => setActiveNarrativeTab(v as NarrativeType)}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="mission" data-testid="tab-mission">
+                Mission
+              </TabsTrigger>
+              <TabsTrigger value="accomplishments" data-testid="tab-accomplishments">
+                Accomplishments
+              </TabsTrigger>
+              <TabsTrigger value="governance" data-testid="tab-governance">
+                Governance
+              </TabsTrigger>
+              <TabsTrigger value="compensation" data-testid="tab-compensation">
+                Compensation
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="mission" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Mission Statement (Part I, Lines 1-2)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Describe your organization's mission and most significant activities for the tax year.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mission-context">Additional Context (Optional)</Label>
+                <Textarea
+                  id="mission-context"
+                  placeholder="Add any specific programs, achievements, or focus areas you want highlighted..."
+                  value={customContext}
+                  onChange={(e) => setCustomContext(e.target.value)}
+                  rows={2}
+                  data-testid="input-mission-context"
+                />
+              </div>
+              <Button
+                onClick={() => generateNarrativeMutation.mutate({ narrativeType: "mission", context: customContext })}
+                disabled={generateNarrativeMutation.isPending}
+                data-testid="button-generate-mission"
+              >
+                {generateNarrativeMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Mission Statement
+                  </>
+                )}
+              </Button>
+              {narratives.mission && (
+                <div className="space-y-2 mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Generated Narrative</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(narratives.mission, "mission")}
+                      data-testid="button-copy-mission"
+                    >
+                      {copiedField === "mission" ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={narratives.mission}
+                    onChange={(e) => setNarratives(prev => ({ ...prev, mission: e.target.value }))}
+                    rows={6}
+                    data-testid="textarea-mission-result"
+                  />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="accomplishments" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Program Service Accomplishments (Part III)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Describe your three largest program services by expense, including beneficiaries served and measurable outcomes.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="accomplishments-context">Additional Context (Optional)</Label>
+                <Textarea
+                  id="accomplishments-context"
+                  placeholder="Describe specific programs, number of people served, geographic areas, partnerships..."
+                  value={customContext}
+                  onChange={(e) => setCustomContext(e.target.value)}
+                  rows={2}
+                  data-testid="input-accomplishments-context"
+                />
+              </div>
+              <Button
+                onClick={() => generateNarrativeMutation.mutate({ narrativeType: "accomplishments", context: customContext })}
+                disabled={generateNarrativeMutation.isPending}
+                data-testid="button-generate-accomplishments"
+              >
+                {generateNarrativeMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Accomplishments
+                  </>
+                )}
+              </Button>
+              {narratives.accomplishments && (
+                <div className="space-y-2 mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Generated Narrative</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(narratives.accomplishments, "accomplishments")}
+                      data-testid="button-copy-accomplishments"
+                    >
+                      {copiedField === "accomplishments" ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={narratives.accomplishments}
+                    onChange={(e) => setNarratives(prev => ({ ...prev, accomplishments: e.target.value }))}
+                    rows={8}
+                    data-testid="textarea-accomplishments-result"
+                  />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="governance" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Governance & Management (Part VI)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Describe your organization's governance structure, policies, and oversight processes.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="governance-context">Additional Context (Optional)</Label>
+                <Textarea
+                  id="governance-context"
+                  placeholder="Board meeting frequency, conflict of interest policies, document retention, whistleblower protections..."
+                  value={customContext}
+                  onChange={(e) => setCustomContext(e.target.value)}
+                  rows={2}
+                  data-testid="input-governance-context"
+                />
+              </div>
+              <Button
+                onClick={() => generateNarrativeMutation.mutate({ narrativeType: "governance", context: customContext })}
+                disabled={generateNarrativeMutation.isPending}
+                data-testid="button-generate-governance"
+              >
+                {generateNarrativeMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Governance Description
+                  </>
+                )}
+              </Button>
+              {narratives.governance && (
+                <div className="space-y-2 mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Generated Narrative</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(narratives.governance, "governance")}
+                      data-testid="button-copy-governance"
+                    >
+                      {copiedField === "governance" ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={narratives.governance}
+                    onChange={(e) => setNarratives(prev => ({ ...prev, governance: e.target.value }))}
+                    rows={6}
+                    data-testid="textarea-governance-result"
+                  />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="compensation" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Compensation Review Process (Part VI, Lines 15a-b)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Describe the process for reviewing and approving compensation for officers, directors, and key employees.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="compensation-context">Additional Context (Optional)</Label>
+                <Textarea
+                  id="compensation-context"
+                  placeholder="Compensation committee structure, use of comparability data, independent review..."
+                  value={customContext}
+                  onChange={(e) => setCustomContext(e.target.value)}
+                  rows={2}
+                  data-testid="input-compensation-context"
+                />
+              </div>
+              <Button
+                onClick={() => generateNarrativeMutation.mutate({ narrativeType: "compensation", context: customContext })}
+                disabled={generateNarrativeMutation.isPending}
+                data-testid="button-generate-compensation"
+              >
+                {generateNarrativeMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Compensation Description
+                  </>
+                )}
+              </Button>
+              {narratives.compensation && (
+                <div className="space-y-2 mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Generated Narrative</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(narratives.compensation, "compensation")}
+                      data-testid="button-copy-compensation"
+                    >
+                      {copiedField === "compensation" ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={narratives.compensation}
+                    onChange={(e) => setNarratives(prev => ({ ...prev, compensation: e.target.value }))}
+                    rows={6}
+                    data-testid="textarea-compensation-result"
+                  />
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 

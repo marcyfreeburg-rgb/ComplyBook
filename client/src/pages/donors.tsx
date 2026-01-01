@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Heart, Mail, Phone, MapPin, Edit2, FileText } from "lucide-react";
+import { Plus, Trash2, Heart, Mail, Phone, MapPin, Edit2, FileText, Send } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Donor, Organization } from "@shared/schema";
 
@@ -116,6 +117,37 @@ export default function Donors({ currentOrganization, userId }: DonorsProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to delete donor.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendPortalLinkMutation = useMutation({
+    mutationFn: async (donorId: number) => {
+      return await apiRequest('POST', `/api/donor-portal/send-access-link/${donorId}`, {});
+    },
+    onSuccess: (data: any) => {
+      if (data.portalUrl) {
+        toast({
+          title: "Portal link generated",
+          description: (
+            <div className="space-y-2">
+              <p>Email not configured. Share this link with the donor:</p>
+              <code className="text-xs bg-muted p-1 rounded block break-all">{data.portalUrl}</code>
+            </div>
+          ),
+        });
+      } else {
+        toast({
+          title: "Portal link sent",
+          description: "An access link has been emailed to the donor.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send portal link.",
         variant: "destructive",
       });
     },
@@ -391,6 +423,24 @@ export default function Donors({ currentOrganization, userId }: DonorsProps) {
                       )}
                     </div>
                     <div className="flex gap-2 ml-4">
+                      {donor.email && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => sendPortalLinkMutation.mutate(donor.id)}
+                              disabled={sendPortalLinkMutation.isPending}
+                              data-testid={`button-send-portal-link-${donor.id}`}
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Send donor portal link</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
