@@ -8,8 +8,6 @@ import { storage } from "./storage";
 const isReplitEnvironment = !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
 
-// Log which AI provider is being used
-console.log(`[AI Categorization] Environment check - Replit AI: ${isReplitEnvironment}, OpenAI Key Present: ${hasOpenAIKey}`);
 
 const openai = isReplitEnvironment 
   ? new OpenAI({
