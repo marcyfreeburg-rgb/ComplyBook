@@ -984,6 +984,8 @@ export const budgets = pgTable("budgets", {
   period: budgetPeriodEnum("period").notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
+  additionalFunds: numeric("additional_funds", { precision: 12, scale: 2 }).default("0"),
+  additionalFundsDescription: text("additional_funds_description"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -996,6 +998,8 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
 }).extend({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
+  additionalFunds: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  additionalFundsDescription: z.string().optional().nullable(),
 });
 
 export type InsertBudget = z.infer<typeof insertBudgetSchema>;

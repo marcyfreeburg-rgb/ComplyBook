@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, TrendingUp, Trash2, ArrowLeft, Edit } from "lucide-react";
+import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category, type Grant } from "@shared/schema";
@@ -155,6 +156,8 @@ export default function Budgets() {
     period: z.enum(["monthly", "quarterly", "yearly"]),
     startDate: z.date(),
     endDate: z.date(),
+    additionalFunds: z.string().optional(),
+    additionalFundsDescription: z.string().optional(),
     createdBy: z.string().optional(),
   });
 
@@ -167,6 +170,8 @@ export default function Budgets() {
       period: "monthly" as const,
       startDate: new Date(),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+      additionalFunds: "",
+      additionalFundsDescription: "",
     },
   });
 
@@ -195,6 +200,8 @@ export default function Budgets() {
       period: "monthly" as const,
       startDate: new Date(),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+      additionalFunds: "",
+      additionalFundsDescription: "",
     });
   };
 
@@ -207,6 +214,8 @@ export default function Budgets() {
       period: budget.period,
       startDate: new Date(budget.startDate),
       endDate: new Date(budget.endDate),
+      additionalFunds: budget.additionalFunds || "",
+      additionalFundsDescription: budget.additionalFundsDescription || "",
     });
     setIsCreateBudgetOpen(true);
   };
@@ -253,6 +262,182 @@ export default function Budgets() {
   };
 
   const selectedBudget = budgets.find(b => b.id === selectedBudgetId);
+
+  // Export budget to CSV for grant applications
+  const handleExportCSV = () => {
+    if (!selectedBudget || vsActual.length === 0) return;
+    
+    const linkedGrant = selectedBudget.grantId ? grants.find(g => g.id === selectedBudget.grantId) : null;
+    const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
+    const additionalFunds = selectedBudget.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
+    const totalFunding = grantAmount + additionalFunds;
+    const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
+    const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
+    
+    let csv = "Budget Export for Grant Application\n";
+    csv += `Budget Name,${selectedBudget.name}\n`;
+    csv += `Period,${new Date(selectedBudget.startDate).toLocaleDateString()} - ${new Date(selectedBudget.endDate).toLocaleDateString()}\n`;
+    if (linkedGrant) {
+      csv += `Linked Grant,${linkedGrant.name}\n`;
+      csv += `Grant Amount,$${grantAmount.toFixed(2)}\n`;
+    }
+    if (additionalFunds > 0) {
+      csv += `Additional Funds,$${additionalFunds.toFixed(2)}\n`;
+      if (selectedBudget.additionalFundsDescription) {
+        csv += `Additional Funds Source,"${selectedBudget.additionalFundsDescription}"\n`;
+      }
+    }
+    csv += `Total Funding,$${totalFunding.toFixed(2)}\n\n`;
+    csv += "Budget Line Items\n";
+    csv += "Category,Budgeted Amount,Actual Spent,Remaining,% Used\n";
+    
+    vsActual.forEach(item => {
+      const budgeted = parseFloat(item.budgeted);
+      const actual = parseFloat(item.actual);
+      const remaining = budgeted - actual;
+      csv += `"${item.categoryName}",$${budgeted.toFixed(2)},$${actual.toFixed(2)},$${remaining.toFixed(2)},${item.percentUsed}%\n`;
+    });
+    
+    csv += `\nTotals,$${totalBudgeted.toFixed(2)},$${totalSpent.toFixed(2)},$${(totalBudgeted - totalSpent).toFixed(2)},${totalBudgeted > 0 ? ((totalSpent / totalBudgeted) * 100).toFixed(1) : 0}%\n`;
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedBudget.name.replace(/[^a-z0-9]/gi, '_')}_budget_export.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    toast({ title: "Budget exported successfully" });
+  };
+
+  // Export budget to PDF-style format for grant applications
+  const handleExportPDF = async () => {
+    if (!selectedBudget || vsActual.length === 0) return;
+    
+    const linkedGrant = selectedBudget.grantId ? grants.find(g => g.id === selectedBudget.grantId) : null;
+    const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
+    const additionalFunds = selectedBudget.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
+    const totalFunding = grantAmount + additionalFunds;
+    const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
+    const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Budget Export - ${selectedBudget.name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #1a1a1a; border-bottom: 2px solid #e5e5e5; padding-bottom: 10px; }
+          h2 { color: #4a4a4a; margin-top: 30px; }
+          .summary { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+          .summary-item { text-align: center; }
+          .summary-label { font-size: 12px; color: #666; }
+          .summary-value { font-size: 24px; font-weight: bold; color: #1a1a1a; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e5e5; }
+          th { background: #f5f5f5; font-weight: 600; }
+          .amount { text-align: right; }
+          .total-row { font-weight: bold; background: #f9f9f9; }
+          .footer { margin-top: 40px; font-size: 12px; color: #666; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <h1>Budget Export</h1>
+        <h2>${selectedBudget.name}</h2>
+        <p>Period: ${new Date(selectedBudget.startDate).toLocaleDateString()} - ${new Date(selectedBudget.endDate).toLocaleDateString()}</p>
+        ${linkedGrant ? `<p>Linked Grant: ${linkedGrant.name}</p>` : ''}
+        
+        <div class="summary">
+          <div class="summary-grid">
+            ${linkedGrant ? `
+              <div class="summary-item">
+                <div class="summary-label">Grant Amount</div>
+                <div class="summary-value">$${grantAmount.toLocaleString()}</div>
+              </div>
+            ` : ''}
+            ${additionalFunds > 0 ? `
+              <div class="summary-item">
+                <div class="summary-label">Additional Funds</div>
+                <div class="summary-value">$${additionalFunds.toLocaleString()}</div>
+              </div>
+            ` : ''}
+            <div class="summary-item">
+              <div class="summary-label">Total Funding</div>
+              <div class="summary-value">$${totalFunding.toLocaleString()}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Total Budgeted</div>
+              <div class="summary-value">$${totalBudgeted.toLocaleString()}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Total Spent</div>
+              <div class="summary-value">$${totalSpent.toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+        
+        ${selectedBudget.additionalFundsDescription ? `
+          <p><strong>Additional Funds Source:</strong> ${selectedBudget.additionalFundsDescription}</p>
+        ` : ''}
+        
+        <h2>Budget Line Items</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th class="amount">Budgeted</th>
+              <th class="amount">Spent</th>
+              <th class="amount">Remaining</th>
+              <th class="amount">% Used</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${vsActual.map(item => {
+              const budgeted = parseFloat(item.budgeted);
+              const actual = parseFloat(item.actual);
+              const remaining = budgeted - actual;
+              return `
+                <tr>
+                  <td>${item.categoryName}</td>
+                  <td class="amount">$${budgeted.toLocaleString()}</td>
+                  <td class="amount">$${actual.toLocaleString()}</td>
+                  <td class="amount">$${remaining.toLocaleString()}</td>
+                  <td class="amount">${item.percentUsed}%</td>
+                </tr>
+              `;
+            }).join('')}
+            <tr class="total-row">
+              <td>Total</td>
+              <td class="amount">$${totalBudgeted.toLocaleString()}</td>
+              <td class="amount">$${totalSpent.toLocaleString()}</td>
+              <td class="amount">$${(totalBudgeted - totalSpent).toLocaleString()}</td>
+              <td class="amount">${totalBudgeted > 0 ? ((totalSpent / totalBudgeted) * 100).toFixed(1) : 0}%</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <p>Generated on ${new Date().toLocaleDateString()} | ComplyBook Budget Export</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
+    
+    toast({ title: "Budget export opened for printing" });
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -393,6 +578,51 @@ export default function Budgets() {
                     )}
                   />
                 </div>
+                {budgetForm.watch("grantId") && (
+                  <>
+                    <FormField
+                      control={budgetForm.control}
+                      name="additionalFunds"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Additional Funds (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              data-testid="input-additional-funds" 
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Add matching funds, cost share, or other funding sources
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={budgetForm.control}
+                      name="additionalFundsDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Additional Funds Description</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              placeholder="E.g., Matching funds from sponsor, in-kind contributions..."
+                              className="resize-none"
+                              rows={2}
+                              data-testid="input-additional-funds-description" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
                 <Button type="submit" className="w-full" disabled={createBudgetMutation.isPending || updateBudgetMutation.isPending} data-testid="button-submit-budget">
                   {editingBudget 
                     ? (updateBudgetMutation.isPending ? "Updating..." : "Update")
@@ -481,7 +711,9 @@ export default function Budgets() {
                 const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
                 const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
                 const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
-                const remainingGrant = grantAmount - totalSpent;
+                const additionalFunds = selectedBudget.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
+                const totalFunding = grantAmount + additionalFunds;
+                const remainingFunds = totalFunding - totalSpent;
                 
                 return linkedGrant ? (
                   <Card data-testid="card-grant-summary">
@@ -495,11 +727,25 @@ export default function Budgets() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div>
                           <p className="text-sm text-muted-foreground">Grant Amount</p>
                           <p className="text-xl font-semibold text-primary" data-testid="text-grant-amount">
                             ${grantAmount.toLocaleString()}
+                          </p>
+                        </div>
+                        {additionalFunds > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Additional Funds</p>
+                            <p className="text-xl font-semibold text-blue-600" data-testid="text-additional-funds">
+                              +${additionalFunds.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Funding</p>
+                          <p className="text-xl font-semibold" data-testid="text-total-funding">
+                            ${totalFunding.toLocaleString()}
                           </p>
                         </div>
                         <div>
@@ -515,12 +761,18 @@ export default function Budgets() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Grant Remaining</p>
-                          <p className={`text-xl font-semibold ${remainingGrant < 0 ? 'text-red-600' : 'text-green-600'}`} data-testid="text-grant-remaining">
-                            ${remainingGrant.toLocaleString()}
+                          <p className="text-sm text-muted-foreground">Funds Remaining</p>
+                          <p className={`text-xl font-semibold ${remainingFunds < 0 ? 'text-red-600' : 'text-green-600'}`} data-testid="text-grant-remaining">
+                            ${remainingFunds.toLocaleString()}
                           </p>
                         </div>
                       </div>
+                      {selectedBudget.additionalFundsDescription && (
+                        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
+                          <p className="text-sm font-medium">Additional Funds Source</p>
+                          <p className="text-sm text-muted-foreground">{selectedBudget.additionalFundsDescription}</p>
+                        </div>
+                      )}
                       {linkedGrant.restrictions && (
                         <div className="mt-4 p-3 bg-muted rounded-md">
                           <p className="text-sm font-medium">Grant Restrictions</p>
@@ -532,10 +784,32 @@ export default function Budgets() {
                 ) : null;
               })()}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
                   <div>
                     <CardTitle>{selectedBudget.name}</CardTitle>
                     <CardDescription>Budget Details & Performance</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleExportCSV}
+                      disabled={vsActual.length === 0}
+                      data-testid="button-export-csv"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleExportPDF}
+                      disabled={vsActual.length === 0}
+                      data-testid="button-export-pdf"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Print/PDF
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
