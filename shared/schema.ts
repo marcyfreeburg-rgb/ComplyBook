@@ -979,6 +979,7 @@ export type Grant = typeof grants.$inferSelect;
 export const budgets = pgTable("budgets", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
   name: varchar("name", { length: 255 }).notNull(),
   period: budgetPeriodEnum("period").notNull(),
   startDate: timestamp("start_date").notNull(),
