@@ -117,6 +117,11 @@ export default function Budgets() {
       queryClient.invalidateQueries({ queryKey: ["/api/budgets", selectedBudgetId, "items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/budgets", selectedBudgetId, "vs-actual"] });
       setIsAddItemOpen(false);
+      itemForm.reset({
+        budgetId: selectedBudgetId || 0,
+        categoryId: 0,
+        amount: "",
+      });
       toast({ title: "Budget item added successfully" });
     },
     onError: () => {
@@ -416,7 +421,16 @@ export default function Budgets() {
                 <CardContent>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">Budget Items</h3>
-                    <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
+                    <Dialog open={isAddItemOpen} onOpenChange={(open) => {
+                      if (open && selectedBudgetId) {
+                        itemForm.reset({
+                          budgetId: selectedBudgetId,
+                          categoryId: 0,
+                          amount: "",
+                        });
+                      }
+                      setIsAddItemOpen(open);
+                    }}>
                       <DialogTrigger asChild>
                         <Button size="sm" data-testid="button-add-budget-item">
                           <Plus className="w-4 h-4 mr-2" />
@@ -430,46 +444,59 @@ export default function Budgets() {
                             Assign a budget amount to a category
                           </DialogDescription>
                         </DialogHeader>
-                        <Form {...itemForm}>
-                          <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-4">
-                            <FormField
-                              control={itemForm.control}
-                              name="categoryId"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Category</FormLabel>
-                                  <CategoryCombobox
-                                    categories={categories}
-                                    value={field.value}
-                                    onValueChange={(value) => field.onChange(value)}
-                                    placeholder="Select a category"
-                                    allowNone={false}
-                                    noneSentinel={null}
-                                    className="w-full"
-                                    testId="select-budget-category"
-                                  />
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={itemForm.control}
-                              name="amount"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Budget Amount</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} type="number" step="0.01" placeholder="1000.00" data-testid="input-budget-amount" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button type="submit" className="w-full" disabled={addItemMutation.isPending} data-testid="button-submit-budget-item">
-                              Add Budget Item
-                            </Button>
-                          </form>
-                        </Form>
+                        {categories.length === 0 ? (
+                          <div className="text-center py-6 space-y-4">
+                            <p className="text-muted-foreground">
+                              No categories available. Please create expense categories first to add budget items.
+                            </p>
+                            <Link href="/categories">
+                              <Button variant="outline" data-testid="button-go-to-categories">
+                                Go to Categories
+                              </Button>
+                            </Link>
+                          </div>
+                        ) : (
+                          <Form {...itemForm}>
+                            <form onSubmit={itemForm.handleSubmit(onAddItem)} className="space-y-4">
+                              <FormField
+                                control={itemForm.control}
+                                name="categoryId"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Category</FormLabel>
+                                    <CategoryCombobox
+                                      categories={categories}
+                                      value={field.value}
+                                      onValueChange={(value) => field.onChange(value)}
+                                      placeholder="Select a category"
+                                      allowNone={false}
+                                      noneSentinel={null}
+                                      className="w-full"
+                                      testId="select-budget-category"
+                                    />
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={itemForm.control}
+                                name="amount"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Budget Amount</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} type="number" step="0.01" placeholder="1000.00" data-testid="input-budget-amount" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button type="submit" className="w-full" disabled={addItemMutation.isPending} data-testid="button-submit-budget-item">
+                                Add Budget Item
+                              </Button>
+                            </form>
+                          </Form>
+                        )}
                       </DialogContent>
                     </Dialog>
                   </div>
