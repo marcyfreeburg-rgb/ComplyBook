@@ -11,6 +11,7 @@ import {
   varchar,
   pgEnum,
   boolean,
+  date,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1024,6 +1025,30 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
 
 export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
 export type BudgetItem = typeof budgetItems.$inferSelect;
+
+export const budgetIncomeItems = pgTable("budget_income_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  budgetId: integer("budget_id").notNull().references(() => budgets.id, { onDelete: 'cascade' }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  sourceName: varchar("source_name", { length: 255 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  expectedDate: date("expected_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBudgetIncomeItemSchema = createInsertSchema(budgetIncomeItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  expectedDate: z.string().optional().nullable(),
+});
+
+export type InsertBudgetIncomeItem = z.infer<typeof insertBudgetIncomeItemSchema>;
+export type BudgetIncomeItem = typeof budgetIncomeItems.$inferSelect;
 
 // ============================================
 // PLAID INTEGRATIONS
