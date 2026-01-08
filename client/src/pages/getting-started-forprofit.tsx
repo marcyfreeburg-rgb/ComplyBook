@@ -116,14 +116,15 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
     },
     {
       title: "8. Create & Track Budgets",
-      description: "Build project and annual budgets, monitor spending",
+      description: "Build project and annual budgets with multiple funding sources",
       icon: TrendingUp,
       color: "text-rose-600",
       bgColor: "bg-rose-100 dark:bg-rose-900/30",
       steps: [
-        { text: "Create your annual operating budget", link: "/budgets" },
-        { text: "Set category-level budget allocations", link: "/budgets" },
-        { text: "Monitor budget vs actual spending on your Dashboard", link: "/" },
+        { text: "Create your annual operating budget and link to contracts", link: "/budgets" },
+        { text: "Add income sources like cost share, subcontract revenue, and other funding", link: "/budgets" },
+        { text: "Set category-level budget allocations and track vs actual", link: "/budgets" },
+        { text: "Export budgets to CSV or PDF for proposals and reporting", link: "/budgets" },
       ],
     },
     {

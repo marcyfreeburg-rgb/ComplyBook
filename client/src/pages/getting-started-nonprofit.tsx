@@ -102,14 +102,15 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
     },
     {
       title: "7. Create & Track Budgets",
-      description: "Build annual budgets and monitor spending throughout the year",
+      description: "Build annual budgets with multiple funding sources and monitor spending",
       icon: TrendingUp,
       color: "text-indigo-600",
       bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
       steps: [
-        { text: "Create your annual operating budget", link: "/budgets" },
-        { text: "Set category-level budget allocations", link: "/budgets" },
-        { text: "Monitor budget vs actual spending on your Dashboard", link: "/" },
+        { text: "Create your annual operating budget and link to grants (including pending grants for applications)", link: "/budgets" },
+        { text: "Add income sources like matching funds, cost share, and donations", link: "/budgets" },
+        { text: "Set category-level budget allocations and track vs actual spending", link: "/budgets" },
+        { text: "Export budgets to CSV or PDF for grant applications", link: "/budgets" },
       ],
     },
     {
