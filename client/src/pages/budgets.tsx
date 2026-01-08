@@ -15,7 +15,7 @@ import { z } from "zod";
 import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category, type Grant } from "@shared/schema";
+import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { CategoryCombobox } from "@/components/category-combobox";
 import {
@@ -35,6 +35,7 @@ export default function Budgets() {
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
   const [isCreateBudgetOpen, setIsCreateBudgetOpen] = useState(false);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isAddIncomeOpen, setIsAddIncomeOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<number | null>(null);
 
@@ -73,6 +74,11 @@ export default function Budgets() {
     percentUsed: number;
   }>>({
     queryKey: ["/api/budgets", selectedBudgetId, "vs-actual"],
+    enabled: selectedBudgetId !== null,
+  });
+
+  const { data: incomeItems = [] } = useQuery<BudgetIncomeItem[]>({
+    queryKey: ["/api/budgets", selectedBudgetId, "income-items"],
     enabled: selectedBudgetId !== null,
   });
 
@@ -148,6 +154,36 @@ export default function Budgets() {
     },
   });
 
+  const addIncomeMutation = useMutation({
+    mutationFn: (data: any) =>
+      apiRequest('POST', `/api/budgets/${selectedBudgetId}/income-items`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/budgets", selectedBudgetId, "income-items"] });
+      setIsAddIncomeOpen(false);
+      incomeForm.reset({
+        sourceName: "",
+        amount: "",
+        notes: "",
+      });
+      toast({ title: "Income source added successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to add income source", variant: "destructive" });
+    },
+  });
+
+  const deleteIncomeMutation = useMutation({
+    mutationFn: (itemId: number) =>
+      apiRequest('DELETE', `/api/budget-income-items/${itemId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/budgets", selectedBudgetId, "income-items"] });
+      toast({ title: "Income source deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete income source", variant: "destructive" });
+    },
+  });
+
   // Form schema with Date objects for easier handling
   const budgetFormSchema = z.object({
     organizationId: z.number(),
@@ -189,6 +225,26 @@ export default function Budgets() {
       amount: "",
     },
   });
+
+  const incomeFormSchema = z.object({
+    sourceName: z.string().min(1, "Source name is required"),
+    amount: z.string().min(1, "Amount is required"),
+    notes: z.string().optional(),
+  });
+
+  const incomeForm = useForm<z.infer<typeof incomeFormSchema>>({
+    resolver: zodResolver(incomeFormSchema),
+    defaultValues: {
+      sourceName: "",
+      amount: "",
+      notes: "",
+    },
+  });
+
+  const onAddIncome = (data: z.infer<typeof incomeFormSchema>) => {
+    if (!selectedBudgetId) return;
+    addIncomeMutation.mutate(data);
+  };
 
   const handleCloseDialog = () => {
     setIsCreateBudgetOpen(false);
@@ -960,6 +1016,120 @@ export default function Budgets() {
                       })}
                     </div>
                   )}
+
+                  {/* Income Sources Section */}
+                  <div className="mt-8 pt-6 border-t">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Income Sources</h3>
+                      <Dialog open={isAddIncomeOpen} onOpenChange={(open) => {
+                        if (open) {
+                          incomeForm.reset({
+                            sourceName: "",
+                            amount: "",
+                            notes: "",
+                          });
+                        }
+                        setIsAddIncomeOpen(open);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" data-testid="button-add-income">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Income
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Add Income Source</DialogTitle>
+                            <DialogDescription>
+                              Add additional funding sources for this budget (matching funds, cost share, donations, etc.)
+                            </DialogDescription>
+                          </DialogHeader>
+                          <Form {...incomeForm}>
+                            <form onSubmit={incomeForm.handleSubmit(onAddIncome)} className="space-y-4">
+                              <FormField
+                                control={incomeForm.control}
+                                name="sourceName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Source Name</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} placeholder="e.g., Matching Funds, Corporate Donation" data-testid="input-income-source" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={incomeForm.control}
+                                name="amount"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Amount</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} type="number" step="0.01" placeholder="5000.00" data-testid="input-income-amount" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={incomeForm.control}
+                                name="notes"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Notes (Optional)</FormLabel>
+                                    <FormControl>
+                                      <Textarea {...field} placeholder="Additional details about this funding source" data-testid="input-income-notes" />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button type="submit" className="w-full" disabled={addIncomeMutation.isPending} data-testid="button-submit-income">
+                                Add Income Source
+                              </Button>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+
+                    {incomeItems.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        No income sources added. Add additional funding to track total project resources.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {incomeItems.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-md" data-testid={`income-item-${item.id}`}>
+                            <div>
+                              <p className="font-medium">{item.sourceName}</p>
+                              {item.notes && <p className="text-sm text-muted-foreground">{item.notes}</p>}
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-lg font-semibold text-green-600">
+                                +${Number(item.amount).toLocaleString()}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteIncomeMutation.mutate(item.id)}
+                                disabled={deleteIncomeMutation.isPending}
+                                data-testid={`button-delete-income-${item.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex justify-end pt-2 border-t">
+                          <span className="text-lg font-semibold">
+                            Total Income: ${incomeItems.reduce((sum, item) => sum + Number(item.amount), 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
