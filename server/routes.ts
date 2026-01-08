@@ -36,6 +36,7 @@ import {
   updateGrantSchema,
   insertBudgetSchema,
   insertBudgetItemSchema,
+  insertBudgetIncomeItemSchema,
   insertInvitationSchema,
   insertExpenseApprovalSchema,
   insertCashFlowScenarioSchema,
@@ -4895,6 +4896,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting budget item:", error);
       res.status(500).json({ message: "Failed to delete budget item" });
+    }
+  });
+
+  // Budget Income Item routes
+  app.get('/api/budgets/:budgetId/income-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const incomeItems = await storage.getBudgetIncomeItems(budgetId);
+      res.json(incomeItems);
+    } catch (error) {
+      console.error("Error fetching budget income items:", error);
+      res.status(500).json({ message: "Failed to fetch budget income items" });
+    }
+  });
+
+  app.post('/api/budgets/:budgetId/income-items', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
+        return res.status(403).json({ message: "Access denied - only owners, admins, and accountants can manage budget income" });
+      }
+
+      const data = insertBudgetIncomeItemSchema.parse({ 
+        ...req.body, 
+        budgetId, 
+        organizationId: budget.organizationId 
+      });
+      const item = await storage.createBudgetIncomeItem(data);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating budget income item:", error);
+      res.status(400).json({ message: "Failed to create budget income item" });
+    }
+  });
+
+  app.patch('/api/budget-income-items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.itemId);
+      
+      const updated = await storage.updateBudgetIncomeItem(itemId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating budget income item:", error);
+      res.status(400).json({ message: "Failed to update budget income item" });
+    }
+  });
+
+  app.delete('/api/budget-income-items/:itemId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const itemId = parseInt(req.params.itemId);
+      
+      await storage.deleteBudgetIncomeItem(itemId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting budget income item:", error);
+      res.status(500).json({ message: "Failed to delete budget income item" });
     }
   });
 

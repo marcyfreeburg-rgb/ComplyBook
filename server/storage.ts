@@ -41,6 +41,9 @@ import {
   type InsertBudget,
   type BudgetItem,
   type InsertBudgetItem,
+  budgetIncomeItems,
+  type BudgetIncomeItem,
+  type InsertBudgetIncomeItem,
   type PlaidItem,
   type InsertPlaidItem,
   type PlaidAccount,
@@ -386,6 +389,13 @@ export interface IStorage {
   createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem>;
   updateBudgetItem(id: number, updates: Partial<InsertBudgetItem>): Promise<BudgetItem>;
   deleteBudgetItem(id: number): Promise<void>;
+  
+  // Budget Income Item operations
+  getBudgetIncomeItems(budgetId: number): Promise<BudgetIncomeItem[]>;
+  createBudgetIncomeItem(item: InsertBudgetIncomeItem): Promise<BudgetIncomeItem>;
+  updateBudgetIncomeItem(id: number, updates: Partial<InsertBudgetIncomeItem>): Promise<BudgetIncomeItem>;
+  deleteBudgetIncomeItem(id: number): Promise<void>;
+
   getBudgetVsActual(budgetId: number): Promise<Array<{
     categoryId: number;
     categoryName: string;
@@ -2684,6 +2694,35 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBudgetItem(id: number): Promise<void> {
     await db.delete(budgetItems).where(eq(budgetItems.id, id));
+  }
+
+  async getBudgetIncomeItems(budgetId: number): Promise<BudgetIncomeItem[]> {
+    return await db
+      .select()
+      .from(budgetIncomeItems)
+      .where(eq(budgetIncomeItems.budgetId, budgetId))
+      .orderBy(budgetIncomeItems.createdAt);
+  }
+
+  async createBudgetIncomeItem(itemData: InsertBudgetIncomeItem): Promise<BudgetIncomeItem> {
+    const [item] = await db
+      .insert(budgetIncomeItems)
+      .values(itemData)
+      .returning();
+    return item;
+  }
+
+  async updateBudgetIncomeItem(id: number, updates: Partial<InsertBudgetIncomeItem>): Promise<BudgetIncomeItem> {
+    const [item] = await db
+      .update(budgetIncomeItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(budgetIncomeItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deleteBudgetIncomeItem(id: number): Promise<void> {
+    await db.delete(budgetIncomeItems).where(eq(budgetIncomeItems.id, id));
   }
 
   async getBudgetVsActual(budgetId: number): Promise<Array<{
