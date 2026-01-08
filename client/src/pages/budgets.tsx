@@ -326,7 +326,8 @@ export default function Budgets() {
     const linkedGrant = selectedBudget.grantId ? grants.find(g => g.id === selectedBudget.grantId) : null;
     const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
     const additionalFunds = selectedBudget.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
-    const totalFunding = grantAmount + additionalFunds;
+    const incomeTotal = incomeItems.reduce((sum, item) => sum + Number(item.amount), 0);
+    const totalFunding = grantAmount + additionalFunds + incomeTotal;
     const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
     const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
     
@@ -342,6 +343,14 @@ export default function Budgets() {
       if (selectedBudget.additionalFundsDescription) {
         csv += `Additional Funds Source,"${selectedBudget.additionalFundsDescription}"\n`;
       }
+    }
+    if (incomeItems.length > 0) {
+      csv += `\nIncome Sources\n`;
+      csv += `Source,Amount,Notes\n`;
+      incomeItems.forEach(item => {
+        csv += `"${item.sourceName}",$${Number(item.amount).toFixed(2)},"${item.notes || ''}"\n`;
+      });
+      csv += `Income Subtotal,$${incomeTotal.toFixed(2)}\n\n`;
     }
     csv += `Total Funding,$${totalFunding.toFixed(2)}\n\n`;
     csv += "Budget Line Items\n";
@@ -374,7 +383,8 @@ export default function Budgets() {
     const linkedGrant = selectedBudget.grantId ? grants.find(g => g.id === selectedBudget.grantId) : null;
     const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
     const additionalFunds = selectedBudget.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
-    const totalFunding = grantAmount + additionalFunds;
+    const incomeTotal = incomeItems.reduce((sum, item) => sum + Number(item.amount), 0);
+    const totalFunding = grantAmount + additionalFunds + incomeTotal;
     const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
     const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
 
@@ -420,6 +430,12 @@ export default function Budgets() {
                 <div class="summary-value">$${additionalFunds.toLocaleString()}</div>
               </div>
             ` : ''}
+            ${incomeTotal > 0 ? `
+              <div class="summary-item">
+                <div class="summary-label">Income Sources</div>
+                <div class="summary-value">$${incomeTotal.toLocaleString()}</div>
+              </div>
+            ` : ''}
             <div class="summary-item">
               <div class="summary-label">Total Funding</div>
               <div class="summary-value">$${totalFunding.toLocaleString()}</div>
@@ -437,6 +453,33 @@ export default function Budgets() {
         
         ${selectedBudget.additionalFundsDescription ? `
           <p><strong>Additional Funds Source:</strong> ${selectedBudget.additionalFundsDescription}</p>
+        ` : ''}
+        
+        ${incomeItems.length > 0 ? `
+          <h2>Income Sources</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th class="amount">Amount</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${incomeItems.map(item => `
+                <tr>
+                  <td>${item.sourceName}</td>
+                  <td class="amount">$${Number(item.amount).toLocaleString()}</td>
+                  <td>${item.notes || ''}</td>
+                </tr>
+              `).join('')}
+              <tr class="total-row">
+                <td>Total Income</td>
+                <td class="amount">$${incomeTotal.toLocaleString()}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
         ` : ''}
         
         <h2>Budget Line Items</h2>
@@ -783,7 +826,8 @@ export default function Budgets() {
                 const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
                 const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
                 const additionalFunds = selectedBudget.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
-                const totalFunding = grantAmount + additionalFunds;
+                const incomeTotal = incomeItems.reduce((sum, item) => sum + Number(item.amount), 0);
+                const totalFunding = grantAmount + additionalFunds + incomeTotal;
                 const remainingFunds = totalFunding - totalSpent;
                 
                 return linkedGrant ? (
@@ -810,6 +854,14 @@ export default function Budgets() {
                             <p className="text-sm text-muted-foreground">Additional Funds</p>
                             <p className="text-xl font-semibold text-blue-600" data-testid="text-additional-funds">
                               +${additionalFunds.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                        {incomeTotal > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">Income Sources</p>
+                            <p className="text-xl font-semibold text-green-600" data-testid="text-income-total">
+                              +${incomeTotal.toLocaleString()}
                             </p>
                           </div>
                         )}
