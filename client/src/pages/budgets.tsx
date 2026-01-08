@@ -491,11 +491,26 @@ export default function Budgets() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="none">No linked grant</SelectItem>
-                          {grants.filter(g => g.status === 'active').map((grant) => (
-                            <SelectItem key={grant.id} value={String(grant.id)}>
-                              {grant.name} (${Number(grant.amount).toLocaleString()})
-                            </SelectItem>
-                          ))}
+                          {grants.filter(g => g.status === 'pending').length > 0 && (
+                            <>
+                              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Pending Grants</div>
+                              {grants.filter(g => g.status === 'pending').map((grant) => (
+                                <SelectItem key={grant.id} value={String(grant.id)}>
+                                  {grant.name} (${Number(grant.amount).toLocaleString()})
+                                </SelectItem>
+                              ))}
+                            </>
+                          )}
+                          {grants.filter(g => g.status === 'active').length > 0 && (
+                            <>
+                              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Active Grants</div>
+                              {grants.filter(g => g.status === 'active').map((grant) => (
+                                <SelectItem key={grant.id} value={String(grant.id)}>
+                                  {grant.name} (${Number(grant.amount).toLocaleString()})
+                                </SelectItem>
+                              ))}
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
