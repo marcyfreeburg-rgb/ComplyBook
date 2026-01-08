@@ -14,7 +14,7 @@ import { z } from "zod";
 import { Plus, TrendingUp, Trash2, ArrowLeft, Edit } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category } from "@shared/schema";
+import { insertBudgetSchema, insertBudgetItemSchema, type Budget, type BudgetItem, type Category, type Grant } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { CategoryCombobox } from "@/components/category-combobox";
 import {
@@ -50,6 +50,11 @@ export default function Budgets() {
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories", organizationId],
+    enabled: organizationId > 0,
+  });
+
+  const { data: grants = [] } = useQuery<Grant[]>({
+    queryKey: ["/api/grants", organizationId],
     enabled: organizationId > 0,
   });
 
@@ -145,6 +150,7 @@ export default function Budgets() {
   // Form schema with Date objects for easier handling
   const budgetFormSchema = z.object({
     organizationId: z.number(),
+    grantId: z.number().nullable().optional(),
     name: z.string().min(1, "Budget name is required"),
     period: z.enum(["monthly", "quarterly", "yearly"]),
     startDate: z.date(),
@@ -156,6 +162,7 @@ export default function Budgets() {
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
       organizationId,
+      grantId: null,
       name: "",
       period: "monthly" as const,
       startDate: new Date(),
@@ -183,6 +190,7 @@ export default function Budgets() {
     setEditingBudget(null);
     budgetForm.reset({
       organizationId,
+      grantId: null,
       name: "",
       period: "monthly" as const,
       startDate: new Date(),
@@ -194,12 +202,30 @@ export default function Budgets() {
     setEditingBudget(budget);
     budgetForm.reset({
       organizationId: budget.organizationId,
+      grantId: budget.grantId || null,
       name: budget.name,
       period: budget.period,
       startDate: new Date(budget.startDate),
       endDate: new Date(budget.endDate),
     });
     setIsCreateBudgetOpen(true);
+  };
+
+  // When a grant is selected, prefill dates and name with grant info
+  const handleGrantChange = (grantId: number | null) => {
+    budgetForm.setValue("grantId", grantId);
+    if (grantId) {
+      const selectedGrant = grants.find(g => g.id === grantId);
+      if (selectedGrant) {
+        budgetForm.setValue("name", `${selectedGrant.name} Budget`);
+        if (selectedGrant.startDate) {
+          budgetForm.setValue("startDate", new Date(selectedGrant.startDate));
+        }
+        if (selectedGrant.endDate) {
+          budgetForm.setValue("endDate", new Date(selectedGrant.endDate));
+        }
+      }
+    }
   };
 
   const handleDeleteBudget = (id: number) => {
@@ -263,6 +289,37 @@ export default function Budgets() {
             </DialogHeader>
             <Form {...budgetForm}>
               <form onSubmit={budgetForm.handleSubmit(onCreateBudget)} className="space-y-4">
+                <FormField
+                  control={budgetForm.control}
+                  name="grantId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Link to Grant (Optional)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => handleGrantChange(value === "none" ? null : parseInt(value))} 
+                        value={field.value ? String(field.value) : "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-budget-grant">
+                            <SelectValue placeholder="Select a grant (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No linked grant</SelectItem>
+                          {grants.filter(g => g.status === 'active').map((grant) => (
+                            <SelectItem key={grant.id} value={String(grant.id)}>
+                              {grant.name} (${Number(grant.amount).toLocaleString()})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Linking to a grant will prefill dates and track spending against the grant amount
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={budgetForm.control}
                   name="name"
@@ -366,19 +423,26 @@ export default function Budgets() {
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Your Budgets</h2>
-            {budgets.map((budget) => (
+            {budgets.map((budget) => {
+              const linkedGrant = budget.grantId ? grants.find(g => g.id === budget.grantId) : null;
+              return (
               <Card
                 key={budget.id}
                 className={`hover-elevate ${selectedBudgetId === budget.id ? 'ring-2 ring-primary' : ''}`}
                 data-testid={`card-budget-${budget.id}`}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
                   <div className="cursor-pointer flex-1" onClick={() => setSelectedBudgetId(budget.id)}>
                     <CardTitle className="text-base">{budget.name}</CardTitle>
                     <CardDescription>
                       {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)} • 
                       {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
                     </CardDescription>
+                    {linkedGrant && (
+                      <p className="text-xs text-primary mt-1" data-testid={`grant-link-${budget.id}`}>
+                        Grant: {linkedGrant.name} (${Number(linkedGrant.amount).toLocaleString()})
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -406,11 +470,67 @@ export default function Budgets() {
                   </div>
                 </CardHeader>
               </Card>
-            ))}
+              );
+            })}
           </div>
 
           {selectedBudget && (
             <div className="lg:col-span-2 space-y-6">
+              {selectedBudget.grantId && (() => {
+                const linkedGrant = grants.find(g => g.id === selectedBudget.grantId);
+                const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
+                const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
+                const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
+                const remainingGrant = grantAmount - totalSpent;
+                
+                return linkedGrant ? (
+                  <Card data-testid="card-grant-summary">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Linked Grant: {linkedGrant.name}</CardTitle>
+                      <CardDescription>
+                        {linkedGrant.status === 'active' ? 'Active grant' : linkedGrant.status} • 
+                        {linkedGrant.startDate && linkedGrant.endDate && (
+                          ` ${new Date(linkedGrant.startDate).toLocaleDateString()} - ${new Date(linkedGrant.endDate).toLocaleDateString()}`
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Grant Amount</p>
+                          <p className="text-xl font-semibold text-primary" data-testid="text-grant-amount">
+                            ${grantAmount.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Budgeted</p>
+                          <p className="text-xl font-semibold" data-testid="text-total-budgeted">
+                            ${totalBudgeted.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Spent</p>
+                          <p className="text-xl font-semibold" data-testid="text-total-spent">
+                            ${totalSpent.toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Grant Remaining</p>
+                          <p className={`text-xl font-semibold ${remainingGrant < 0 ? 'text-red-600' : 'text-green-600'}`} data-testid="text-grant-remaining">
+                            ${remainingGrant.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      {linkedGrant.restrictions && (
+                        <div className="mt-4 p-3 bg-muted rounded-md">
+                          <p className="text-sm font-medium">Grant Restrictions</p>
+                          <p className="text-sm text-muted-foreground">{linkedGrant.restrictions}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : null;
+              })()}
               <Card>
                 <CardHeader>
                   <div>
