@@ -4803,7 +4803,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied - only owners, admins, and accountants can manage budgets" });
       }
 
-      const updated = await storage.updateBudget(budgetId, req.body);
+      // Convert date strings to Date objects for Drizzle
+      const updateData = { ...req.body };
+      if (updateData.startDate && typeof updateData.startDate === 'string') {
+        updateData.startDate = new Date(updateData.startDate);
+      }
+      if (updateData.endDate && typeof updateData.endDate === 'string') {
+        updateData.endDate = new Date(updateData.endDate);
+      }
+
+      const updated = await storage.updateBudget(budgetId, updateData);
       res.json(updated);
     } catch (error) {
       console.error("Error updating budget:", error);

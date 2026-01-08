@@ -1,0 +1,32 @@
+6:57:30 PM [express] GET /api/grants/168 304 in 643ms :: [{"id":15,"organizationId":168,"name":"Thre…
+6:57:32 PM [express] GET /api/budgets/10/income-items 200 in 343ms :: []
+6:57:33 PM [express] GET /api/budgets/10/items 304 in 344ms :: [{"id":13,"budgetId":10,"categoryId":…
+6:57:33 PM [express] GET /api/budgets/10/vs-actual 304 in 669ms :: [{"categoryId":356,"categoryName"…
+6:57:56 PM [express] POST /api/budgets/10/income-items 201 in 966ms :: {"id":1,"budgetId":10,"organi…
+6:57:57 PM [express] GET /api/budgets/10/income-items 200 in 345ms :: [{"id":1,"budgetId":10,"organi…
+6:58:00 PM [express] GET /api/notifications/168/unread-count 304 in 265ms :: {"count":"0"}
+Error updating budget: TypeError: value.toISOString is not a function
+    at PgTimestamp.mapToDriverValue (file:///opt/render/project/src/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:131:73
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+6:58:27 PM [express] PATCH /api/budgets/10 400 in 883ms :: {"message":"Failed to update budget"}
+6:58:31 PM [express] GET /api/notifications/168/unread-count 304 in 262ms :: {"count":"0"}
+Error updating budget: TypeError: value.toISOString is not a function
+    at PgTimestamp.mapToDriverValue (file:///opt/render/project/src/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:131:73
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+6:58:32 PM [express] PATCH /api/budgets/10 400 in 262ms :: {"message":"Failed to update budget"}
