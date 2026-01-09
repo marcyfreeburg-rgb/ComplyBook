@@ -1126,6 +1126,8 @@ export const plaidAccounts = pgTable("plaid_accounts", {
   ownerAddresses: jsonb("owner_addresses"),
   authFetchedAt: timestamp("auth_fetched_at"),
   identityFetchedAt: timestamp("identity_fetched_at"),
+  initialBalance: numeric("initial_balance", { precision: 12, scale: 2 }),
+  initialBalanceDate: date("initial_balance_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

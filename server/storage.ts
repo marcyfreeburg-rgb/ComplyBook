@@ -505,6 +505,7 @@ export interface IStorage {
   updatePlaidAccountAuth(accountId: string, data: { accountNumber: string | null; routingNumber: string | null; wireRoutingNumber: string | null }): Promise<void>;
   updatePlaidAccountIdentity(accountId: string, data: { ownerNames: string[]; ownerEmails: string[]; ownerPhoneNumbers: string[]; ownerAddresses: any[] }): Promise<void>;
   getPlaidAccountByAccountId(accountId: string): Promise<PlaidAccount | undefined>;
+  updatePlaidAccountInitialBalance(accountId: string, initialBalance: string, initialBalanceDate: string): Promise<void>;
   clearPlaidAccountSensitiveData(plaidItemId: number): Promise<void>;
   deletePlaidAccountByAccountId(accountId: string): Promise<void>;
 
@@ -4080,6 +4081,17 @@ export class DatabaseStorage implements IStorage {
       .from(plaidAccounts)
       .where(eq(plaidAccounts.accountId, accountId));
     return account;
+  }
+
+  async updatePlaidAccountInitialBalance(accountId: string, initialBalance: string, initialBalanceDate: string): Promise<void> {
+    await db
+      .update(plaidAccounts)
+      .set({
+        initialBalance,
+        initialBalanceDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidAccounts.accountId, accountId));
   }
 
   async clearPlaidAccountSensitiveData(plaidItemId: number): Promise<void> {
