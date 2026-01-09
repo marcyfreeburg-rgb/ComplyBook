@@ -48,6 +48,18 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    description: "",
+    amount: "",
+    type: "expense" as "income" | "expense",
+    categoryId: "",
+    vendorId: "",
+    clientId: "",
+    donorId: "",
+    grantId: "",
+  });
   
   // Sorting state
   type SortColumn = 'date' | 'description' | 'category' | 'grant' | 'type' | 'source' | 'amount';
@@ -198,6 +210,89 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       });
     },
   });
+
+  const createTransactionMutation = useMutation({
+    mutationFn: async (data: {
+      organizationId: number;
+      date: string;
+      description: string;
+      amount: string;
+      type: 'income' | 'expense';
+      categoryId?: number | null;
+      vendorId?: number | null;
+      clientId?: number | null;
+      donorId?: number | null;
+      grantId?: number | null;
+      createdBy: string;
+      source: string;
+    }) => {
+      return await apiRequest('POST', '/api/transactions', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      setIsAddDialogOpen(false);
+      setAddForm({
+        date: new Date().toISOString().split('T')[0],
+        description: "",
+        amount: "",
+        type: "expense",
+        categoryId: "",
+        vendorId: "",
+        clientId: "",
+        donorId: "",
+        grantId: "",
+      });
+      toast({
+        title: "Transaction Created",
+        description: "The transaction has been added successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create transaction.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddTransaction = () => {
+    if (!addForm.description || !addForm.amount || !addForm.date) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in date, description, and amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parsedAmount = parseFloat(addForm.amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid positive amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createTransactionMutation.mutate({
+      organizationId: currentOrganization.id,
+      date: addForm.date,
+      description: addForm.description.trim(),
+      amount: parsedAmount.toString(),
+      type: addForm.type,
+      categoryId: addForm.categoryId && addForm.categoryId !== "none" ? parseInt(addForm.categoryId) : null,
+      vendorId: addForm.vendorId && addForm.vendorId !== "none" ? parseInt(addForm.vendorId) : null,
+      clientId: addForm.clientId && addForm.clientId !== "none" ? parseInt(addForm.clientId) : null,
+      donorId: addForm.donorId && addForm.donorId !== "none" ? parseInt(addForm.donorId) : null,
+      grantId: addForm.grantId && addForm.grantId !== "none" ? parseInt(addForm.grantId) : null,
+      createdBy: userId,
+      source: 'manual',
+    });
+  };
 
   const handleSelectTransaction = (id: number, checked: boolean) => {
     const newSelected = new Set(selectedTransactions);
@@ -480,6 +575,10 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               <Upload className="h-4 w-4 mr-2" />
               Import Transactions
             </a>
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-transaction">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Transaction
           </Button>
         </div>
       </div>
@@ -945,6 +1044,178 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete {selectedTransactions.size} Transactions
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Transaction</DialogTitle>
+            <DialogDescription>
+              Manually record a new income or expense transaction
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="add-type">Type</Label>
+                <Select value={addForm.type} onValueChange={(value: 'income' | 'expense') => setAddForm({ ...addForm, type: value })}>
+                  <SelectTrigger id="add-type" data-testid="select-add-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="add-date">Date</Label>
+                <Input
+                  id="add-date"
+                  type="date"
+                  value={addForm.date}
+                  onChange={(e) => setAddForm({ ...addForm, date: e.target.value })}
+                  data-testid="input-add-date"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="add-description">Description</Label>
+              <Textarea
+                id="add-description"
+                placeholder="What is this transaction for?"
+                value={addForm.description}
+                onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
+                data-testid="input-add-description"
+              />
+            </div>
+            <div>
+              <Label htmlFor="add-amount">Amount</Label>
+              <Input
+                id="add-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={addForm.amount}
+                onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })}
+                data-testid="input-add-amount"
+              />
+            </div>
+            <div>
+              <Label htmlFor="add-category">Category</Label>
+              <Select value={addForm.categoryId || "none"} onValueChange={(value) => setAddForm({ ...addForm, categoryId: value === "none" ? "" : value })}>
+                <SelectTrigger id="add-category" data-testid="select-add-category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Uncategorized</SelectItem>
+                  {categories.filter(c => c.type === addForm.type).map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.parentCategoryId ? `${categories.find(p => p.id === category.parentCategoryId)?.name} - ` : ''}{category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {addForm.type === 'expense' && (
+              <div>
+                <Label htmlFor="add-vendor">Vendor (Optional)</Label>
+                <Select value={addForm.vendorId || "none"} onValueChange={(value) => setAddForm({ ...addForm, vendorId: value === "none" ? "" : value })}>
+                  <SelectTrigger id="add-vendor" data-testid="select-add-vendor">
+                    <SelectValue placeholder="Select vendor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {vendors.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                        {vendor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {addForm.type === 'income' && (
+              <>
+                <div>
+                  <Label htmlFor="add-client">Client (Optional)</Label>
+                  <Select value={addForm.clientId || "none"} onValueChange={(value) => setAddForm({ ...addForm, clientId: value === "none" ? "" : value })}>
+                    <SelectTrigger id="add-client" data-testid="select-add-client">
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {currentOrganization.type === 'nonprofit' && (
+                  <div>
+                    <Label htmlFor="add-donor">Donor (Optional)</Label>
+                    <Select value={addForm.donorId || "none"} onValueChange={(value) => setAddForm({ ...addForm, donorId: value === "none" ? "" : value })}>
+                      <SelectTrigger id="add-donor" data-testid="select-add-donor">
+                        <SelectValue placeholder="Select donor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {donors.map((donor) => (
+                          <SelectItem key={donor.id} value={donor.id.toString()}>
+                            {donor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            )}
+            {currentOrganization.type === 'nonprofit' && (
+              <div>
+                <Label htmlFor="add-grant">Grant / Fund (Optional)</Label>
+                <Select value={addForm.grantId || "none"} onValueChange={(value) => setAddForm({ ...addForm, grantId: value === "none" ? "" : value })}>
+                  <SelectTrigger id="add-grant" data-testid="select-add-grant">
+                    <SelectValue placeholder="Select grant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Grant (Unrestricted)</SelectItem>
+                    {grants.map((grant) => (
+                      <SelectItem key={grant.id} value={grant.id.toString()}>
+                        {grant.name} ({grant.fundType === 'restricted' ? 'Restricted' : 'Unrestricted'}) - {formatCurrency(parseFloat(grant.remainingBalance))} remaining
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} data-testid="button-cancel-add">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddTransaction} 
+              disabled={createTransactionMutation.isPending || !addForm.description || !addForm.amount || !addForm.date}
+              data-testid="button-submit-add"
+            >
+              {createTransactionMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Transaction
                 </>
               )}
             </Button>
