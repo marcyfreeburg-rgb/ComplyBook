@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft, CreditCard, User, Phone, Mail, MapPin, Key, AlertTriangle, Shield, Clock, FileText, TrendingUp } from "lucide-react";
+import { Building2, RefreshCw, Trash2, DollarSign, CheckCircle2, XCircle, ArrowLeft, CreditCard, User, Phone, Mail, MapPin, Key, AlertTriangle, Shield, Clock, FileText, TrendingUp, Wallet, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Link } from "wouter";
 import {
@@ -41,6 +44,8 @@ interface PlaidAccount {
   isoCurrencyCode: string | null;
   institutionName: string | null;
   itemId: string;
+  initialBalance: string | null;
+  initialBalanceDate: string | null;
 }
 
 interface PlaidItem {
@@ -85,6 +90,9 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   const [activeTab, setActiveTab] = useState("accounts");
   const [updateModeItemId, setUpdateModeItemId] = useState<number | null>(null);
   const [updateLinkToken, setUpdateLinkToken] = useState<string | null>(null);
+  const [startingBalanceAccount, setStartingBalanceAccount] = useState<PlaidAccount | null>(null);
+  const [startingBalanceValue, setStartingBalanceValue] = useState("");
+  const [startingBalanceDate, setStartingBalanceDate] = useState("");
 
   // Fetch connected accounts
   const { data: accounts, isLoading } = useQuery<PlaidAccount[]>({
@@ -285,6 +293,33 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
       toast({
         title: "Error",
         description: "Failed to start bank re-authentication. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update initial balance mutation
+  const updateInitialBalance = useMutation({
+    mutationFn: async ({ accountId, initialBalance, initialBalanceDate }: { accountId: string; initialBalance: string; initialBalanceDate: string }) => {
+      return await apiRequest('PATCH', `/api/plaid/account/${accountId}/initial-balance`, {
+        initialBalance,
+        initialBalanceDate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
+      toast({
+        title: "Starting Balance Set",
+        description: "The account's starting balance has been saved.",
+      });
+      setStartingBalanceAccount(null);
+      setStartingBalanceValue("");
+      setStartingBalanceDate("");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update starting balance. Please try again.",
         variant: "destructive",
       });
     },
@@ -711,26 +746,49 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
                             <p className="text-sm text-muted-foreground mt-1">{account.officialName}</p>
                           )}
                         </div>
-                        <div className="text-right">
-                          {account.currentBalance && (
-                            <div className="flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-mono font-semibold text-foreground" data-testid={`balance-${account.id}`}>
-                                {parseFloat(account.currentBalance).toLocaleString('en-US', {
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            {account.currentBalance && (
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-mono font-semibold text-foreground" data-testid={`balance-${account.id}`}>
+                                  {parseFloat(account.currentBalance).toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </span>
+                              </div>
+                            )}
+                            {account.availableBalance && account.availableBalance !== account.currentBalance && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Available: ${parseFloat(account.availableBalance).toLocaleString('en-US', {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
                                 })}
-                              </span>
-                            </div>
-                          )}
-                          {account.availableBalance && account.availableBalance !== account.currentBalance && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Available: ${parseFloat(account.availableBalance).toLocaleString('en-US', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </p>
-                          )}
+                              </p>
+                            )}
+                            {account.initialBalance && account.initialBalanceDate && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Starting: ${parseFloat(account.initialBalance).toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })} on {account.initialBalanceDate}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setStartingBalanceAccount(account);
+                              setStartingBalanceValue(account.initialBalance || "");
+                              setStartingBalanceDate(account.initialBalanceDate || "");
+                            }}
+                            data-testid={`button-set-balance-${account.id}`}
+                          >
+                            <Wallet className="h-4 w-4 mr-1" />
+                            {account.initialBalance ? "Edit" : "Set"} Balance
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -971,6 +1029,107 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Starting Balance Dialog */}
+      <Dialog open={!!startingBalanceAccount} onOpenChange={(open) => {
+        if (!open) {
+          setStartingBalanceAccount(null);
+          setStartingBalanceValue("");
+          setStartingBalanceDate("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Set Starting Balance
+            </DialogTitle>
+            <DialogDescription>
+              Enter the account balance as of a specific date. This is used to calculate running balances for your transactions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="account-name">Account</Label>
+              <div className="text-sm text-muted-foreground">
+                {startingBalanceAccount?.name}
+                {startingBalanceAccount?.mask && ` ••••${startingBalanceAccount.mask}`}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="starting-balance">Starting Balance</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="starting-balance"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="pl-9"
+                  value={startingBalanceValue}
+                  onChange={(e) => setStartingBalanceValue(e.target.value)}
+                  data-testid="input-starting-balance"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the balance from your bank statement for the date below.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="balance-date">Balance Date</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="balance-date"
+                  type="date"
+                  className="pl-9"
+                  value={startingBalanceDate}
+                  onChange={(e) => setStartingBalanceDate(e.target.value)}
+                  data-testid="input-balance-date"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This should be the date that corresponds to your starting balance.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStartingBalanceAccount(null);
+                setStartingBalanceValue("");
+                setStartingBalanceDate("");
+              }}
+              data-testid="button-cancel-balance"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (startingBalanceAccount && startingBalanceValue && startingBalanceDate) {
+                  updateInitialBalance.mutate({
+                    accountId: startingBalanceAccount.accountId,
+                    initialBalance: startingBalanceValue,
+                    initialBalanceDate: startingBalanceDate,
+                  });
+                }
+              }}
+              disabled={!startingBalanceValue || !startingBalanceDate || updateInitialBalance.isPending}
+              data-testid="button-save-balance"
+            >
+              {updateInitialBalance.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Balance"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
