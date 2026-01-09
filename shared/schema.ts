@@ -886,6 +886,7 @@ export const transactions = pgTable("transactions", {
   source: transactionSourceEnum("source").notNull().default('manual'),
   externalId: varchar("external_id", { length: 255 }),
   importBatchId: varchar("import_batch_id", { length: 255 }),
+  bankAccountId: integer("bank_account_id").references(() => plaidAccounts.id, { onDelete: 'set null' }),
   // Transaction split fields - for splitting a transaction into multiple categorized parts
   parentTransactionId: integer("parent_transaction_id"),
   hasSplits: boolean("has_splits").notNull().default(false),

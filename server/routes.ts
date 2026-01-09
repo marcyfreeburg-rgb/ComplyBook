@@ -5949,16 +5949,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
 
             if (matchingManualTx) {
-              // Update the existing manual transaction with Plaid's externalId and source
+              // Look up the internal bank account ID for this Plaid account
+              const plaidAccount = await storage.getPlaidAccountByAccountId(plaidTx.account_id);
+              
+              // Update the existing manual transaction with Plaid's externalId, source, and bank account
               await storage.updateTransaction(matchingManualTx.id, {
                 externalId: plaidTx.transaction_id,
                 source: 'plaid',
+                bankAccountId: plaidAccount?.id ?? null,
               });
               console.log(`[Plaid Sync] Linked existing manual transaction ${matchingManualTx.id} to Plaid transaction ${plaidTx.transaction_id}`);
               totalImported++;
               continue;
             }
 
+            // Look up the internal bank account ID for this Plaid account
+            const plaidAccount = await storage.getPlaidAccountByAccountId(plaidTx.account_id);
+            
             // Create new transaction with Plaid's transaction_id stored in externalId
             await storage.createTransaction({
               organizationId,
@@ -5971,6 +5978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               createdBy: userId,
               source: 'plaid',
               externalId: plaidTx.transaction_id,
+              bankAccountId: plaidAccount?.id ?? null,
             });
 
             totalImported++;
