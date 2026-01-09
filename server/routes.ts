@@ -2539,6 +2539,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Split Transaction
+  app.post('/api/transactions/:id/split', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+      const { splits } = req.body;
+
+      if (!Array.isArray(splits) || splits.length < 2) {
+        return res.status(400).json({ message: "At least 2 splits are required" });
+      }
+
+      const existingTransaction = await storage.getTransaction(transactionId);
+      if (!existingTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit transactions" });
+      }
+
+      const createdSplits = await storage.splitTransaction(transactionId, splits, userId);
+      
+      await storage.logUpdate(existingTransaction.organizationId, userId, 'transaction', transactionId.toString(), existingTransaction, { action: 'split', splitCount: createdSplits.length });
+      
+      res.json({ message: "Transaction split successfully", splits: createdSplits });
+    } catch (error: any) {
+      console.error("Error splitting transaction:", error);
+      res.status(400).json({ message: error.message || "Failed to split transaction" });
+    }
+  });
+
+  // Get Transaction Splits
+  app.get('/api/transactions/:id/splits', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+
+      const existingTransaction = await storage.getTransaction(transactionId);
+      if (!existingTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const splits = await storage.getTransactionSplits(transactionId);
+      res.json(splits);
+    } catch (error) {
+      console.error("Error getting transaction splits:", error);
+      res.status(500).json({ message: "Failed to get transaction splits" });
+    }
+  });
+
+  // Unsplit Transaction (restore to original)
+  app.post('/api/transactions/:id/unsplit', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactionId = parseInt(req.params.id);
+
+      const existingTransaction = await storage.getTransaction(transactionId);
+      if (!existingTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to edit transactions" });
+      }
+
+      const restoredTransaction = await storage.unsplitTransaction(transactionId);
+      
+      await storage.logUpdate(existingTransaction.organizationId, userId, 'transaction', transactionId.toString(), existingTransaction, { action: 'unsplit' });
+      
+      res.json({ message: "Transaction unsplit successfully", transaction: restoredTransaction });
+    } catch (error: any) {
+      console.error("Error unsplitting transaction:", error);
+      res.status(400).json({ message: error.message || "Failed to unsplit transaction" });
+    }
+  });
+
   // Bulk Operations for Transactions
   app.post('/api/transactions/bulk-categorize', isAuthenticated, async (req: any, res) => {
     try {
