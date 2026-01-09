@@ -886,6 +886,11 @@ export const transactions = pgTable("transactions", {
   source: transactionSourceEnum("source").notNull().default('manual'),
   externalId: varchar("external_id", { length: 255 }),
   importBatchId: varchar("import_batch_id", { length: 255 }),
+  // Transaction split fields - for splitting a transaction into multiple categorized parts
+  parentTransactionId: integer("parent_transaction_id"),
+  hasSplits: boolean("has_splits").notNull().default(false),
+  isSplitChild: boolean("is_split_child").notNull().default(false),
+  originalAmount: numeric("original_amount", { precision: 12, scale: 2 }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -902,6 +907,23 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
+
+export const splitTransactionItemSchema = z.object({
+  amount: z.string().or(z.number()).transform(val => String(val)),
+  description: z.string().optional(),
+  categoryId: z.number().optional().nullable(),
+  grantId: z.number().optional().nullable(),
+  fundId: z.number().optional().nullable(),
+  programId: z.number().optional().nullable(),
+  functionalCategory: z.enum(['program', 'administrative', 'fundraising']).optional().nullable(),
+});
+
+export const splitTransactionSchema = z.object({
+  splits: z.array(splitTransactionItemSchema).min(2, "At least 2 splits required"),
+});
+
+export type SplitTransactionItem = z.infer<typeof splitTransactionItemSchema>;
+export type SplitTransactionInput = z.infer<typeof splitTransactionSchema>;
 
 // ============================================
 // TRANSACTION ATTACHMENTS (Receipts & Documents)
