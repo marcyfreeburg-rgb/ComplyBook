@@ -9,13 +9,10 @@ import {
   FileText, 
   Gift, 
   TrendingUp, 
-  Users, 
-  Building2, 
   Landmark, 
   PieChart, 
   Shield, 
   Check,
-  Star,
   Play,
   ArrowRight,
   Sparkles,
@@ -313,7 +310,6 @@ export default function Landing() {
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -369,9 +365,6 @@ export default function Landing() {
               </Button>
             </a>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">
-            Trusted by 50+ organizations managing over $2M in grants
-          </p>
         </div>
       </section>
 
@@ -474,118 +467,6 @@ export default function Landing() {
             </p>
           </div>
           <InteractiveDemo />
-        </div>
-      </section>
-
-      {/* Testimonials / Early Stats */}
-      <section id="testimonials" className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <Badge variant="secondary" className="mb-4">Beta Users</Badge>
-            <h2 className="text-3xl font-semibold text-foreground mb-4">
-              Trusted by Mission-Driven Organizations
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Early adopters are already saving hours on financial management
-            </p>
-          </div>
-          
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-primary" data-testid="text-stat-orgs">50+</p>
-                <p className="text-sm text-muted-foreground">Organizations</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-primary" data-testid="text-stat-transactions">15K+</p>
-                <p className="text-sm text-muted-foreground">Transactions Tracked</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-primary" data-testid="text-stat-grants">$2M+</p>
-                <p className="text-sm text-muted-foreground">Grants Managed</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-primary" data-testid="text-stat-hours">10hrs</p>
-                <p className="text-sm text-muted-foreground">Saved per Month</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Testimonials */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-4">
-                  "Finally, accounting software that understands nonprofits. Grant tracking and fund accounting work exactly how we need them to."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Sarah M.</p>
-                    <p className="text-xs text-muted-foreground">Executive Director, Community Foundation</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-4">
-                  "We cut our monthly bookkeeping time in half. The bank sync and automatic categorization are game changers."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Michael T.</p>
-                    <p className="text-xs text-muted-foreground">CFO, Youth Services Nonprofit</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-4">
-                  "As a government contractor, DCAA compliance was always stressful. ComplyBook makes it straightforward."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Jennifer L.</p>
-                    <p className="text-xs text-muted-foreground">Owner, J&L Consulting</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </section>
 
