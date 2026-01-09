@@ -34,6 +34,18 @@ import { formatCurrency } from "@/lib/utils";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
+interface PlaidAccountWithInitialBalance {
+  id: number;
+  accountId: string;
+  name: string;
+  mask: string | null;
+  type: string | null;
+  subtype: string | null;
+  institutionName: string | null;
+  initialBalance: string | null;
+  initialBalanceDate: string | null;
+}
+
 interface TransactionLogProps {
   currentOrganization: OrganizationWithRole;
   userId: string;
@@ -44,6 +56,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [accountFilter, setAccountFilter] = useState<string>("all");
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
@@ -112,6 +125,11 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   // Check if organization has connected bank accounts
   const { data: plaidItems = [] } = useQuery<{ id: number; itemId: string; institutionName: string }[]>({
     queryKey: [`/api/plaid/items/${currentOrganization.id}`],
+  });
+
+  // Fetch Plaid accounts with initial balance info for running balance calculation
+  const { data: plaidAccounts = [] } = useQuery<PlaidAccountWithInitialBalance[]>({
+    queryKey: [`/api/plaid/accounts/${currentOrganization.id}`],
   });
 
   const syncPlaidTransactionsMutation = useMutation({
@@ -466,7 +484,10 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSource = sourceFilter === "all" || (transaction.source || "manual") === sourceFilter;
       const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-      return matchesSearch && matchesSource && matchesType;
+      const matchesAccount = accountFilter === "all" || 
+        (accountFilter === "unlinked" && !transaction.bankAccountId) ||
+        (transaction.bankAccountId?.toString() === accountFilter);
+      return matchesSearch && matchesSource && matchesType && matchesAccount;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -501,13 +522,43 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const chronologicalTransactions = [...filteredTransactions].sort((a, b) => 
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+  
+  // Get starting balance based on selected account filter
+  const selectedAccount = accountFilter !== "all" && accountFilter !== "unlinked"
+    ? plaidAccounts.find(a => a.id.toString() === accountFilter)
+    : null;
+  const startingBalance = selectedAccount?.initialBalance 
+    ? parseFloat(selectedAccount.initialBalance) 
+    : 0;
+  const startingBalanceDate = selectedAccount?.initialBalanceDate
+    ? new Date(selectedAccount.initialBalanceDate + 'T00:00:00')
+    : null;
+  
   const balanceMap = new Map<number, number>();
   let runningBalance = 0;
+  let hasSeenBalanceDate = false;
+  
   chronologicalTransactions.forEach(t => {
     const amount = parseFloat(t.amount);
+    const transactionDate = new Date(t.date);
+    
+    // If we have a starting balance date and this is the first transaction on or after it,
+    // reset the running balance to the starting balance
+    if (startingBalanceDate && !hasSeenBalanceDate && transactionDate >= startingBalanceDate) {
+      runningBalance = startingBalance;
+      hasSeenBalanceDate = true;
+    }
+    
+    // Add the transaction to running balance
     runningBalance += t.type === 'income' ? amount : -amount;
     balanceMap.set(t.id, runningBalance);
   });
+  
+  // If we never saw the balance date (all transactions are before it), still apply starting balance
+  if (startingBalanceDate && !hasSeenBalanceDate && chronologicalTransactions.length > 0) {
+    // All visible transactions are before the starting balance date
+    // Show them with their own running total, as the starting balance isn't applicable yet
+  }
 
   const transactionsWithBalance = filteredTransactions.map(transaction => ({
     ...transaction,
@@ -676,10 +727,43 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                   <SelectItem value="expense">Expense</SelectItem>
                 </SelectContent>
               </Select>
+              {plaidAccounts.length > 0 && (
+                <Select value={accountFilter} onValueChange={setAccountFilter}>
+                  <SelectTrigger className="w-[180px]" data-testid="select-account-filter">
+                    <SelectValue placeholder="Account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Accounts</SelectItem>
+                    <SelectItem value="unlinked">Manual / Unlinked</SelectItem>
+                    {plaidAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id.toString()}>
+                        {account.name} {account.mask ? `••${account.mask}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          {/* Starting balance info banner */}
+          {selectedAccount && (
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm flex items-center justify-between" data-testid="banner-starting-balance">
+              <div>
+                <span className="text-muted-foreground">Starting balance for {selectedAccount.name}:</span>
+                {selectedAccount.initialBalance && selectedAccount.initialBalanceDate ? (
+                  <span className="ml-2 font-medium">
+                    {formatCurrency(parseFloat(selectedAccount.initialBalance))} as of {selectedAccount.initialBalanceDate}
+                  </span>
+                ) : (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400">
+                    Not set - <a href="/bank-accounts" className="underline hover:no-underline">Set starting balance</a>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading transactions...</div>
           ) : filteredTransactions.length === 0 ? (
