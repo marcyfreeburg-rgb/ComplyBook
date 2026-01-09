@@ -20,7 +20,9 @@ import {
   BarChart3,
   Clock,
   DollarSign,
-  Scale
+  Scale,
+  FolderOpen,
+  FileCheck
 } from "lucide-react";
 import type { Organization } from "@shared/schema";
 
@@ -37,9 +39,10 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
       color: "text-blue-600",
       bgColor: "bg-blue-100 dark:bg-blue-900/30",
       steps: [
-        { text: "Go to Settings to add your organization details and tax ID", link: "/settings" },
+        { text: "Go to Settings to add your organization details, tax ID, and DUNS number", link: "/settings" },
         { text: "Upload your logo and customize branding in Brand Settings", link: "/brand-settings" },
         { text: "Set up your fiscal year and accounting preferences", link: "/settings" },
+        { text: "Invite team members and assign roles (owner, admin, accountant, viewer)", link: "/settings" },
       ],
     },
     {
@@ -52,19 +55,19 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
         { text: "Navigate to Bank Accounts to connect via Plaid", link: "/bank-accounts" },
         { text: "Select your financial institution and log in securely", link: "/bank-accounts" },
         { text: "Choose which accounts to sync for automatic transaction import", link: "/bank-accounts" },
-        { text: "Set a starting balance for each account to track running balances correctly", link: "/bank-accounts" },
+        { text: "Set a starting balance and date for each account to track running balances correctly", link: "/bank-accounts" },
         { text: "Filter transactions by account in the Transaction Log to view per-account balances", link: "/transaction-log" },
       ],
     },
     {
       title: "3. Create Income & Expense Categories",
-      description: "Set up categories for proper financial tracking and tax compliance",
+      description: "Set up categories for proper financial tracking and DCAA compliance",
       icon: BookOpen,
       color: "text-purple-600",
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
       steps: [
-        { text: "Go to Categories to create income categories (Sales, Services, Consulting)", link: "/categories" },
-        { text: "Add expense categories (Labor, Materials, Overhead, G&A)", link: "/categories" },
+        { text: "Go to Categories to create income categories (Sales, Services, Contract Revenue)", link: "/categories" },
+        { text: "Add expense categories (Direct Labor, Materials, Overhead, G&A, Fringe)", link: "/categories" },
         { text: "Mark tax-deductible categories for proper tax reporting", link: "/categories" },
       ],
     },
@@ -75,45 +78,48 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
       color: "text-orange-600",
       bgColor: "bg-orange-100 dark:bg-orange-900/30",
       steps: [
-        { text: "Add your clients in the Clients section", link: "/clients" },
-        { text: "Add your vendors and suppliers", link: "/vendors" },
-        { text: "Include contact information for invoicing and 1099 generation", link: "/clients" },
+        { text: "Add your clients with contact information and billing details", link: "/clients" },
+        { text: "Add your vendors and suppliers for bill tracking", link: "/vendors" },
+        { text: "Include tax IDs for 1099 generation at year end", link: "/clients" },
+        { text: "Track payment terms and outstanding balances", link: "/vendors" },
       ],
     },
     {
       title: "5. Manage Government Contracts",
-      description: "Track contracts, projects, and maintain DCAA compliance",
+      description: "Track contracts, projects, milestones, and maintain DCAA compliance",
       icon: Briefcase,
       color: "text-indigo-600",
       bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
       steps: [
-        { text: "Add your government contracts with details and funding", link: "/government-contracts" },
+        { text: "Add government contracts with contract number, value, and period of performance", link: "/government-contracts" },
         { text: "Create projects for job costing under each contract", link: "/government-contracts" },
-        { text: "Set up indirect cost rates for overhead and G&A", link: "/government-contracts" },
+        { text: "Set up indirect cost rates (overhead, G&A, fringe) for accurate billing", link: "/government-contracts" },
+        { text: "Track contract milestones and deliverables", link: "/government-contracts" },
       ],
     },
     {
-      title: "6. Track Time & Labor Costs",
-      description: "DCAA-compliant timekeeping for government contract billing",
+      title: "6. Track Labor & Project Costs",
+      description: "Track labor costs and billing rates for government contracts",
       icon: Clock,
       color: "text-teal-600",
       bgColor: "bg-teal-100 dark:bg-teal-900/30",
       steps: [
-        { text: "Record time entries against specific projects and contracts", link: "/government-contracts" },
-        { text: "Use clock in/out for real-time time tracking", link: "/government-contracts" },
-        { text: "Submit and approve timesheets for billing", link: "/government-contracts" },
+        { text: "Set up employee labor rates and billing rates", link: "/employees" },
+        { text: "Track labor costs against projects and contracts", link: "/government-contracts" },
+        { text: "View project labor summaries and cost breakdowns", link: "/government-contracts" },
       ],
     },
     {
       title: "7. Job Costing & Project Management",
-      description: "Track costs by project with labor, materials, and overhead",
+      description: "Track costs by project with labor, materials, overhead, and revenue recognition",
       icon: DollarSign,
       color: "text-cyan-600",
       bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
       steps: [
-        { text: "Record project costs (direct labor, materials, subcontracts)", link: "/government-contracts" },
-        { text: "View project profitability and budget vs actual", link: "/government-contracts" },
-        { text: "Track milestones and deliverables", link: "/government-contracts" },
+        { text: "Record project costs (direct labor, materials, subcontracts, ODCs)", link: "/government-contracts" },
+        { text: "View project profitability with budget vs actual comparisons", link: "/government-contracts" },
+        { text: "Track revenue recognition and billing status", link: "/government-contracts" },
+        { text: "Clone projects from templates for quick setup", link: "/government-contracts" },
       ],
     },
     {
@@ -123,10 +129,10 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
       color: "text-rose-600",
       bgColor: "bg-rose-100 dark:bg-rose-900/30",
       steps: [
-        { text: "Create your annual operating budget and link to contracts", link: "/budgets" },
-        { text: "Add income sources like cost share, subcontract revenue, and other funding", link: "/budgets" },
-        { text: "Set category-level budget allocations and track vs actual", link: "/budgets" },
-        { text: "Export budgets to CSV or PDF for proposals and reporting", link: "/budgets" },
+        { text: "Create budgets linked to contracts and projects", link: "/budgets" },
+        { text: "Add income sources: contract funding, cost share, subcontract revenue", link: "/budgets" },
+        { text: "Set category-level budget allocations with labor and materials", link: "/budgets" },
+        { text: "Track budget vs actual spending in real-time", link: "/budgets" },
       ],
     },
     {
@@ -137,10 +143,10 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
       bgColor: "bg-amber-100 dark:bg-amber-900/30",
       steps: [
         { text: "Use Transaction Log for day-to-day entries with running balances", link: "/transaction-log" },
-        { text: "Import transactions from QuickBooks, Wave, or sync from your bank", link: "/accounting-imports" },
+        { text: "Sync transactions automatically from connected bank accounts", link: "/bank-accounts" },
+        { text: "Import transactions from QuickBooks, Wave, or CSV files", link: "/accounting-imports" },
         { text: "Split transactions into multiple categories for accurate cost allocation", link: "/transaction-log" },
         { text: "Use AI categorization to automatically classify transactions in bulk", link: "/transaction-log" },
-        { text: "Link transactions to contracts and projects for job costing", link: "/transaction-log" },
       ],
     },
     {
@@ -150,33 +156,48 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
       color: "text-violet-600",
       bgColor: "bg-violet-100 dark:bg-violet-900/30",
       steps: [
-        { text: "Create and send professional invoices to clients", link: "/invoices" },
-        { text: "Track vendor bills and schedule payments", link: "/bills" },
-        { text: "Set up automated bill payments", link: "/bill-payments" },
+        { text: "Create and send professional invoices to clients with your branding", link: "/invoices" },
+        { text: "Track invoice payments and outstanding balances", link: "/invoices" },
+        { text: "Add vendor bills with due dates and payment terms", link: "/bills" },
+        { text: "Process bill payments and track payment history", link: "/bill-payments" },
       ],
     },
     {
       title: "11. Payroll & Employee Management",
-      description: "Manage employee compensation and payroll processing",
+      description: "Manage employee compensation, deductions, and payroll processing",
       icon: Users,
       color: "text-pink-600",
       bgColor: "bg-pink-100 dark:bg-pink-900/30",
       steps: [
-        { text: "Add employees and their compensation details", link: "/employees" },
-        { text: "Set up deductions (taxes, benefits, retirement)", link: "/deductions" },
-        { text: "Process payroll runs and generate reports", link: "/payroll" },
+        { text: "Add employees with compensation details and labor rates", link: "/employees" },
+        { text: "Set up deductions (federal/state taxes, benefits, 401k)", link: "/deductions" },
+        { text: "Process payroll runs with automatic calculations", link: "/payroll" },
+        { text: "Generate payroll reports for tax filings", link: "/payroll" },
       ],
     },
     {
-      title: "12. Compliance & Reporting",
-      description: "Generate reports for DCAA audits and tax compliance",
+      title: "12. Bank Reconciliation",
+      description: "Reconcile bank statements and manage compliance",
+      icon: ClipboardList,
+      color: "text-lime-600",
+      bgColor: "bg-lime-100 dark:bg-lime-900/30",
+      steps: [
+        { text: "Go to Bank Reconciliation to match transactions with bank statements", link: "/bank-reconciliation" },
+        { text: "Use Reconciliation Hub for a complete reconciliation overview", link: "/reconciliation-hub" },
+      ],
+    },
+    {
+      title: "13. Compliance & Reporting",
+      description: "Generate reports for DCAA audits, tax compliance, and financial statements",
       icon: Scale,
       color: "text-emerald-600",
       bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
       steps: [
-        { text: "View compliance dashboard for audit readiness", link: "/compliance-dashboard" },
-        { text: "Generate tax reports including 1099s", link: "/tax-reporting" },
-        { text: "Export financial statements and custom reports", link: "/reports" },
+        { text: "View compliance dashboard for DCAA audit readiness", link: "/compliance-dashboard" },
+        { text: "Generate tax reports including 1099s for vendors and contractors", link: "/tax-reporting" },
+        { text: "Export financial statements (income statement, balance sheet)", link: "/reports" },
+        { text: "Build custom reports with your own criteria", link: "/custom-reports" },
+        { text: "View complete audit trail of all transactions", link: "/audit-trail" },
       ],
     },
   ];
@@ -210,7 +231,8 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
               <h3 className="font-semibold text-lg mb-1">Quick Start Tip for Government Contractors</h3>
               <p className="text-muted-foreground text-sm">
                 Start by setting up your contracts and projects in the Government Contracts section. 
-                Then configure your indirect cost rates (overhead, G&A) to ensure accurate job costing and DCAA compliance.
+                Then configure your indirect cost rates (overhead, G&A, fringe) to ensure accurate job costing and DCAA compliance.
+                Connect your bank accounts and set starting balances for accurate running balance tracking.
               </p>
             </div>
           </div>
