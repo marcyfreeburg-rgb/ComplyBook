@@ -2550,9 +2550,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least 2 splits are required" });
       }
 
+      for (const split of splits) {
+        const amount = parseFloat(split.amount);
+        if (isNaN(amount) || amount <= 0) {
+          return res.status(400).json({ message: "All split amounts must be positive numbers" });
+        }
+      }
+
       const existingTransaction = await storage.getTransaction(transactionId);
       if (!existingTransaction) {
         return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      const totalSplitAmount = splits.reduce((sum: number, s: any) => sum + parseFloat(s.amount), 0);
+      const originalAmount = parseFloat(existingTransaction.amount);
+      if (Math.abs(totalSplitAmount - originalAmount) > 0.01) {
+        return res.status(400).json({ 
+          message: `Split amounts must equal original amount. Got ${totalSplitAmount.toFixed(2)}, expected ${originalAmount.toFixed(2)}` 
+        });
       }
 
       const userRole = await storage.getUserRole(userId, existingTransaction.organizationId);

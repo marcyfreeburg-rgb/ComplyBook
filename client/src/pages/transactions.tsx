@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2 } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation } from "@shared/schema";
@@ -49,6 +49,16 @@ interface CategorySuggestion {
   confidence: number;
   reasoning: string;
   historyId: number;
+}
+
+interface SplitItem {
+  amount: string;
+  description: string;
+  categoryId: number | null;
+  grantId: number | null;
+  fundId: number | null;
+  programId: number | null;
+  functionalCategory: 'program' | 'administrative' | 'fundraising' | null;
 }
 
 // Form data type for transaction form (uses string for date field)
@@ -103,6 +113,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isBulkCategorizeDialogOpen, setIsBulkCategorizeDialogOpen] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isSplitDialogOpen, setIsSplitDialogOpen] = useState(false);
+  const [transactionToSplit, setTransactionToSplit] = useState<Transaction | null>(null);
+  const [splitItems, setSplitItems] = useState<SplitItem[]>([]);
   const [bulkCategoryId, setBulkCategoryId] = useState<number | undefined>(undefined);
   const [bulkFundId, setBulkFundId] = useState<number | undefined>(undefined);
   const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
@@ -453,6 +466,53 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
   });
 
+  const splitTransactionMutation = useMutation({
+    mutationFn: async ({ transactionId, splits }: { transactionId: number; splits: SplitItem[] }) => {
+      const response = await apiRequest('POST', `/api/transactions/${transactionId}/split`, { splits });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      toast({
+        title: "Transaction split",
+        description: "The transaction has been split successfully.",
+      });
+      setIsSplitDialogOpen(false);
+      setTransactionToSplit(null);
+      setSplitItems([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to split transaction.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unsplitTransactionMutation = useMutation({
+    mutationFn: async (transactionId: number) => {
+      const response = await apiRequest('POST', `/api/transactions/${transactionId}/unsplit`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      toast({
+        title: "Transaction restored",
+        description: "The transaction has been unsplit and restored to its original state.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unsplit transaction.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const bulkCategorizeMutation = useMutation({
     mutationFn: async (transactionsToProcess: Transaction[]) => {
       const transactionData = transactionsToProcess.map(t => ({
@@ -640,6 +700,76 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const handleDeleteTransaction = (id: number) => {
     setDeleteTransactionId(id);
+  };
+
+  const handleOpenSplitDialog = (transaction: Transaction) => {
+    setTransactionToSplit(transaction);
+    const halfAmount = (parseFloat(transaction.amount) / 2).toFixed(2);
+    setSplitItems([
+      {
+        amount: halfAmount,
+        description: transaction.description,
+        categoryId: transaction.categoryId,
+        grantId: transaction.grantId,
+        fundId: transaction.fundId,
+        programId: transaction.programId,
+        functionalCategory: transaction.functionalCategory,
+      },
+      {
+        amount: (parseFloat(transaction.amount) - parseFloat(halfAmount)).toFixed(2),
+        description: transaction.description,
+        categoryId: null,
+        grantId: null,
+        fundId: null,
+        programId: null,
+        functionalCategory: null,
+      },
+    ]);
+    setIsSplitDialogOpen(true);
+  };
+
+  const handleAddSplitItem = () => {
+    if (!transactionToSplit) return;
+    setSplitItems([
+      ...splitItems,
+      {
+        amount: '0',
+        description: transactionToSplit.description,
+        categoryId: null,
+        grantId: null,
+        fundId: null,
+        programId: null,
+        functionalCategory: null,
+      },
+    ]);
+  };
+
+  const handleRemoveSplitItem = (index: number) => {
+    if (splitItems.length <= 2) return;
+    setSplitItems(splitItems.filter((_, i) => i !== index));
+  };
+
+  const handleSplitItemChange = (index: number, field: keyof SplitItem, value: any) => {
+    const newItems = [...splitItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setSplitItems(newItems);
+  };
+
+  const handleSubmitSplit = () => {
+    if (!transactionToSplit) return;
+    splitTransactionMutation.mutate({
+      transactionId: transactionToSplit.id,
+      splits: splitItems,
+    });
+  };
+
+  const getSplitTotal = () => {
+    return splitItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  };
+
+  const getSplitDifference = () => {
+    if (!transactionToSplit) return 0;
+    return parseFloat(transactionToSplit.amount) - getSplitTotal();
   };
 
   const confirmDelete = () => {
@@ -1633,7 +1763,15 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           {format(new Date(transaction.date), 'MM/dd/yyyy')}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium">
-                          <div className="truncate">{transaction.description}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="truncate">{transaction.description}</span>
+                            {transaction.hasSplits && (
+                              <Badge variant="secondary" className="text-xs shrink-0">Split</Badge>
+                            )}
+                            {transaction.isSplitChild && (
+                              <Badge variant="outline" className="text-xs shrink-0">Part of split</Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-sm">
                           {category ? (
@@ -1670,7 +1808,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           })}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex gap-2 justify-end">
+                          <div className="flex gap-1 justify-end">
                             <Button
                               size="icon"
                               variant="ghost"
@@ -1682,6 +1820,28 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                             >
                               <Paperclip className="h-4 w-4" />
                             </Button>
+                            {!transaction.hasSplits && !transaction.isSplitChild && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleOpenSplitDialog(transaction)}
+                                title="Split transaction"
+                                data-testid={`button-split-${transaction.id}`}
+                              >
+                                <Split className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {transaction.hasSplits && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => unsplitTransactionMutation.mutate(transaction.id)}
+                                title="Unsplit and restore original transaction"
+                                data-testid={`button-unsplit-${transaction.id}`}
+                              >
+                                <Undo2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"
@@ -1941,6 +2101,183 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               {bulkUpdateCategoriesMutation.isPending ? "Updating..." : "Update Transactions"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Split Transaction Dialog */}
+      <Dialog open={isSplitDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsSplitDialogOpen(false);
+          setTransactionToSplit(null);
+          setSplitItems([]);
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Split Transaction</DialogTitle>
+            <DialogDescription>
+              Divide this transaction into multiple parts with different categories or allocations.
+            </DialogDescription>
+          </DialogHeader>
+          {transactionToSplit && (
+            <div className="space-y-4 mt-4">
+              <div className="p-4 border rounded-md bg-muted/50">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">{transactionToSplit.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(transactionToSplit.date), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-mono font-bold ${transactionToSplit.type === 'income' ? 'text-chart-2' : 'text-chart-3'}`}>
+                      {transactionToSplit.type === 'income' ? '+' : '-'}${parseFloat(transactionToSplit.amount).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Original Amount</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {splitItems.map((item, index) => (
+                  <div key={index} className="p-4 border rounded-md space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Split {index + 1}</span>
+                      {splitItems.length > 2 && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleRemoveSplitItem(index)}
+                          data-testid={`button-remove-split-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={item.amount}
+                          onChange={(e) => handleSplitItemChange(index, 'amount', e.target.value)}
+                          data-testid={`input-split-amount-${index}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Description</Label>
+                        <Input
+                          value={item.description}
+                          onChange={(e) => handleSplitItemChange(index, 'description', e.target.value)}
+                          data-testid={`input-split-description-${index}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Category</Label>
+                      <CategoryCombobox
+                        categories={categories || []}
+                        value={item.categoryId || undefined}
+                        onValueChange={(value) => handleSplitItemChange(index, 'categoryId', value || null)}
+                        type={transactionToSplit.type}
+                        placeholder="Select category"
+                        allowClear={true}
+                        clearLabel="No category"
+                        className="w-full"
+                        testId={`select-split-category-${index}`}
+                      />
+                    </div>
+
+                    {currentOrganization.type === 'nonprofit' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fund</Label>
+                          <Select
+                            value={item.fundId?.toString() || "none"}
+                            onValueChange={(value) => handleSplitItemChange(index, 'fundId', value === "none" ? null : parseInt(value))}
+                          >
+                            <SelectTrigger data-testid={`select-split-fund-${index}`}>
+                              <SelectValue placeholder="Select fund" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {funds?.map(fund => (
+                                <SelectItem key={fund.id} value={fund.id.toString()}>
+                                  {fund.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Program</Label>
+                          <Select
+                            value={item.programId?.toString() || "none"}
+                            onValueChange={(value) => handleSplitItemChange(index, 'programId', value === "none" ? null : parseInt(value))}
+                          >
+                            <SelectTrigger data-testid={`select-split-program-${index}`}>
+                              <SelectValue placeholder="Select program" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {programs?.map(program => (
+                                <SelectItem key={program.id} value={program.id.toString()}>
+                                  {program.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={handleAddSplitItem}
+                className="w-full"
+                data-testid="button-add-split"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Another Split
+              </Button>
+
+              <div className="p-4 border rounded-md bg-muted/30">
+                <div className="flex justify-between text-sm">
+                  <span>Total of splits:</span>
+                  <span className="font-mono">${getSplitTotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span>Original amount:</span>
+                  <span className="font-mono">${parseFloat(transactionToSplit.amount).toFixed(2)}</span>
+                </div>
+                <div className={`flex justify-between text-sm mt-1 font-medium ${Math.abs(getSplitDifference()) > 0.01 ? 'text-destructive' : 'text-chart-2'}`}>
+                  <span>Difference:</span>
+                  <span className="font-mono">${getSplitDifference().toFixed(2)}</span>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSubmitSplit}
+                disabled={splitTransactionMutation.isPending || Math.abs(getSplitDifference()) > 0.01}
+                className="w-full"
+                data-testid="button-submit-split"
+              >
+                {splitTransactionMutation.isPending ? "Splitting..." : "Split Transaction"}
+              </Button>
+              
+              {Math.abs(getSplitDifference()) > 0.01 && (
+                <p className="text-sm text-destructive text-center">
+                  Split amounts must equal the original transaction amount
+                </p>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

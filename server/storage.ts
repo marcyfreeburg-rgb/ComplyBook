@@ -2051,66 +2051,72 @@ export class DatabaseStorage implements IStorage {
     }>, 
     userId: string
   ): Promise<Transaction[]> {
-    const parentTransaction = await this.getTransaction(transactionId);
-    if (!parentTransaction) {
-      throw new Error('Transaction not found');
-    }
-    
-    if (parentTransaction.hasSplits) {
-      throw new Error('Transaction is already split');
-    }
-    
-    if (parentTransaction.isSplitChild) {
-      throw new Error('Cannot split a child transaction');
-    }
-    
-    const totalSplitAmount = splits.reduce((sum, s) => sum + parseFloat(s.amount), 0);
-    const originalAmount = parseFloat(parentTransaction.amount);
-    
-    if (Math.abs(totalSplitAmount - originalAmount) > 0.01) {
-      throw new Error(`Split amounts (${totalSplitAmount.toFixed(2)}) must equal original amount (${originalAmount.toFixed(2)})`);
-    }
-    
-    await db
-      .update(transactions)
-      .set({
-        hasSplits: true,
-        originalAmount: parentTransaction.amount,
-        amount: '0',
-        updatedAt: new Date(),
-      })
-      .where(eq(transactions.id, transactionId));
-    
-    const createdSplits: Transaction[] = [];
-    for (const split of splits) {
-      const [childTransaction] = await db
-        .insert(transactions)
-        .values({
-          organizationId: parentTransaction.organizationId,
-          date: parentTransaction.date,
-          description: split.description || parentTransaction.description,
-          amount: split.amount,
-          type: parentTransaction.type,
-          categoryId: split.categoryId !== undefined ? split.categoryId : parentTransaction.categoryId,
-          grantId: split.grantId !== undefined ? split.grantId : parentTransaction.grantId,
-          vendorId: parentTransaction.vendorId,
-          clientId: parentTransaction.clientId,
-          donorId: parentTransaction.donorId,
-          fundId: split.fundId !== undefined ? split.fundId : parentTransaction.fundId,
-          programId: split.programId !== undefined ? split.programId : parentTransaction.programId,
-          functionalCategory: split.functionalCategory !== undefined ? split.functionalCategory : parentTransaction.functionalCategory,
-          reconciliationStatus: 'unreconciled',
-          source: parentTransaction.source,
-          parentTransactionId: transactionId,
-          isSplitChild: true,
-          hasSplits: false,
-          createdBy: userId,
+    return await db.transaction(async (tx) => {
+      const [parentTransaction] = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, transactionId));
+      
+      if (!parentTransaction) {
+        throw new Error('Transaction not found');
+      }
+      
+      if (parentTransaction.hasSplits) {
+        throw new Error('Transaction is already split');
+      }
+      
+      if (parentTransaction.isSplitChild) {
+        throw new Error('Cannot split a child transaction');
+      }
+      
+      const totalSplitAmount = splits.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+      const originalAmount = parseFloat(parentTransaction.amount);
+      
+      if (Math.abs(totalSplitAmount - originalAmount) > 0.01) {
+        throw new Error(`Split amounts (${totalSplitAmount.toFixed(2)}) must equal original amount (${originalAmount.toFixed(2)})`);
+      }
+      
+      await tx
+        .update(transactions)
+        .set({
+          hasSplits: true,
+          originalAmount: parentTransaction.amount,
+          amount: '0',
+          updatedAt: new Date(),
         })
-        .returning();
-      createdSplits.push(childTransaction);
-    }
-    
-    return createdSplits;
+        .where(eq(transactions.id, transactionId));
+      
+      const createdSplits: Transaction[] = [];
+      for (const split of splits) {
+        const [childTransaction] = await tx
+          .insert(transactions)
+          .values({
+            organizationId: parentTransaction.organizationId,
+            date: parentTransaction.date,
+            description: split.description || parentTransaction.description,
+            amount: split.amount,
+            type: parentTransaction.type,
+            categoryId: split.categoryId !== undefined ? split.categoryId : parentTransaction.categoryId,
+            grantId: split.grantId !== undefined ? split.grantId : parentTransaction.grantId,
+            vendorId: parentTransaction.vendorId,
+            clientId: parentTransaction.clientId,
+            donorId: parentTransaction.donorId,
+            fundId: split.fundId !== undefined ? split.fundId : parentTransaction.fundId,
+            programId: split.programId !== undefined ? split.programId : parentTransaction.programId,
+            functionalCategory: split.functionalCategory !== undefined ? split.functionalCategory : parentTransaction.functionalCategory,
+            reconciliationStatus: 'unreconciled',
+            source: parentTransaction.source,
+            parentTransactionId: transactionId,
+            isSplitChild: true,
+            hasSplits: false,
+            createdBy: userId,
+          })
+          .returning();
+        createdSplits.push(childTransaction);
+      }
+      
+      return createdSplits;
+    });
   }
 
   async getTransactionSplits(parentTransactionId: number): Promise<Transaction[]> {
@@ -2122,31 +2128,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async unsplitTransaction(parentTransactionId: number): Promise<Transaction> {
-    const parentTransaction = await this.getTransaction(parentTransactionId);
-    if (!parentTransaction) {
-      throw new Error('Transaction not found');
-    }
-    
-    if (!parentTransaction.hasSplits) {
-      throw new Error('Transaction is not split');
-    }
-    
-    await db
-      .delete(transactions)
-      .where(eq(transactions.parentTransactionId, parentTransactionId));
-    
-    const [restored] = await db
-      .update(transactions)
-      .set({
-        hasSplits: false,
-        amount: parentTransaction.originalAmount || parentTransaction.amount,
-        originalAmount: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(transactions.id, parentTransactionId))
-      .returning();
-    
-    return restored;
+    return await db.transaction(async (tx) => {
+      const [parentTransaction] = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, parentTransactionId));
+      
+      if (!parentTransaction) {
+        throw new Error('Transaction not found');
+      }
+      
+      if (!parentTransaction.hasSplits) {
+        throw new Error('Transaction is not split');
+      }
+      
+      await tx
+        .delete(transactions)
+        .where(eq(transactions.parentTransactionId, parentTransactionId));
+      
+      const [restored] = await tx
+        .update(transactions)
+        .set({
+          hasSplits: false,
+          amount: parentTransaction.originalAmount || parentTransaction.amount,
+          originalAmount: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(transactions.id, parentTransactionId))
+        .returning();
+      
+      return restored;
+    });
   }
 
   // Reconciliation operations
