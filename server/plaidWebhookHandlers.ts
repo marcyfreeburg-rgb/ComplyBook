@@ -304,18 +304,21 @@ export class PlaidWebhookHandlers {
           new Date(plaidTx.date)
         );
 
+        const txDescription = plaidTx.name || plaidTx.merchant_name || 'Unknown Transaction';
+        const importNote = plaidItem.institutionName ? ` (${plaidItem.institutionName})` : '';
+        const fullDescription = txDescription + importNote;
+
+        // Check for duplicates using the full description (including institution name)
         const isDuplicate = existingTxs.some(tx => 
-          tx.description === (plaidTx.name || plaidTx.merchant_name || 'Unknown Transaction') &&
+          tx.description === fullDescription &&
           Math.abs(parseFloat(tx.amount) - Math.abs(plaidTx.amount)) < 0.01
         );
 
         if (!isDuplicate) {
           const isIncome = plaidTx.amount < 0;
-          const txDescription = plaidTx.name || plaidTx.merchant_name || 'Unknown Transaction';
-          const importNote = plaidItem.institutionName ? ` (${plaidItem.institutionName})` : '';
           await storage.createTransaction({
             organizationId: plaidItem.organizationId,
-            description: txDescription + importNote,
+            description: fullDescription,
             amount: Math.abs(plaidTx.amount).toFixed(2),
             type: isIncome ? 'income' : 'expense',
             date: new Date(plaidTx.date),
