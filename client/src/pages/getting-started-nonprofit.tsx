@@ -42,7 +42,7 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
     },
     {
       title: "2. Connect Your Bank Accounts",
-      description: "Securely link bank accounts to automatically import transactions",
+      description: "Securely link bank accounts and set starting balances for accurate tracking",
       icon: Landmark,
       color: "text-green-600",
       bgColor: "bg-green-100 dark:bg-green-900/30",
@@ -50,6 +50,8 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
         { text: "Navigate to Bank Accounts to connect via Plaid", link: "/bank-accounts" },
         { text: "Select your financial institution and log in securely", link: "/bank-accounts" },
         { text: "Choose which accounts to sync for automatic transaction import", link: "/bank-accounts" },
+        { text: "Set a starting balance for each account to track running balances correctly", link: "/bank-accounts" },
+        { text: "Filter transactions by account in the Transaction Log to view per-account balances", link: "/transaction-log" },
       ],
     },
     {
@@ -115,14 +117,16 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
     },
     {
       title: "8. Record Transactions",
-      description: "Track income and expenses manually or via bank import",
+      description: "Track income and expenses with split transactions and AI categorization",
       icon: Receipt,
       color: "text-cyan-600",
       bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
       steps: [
-        { text: "Use Transaction Log for day-to-day entries", link: "/transaction-log" },
-        { text: "Import transactions from QuickBooks or Wave", link: "/accounting-imports" },
-        { text: "Use AI categorization to speed up classification", link: "/transaction-log" },
+        { text: "Use Transaction Log for day-to-day entries with running balances", link: "/transaction-log" },
+        { text: "Import transactions from QuickBooks, Wave, or sync from your bank", link: "/accounting-imports" },
+        { text: "Split transactions into multiple categories for accurate allocation", link: "/transaction-log" },
+        { text: "Use AI categorization to automatically classify transactions in bulk", link: "/transaction-log" },
+        { text: "Link transactions to grants, funds, and programs for detailed tracking", link: "/transaction-log" },
       ],
     },
     {
