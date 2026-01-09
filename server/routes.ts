@@ -5775,6 +5775,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update account initial balance
+  app.patch('/api/plaid/account/:accountId/initial-balance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const accountId = req.params.accountId;
+      const { initialBalance, initialBalanceDate } = req.body;
+
+      // Validate request body
+      if (!initialBalance || !initialBalanceDate) {
+        return res.status(400).json({ message: "Initial balance and date are required" });
+      }
+
+      const parsedBalance = parseFloat(initialBalance);
+      if (isNaN(parsedBalance)) {
+        return res.status(400).json({ message: "Initial balance must be a valid number" });
+      }
+
+      // Get the Plaid account to find the item/organization
+      const account = await storage.getPlaidAccountByAccountId(accountId);
+      if (!account) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+
+      // Get plaid item to check organization access
+      const plaidItem = await storage.getPlaidItem(account.plaidItemId.toString());
+      if (!plaidItem) {
+        return res.status(404).json({ message: "Bank connection not found" });
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, plaidItem.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Update the initial balance
+      await storage.updatePlaidAccountInitialBalance(accountId, parsedBalance.toFixed(2), initialBalanceDate);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating initial balance:", error);
+      res.status(500).json({ message: "Failed to update initial balance" });
+    }
+  });
+
   app.delete('/api/plaid/item/:itemId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
