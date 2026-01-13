@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant } from "@shared/schema";
 import { format } from "date-fns";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, safeFormatDate } from "@/lib/utils";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
@@ -377,7 +377,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const handleEditClick = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setEditForm({
-      date: format(new Date(transaction.date + 'T12:00:00'), "yyyy-MM-dd"),
+      date: safeFormatDate(transaction.date, "yyyy-MM-dd", ""),
       description: transaction.description,
       amount: transaction.amount,
       type: transaction.type,
@@ -850,7 +850,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                         />
                       </td>
                       <td className="py-3 px-2">
-                        {format(new Date(transaction.date + 'T12:00:00'), "MMM d, yyyy")}
+                        {safeFormatDate(transaction.date, "MMM d, yyyy")}
                       </td>
                       <td className="py-3 px-2">{transaction.description}</td>
                       <td className="py-3 px-2">

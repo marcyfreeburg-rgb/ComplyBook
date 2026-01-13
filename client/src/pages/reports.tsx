@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { FileText, Download, ArrowUpRight, ArrowDownRight, FileSpreadsheet, ArrowLeft } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import type { Organization, Transaction, Category } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -957,7 +958,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                               </p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(transaction.date + 'T12:00:00'), 'MMM dd, yyyy')}
+                                  {safeFormatDate(transaction.date, 'MMM dd, yyyy')}
                                 </p>
                                 {category && (
                                   <>

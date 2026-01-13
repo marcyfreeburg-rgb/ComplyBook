@@ -37,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2 } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -682,7 +683,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setFormData({
       organizationId: transaction.organizationId,
       type: transaction.type,
-      date: format(new Date(transaction.date + 'T12:00:00'), 'yyyy-MM-dd'),
+      date: safeFormatDate(transaction.date, 'yyyy-MM-dd', ''),
       description: transaction.description,
       amount: transaction.amount,
       categoryId: transaction.categoryId || undefined,
@@ -1760,7 +1761,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           />
                         </td>
                         <td className="py-3 px-4 text-sm whitespace-nowrap">
-                          {format(new Date(transaction.date + 'T12:00:00'), 'MM/dd/yyyy')}
+                          {safeFormatDate(transaction.date, 'MM/dd/yyyy')}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium">
                           <div className="flex items-center gap-2">
@@ -2126,7 +2127,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   <div>
                     <p className="font-medium">{transactionToSplit.description}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(transactionToSplit.date + 'T12:00:00'), 'MMM d, yyyy')}
+                      {safeFormatDate(transactionToSplit.date, 'MMM d, yyyy')}
                     </p>
                   </div>
                   <div className="text-right">

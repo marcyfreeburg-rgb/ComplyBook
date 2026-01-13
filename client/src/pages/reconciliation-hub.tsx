@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import type { Organization, Transaction, BankReconciliation, BankStatementEntry, ReconciliationMatch } from "@shared/schema";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import Papa from "papaparse";
 import html2pdf from "html2pdf.js";
 
@@ -337,8 +338,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
             <tr>
               <td style="padding: 8px 0; color: #666;">Statement Period:</td>
               <td style="padding: 8px 0; font-weight: bold;">
-                ${format(new Date(reconciliation.statementStartDate || new Date()), 'MMM dd, yyyy')} - 
-                ${format(new Date(reconciliation.statementEndDate), 'MMM dd, yyyy')}
+                ${safeFormatDate(reconciliation.statementStartDate, 'MMM dd, yyyy')} - 
+                ${safeFormatDate(reconciliation.statementEndDate, 'MMM dd, yyyy')}
               </td>
             </tr>
             <tr>
@@ -420,7 +421,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   if (!txn || !entry) return '';
                   return `
                     <tr>
-                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${format(new Date(txn.date + 'T12:00:00'), 'MMM dd, yyyy')}</td>
+                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${safeFormatDate(txn.date, 'MMM dd, yyyy')}</td>
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${txn.description}</td>
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${entry.description}</td>
                       <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">$${parseFloat(txn.amount).toFixed(2)}</td>
@@ -440,7 +441,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
 
     const opt = {
       margin: 10,
-      filename: `reconciliation-report-${reconciliation.accountName}-${format(new Date(reconciliation.statementEndDate), 'yyyy-MM-dd')}.pdf`,
+      filename: `reconciliation-report-${reconciliation.accountName}-${safeFormatDate(reconciliation.statementEndDate, 'yyyy-MM-dd')}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -649,7 +650,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
           <CardHeader>
             <CardTitle>Last Reconciliation</CardTitle>
             <CardDescription>
-              {lastReconciliation.accountName} - {format(new Date(lastReconciliation.statementEndDate), 'MMM dd, yyyy')}
+              {lastReconciliation.accountName} - {safeFormatDate(lastReconciliation.statementEndDate, 'MMM dd, yyyy')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -670,7 +671,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 <div>
                   <CardTitle>{reconciliation.accountName}</CardTitle>
                   <CardDescription>
-                    {format(new Date(reconciliation.statementStartDate || new Date()), 'MMM dd, yyyy')} - {format(new Date(reconciliation.statementEndDate), 'MMM dd, yyyy')}
+                    {safeFormatDate(reconciliation.statementStartDate, 'MMM dd, yyyy')} - {safeFormatDate(reconciliation.statementEndDate, 'MMM dd, yyyy')}
                   </CardDescription>
                 </div>
                 <Badge variant={reconciliation.status === 'reconciled' ? 'default' : 'secondary'} data-testid={`badge-status-${reconciliation.status}`}>
@@ -738,7 +739,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <Checkbox checked={selectedTransactions.has(txn.id)} />
                         <div className="flex-1">
                           <p className="font-medium">{txn.description}</p>
-                          <p className="text-sm text-muted-foreground">{format(new Date(txn.date + 'T12:00:00'), 'MMM dd, yyyy')}</p>
+                          <p className="text-sm text-muted-foreground">{safeFormatDate(txn.date, 'MMM dd, yyyy')}</p>
                         </div>
                         <p className={`font-bold ${parseFloat(txn.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           ${Math.abs(parseFloat(txn.amount)).toFixed(2)}
@@ -773,7 +774,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <div className="flex-1">
                           <p className="font-medium">{entry.description}</p>
                           <p className="text-sm text-muted-foreground">
-                            {format(new Date(entry.date + 'T12:00:00'), 'MMM dd, yyyy')}
+                            {safeFormatDate(entry.date, 'MMM dd, yyyy')}
                           </p>
                         </div>
                         <p className={`font-bold ${parseFloat(entry.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -815,13 +816,13 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                           <div>
                             <p className="text-sm text-muted-foreground">Transaction</p>
                             <p className="font-medium">{suggestion.transaction.description}</p>
-                            <p className="text-sm">{format(new Date(suggestion.transaction.date), 'MMM dd, yyyy')}</p>
+                            <p className="text-sm">{safeFormatDate(suggestion.transaction.date, 'MMM dd, yyyy')}</p>
                             <p className="font-bold">${parseFloat(suggestion.transaction.amount).toFixed(2)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Statement</p>
                             <p className="font-medium">{suggestion.statementEntry.description}</p>
-                            <p className="text-sm">{format(new Date(suggestion.statementEntry.date), 'MMM dd, yyyy')}</p>
+                            <p className="text-sm">{safeFormatDate(suggestion.statementEntry.date, 'MMM dd, yyyy')}</p>
                             <p className="font-bold">${parseFloat(suggestion.statementEntry.amount).toFixed(2)}</p>
                           </div>
                         </div>
@@ -870,11 +871,11 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                           <div className="flex-1 grid grid-cols-2 gap-4">
                             <div>
                               <p className="font-medium">{txn.description}</p>
-                              <p className="text-sm text-muted-foreground">{format(new Date(txn.date + 'T12:00:00'), 'MMM dd, yyyy')}</p>
+                              <p className="text-sm text-muted-foreground">{safeFormatDate(txn.date, 'MMM dd, yyyy')}</p>
                             </div>
                             <div>
                               <p className="font-medium">{entry.description}</p>
-                              <p className="text-sm text-muted-foreground">{format(new Date(entry.date + 'T12:00:00'), 'MMM dd, yyyy')}</p>
+                              <p className="text-sm text-muted-foreground">{safeFormatDate(entry.date, 'MMM dd, yyyy')}</p>
                             </div>
                           </div>
                           <p className="font-bold">${parseFloat(txn.amount).toFixed(2)}</p>
