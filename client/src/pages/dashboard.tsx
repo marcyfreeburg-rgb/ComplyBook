@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart, Rocket } from "lucide-react";
 import { Link } from "wouter";
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { useLocation } from "wouter";
 import type { Organization, Transaction, Budget } from "@shared/schema";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -258,7 +259,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
                         {transaction.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(transaction.date + 'T12:00:00'), 'MMM dd, yyyy')}
+                        {safeFormatDate(transaction.date, 'MMM dd, yyyy', 'No date')}
                       </p>
                     </div>
                   </div>
@@ -282,7 +283,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
             <CardTitle>Budget Performance</CardTitle>
             {activeBudget && (
               <p className="text-sm text-muted-foreground mt-1">
-                {activeBudget.name} • {format(new Date(activeBudget.startDate), 'MMM dd')} - {format(new Date(activeBudget.endDate), 'MMM dd, yyyy')}
+                {activeBudget.name} • {safeFormatDate(activeBudget.startDate, 'MMM dd')} - {safeFormatDate(activeBudget.endDate, 'MMM dd, yyyy')}
               </p>
             )}
           </div>
