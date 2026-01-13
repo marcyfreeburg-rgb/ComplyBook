@@ -1,0 +1,48 @@
+11:01:05 PM [express] GET /api/auth/user 401 in 476ms :: {"message":"Session expired due to inactivit…
+11:01:10 PM [express] GET /api/auth/mode 304 in 62ms :: {"mode":"local"}
+11:01:12 PM [express] POST /api/login 200 in 790ms :: {"success":true,"mfaRequired":true,"mfaSetupReq…
+11:01:12 PM [express] GET /api/auth/user 403 in 121ms :: {"message":"MFA verification required","code…
+11:01:12 PM [express] GET /api/auth/mfa/login-status 200 in 183ms :: {"mfaPending":true,"mfaVerified"…
+[MFA] TOTP validation result: delta=0, token=12****, serverTime=2026-01-13T23:01:20.032Z
+11:01:20 PM [express] POST /api/auth/mfa/verify-login 200 in 414ms :: {"success":true,"message":"Logi…
+11:01:20 PM [express] GET /api/auth/user 200 in 183ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+11:01:20 PM [express] GET /api/organizations 304 in 265ms :: [{"id":168,"name":"C Cubed Training","ty…
+11:01:21 PM [express] GET /api/auth/mfa/login-status 200 in 747ms :: {"mfaPending":false,"mfaVerified…
+11:01:21 PM [express] GET /api/budgets/167 304 in 249ms :: []
+11:01:21 PM [express] GET /api/security/mfa/status 304 in 676ms :: {"mfaEnabled":true,"mfaRequired":t…
+11:01:21 PM [express] GET /api/notifications/167/unread-count 304 in 627ms :: {"count":"0"}
+11:01:21 PM [express] GET /api/dashboard/167 304 in 633ms :: {"totalIncome":"1600.00","totalExpenses"…
+11:01:22 PM [express] GET /api/dashboard/167/category-breakdown 304 in 1012ms :: {"incomeByCategory":…
+11:01:22 PM [express] GET /api/dashboard/167/monthly-trends 304 in 951ms :: [{"month":"Aug 2025","inc…
+11:01:31 PM [express] GET /api/auth/user 200 in 182ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+11:01:32 PM [express] GET /api/security/mfa/status 200 in 315ms :: {"mfaEnabled":true,"mfaRequired":t…
+11:01:32 PM [express] GET /api/organizations 200 in 443ms :: [{"id":168,"name":"C Cubed Training","ty…
+11:01:32 PM [express] GET /api/notifications/167/unread-count 304 in 247ms :: {"count":"0"}
+11:01:32 PM [express] GET /api/budgets/167 304 in 246ms :: []
+11:01:33 PM [express] GET /api/dashboard/167 304 in 619ms :: {"totalIncome":"1600.00","totalExpenses"…
+11:01:33 PM [express] GET /api/dashboard/167/category-breakdown 304 in 795ms :: {"incomeByCategory":[…
+11:01:33 PM [express] GET /api/dashboard/167/monthly-trends 304 in 1286ms :: [{"month":"Aug 2025","in…
+==> Deploying...
+==> Running 'npm run start'
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+[Plaid] Initializing with environment: production
+[Plaid] Base path: https://production.plaid.com
+[Plaid] Client ID configured: true
+[Plaid] Secret configured: true
+Initializing Stripe integration...
+[Auth] Non-Replit environment detected, using local authentication
+[Auth] Local authentication mode enabled (Replit environment not detected)
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+11:03:06 PM [express] serving on port 10000
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 787 total (787 active, 0 archived)
