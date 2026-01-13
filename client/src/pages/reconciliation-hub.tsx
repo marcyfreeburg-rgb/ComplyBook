@@ -420,7 +420,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   if (!txn || !entry) return '';
                   return `
                     <tr>
-                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${format(new Date(txn.date), 'MMM dd, yyyy')}</td>
+                      <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${format(new Date(txn.date + 'T12:00:00'), 'MMM dd, yyyy')}</td>
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${txn.description}</td>
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${entry.description}</td>
                       <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">$${parseFloat(txn.amount).toFixed(2)}</td>
@@ -738,7 +738,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <Checkbox checked={selectedTransactions.has(txn.id)} />
                         <div className="flex-1">
                           <p className="font-medium">{txn.description}</p>
-                          <p className="text-sm text-muted-foreground">{format(new Date(txn.date), 'MMM dd, yyyy')}</p>
+                          <p className="text-sm text-muted-foreground">{format(new Date(txn.date + 'T12:00:00'), 'MMM dd, yyyy')}</p>
                         </div>
                         <p className={`font-bold ${parseFloat(txn.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           ${Math.abs(parseFloat(txn.amount)).toFixed(2)}
@@ -773,7 +773,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <div className="flex-1">
                           <p className="font-medium">{entry.description}</p>
                           <p className="text-sm text-muted-foreground">
-                            {format(new Date(entry.date), 'MMM dd, yyyy')}
+                            {format(new Date(entry.date + 'T12:00:00'), 'MMM dd, yyyy')}
                           </p>
                         </div>
                         <p className={`font-bold ${parseFloat(entry.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -870,11 +870,11 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                           <div className="flex-1 grid grid-cols-2 gap-4">
                             <div>
                               <p className="font-medium">{txn.description}</p>
-                              <p className="text-sm text-muted-foreground">{format(new Date(txn.date), 'MMM dd, yyyy')}</p>
+                              <p className="text-sm text-muted-foreground">{format(new Date(txn.date + 'T12:00:00'), 'MMM dd, yyyy')}</p>
                             </div>
                             <div>
                               <p className="font-medium">{entry.description}</p>
-                              <p className="text-sm text-muted-foreground">{format(new Date(entry.date), 'MMM dd, yyyy')}</p>
+                              <p className="text-sm text-muted-foreground">{format(new Date(entry.date + 'T12:00:00'), 'MMM dd, yyyy')}</p>
                             </div>
                           </div>
                           <p className="font-bold">${parseFloat(txn.amount).toFixed(2)}</p>

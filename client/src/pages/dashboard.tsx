@@ -258,7 +258,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
                         {transaction.description}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                        {format(new Date(transaction.date + 'T12:00:00'), 'MMM dd, yyyy')}
                       </p>
                     </div>
                   </div>

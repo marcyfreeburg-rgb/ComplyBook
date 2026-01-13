@@ -349,7 +349,7 @@ export default function DonorPortal() {
                           <div>
                             <p className="font-medium">{donation.description}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(new Date(donation.date), 'MMMM d, yyyy')}
+                              {format(new Date(donation.date + 'T12:00:00'), 'MMMM d, yyyy')}
                             </p>
                           </div>
                         </div>

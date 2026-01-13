@@ -258,7 +258,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
                         </td>
                       )}
                       <td className="py-3 px-4 text-sm">
-                        {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                        {format(new Date(transaction.date + 'T12:00:00'), 'MMM dd, yyyy')}
                       </td>
                       <td className="py-3 px-4">{transaction.description}</td>
                       <td className="py-3 px-4">

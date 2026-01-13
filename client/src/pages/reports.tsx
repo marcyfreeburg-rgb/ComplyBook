@@ -122,7 +122,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
       ...filteredTrans.map(t => {
         const category = categories?.find(c => c.id === t.categoryId);
         return [
-          format(new Date(t.date), 'MM/dd/yyyy'),
+          format(new Date(t.date + 'T12:00:00'), 'MM/dd/yyyy'),
           t.description,
           t.type,
           category?.name || 'Uncategorized',
@@ -396,7 +396,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                 const category = categories?.find(c => c.id === t.categoryId);
                 return `
                   <tr>
-                    <td>${format(new Date(t.date), 'MM/dd/yyyy')}</td>
+                    <td>${format(new Date(t.date + 'T12:00:00'), 'MM/dd/yyyy')}</td>
                     <td>${t.description}</td>
                     <td>${t.type}</td>
                     <td>${category?.name || 'Uncategorized'}</td>
@@ -957,7 +957,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
                               </p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                                  {format(new Date(transaction.date + 'T12:00:00'), 'MMM dd, yyyy')}
                                 </p>
                                 {category && (
                                   <>

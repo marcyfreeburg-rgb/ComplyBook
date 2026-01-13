@@ -682,7 +682,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setFormData({
       organizationId: transaction.organizationId,
       type: transaction.type,
-      date: format(new Date(transaction.date), 'yyyy-MM-dd'),
+      date: format(new Date(transaction.date + 'T12:00:00'), 'yyyy-MM-dd'),
       description: transaction.description,
       amount: transaction.amount,
       categoryId: transaction.categoryId || undefined,
@@ -1760,7 +1760,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           />
                         </td>
                         <td className="py-3 px-4 text-sm whitespace-nowrap">
-                          {format(new Date(transaction.date), 'MM/dd/yyyy')}
+                          {format(new Date(transaction.date + 'T12:00:00'), 'MM/dd/yyyy')}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium">
                           <div className="flex items-center gap-2">
@@ -2126,7 +2126,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   <div>
                     <p className="font-medium">{transactionToSplit.description}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(transactionToSplit.date), 'MMM d, yyyy')}
+                      {format(new Date(transactionToSplit.date + 'T12:00:00'), 'MMM d, yyyy')}
                     </p>
                   </div>
                   <div className="text-right">
