@@ -140,11 +140,11 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     onMutate: () => {
       setIsSyncingPlaid(true);
     },
-    onSuccess: (data: { totalAdded?: number; totalModified?: number; totalRemoved?: number }) => {
+    onSuccess: (data: { imported?: number; message?: string }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       toast({
         title: "Transactions Synced",
-        description: `Successfully synced ${data.totalAdded || 0} new transactions from your bank accounts.`,
+        description: `Successfully synced ${data.imported || 0} new transactions from your bank accounts.`,
       });
     },
     onError: (error: Error) => {
