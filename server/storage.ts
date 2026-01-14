@@ -2453,8 +2453,8 @@ export class DatabaseStorage implements IStorage {
       await tx.insert(auditLogs).values({
         organizationId: transaction.organizationId,
         userId,
-        action: 'reconciliation_match',
-        entityType: 'transaction',
+        action: 'create',
+        entityType: 'reconciliation_match',
         entityId: transactionId,
         details: JSON.stringify({
           reconciliationId,

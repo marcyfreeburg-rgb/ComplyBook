@@ -1,0 +1,49 @@
+    "reconciliationId": 4,
+    "date": "2019-01-31T00:00:00.000Z",
+    "description": "Recurring Withdrawal Debit Card Visa Check",
+    "amount": "5.00",
+    "type": "expense",
+    "isMatched": 0
+  }
+]
+9:01:02 PM [express] POST /api/bank-statement-entries 200 in 442ms :: [{"id":1,"reconciliationId":4,…
+9:01:03 PM [express] GET /api/bank-statement-entries/4 200 in 398ms :: [{"id":14,"reconciliationId":…
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+9:01:14 PM [express] GET /api/notifications/167/unread-count 304 in 879ms :: {"count":"0"}
+Error creating match: error: invalid input value for enum audit_action: "reconciliation_match"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1220:20) {
+  length: 152,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+9:01:28 PM [express] POST /api/reconciliation-matches 500 in 1525ms :: {"message":"invalid input val…
+9:01:45 PM [express] GET /api/notifications/167/unread-count 304 in 890ms :: {"count":"0"}
+9:02:16 PM [express] GET /api/notifications/167/unread-count 304 in 883ms :: {"
