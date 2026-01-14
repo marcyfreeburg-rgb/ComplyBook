@@ -4083,39 +4083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No PDF file provided" });
       }
 
-      // Dynamic import of pdf-parse for ESM/bundle compatibility
-      let pdfParse: any;
-      try {
-        const mod = await import("pdf-parse");
-        // Handle different module export formats
-        if (typeof mod === 'function') {
-          pdfParse = mod;
-        } else if (mod && typeof mod.default === 'function') {
-          pdfParse = mod.default;
-        } else if (mod && typeof (mod as any).default?.default === 'function') {
-          pdfParse = (mod as any).default.default;
-        } else {
-          // Last resort - try to find any function export
-          for (const key of Object.keys(mod)) {
-            if (typeof (mod as any)[key] === 'function') {
-              pdfParse = (mod as any)[key];
-              break;
-            }
-          }
-        }
-      } catch (importError) {
-        console.error("Failed to import pdf-parse:", importError);
-        return res.status(500).json({ message: "PDF parsing library not available" });
-      }
-
-      if (!pdfParse || typeof pdfParse !== 'function') {
-        console.error("pdf-parse module structure:", JSON.stringify(Object.keys(await import("pdf-parse"))));
-        return res.status(500).json({ message: "PDF parsing library failed to initialize" });
-      }
-      
-      // Parse the PDF
-      const pdfData = await pdfParse(req.file.buffer);
-      const text = pdfData.text;
+      // Extract text from PDF using pdfjs-dist
+      const text = await extractTextFromPdf(req.file.buffer);
 
       // Extract transactions from PDF text
       const extractedTransactions = parseBankStatementText(text);
@@ -4130,6 +4099,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to parse PDF statement" });
     }
   });
+
+  // Helper function to extract text from PDF using pdfjs-dist
+  async function extractTextFromPdf(buffer: Buffer): Promise<string> {
+    // Use dynamic import to avoid bundling issues
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    
+    // Disable worker to avoid issues in server environment
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+    
+    const uint8Array = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({ data: uint8Array, useSystemFonts: true });
+    const pdf = await loadingTask.promise;
+    
+    let fullText = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(" ");
+      fullText += pageText + "\n";
+    }
+    
+    return fullText;
+  }
 
   // Helper function to normalize date strings to ISO format
   function normalizeDate(dateStr: string): string | null {
