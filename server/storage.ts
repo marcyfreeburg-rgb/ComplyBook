@@ -353,7 +353,7 @@ export interface IStorage {
   reconcileTransaction(id: number, userId: string): Promise<Transaction>;
   unreconcileTransaction(id: number): Promise<Transaction>;
   bulkReconcileTransactions(ids: number[], userId: string): Promise<number>;
-  autoReconcileTransactions(organizationId: number): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }>;
+  autoReconcileTransactions(organizationId: number, userId: string): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }>;
   
   // Bank Reconciliation Session operations
   getBankReconciliations(organizationId: number): Promise<BankReconciliation[]>;
@@ -2220,7 +2220,7 @@ export class DatabaseStorage implements IStorage {
     return result.length;
   }
 
-  async autoReconcileTransactions(organizationId: number): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }> {
+  async autoReconcileTransactions(organizationId: number, userId: string): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }> {
     // Get all unreconciled transactions
     const unreconciledTxns = await db
       .select()
@@ -2265,7 +2265,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           reconciliationStatus: 'reconciled',
           reconciledDate: new Date(),
-          reconciledBy: 'auto-reconcile',
+          reconciledBy: userId,
         })
         .where(inArray(transactions.id, idsToReconcile));
     }

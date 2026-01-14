@@ -3850,7 +3850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to auto-reconcile transactions" });
       }
 
-      const result = await storage.autoReconcileTransactions(organizationId);
+      const result = await storage.autoReconcileTransactions(organizationId, userId);
       res.json(result);
     } catch (error) {
       console.error("Error auto-reconciling transactions:", error);

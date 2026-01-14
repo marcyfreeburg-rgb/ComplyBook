@@ -1,0 +1,39 @@
+6:15:27 PM [express] serving on port 10000
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 872 total (872 active, 0 archived)
+6:16:30 PM [express] GET /api/auth/user 200 in 393ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+6:16:30 PM [express] GET /api/security/mfa/status 304 in 329ms :: {"mfaEnabled":true,"mfaRequired":t…
+6:16:30 PM [express] GET /api/organizations 304 in 533ms :: [{"id":168,"name":"C Cubed Training","ty…
+6:16:31 PM [express] GET /api/notifications/167/unread-count 304 in 280ms :: {"count":"0"}
+6:16:31 PM [express] GET /api/reconciliation/unreconciled/167 304 in 484ms :: [{"id":41763,"organiza…
+Error auto-reconciling transactions: error: insert or update on table "transactions" violates foreign key constraint "transactions_reconciled_by_users_id_fk"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async DatabaseStorage.autoReconcileTransactions (file:///opt/render/project/src/dist/index.js:4502:11)
+    at async file:///opt/render/project/src/dist/index.js:12831:22 {
+  length: 315,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (reconciled_by)=(auto-reconcile) is not present in table "users".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'transactions',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'transactions_reconciled_by_users_id_fk',
+  file: 'ri_triggers.c',
+  line: '2608',
+  routine: 'ri_ReportViolation'
+}
+6:16:42 PM [express] POST /api/reconciliation/auto-reconcile/167 500 in 1079ms :: {"message":"Failed…
