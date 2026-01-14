@@ -21,8 +21,6 @@ import finchRoutes from "./finch";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
-import * as pdfParseModule from "pdf-parse";
-const pdfParse = (pdfParseModule as any).default || pdfParseModule;
 import { z } from "zod";
 import {
   insertOrganizationSchema,
@@ -4085,6 +4083,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No PDF file provided" });
       }
 
+      // Dynamic import of pdf-parse for ESM/bundle compatibility
+      const pdfParseModule = await import("pdf-parse");
+      const pdfParse = pdfParseModule.default || pdfParseModule;
+      
       // Parse the PDF
       const pdfData = await pdfParse(req.file.buffer);
       const text = pdfData.text;
