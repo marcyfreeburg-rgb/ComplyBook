@@ -4033,10 +4033,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.bulkReconcileTransactions(unreconciledIds, userId);
       }
 
-      // Update reconciliation status to completed
+      // Update reconciliation status to reconciled
       await storage.updateBankReconciliation(reconciliationId, {
-        status: 'completed',
-        completedDate: new Date(),
+        status: 'reconciled',
+        reconciledDate: new Date(),
       });
 
       res.json({ 

@@ -1,0 +1,46 @@
+6:41:26 PM [express] GET /api/notifications/167/unread-count 304 in 827ms :: {"count":"0"}
+6:41:57 PM [express] GET /api/notifications/167/unread-count 304 in 877ms :: {"count":"0"}
+6:42:28 PM [express] GET /api/notifications/167/unread-count 304 in 865ms :: {"count":"0"}
+6:42:59 PM [express] GET /api/notifications/167/unread-count 304 in 822ms :: {"count":"0"}
+==> Deploying...
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+6:44:19 PM [express] GET /api/bank-reconciliations/167/last 304 in 267ms :: {"id":2,"organizationId"…
+6:44:22 PM [express] GET /api/bank-reconciliations/2 304 in 264ms :: {"id":2,"organizationId":167,"a…
+6:44:22 PM [express] GET /api/bank-statement-entries/2 304 in 325ms :: []
+6:44:22 PM [express] GET /api/reconciliation/unreconciled/167 304 in 460ms :: [{"id":41763,"organiza…
+6:44:22 PM [express] GET /api/reconciliation-matches/2 304 in 516ms :: []
+6:44:22 PM [express] GET /api/bank-reconciliations/2/transactions 200 in 606ms :: [{"id":41633,"orga…
+6:44:22 PM [express] GET /api/reconciliation-suggestions/2 304 in 735ms :: []
+6:44:46 PM [express] GET /api/notifications/167/unread-count 304 in 855ms :: {"count":"0"}
+Error reconciling transactions: error: invalid input value for enum reconciliation_status: "completed"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.updateBankReconciliation (file:///opt/render/project/src/dist/index.js:4534:27)
+    at async file:///opt/render/project/src/dist/index.js:12969:7 {
+  length: 150,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+6:45:08 PM [express] POST /api/bank-reconciliations/2/reconcile-all 500 in 1158ms :: {"message":"Fai…
+6:45:17 PM [express] GET /api/notifications/167/unread-count 304 in 473ms :: {"count":"0"}
