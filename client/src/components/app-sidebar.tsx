@@ -120,7 +120,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       items: [
         { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
         { title: "Transaction Log", url: "/transaction-log", icon: List },
-        { title: "Bank Reconciliation", url: "/bank-reconciliation", icon: CheckSquare },
+        { title: "Bank Reconciliation", url: "/reconciliation-hub", icon: CheckSquare },
         { title: "Accounting Imports", url: "/accounting-imports", icon: FileSpreadsheet },
       ],
     },
@@ -222,7 +222,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       items: [
         { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
         { title: "Transaction Log", url: "/transaction-log", icon: List },
-        { title: "Bank Reconciliation", url: "/bank-reconciliation", icon: CheckSquare },
+        { title: "Bank Reconciliation", url: "/reconciliation-hub", icon: CheckSquare },
         { title: "Accounting Imports", url: "/accounting-imports", icon: FileSpreadsheet },
       ],
     },
