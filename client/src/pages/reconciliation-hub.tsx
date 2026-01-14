@@ -267,8 +267,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   // Reconcile all transactions in date range
   const reconcileAllMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', `/api/bank-reconciliations/${activeReconciliation}/reconcile-all`);
-      return await response.json() as { reconciledCount: number; message: string };
+      return await apiRequest('POST', `/api/bank-reconciliations/${activeReconciliation}/reconcile-all`) as { reconciledCount: number; message: string };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${activeReconciliation}/transactions`] });
