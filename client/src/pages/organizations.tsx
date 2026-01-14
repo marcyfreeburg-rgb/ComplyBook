@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Building2, Users, ArrowLeft, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
 import {
   AlertDialog,
@@ -343,7 +344,7 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
                     <span className="capitalize">{org.userRole}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    Created {format(new Date(org.createdAt), 'MMM yyyy')}
+                    Created {safeFormatDate(org.createdAt, 'MMM yyyy')}
                   </span>
                 </div>
               </CardContent>

@@ -25,6 +25,7 @@ import {
   Clock
 } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 
 interface DonorPortalData {
@@ -349,7 +350,7 @@ export default function DonorPortal() {
                           <div>
                             <p className="font-medium">{donation.description}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(new Date(donation.date + 'T12:00:00'), 'MMMM d, yyyy')}
+                              {safeFormatDate(donation.date, 'MMMM d, yyyy')}
                             </p>
                           </div>
                         </div>
@@ -398,8 +399,8 @@ export default function DonorPortal() {
                                 {getPledgeStatusBadge(pledge.status)}
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                Pledged on {format(new Date(pledge.pledgeDate), 'MMM d, yyyy')}
-                                {pledge.dueDate && ` • Due ${format(new Date(pledge.dueDate), 'MMM d, yyyy')}`}
+                                Pledged on {safeFormatDate(pledge.pledgeDate, 'MMM d, yyyy')}
+                                {pledge.dueDate && ` • Due ${safeFormatDate(pledge.dueDate, 'MMM d, yyyy')}`}
                               </p>
                             </div>
                           </div>

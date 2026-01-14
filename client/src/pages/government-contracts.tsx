@@ -16,6 +16,7 @@ import type { Contract, ContractMilestone, Project, TimeEntry, IndirectCostRate,
 import { formatCurrency } from "@/lib/utils";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 
 interface GovernmentContractsProps {
   currentOrganization: Organization;

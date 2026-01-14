@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Gift, ArrowLeft, Edit, Trash2, TrendingUp, AlertTriangle, Calendar, DollarSign, PieChart, BarChart3 } from "lucide-react";
 import { format, differenceInDays, isAfter, isBefore, addDays } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
 import { PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { Organization, Grant, InsertGrant } from "@shared/schema";
@@ -680,7 +681,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                         <div>
                           <p className="font-medium text-sm">{grant.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            Ends {format(new Date(grant.endDate!), 'MMM dd, yyyy')}
+                            Ends {safeFormatDate(grant.endDate, 'MMM dd, yyyy')}
                           </p>
                         </div>
                         <Badge variant={grant.daysUntilEnd <= 30 ? 'destructive' : 'secondary'}>
@@ -836,12 +837,12 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                       <div className="flex gap-4 text-xs text-muted-foreground">
                         {grant.startDate && (
                           <span>
-                            Start: {format(new Date(grant.startDate), 'MMM dd, yyyy')}
+                            Start: {safeFormatDate(grant.startDate, 'MMM dd, yyyy')}
                           </span>
                         )}
                         {grant.endDate && (
                           <span>
-                            End: {format(new Date(grant.endDate), 'MMM dd, yyyy')}
+                            End: {safeFormatDate(grant.endDate, 'MMM dd, yyyy')}
                           </span>
                         )}
                       </div>

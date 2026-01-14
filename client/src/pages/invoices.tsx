@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, Mail } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import type { Invoice, InvoiceLineItem, Client, Organization } from "@shared/schema";
 import { InvoicePreview } from "@/components/invoice-preview";
 import html2pdf from "html2pdf.js";
@@ -538,8 +539,8 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
                       <td className="py-3" data-testid={`text-client-${invoice.id}`}>
                         {invoice.clientName || <span className="text-muted-foreground">No client</span>}
                       </td>
-                      <td className="py-3">{format(new Date(invoice.issueDate), "MMM dd, yyyy")}</td>
-                      <td className="py-3">{format(new Date(invoice.dueDate), "MMM dd, yyyy")}</td>
+                      <td className="py-3">{safeFormatDate(invoice.issueDate, "MMM dd, yyyy")}</td>
+                      <td className="py-3">{safeFormatDate(invoice.dueDate, "MMM dd, yyyy")}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-4 h-4 text-muted-foreground" />

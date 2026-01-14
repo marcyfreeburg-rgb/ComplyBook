@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import type { Bill, BillLineItem, Vendor, Organization } from "@shared/schema";
 import { BillPreview } from "@/components/bill-preview";
 import html2pdf from "html2pdf.js";
@@ -449,8 +450,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
                       <td className="py-3" data-testid={`text-vendor-${bill.id}`}>
                         {bill.vendorName || <span className="text-muted-foreground">No vendor</span>}
                       </td>
-                      <td className="py-3">{format(new Date(bill.issueDate), "MMM dd, yyyy")}</td>
-                      <td className="py-3">{format(new Date(bill.dueDate), "MMM dd, yyyy")}</td>
+                      <td className="py-3">{safeFormatDate(bill.issueDate, "MMM dd, yyyy")}</td>
+                      <td className="py-3">{safeFormatDate(bill.dueDate, "MMM dd, yyyy")}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-4 h-4 text-muted-foreground" />

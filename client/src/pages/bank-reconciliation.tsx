@@ -9,6 +9,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { CheckCircle2, XCircle, Sparkles, RefreshCw } from "lucide-react";
 import type { Organization, Transaction } from "@shared/schema";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
@@ -258,7 +259,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
                         </td>
                       )}
                       <td className="py-3 px-4 text-sm">
-                        {format(new Date(transaction.date + 'T12:00:00'), 'MMM dd, yyyy')}
+                        {safeFormatDate(transaction.date, 'MMM dd, yyyy')}
                       </td>
                       <td className="py-3 px-4">{transaction.description}</td>
                       <td className="py-3 px-4">

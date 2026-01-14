@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { History, Filter, X } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormatDate } from "@/lib/utils";
 import type { Organization } from "@shared/schema";
 
 interface AuditLog {
@@ -223,7 +224,7 @@ export default function AuditTrail({ currentOrganization }: AuditTrailProps) {
                   {filteredLogs.map((log) => (
                     <TableRow key={log.id} data-testid={`audit-log-${log.id}`}>
                       <TableCell className="text-sm">
-                        {format(new Date(log.timestamp), 'MMM d, yyyy h:mm a')}
+                        {safeFormatDate(log.timestamp, 'MMM d, yyyy h:mm a')}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
