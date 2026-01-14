@@ -21,9 +21,8 @@ import finchRoutes from "./finch";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+import * as pdfParseModule from "pdf-parse";
+const pdfParse = (pdfParseModule as any).default || pdfParseModule;
 import { z } from "zod";
 import {
   insertOrganizationSchema,
