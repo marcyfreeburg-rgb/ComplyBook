@@ -21,6 +21,9 @@ import finchRoutes from "./finch";
 import memoize from "memoizee";
 import multer from "multer";
 import Papa from "papaparse";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 import { z } from "zod";
 import {
   insertOrganizationSchema,
@@ -2824,6 +2827,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configure multer for PDF uploads
+  const pdfUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype === 'application/pdf' || file.originalname.endsWith('.pdf')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF files are allowed'));
+      }
+    }
+  });
+
   // Logo upload route
   app.post('/api/organizations/:id/logo', isAuthenticated, logoUpload.single('logo'), async (req: any, res) => {
     try {
@@ -4048,6 +4064,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to reconcile transactions" });
     }
   });
+
+  // Parse PDF bank statement and extract transactions
+  app.post('/api/bank-reconciliations/:id/parse-pdf', isAuthenticated, pdfUpload.single('pdf'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.id);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No PDF file provided" });
+      }
+
+      // Parse the PDF
+      const pdfData = await pdfParse(req.file.buffer);
+      const text = pdfData.text;
+
+      // Extract transactions from PDF text
+      const extractedTransactions = parseBankStatementText(text);
+
+      res.json({ 
+        rawText: text,
+        transactions: extractedTransactions,
+        message: `Extracted ${extractedTransactions.length} transactions from PDF`
+      });
+    } catch (error) {
+      console.error("Error parsing PDF:", error);
+      res.status(500).json({ message: "Failed to parse PDF statement" });
+    }
+  });
+
+  // Helper function to normalize date strings to ISO format
+  function normalizeDate(dateStr: string): string | null {
+    const months: { [key: string]: string } = {
+      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+      'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+    };
+
+    // Try MM/DD/YY or MM/DD/YYYY
+    let match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (match) {
+      const month = match[1].padStart(2, '0');
+      const day = match[2].padStart(2, '0');
+      let year = match[3];
+      if (year.length === 2) {
+        year = parseInt(year) > 50 ? '19' + year : '20' + year;
+      }
+      return `${year}-${month}-${day}`;
+    }
+
+    // Try MM-DD-YY or MM-DD-YYYY
+    match = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
+    if (match) {
+      const month = match[1].padStart(2, '0');
+      const day = match[2].padStart(2, '0');
+      let year = match[3];
+      if (year.length === 2) {
+        year = parseInt(year) > 50 ? '19' + year : '20' + year;
+      }
+      return `${year}-${month}-${day}`;
+    }
+
+    // Try YYYY-MM-DD (already ISO)
+    match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      return dateStr;
+    }
+
+    // Try "Jan 15, 2024" or "Jan 15 2024"
+    match = dateStr.match(/^(\w{3})\s+(\d{1,2}),?\s+(\d{4})$/i);
+    if (match) {
+      const monthNum = months[match[1].toLowerCase()];
+      if (monthNum) {
+        const day = match[2].padStart(2, '0');
+        return `${match[3]}-${monthNum}-${day}`;
+      }
+    }
+
+    return null;
+  }
+
+  // Helper function to parse bank statement text and extract transactions
+  function parseBankStatementText(text: string): Array<{
+    date: string;
+    description: string;
+    amount: string;
+    type: 'income' | 'expense';
+  }> {
+    const transactions: Array<{
+      date: string;
+      description: string;
+      amount: string;
+      type: 'income' | 'expense';
+    }> = [];
+
+    // Split text into lines
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    // Common date patterns
+    const datePatterns = [
+      /(\d{1,2}\/\d{1,2}\/\d{2,4})/,  // MM/DD/YY or MM/DD/YYYY
+      /(\d{1,2}-\d{1,2}-\d{2,4})/,     // MM-DD-YY or MM-DD-YYYY
+      /(\w{3}\s+\d{1,2},?\s+\d{4})/i,  // Jan 15, 2024
+      /(\d{4}-\d{2}-\d{2})/,           // YYYY-MM-DD
+    ];
+
+    for (const line of lines) {
+      // Check if line contains a date at the beginning
+      let dateMatch = null;
+      let datePattern = null;
+      for (const pattern of datePatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          dateMatch = match[1];
+          datePattern = pattern;
+          break;
+        }
+      }
+
+      if (!dateMatch) continue;
+
+      // Normalize the date to ISO format
+      const normalizedDate = normalizeDate(dateMatch);
+      if (!normalizedDate) continue;
+
+      // Look for amounts in the line - match currency amounts with 2 decimal places
+      const amountMatches = [...line.matchAll(/(-?\$?\s*\(?\d{1,3}(?:,\d{3})*\.\d{2}\)?)/g)];
+      if (amountMatches.length === 0) continue;
+
+      // For statements with multiple columns (amount and balance):
+      // - If only 1 amount, use it
+      // - If 2+ amounts, use the first one (transaction) not the last (balance)
+      let selectedAmountMatch = amountMatches[0];
+      let amountStr = selectedAmountMatch[0];
+      
+      // Clean the amount string
+      const cleanAmount = amountStr.replace(/[\$,\s]/g, '');
+      
+      // Determine if it's a debit (negative) or credit (positive)
+      const isNegative = amountStr.includes('-') || (amountStr.includes('(') && amountStr.includes(')'));
+      
+      // Extract description (everything between date and first amount)
+      const dateIndex = line.indexOf(dateMatch);
+      const amountIndex = line.indexOf(amountStr, dateIndex + dateMatch.length);
+      
+      if (amountIndex <= dateIndex) continue;
+      
+      let description = line.substring(dateIndex + dateMatch.length, amountIndex).trim();
+      
+      // Clean up description
+      description = description.replace(/\s+/g, ' ').trim();
+      
+      // Skip if description is too short or looks like a header
+      if (description.length < 3) continue;
+      if (/^(date|description|amount|balance|debit|credit|withdrawal|deposit)$/i.test(description)) continue;
+
+      // Parse amount value
+      const numericAmount = parseFloat(cleanAmount.replace(/[\(\)]/g, ''));
+      if (isNaN(numericAmount) || numericAmount === 0) continue;
+
+      // Skip very large amounts that might be balances
+      if (numericAmount > 1000000) continue;
+
+      transactions.push({
+        date: normalizedDate,
+        description: description,
+        amount: numericAmount.toFixed(2),
+        type: isNegative ? 'expense' : 'income'
+      });
+    }
+
+    return transactions;
+  }
 
   // Bank Statement Entry routes
   app.get('/api/bank-statement-entries/:reconciliationId', isAuthenticated, async (req: any, res) => {

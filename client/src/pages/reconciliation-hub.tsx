@@ -57,6 +57,14 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   const [selectedStatements, setSelectedStatements] = useState<Set<number>>(new Set());
   const [isNewReconciliationOpen, setIsNewReconciliationOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isPdfImportOpen, setIsPdfImportOpen] = useState(false);
+  const [pdfParsing, setPdfParsing] = useState(false);
+  const [parsedPdfTransactions, setParsedPdfTransactions] = useState<Array<{
+    date: string;
+    description: string;
+    amount: string;
+    type: 'income' | 'expense';
+  }> | null>(null);
 
   const form = useForm<NewReconciliationFormData>({
     resolver: zodResolver(newReconciliationSchema),
@@ -328,6 +336,69 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     });
   };
 
+  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeReconciliation) return;
+
+    setPdfParsing(true);
+    setParsedPdfTransactions(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      const response = await fetch(`/api/bank-reconciliations/${activeReconciliation}/parse-pdf`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to parse PDF');
+      }
+
+      const data = await response.json();
+      
+      if (data.transactions && data.transactions.length > 0) {
+        setParsedPdfTransactions(data.transactions);
+        toast({
+          title: "PDF Parsed Successfully",
+          description: `Found ${data.transactions.length} transactions in the statement`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "No Transactions Found",
+          description: "Could not extract transactions from this PDF. Try a different format or use CSV.",
+        });
+      }
+    } catch (error) {
+      console.error("Error parsing PDF:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to parse PDF statement. Please try again or use CSV format.",
+      });
+    } finally {
+      setPdfParsing(false);
+    }
+  };
+
+  const importPdfTransactions = () => {
+    if (!parsedPdfTransactions || parsedPdfTransactions.length === 0) return;
+
+    const entries = parsedPdfTransactions.map(txn => ({
+      date: new Date(txn.date),
+      description: txn.description,
+      amount: txn.amount,
+      type: txn.type,
+    }));
+
+    importStatementMutation.mutate(entries);
+    setParsedPdfTransactions(null);
+    setIsPdfImportOpen(false);
+  };
+
   const handleMatch = () => {
     if (selectedTransactions.size !== 1 || selectedStatements.size !== 1) {
       toast({
@@ -553,12 +624,12 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 <DialogTrigger asChild>
                   <Button variant="outline" data-testid="button-import-statement">
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Import Statement
+                    Import CSV
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Import Bank Statement</DialogTitle>
+                    <DialogTitle>Import CSV Statement</DialogTitle>
                     <DialogDescription>
                       Upload a CSV file with columns: date, description, amount, reference (optional)
                     </DialogDescription>
@@ -573,6 +644,84 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                     <Button variant="outline" onClick={() => setIsImportOpen(false)} data-testid="button-cancel-import">
                       Cancel
                     </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={isPdfImportOpen} onOpenChange={(open) => {
+                setIsPdfImportOpen(open);
+                if (!open) setParsedPdfTransactions(null);
+              }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-import-pdf">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Import PDF
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Import PDF Statement</DialogTitle>
+                    <DialogDescription>
+                      Upload a PDF bank statement. The system will attempt to extract transactions automatically.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handlePdfUpload}
+                      disabled={pdfParsing}
+                      data-testid="input-pdf-file"
+                    />
+                    {pdfParsing && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Parsing PDF...
+                      </div>
+                    )}
+                    {parsedPdfTransactions && parsedPdfTransactions.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="font-medium">Found {parsedPdfTransactions.length} transactions:</p>
+                        <div className="max-h-64 overflow-y-auto border rounded-md">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted sticky top-0">
+                              <tr>
+                                <th className="p-2 text-left">Date</th>
+                                <th className="p-2 text-left">Description</th>
+                                <th className="p-2 text-right">Amount</th>
+                                <th className="p-2 text-center">Type</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {parsedPdfTransactions.map((txn, idx) => (
+                                <tr key={idx} className="border-t">
+                                  <td className="p-2">{txn.date}</td>
+                                  <td className="p-2 truncate max-w-[200px]">{txn.description}</td>
+                                  <td className="p-2 text-right">${txn.amount}</td>
+                                  <td className="p-2 text-center">
+                                    <Badge variant={txn.type === 'income' ? 'default' : 'secondary'}>
+                                      {txn.type}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => {
+                      setIsPdfImportOpen(false);
+                      setParsedPdfTransactions(null);
+                    }} data-testid="button-cancel-pdf-import">
+                      Cancel
+                    </Button>
+                    {parsedPdfTransactions && parsedPdfTransactions.length > 0 && (
+                      <Button onClick={importPdfTransactions} data-testid="button-confirm-pdf-import">
+                        Import {parsedPdfTransactions.length} Transactions
+                      </Button>
+                    )}
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
