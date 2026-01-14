@@ -4105,11 +4105,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Use dynamic import to avoid bundling issues
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
     
-    // Disable worker to avoid issues in server environment
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+    // Disable worker by setting it to a dummy value - must be done before getDocument
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = "data:text/javascript,";
     
     const uint8Array = new Uint8Array(buffer);
-    const loadingTask = pdfjsLib.getDocument({ data: uint8Array, useSystemFonts: true });
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: uint8Array, 
+      useSystemFonts: true,
+      disableFontFace: true,
+      isEvalSupported: false
+    });
     const pdf = await loadingTask.promise;
     
     let fullText = "";
