@@ -3965,6 +3965,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get transactions within reconciliation date range
+  app.get('/api/bank-reconciliations/:id/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.id);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Get transactions within the statement date range
+      const transactions = await storage.getTransactionsByDateRange(
+        reconciliation.organizationId,
+        new Date(reconciliation.statementStartDate),
+        new Date(reconciliation.statementEndDate)
+      );
+
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching reconciliation transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  // Reconcile all transactions in date range
+  app.post('/api/bank-reconciliations/:id/reconcile-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.id);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to reconcile transactions" });
+      }
+
+      // Get transactions within the statement date range
+      const transactions = await storage.getTransactionsByDateRange(
+        reconciliation.organizationId,
+        new Date(reconciliation.statementStartDate),
+        new Date(reconciliation.statementEndDate)
+      );
+
+      // Mark all unreconciled transactions as reconciled
+      const unreconciledIds = transactions
+        .filter(t => t.reconciliationStatus !== 'reconciled')
+        .map(t => t.id);
+
+      if (unreconciledIds.length > 0) {
+        await storage.bulkReconcileTransactions(unreconciledIds, userId);
+      }
+
+      // Update reconciliation status to completed
+      await storage.updateBankReconciliation(reconciliationId, {
+        status: 'completed',
+        completedDate: new Date(),
+      });
+
+      res.json({ 
+        reconciledCount: unreconciledIds.length,
+        message: `${unreconciledIds.length} transactions reconciled successfully`
+      });
+    } catch (error) {
+      console.error("Error reconciling transactions:", error);
+      res.status(500).json({ message: "Failed to reconcile transactions" });
+    }
+  });
+
   // Bank Statement Entry routes
   app.get('/api/bank-statement-entries/:reconciliationId', isAuthenticated, async (req: any, res) => {
     try {

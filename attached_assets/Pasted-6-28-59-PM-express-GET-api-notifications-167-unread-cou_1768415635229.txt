@@ -1,0 +1,34 @@
+6:28:59 PM [express] GET /api/notifications/167/unread-count 304 in 885ms :: {"count":"0"}
+==> Deploying...
+Stripe initialization skipped: X_REPLIT_TOKEN not found for repl/depl
+[Auth] Default admin user already exists: admin@complybook.net
+[Auth] Default admin user already exists: marcy.freeburg@gmail.com
+6:29:42 PM [express] serving on port 10000
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 872 total (872 active, 0 archived)
+6:30:00 PM [express] GET /api/notifications/167/unread-count 200 in 655ms :: {"count":"0"}
+6:30:31 PM [express] GET /api/notifications/167/unread-count 304 in 858ms :: {"count":"0"}
+6:31:02 PM [express] GET /api/notifications/167/unread-count 304 in 927ms :: {"count":"0"}
+6:31:33 PM [express] GET /api/notifications/167/unread-count 304 in 878ms :: {"count":"0"}
+6:31:35 PM [express] GET /api/auth/user 200 in 200ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+6:31:36 PM [express] GET /api/organizations 200 in 530ms :: [{"id":168,"name":"C Cubed Training","ty…
+6:31:36 PM [express] GET /api/security/mfa/status 200 in 791ms :: {"mfaEnabled":true,"mfaRequired":t…
+6:31:36 PM [express] GET /api/notifications/167/unread-count 304 in 271ms :: {"count":"0"}
+6:31:36 PM [express] GET /api/reconciliation/unreconciled/167 304 in 402ms :: [{"id":41763,"organiza…
+6:31:41 PM [express] GET /api/bank-reconciliations/167/last 304 in 290ms
+6:32:07 PM [express] GET /api/notifications/167/unread-count 304 in 903ms :: {"count":"0"}
+6:32:38 PM [express] GET /api/notifications/167/unread-count 304 in 896ms :: {"count":"0"}
+6:32:48 PM [express] POST /api/bank-reconciliations 200 in 299ms :: {"id":2,"organizationId":167,"ac…
+6:32:49 PM [express] GET /api/bank-reconciliations/167/last 200 in 269ms :: {"id":2,"organizationId"…
+6:32:55 PM [express] GET /api/bank-statement-entries/2 200 in 346ms :: []
+6:32:55 PM [express] GET /api/bank-reconciliations/2 200 in 482ms :: {"id":2,"organizationId":167,"a…
+6:32:55 PM [express] GET /api/reconciliation-matches/2 200 in 756ms :: []
+6:32:55 PM [express] GET /api/reconciliation-suggestions/2 200 in 951ms :: []
+6:33:09 PM [express] GET /api/notifications/167/unread-count 304 in 892ms :: {"count":"0"}

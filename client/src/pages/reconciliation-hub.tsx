@@ -88,6 +88,12 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     enabled: !!currentOrganization && !!activeReconciliation,
   });
 
+  // Fetch transactions within the reconciliation date range
+  const { data: periodTransactions = [], isLoading: isLoadingPeriodTransactions } = useQuery<Transaction[]>({
+    queryKey: [`/api/bank-reconciliations/${activeReconciliation}/transactions`],
+    enabled: !!activeReconciliation,
+  });
+
   // Fetch bank statement entries
   const { data: statementEntries = [] } = useQuery<BankStatementEntry[]>({
     queryKey: [`/api/bank-statement-entries/${activeReconciliation}`],
@@ -254,6 +260,31 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
         variant: "destructive",
         title: "Error",
         description: "Failed to complete reconciliation",
+      });
+    },
+  });
+
+  // Reconcile all transactions in date range
+  const reconcileAllMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/bank-reconciliations/${activeReconciliation}/reconcile-all`);
+      return await response.json() as { reconciledCount: number; message: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${activeReconciliation}/transactions`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      toast({
+        title: "Reconciliation Complete",
+        description: data.message,
+      });
+      setActiveReconciliation(null);
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to reconcile transactions",
       });
     },
   });
@@ -472,6 +503,22 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   );
 
   const difference = Math.abs(totalTransactionAmount - totalStatementAmount);
+
+  // Calculate book balance from period transactions
+  const periodIncome = periodTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  const periodExpenses = periodTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  const calculatedBookBalance = reconciliation 
+    ? parseFloat(reconciliation.beginningBalance) + periodIncome - periodExpenses
+    : 0;
+  const periodReconciledCount = periodTransactions.filter(t => t.reconciliationStatus === 'reconciled').length;
+  const periodUnreconciledCount = periodTransactions.filter(t => t.reconciliationStatus !== 'reconciled').length;
+  const balanceDifference = reconciliation 
+    ? Math.abs(calculatedBookBalance - parseFloat(reconciliation.endingBalance))
+    : 0;
 
   if (!currentOrganization) {
     return (
@@ -692,24 +739,106 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-5 gap-4 mb-6">
                 <div>
-                  <p className="text-sm text-muted-foreground">Book Balance</p>
-                  <p className="text-2xl font-bold" data-testid="text-book-balance">${parseFloat(reconciliation.bookBalance).toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">Beginning Balance</p>
+                  <p className="text-2xl font-bold" data-testid="text-beginning-balance">${parseFloat(reconciliation.beginningBalance).toFixed(2)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Matched</p>
-                  <p className="text-2xl font-bold" data-testid="text-matched-count">{existingMatches.length}</p>
+                  <p className="text-sm text-muted-foreground">Calculated Book Balance</p>
+                  <p className="text-2xl font-bold" data-testid="text-book-balance">${calculatedBookBalance.toFixed(2)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Unmatched Transactions</p>
-                  <p className="text-2xl font-bold" data-testid="text-unmatched-transactions">{unmatchedTransactions.length}</p>
+                  <p className="text-sm text-muted-foreground">Statement Ending Balance</p>
+                  <p className="text-2xl font-bold" data-testid="text-statement-balance">${parseFloat(reconciliation.endingBalance).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Difference</p>
-                  <p className="text-2xl font-bold" data-testid="text-difference">${difference.toFixed(2)}</p>
+                  <p className={`text-2xl font-bold ${balanceDifference > 0.01 ? 'text-red-600' : 'text-green-600'}`} data-testid="text-difference">
+                    ${balanceDifference.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Transactions in Period</p>
+                  <p className="text-2xl font-bold" data-testid="text-transaction-count">{periodTransactions.length}</p>
                 </div>
               </div>
+
+              {/* Balance Comparison Summary */}
+              <div className="border rounded-lg p-4 mb-4">
+                <h3 className="font-semibold mb-3">Balance Reconciliation Summary</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Beginning Balance:</span>
+                      <span className="font-medium">${parseFloat(reconciliation.beginningBalance).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">+ Total Income:</span>
+                      <span className="font-medium text-green-600">${periodIncome.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">- Total Expenses:</span>
+                      <span className="font-medium text-red-600">${periodExpenses.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 font-semibold">
+                      <span>Calculated Book Balance:</span>
+                      <span>${calculatedBookBalance.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Statement Ending Balance:</span>
+                      <span className="font-medium">${parseFloat(reconciliation.endingBalance).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Reconciled Transactions:</span>
+                      <span className="font-medium">{periodReconciledCount} of {periodTransactions.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Unreconciled Transactions:</span>
+                      <span className="font-medium">{periodUnreconciledCount}</span>
+                    </div>
+                    <div className={`flex justify-between border-t pt-2 font-semibold ${balanceDifference > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                      <span>Difference:</span>
+                      <span>${balanceDifference.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reconcile All Button */}
+              {periodUnreconciledCount > 0 && (
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">
+                      {balanceDifference <= 0.01 
+                        ? "Balances match! Ready to reconcile all transactions."
+                        : `There is a $${balanceDifference.toFixed(2)} difference. Review transactions before reconciling.`
+                      }
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {periodUnreconciledCount} transactions will be marked as reconciled
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => reconcileAllMutation.mutate()}
+                    disabled={reconcileAllMutation.isPending}
+                    data-testid="button-reconcile-all"
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {reconcileAllMutation.isPending ? 'Reconciling...' : 'Reconcile All Transactions'}
+                  </Button>
+                </div>
+              )}
+
+              {periodUnreconciledCount === 0 && periodTransactions.length > 0 && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900">
+                  <p className="font-medium text-green-700 dark:text-green-400">
+                    All {periodTransactions.length} transactions in this period are reconciled.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
