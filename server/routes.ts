@@ -4333,23 +4333,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Convert date strings to Date objects before inserting
       const processEntries = (entryList: any[]) => {
-        return entryList.map(entry => ({
-          ...entry,
-          date: entry.date instanceof Date ? entry.date : new Date(entry.date)
-        }));
+        return entryList.map(entry => {
+          const dateValue = entry.date;
+          let dateObj: Date;
+          if (dateValue instanceof Date) {
+            dateObj = dateValue;
+          } else if (typeof dateValue === 'string') {
+            dateObj = new Date(dateValue);
+          } else {
+            dateObj = new Date();
+          }
+          console.log(`Processing entry date: ${dateValue} -> ${dateObj} (valid: ${!isNaN(dateObj.getTime())})`);
+          return {
+            reconciliationId: entry.reconciliationId,
+            date: dateObj,
+            description: entry.description,
+            amount: entry.amount,
+            type: entry.type,
+            isMatched: entry.isMatched || 0
+          };
+        });
       };
 
+      console.log("Received entries:", JSON.stringify(entries, null, 2));
+
       // Bulk create if array provided, otherwise single create
+      const processedEntries = Array.isArray(entries) ? processEntries(entries) : null;
+      console.log("Processed entries:", JSON.stringify(processedEntries, null, 2));
+      
       const newEntries = Array.isArray(entries)
-        ? await storage.bulkCreateBankStatementEntries(processEntries(entries))
+        ? await storage.bulkCreateBankStatementEntries(processedEntries!)
         : await storage.createBankStatementEntry({
-            ...req.body,
-            date: req.body.date instanceof Date ? req.body.date : new Date(req.body.date)
+            reconciliationId: req.body.reconciliationId,
+            date: req.body.date instanceof Date ? req.body.date : new Date(req.body.date),
+            description: req.body.description,
+            amount: req.body.amount,
+            type: req.body.type,
+            isMatched: req.body.isMatched || 0
           });
 
       res.json(newEntries);
     } catch (error) {
       console.error("Error creating statement entries:", error);
+      console.error("Request body:", JSON.stringify(req.body, null, 2));
       res.status(500).json({ message: "Failed to create statement entries" });
     }
   });
