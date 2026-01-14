@@ -71,7 +71,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   });
 
   // Fetch last reconciliation
-  const { data: lastReconciliation } = useQuery<BankReconciliation | null>({
+  const { data: lastReconciliation, isLoading: isLoadingLastReconciliation } = useQuery<BankReconciliation | null>({
     queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`],
     enabled: !!currentOrganization,
   });
@@ -477,6 +477,18 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     return (
       <div className="p-8">
         <p data-testid="text-no-organization">Please select an organization to view bank reconciliation.</p>
+      </div>
+    );
+  }
+
+  // Show loading state while fetching last reconciliation
+  if (isLoadingLastReconciliation && !activeReconciliation) {
+    return (
+      <div className="flex flex-col h-full p-6 gap-6">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="heading-reconciliation">Bank Reconciliation</h1>
+          <p className="text-muted-foreground">Loading reconciliation data...</p>
+        </div>
       </div>
     );
   }
