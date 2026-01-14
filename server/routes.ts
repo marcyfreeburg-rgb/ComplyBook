@@ -4331,10 +4331,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to add statement entries" });
       }
 
+      // Convert date strings to Date objects before inserting
+      const processEntries = (entryList: any[]) => {
+        return entryList.map(entry => ({
+          ...entry,
+          date: entry.date instanceof Date ? entry.date : new Date(entry.date)
+        }));
+      };
+
       // Bulk create if array provided, otherwise single create
       const newEntries = Array.isArray(entries)
-        ? await storage.bulkCreateBankStatementEntries(entries)
-        : await storage.createBankStatementEntry(req.body);
+        ? await storage.bulkCreateBankStatementEntries(processEntries(entries))
+        : await storage.createBankStatementEntry({
+            ...req.body,
+            date: req.body.date instanceof Date ? req.body.date : new Date(req.body.date)
+          });
 
       res.json(newEntries);
     } catch (error) {
