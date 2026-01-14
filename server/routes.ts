@@ -4100,34 +4100,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to extract text from PDF using pdfjs-dist
+  // Helper function to extract text from PDF using unpdf
   async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-    // Use dynamic import to avoid bundling issues
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    
-    // Disable worker by setting it to a dummy value - must be done before getDocument
-    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = "data:text/javascript,";
-    
+    const { extractText } = await import("unpdf");
     const uint8Array = new Uint8Array(buffer);
-    const loadingTask = pdfjsLib.getDocument({ 
-      data: uint8Array, 
-      useSystemFonts: true,
-      disableFontFace: true,
-      isEvalSupported: false
-    });
-    const pdf = await loadingTask.promise;
-    
-    let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
-      fullText += pageText + "\n";
-    }
-    
-    return fullText;
+    const result = await extractText(uint8Array);
+    return result.text || "";
   }
 
   // Helper function to normalize date strings to ISO format
