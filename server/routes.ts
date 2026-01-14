@@ -4105,7 +4105,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { extractText } = await import("unpdf");
     const uint8Array = new Uint8Array(buffer);
     const result = await extractText(uint8Array);
-    return result.text || "";
+    
+    // Handle different result formats from unpdf
+    if (typeof result.text === 'string') {
+      return result.text;
+    } else if (Array.isArray(result.text)) {
+      return result.text.join('\n');
+    } else if (result.text && typeof result.text === 'object') {
+      // If it's an object with pages, concatenate all page text
+      return Object.values(result.text).flat().join('\n');
+    }
+    return "";
   }
 
   // Helper function to normalize date strings to ISO format
