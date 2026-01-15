@@ -250,6 +250,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/bank-statement-entries/${activeReconciliation}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation-suggestions/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/matched-transaction-ids/${currentOrganization?.id}`] });
       setSelectedTransactions(new Set());
       setSelectedStatements(new Set());
       toast({
@@ -276,6 +277,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/bank-statement-entries/${activeReconciliation}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation-suggestions/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/matched-transaction-ids/${currentOrganization?.id}`] });
       toast({
         title: "Success",
         description: "Match removed successfully",

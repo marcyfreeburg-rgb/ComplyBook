@@ -379,6 +379,7 @@ export interface IStorage {
     statementEntry: BankStatementEntry;
     similarityScore: number;
   }>>;
+  getMatchedTransactionIds(organizationId: number): Promise<number[]>;
 
   // Grant operations
   getGrants(organizationId: number): Promise<Array<Grant & { totalSpent: string; totalIncome: string; remainingBalance: string }>>;
@@ -2707,6 +2708,33 @@ export class DatabaseStorage implements IStorage {
     return suggestions
       .sort((a, b) => b.similarityScore - a.similarityScore)
       .slice(0, 20); // Limit to top 20 suggestions
+  }
+
+  async getMatchedTransactionIds(organizationId: number): Promise<number[]> {
+    // Get all active reconciliations for this organization (status = 'in_progress')
+    const activeReconciliations = await db
+      .select({ id: bankReconciliations.id })
+      .from(bankReconciliations)
+      .where(
+        and(
+          eq(bankReconciliations.organizationId, organizationId),
+          eq(bankReconciliations.status, 'in_progress')
+        )
+      );
+
+    if (activeReconciliations.length === 0) {
+      return [];
+    }
+
+    const reconciliationIds = activeReconciliations.map(r => r.id);
+
+    // Get all matched transaction IDs for these reconciliations
+    const matches = await db
+      .select({ transactionId: reconciliationMatches.transactionId })
+      .from(reconciliationMatches)
+      .where(inArray(reconciliationMatches.reconciliationId, reconciliationIds));
+
+    return matches.map(m => m.transactionId);
   }
 
   // Grant operations

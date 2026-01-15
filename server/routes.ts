@@ -4508,6 +4508,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all matched transaction IDs for an organization (for visual indication in transaction logs)
+  app.get('/api/matched-transaction-ids/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const matchedIds = await storage.getMatchedTransactionIds(organizationId);
+      res.json(matchedIds);
+    } catch (error) {
+      console.error("Error getting matched transaction IDs:", error);
+      res.status(500).json({ message: "Failed to get matched transaction IDs" });
+    }
+  });
+
   // Recurring Transaction routes
   app.get('/api/recurring-transactions/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

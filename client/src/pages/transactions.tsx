@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -200,6 +200,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     queryKey: [`/api/bank-reconciliations/${currentOrganization.id}/last`],
     retry: false,
   });
+
+  const { data: matchedTransactionIds } = useQuery<number[]>({
+    queryKey: [`/api/matched-transaction-ids/${currentOrganization.id}`],
+    retry: false,
+  });
+
+  const matchedIdsSet = useMemo(() => new Set(matchedTransactionIds || []), [matchedTransactionIds]);
 
   useEffect(() => {
     if (transactionsError && isUnauthorizedError(transactionsError as Error)) {
@@ -1747,10 +1754,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 <tbody>
                   {filteredTransactions.map((transaction) => {
                     const category = categories?.find(c => c.id === transaction.categoryId);
+                    const isMatched = matchedIdsSet.has(transaction.id);
                     return (
                       <tr 
                         key={transaction.id} 
-                        className="border-b hover-elevate"
+                        className={`border-b hover-elevate ${isMatched ? 'opacity-50 bg-muted/30' : ''}`}
                         data-testid={`transaction-row-${transaction.id}`}
                       >
                         <td className="py-3 px-4">
@@ -1766,6 +1774,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                         <td className="py-3 px-4 text-sm font-medium">
                           <div className="flex items-center gap-2">
                             <span className="truncate">{transaction.description}</span>
+                            {isMatched && (
+                              <Badge variant="secondary" className="text-xs shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Matched</Badge>
+                            )}
                             {transaction.hasSplits && (
                               <Badge variant="secondary" className="text-xs shrink-0">Split</Badge>
                             )}
