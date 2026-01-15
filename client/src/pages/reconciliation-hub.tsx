@@ -25,7 +25,8 @@ import {
   RotateCcw,
   Calendar,
   DollarSign,
-  FileText
+  FileText,
+  AlertTriangle
 } from "lucide-react";
 import type { Organization, Transaction, BankReconciliation, BankStatementEntry, ReconciliationMatch } from "@shared/schema";
 import { format } from "date-fns";
@@ -65,6 +66,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     amount: string;
     type: 'income' | 'expense';
   }> | null>(null);
+  const [openingBalanceVerified, setOpeningBalanceVerified] = useState(false);
 
   const form = useForm<NewReconciliationFormData>({
     resolver: zodResolver(newReconciliationSchema),
@@ -147,6 +149,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
       setActiveReconciliation(data.id);
+      setOpeningBalanceVerified(false);
       setIsNewReconciliationOpen(false);
       form.reset();
       toast({
@@ -862,7 +865,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
-              <Button onClick={() => setActiveReconciliation(lastReconciliation.id)} data-testid="button-resume-reconciliation">
+              <Button onClick={() => { setActiveReconciliation(lastReconciliation.id); setOpeningBalanceVerified(false); }} data-testid="button-resume-reconciliation">
                 Resume
               </Button>
             </div>
@@ -912,14 +915,59 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 </div>
               </div>
 
+              {/* Opening Balance Verification */}
+              <div className={`border rounded-lg p-4 mb-4 ${openingBalanceVerified ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {openingBalanceVerified ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    )}
+                    <div>
+                      <h3 className="font-semibold">Opening Balance Verification</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {openingBalanceVerified 
+                          ? `Verified: Opening balance of ${formatCurrency(reconciliation.beginningBalance)} matches your bank statement.`
+                          : `Please verify that your opening balance of ${formatCurrency(reconciliation.beginningBalance)} matches your bank statement's starting balance for this period.`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!openingBalanceVerified ? (
+                      <Button 
+                        onClick={() => setOpeningBalanceVerified(true)}
+                        data-testid="button-verify-opening-balance"
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Confirm Opening Balance Matches
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setOpeningBalanceVerified(false)}
+                        data-testid="button-unverify-opening-balance"
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Undo Verification
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Balance Comparison Summary */}
               <div className="border rounded-lg p-4 mb-4">
                 <h3 className="font-semibold mb-3">Balance Reconciliation Summary</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Beginning Balance:</span>
-                      <span className="font-medium">{formatCurrency(reconciliation.beginningBalance)}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="font-medium">{formatCurrency(reconciliation.beginningBalance)}</span>
+                        {openingBalanceVerified && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">+ Total Income:</span>
