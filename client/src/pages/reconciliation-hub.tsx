@@ -26,7 +26,10 @@ import {
   Calendar,
   DollarSign,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Pencil,
+  Save,
+  X
 } from "lucide-react";
 import type { Organization, Transaction, BankReconciliation, BankStatementEntry, ReconciliationMatch } from "@shared/schema";
 import { format } from "date-fns";
@@ -67,6 +70,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     type: 'income' | 'expense';
   }> | null>(null);
   const [openingBalanceVerified, setOpeningBalanceVerified] = useState(false);
+  const [isEditingBalance, setIsEditingBalance] = useState(false);
+  const [editedBeginningBalance, setEditedBeginningBalance] = useState("");
   const [amountMismatchDialog, setAmountMismatchDialog] = useState<{
     open: boolean;
     transactionId: number;
@@ -337,6 +342,32 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
         variant: "destructive",
         title: "Error",
         description: "Failed to reconcile transactions",
+      });
+    },
+  });
+
+  // Update beginning balance
+  const updateBeginningBalanceMutation = useMutation({
+    mutationFn: async (newBalance: string) => {
+      return await apiRequest('PATCH', `/api/bank-reconciliations/${activeReconciliation}`, {
+        beginningBalance: newBalance,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      setIsEditingBalance(false);
+      setEditedBeginningBalance("");
+      toast({
+        title: "Success",
+        description: "Beginning balance updated",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update beginning balance",
       });
     },
   });
@@ -1060,16 +1091,70 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                     )}
                     <div>
                       <h3 className="font-semibold">Opening Balance Verification</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {openingBalanceVerified 
-                          ? `Verified: Opening balance of ${formatCurrency(reconciliation.beginningBalance)} matches your bank statement.`
-                          : `Please verify that your opening balance of ${formatCurrency(reconciliation.beginningBalance)} matches your bank statement's starting balance for this period.`
-                        }
-                      </p>
+                      {isEditingBalance ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-sm text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editedBeginningBalance}
+                            onChange={(e) => setEditedBeginningBalance(e.target.value)}
+                            className="w-40"
+                            placeholder="Enter correct balance"
+                            data-testid="input-edit-beginning-balance"
+                          />
+                          <Button 
+                            size="sm"
+                            onClick={() => {
+                              const trimmedValue = editedBeginningBalance.trim();
+                              if (trimmedValue && !isNaN(parseFloat(trimmedValue))) {
+                                updateBeginningBalanceMutation.mutate(trimmedValue);
+                              }
+                            }}
+                            disabled={!editedBeginningBalance.trim() || isNaN(parseFloat(editedBeginningBalance)) || updateBeginningBalanceMutation.isPending}
+                            data-testid="button-save-beginning-balance"
+                          >
+                            <Save className="mr-1 h-3 w-3" />
+                            Save
+                          </Button>
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setIsEditingBalance(false);
+                              setEditedBeginningBalance("");
+                            }}
+                            data-testid="button-cancel-edit-balance"
+                          >
+                            <X className="mr-1 h-3 w-3" />
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {openingBalanceVerified 
+                            ? `Verified: Opening balance of ${formatCurrency(reconciliation.beginningBalance)} matches your bank statement.`
+                            : `Please verify that your opening balance of ${formatCurrency(reconciliation.beginningBalance)} matches your bank statement's starting balance for this period.`
+                          }
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {!openingBalanceVerified ? (
+                    {!openingBalanceVerified && !isEditingBalance && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingBalance(true);
+                          setEditedBeginningBalance(reconciliation.beginningBalance?.toString() || "");
+                        }}
+                        data-testid="button-edit-opening-balance"
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Balance
+                      </Button>
+                    )}
+                    {!openingBalanceVerified && !isEditingBalance ? (
                       <Button 
                         onClick={() => setOpeningBalanceVerified(true)}
                         data-testid="button-verify-opening-balance"
@@ -1077,7 +1162,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                         Confirm Opening Balance Matches
                       </Button>
-                    ) : (
+                    ) : openingBalanceVerified ? (
                       <Button 
                         variant="outline"
                         onClick={() => setOpeningBalanceVerified(false)}
@@ -1086,7 +1171,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Undo Verification
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
