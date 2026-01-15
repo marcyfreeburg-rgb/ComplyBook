@@ -685,6 +685,46 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     ? Math.abs(calculatedBookBalance - parseFloat(reconciliation.endingBalance))
     : 0;
 
+  // Auto-reconcile all transactions when balances match
+  const [hasAutoReconciled, setHasAutoReconciled] = useState(false);
+  
+  useEffect(() => {
+    // Check if balances match (within $0.01 tolerance) and there are unreconciled transactions
+    const balancesMatch = balanceDifference < 0.01;
+    const hasUnreconciledTransactions = periodUnreconciledCount > 0;
+    const isActive = !!activeReconciliation && !!reconciliation;
+    const notAlreadyReconciling = !reconcileAllMutation.isPending;
+    
+    if (
+      isActive && 
+      balancesMatch && 
+      hasUnreconciledTransactions && 
+      notAlreadyReconciling && 
+      !hasAutoReconciled &&
+      openingBalanceVerified
+    ) {
+      setHasAutoReconciled(true);
+      reconcileAllMutation.mutate();
+      toast({
+        title: "Balances Match",
+        description: "All transactions in this period are being automatically reconciled.",
+      });
+    }
+  }, [
+    balanceDifference, 
+    periodUnreconciledCount, 
+    activeReconciliation, 
+    reconciliation, 
+    reconcileAllMutation.isPending, 
+    hasAutoReconciled,
+    openingBalanceVerified
+  ]);
+
+  // Reset auto-reconcile flag when switching reconciliations
+  useEffect(() => {
+    setHasAutoReconciled(false);
+  }, [activeReconciliation]);
+
   if (!currentOrganization) {
     return (
       <div className="p-8">
