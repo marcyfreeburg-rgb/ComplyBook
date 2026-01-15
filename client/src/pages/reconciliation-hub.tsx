@@ -67,6 +67,15 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     type: 'income' | 'expense';
   }> | null>(null);
   const [openingBalanceVerified, setOpeningBalanceVerified] = useState(false);
+  const [amountMismatchDialog, setAmountMismatchDialog] = useState<{
+    open: boolean;
+    transactionId: number;
+    statementEntryId: number;
+    transactionAmount: string;
+    statementAmount: string;
+    transactionDescription: string;
+    statementDescription: string;
+  } | null>(null);
 
   const form = useForm<NewReconciliationFormData>({
     resolver: zodResolver(newReconciliationSchema),
@@ -415,10 +424,62 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     const transactionId = Array.from(selectedTransactions)[0];
     const statementEntryId = Array.from(selectedStatements)[0];
 
+    const transaction = unmatchedTransactions.find(t => t.id === transactionId);
+    const statementEntry = unmatchedStatements.find(e => e.id === statementEntryId);
+
+    if (transaction && statementEntry) {
+      const txnAmount = parseFloat(transaction.amount);
+      const stmtAmount = parseFloat(statementEntry.amount);
+      
+      if (Math.abs(txnAmount - stmtAmount) > 0.001) {
+        setAmountMismatchDialog({
+          open: true,
+          transactionId,
+          statementEntryId,
+          transactionAmount: transaction.amount,
+          statementAmount: statementEntry.amount,
+          transactionDescription: transaction.description,
+          statementDescription: statementEntry.description,
+        });
+        return;
+      }
+    }
+
     matchMutation.mutate({ transactionId, statementEntryId });
   };
 
+  const confirmMismatchedMatch = () => {
+    if (amountMismatchDialog) {
+      matchMutation.mutate({
+        transactionId: amountMismatchDialog.transactionId,
+        statementEntryId: amountMismatchDialog.statementEntryId,
+      });
+      setAmountMismatchDialog(null);
+    }
+  };
+
   const handleApplySuggestion = (transactionId: number, statementEntryId: number) => {
+    const transaction = unmatchedTransactions.find(t => t.id === transactionId);
+    const statementEntry = unmatchedStatements.find(e => e.id === statementEntryId);
+
+    if (transaction && statementEntry) {
+      const txnAmount = parseFloat(transaction.amount);
+      const stmtAmount = parseFloat(statementEntry.amount);
+      
+      if (Math.abs(txnAmount - stmtAmount) > 0.001) {
+        setAmountMismatchDialog({
+          open: true,
+          transactionId,
+          statementEntryId,
+          transactionAmount: transaction.amount,
+          statementAmount: statementEntry.amount,
+          transactionDescription: transaction.description,
+          statementDescription: statementEntry.description,
+        });
+        return;
+      }
+    }
+
     matchMutation.mutate({ transactionId, statementEntryId });
   };
 
@@ -1249,6 +1310,50 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={amountMismatchDialog?.open ?? false} onOpenChange={(open) => !open && setAmountMismatchDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Amount Mismatch Detected
+            </DialogTitle>
+            <DialogDescription>
+              The amounts for these items do not match. Are you sure you want to proceed with this match?
+            </DialogDescription>
+          </DialogHeader>
+          {amountMismatchDialog && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-md">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Transaction</p>
+                  <p className="font-medium">{amountMismatchDialog.transactionDescription}</p>
+                  <p className="text-lg font-bold">{formatCurrency(amountMismatchDialog.transactionAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Bank Statement</p>
+                  <p className="font-medium">{amountMismatchDialog.statementDescription}</p>
+                  <p className="text-lg font-bold">{formatCurrency(amountMismatchDialog.statementAmount)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Difference: {formatCurrency(Math.abs(parseFloat(amountMismatchDialog.transactionAmount) - parseFloat(amountMismatchDialog.statementAmount)))}
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAmountMismatchDialog(null)} data-testid="button-cancel-mismatch">
+              Cancel
+            </Button>
+            <Button onClick={confirmMismatchedMatch} data-testid="button-confirm-mismatch">
+              Match Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
