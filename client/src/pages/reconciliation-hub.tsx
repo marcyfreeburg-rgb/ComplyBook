@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,50 +90,81 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   });
 
   // Fetch last reconciliation
-  const { data: lastReconciliation, isLoading: isLoadingLastReconciliation } = useQuery<BankReconciliation | null>({
+  const { data: lastReconciliation, isLoading: isLoadingLastReconciliation, refetch: refetchLastReconciliation } = useQuery<BankReconciliation | null>({
     queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`],
     enabled: !!currentOrganization,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch active reconciliation details
-  const { data: reconciliation } = useQuery<BankReconciliation>({
+  const { data: reconciliation, refetch: refetchReconciliation } = useQuery<BankReconciliation>({
     queryKey: [`/api/bank-reconciliations/${activeReconciliation}`],
     enabled: !!activeReconciliation,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch unreconciled transactions
-  const { data: unreconciledTransactions = [] } = useQuery<Transaction[]>({
+  const { data: unreconciledTransactions = [], refetch: refetchUnreconciled } = useQuery<Transaction[]>({
     queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`],
     enabled: !!currentOrganization && !!activeReconciliation,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch transactions within the reconciliation date range
-  const { data: periodTransactions = [], isLoading: isLoadingPeriodTransactions } = useQuery<Transaction[]>({
+  const { data: periodTransactions = [], isLoading: isLoadingPeriodTransactions, refetch: refetchPeriodTransactions } = useQuery<Transaction[]>({
     queryKey: [`/api/bank-reconciliations/${activeReconciliation}/transactions`],
     enabled: !!activeReconciliation,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch bank statement entries
-  const { data: statementEntries = [] } = useQuery<BankStatementEntry[]>({
+  const { data: statementEntries = [], refetch: refetchStatementEntries } = useQuery<BankStatementEntry[]>({
     queryKey: [`/api/bank-statement-entries/${activeReconciliation}`],
     enabled: !!activeReconciliation,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch existing matches
-  const { data: existingMatches = [] } = useQuery<ReconciliationMatch[]>({
+  const { data: existingMatches = [], refetch: refetchMatches } = useQuery<ReconciliationMatch[]>({
     queryKey: [`/api/reconciliation-matches/${activeReconciliation}`],
     enabled: !!activeReconciliation,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // Fetch AI suggestions
-  const { data: suggestions = [] } = useQuery<Array<{
+  const { data: suggestions = [], refetch: refetchSuggestions } = useQuery<Array<{
     transaction: Transaction;
     statementEntry: BankStatementEntry;
     similarityScore: number;
   }>>({
     queryKey: [`/api/reconciliation-suggestions/${activeReconciliation}`],
     enabled: !!activeReconciliation,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
+
+  // Refetch all data when page becomes visible (handles navigation back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeReconciliation) {
+        refetchPeriodTransactions();
+        refetchUnreconciled();
+        refetchStatementEntries();
+        refetchMatches();
+        refetchSuggestions();
+        refetchReconciliation();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [activeReconciliation, refetchPeriodTransactions, refetchUnreconciled, refetchStatementEntries, refetchMatches, refetchSuggestions, refetchReconciliation]);
 
   // Create new reconciliation
   const createReconciliationMutation = useMutation({
