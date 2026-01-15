@@ -425,6 +425,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'invoicePaymentTerms', 'invoicePaymentMethods', 'invoiceFooter'
       ] as const;
       
+      // SECURITY NOTE: This bracket notation is safe because 'field' is derived from the
+      // hardcoded 'allowedFields' array above, NOT from user input. This is an allowlist
+      // pattern that prevents prototype pollution - only explicitly permitted field names
+      // are extracted from req.body. Static analyzers may flag this as a false positive.
       const updates: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
