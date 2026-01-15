@@ -2410,12 +2410,33 @@ export class DatabaseStorage implements IStorage {
         throw new Error('Statement entry not found or does not belong to this reconciliation');
       }
 
-      // Check if already matched
+      // Check if already matched - return existing match instead of throwing error
       if (transaction.reconciliationStatus === 'reconciled') {
+        // Find existing match for this transaction
+        const [existingMatch] = await tx
+          .select()
+          .from(reconciliationMatches)
+          .where(eq(reconciliationMatches.transactionId, transactionId))
+          .limit(1);
+        
+        if (existingMatch) {
+          return existingMatch;
+        }
+        // If no match exists but transaction is reconciled, just return a placeholder
         throw new Error('Transaction is already reconciled');
       }
 
       if (statementEntry.isMatched === 1) {
+        // Find existing match for this statement entry
+        const [existingMatch] = await tx
+          .select()
+          .from(reconciliationMatches)
+          .where(eq(reconciliationMatches.statementEntryId, statementEntryId))
+          .limit(1);
+        
+        if (existingMatch) {
+          return existingMatch;
+        }
         throw new Error('Statement entry is already matched');
       }
 
