@@ -9,7 +9,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { CheckCircle2, XCircle, Sparkles, RefreshCw } from "lucide-react";
 import type { Organization, Transaction } from "@shared/schema";
 import { format } from "date-fns";
-import { safeFormatDate } from "@/lib/utils";
+import { safeFormatDate, formatCurrency } from "@/lib/utils";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
@@ -268,7 +268,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-right font-medium">
-                        ${parseFloat(transaction.amount).toFixed(2)}
+                        {formatCurrency(transaction.amount)}
                       </td>
                       {showReconciled && (
                         <td className="py-3 px-4">

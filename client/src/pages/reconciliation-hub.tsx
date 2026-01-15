@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import type { Organization, Transaction, BankReconciliation, BankStatementEntry, ReconciliationMatch } from "@shared/schema";
 import { format } from "date-fns";
-import { safeFormatDate } from "@/lib/utils";
+import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import Papa from "papaparse";
 import html2pdf from "html2pdf.js";
 
@@ -445,16 +445,16 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #666;">Book Balance:</td>
-              <td style="padding: 8px 0; font-weight: bold;">$${parseFloat(reconciliation.bookBalance).toFixed(2)}</td>
+              <td style="padding: 8px 0; font-weight: bold;">${formatCurrency(reconciliation.bookBalance)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #666;">Statement Balance:</td>
-              <td style="padding: 8px 0; font-weight: bold;">$${parseFloat(reconciliation.statementBalance).toFixed(2)}</td>
+              <td style="padding: 8px 0; font-weight: bold;">${formatCurrency(reconciliation.statementBalance)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #666;">Difference:</td>
               <td style="padding: 8px 0; font-weight: bold; color: ${difference > 0.01 ? '#dc2626' : '#16a34a'};">
-                $${difference.toFixed(2)}
+                ${formatCurrency(difference)}
               </td>
             </tr>
             <tr>
@@ -479,24 +479,24 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">Matched Items</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${existingMatches.length}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">
-                  $${existingMatches.reduce((sum, match) => {
+                  ${formatCurrency(existingMatches.reduce((sum, match) => {
                     const txn = unreconciledTransactions.find(t => t.id === match.transactionId);
                     return sum + (txn ? parseFloat(txn.amount) : 0);
-                  }, 0).toFixed(2)}
+                  }, 0))}
                 </td>
               </tr>
               <tr>
                 <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">Unmatched Transactions</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${unmatchedTransactions.length}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">
-                  $${totalTransactionAmount.toFixed(2)}
+                  ${formatCurrency(totalTransactionAmount)}
                 </td>
               </tr>
               <tr>
                 <td style="padding: 12px;">Unmatched Statement Entries</td>
                 <td style="padding: 12px; text-align: right;">${unmatchedStatements.length}</td>
                 <td style="padding: 12px; text-align: right;">
-                  $${totalStatementAmount.toFixed(2)}
+                  ${formatCurrency(totalStatementAmount)}
                 </td>
               </tr>
             </tbody>
@@ -525,7 +525,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${safeFormatDate(txn.date, 'MMM dd, yyyy')}</td>
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${txn.description}</td>
                       <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">${entry.description}</td>
-                      <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">$${parseFloat(txn.amount).toFixed(2)}</td>
+                      <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${formatCurrency(txn.amount)}</td>
                     </tr>
                   `;
                 }).join('')}
@@ -890,20 +890,20 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               <div className="grid grid-cols-5 gap-4 mb-6">
                 <div>
                   <p className="text-sm text-muted-foreground">Beginning Balance</p>
-                  <p className="text-2xl font-bold" data-testid="text-beginning-balance">${parseFloat(reconciliation.beginningBalance).toFixed(2)}</p>
+                  <p className="text-2xl font-bold" data-testid="text-beginning-balance">{formatCurrency(reconciliation.beginningBalance)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Calculated Book Balance</p>
-                  <p className="text-2xl font-bold" data-testid="text-book-balance">${calculatedBookBalance.toFixed(2)}</p>
+                  <p className="text-2xl font-bold" data-testid="text-book-balance">{formatCurrency(calculatedBookBalance)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Statement Ending Balance</p>
-                  <p className="text-2xl font-bold" data-testid="text-statement-balance">${parseFloat(reconciliation.endingBalance).toFixed(2)}</p>
+                  <p className="text-2xl font-bold" data-testid="text-statement-balance">{formatCurrency(reconciliation.endingBalance)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Difference</p>
                   <p className={`text-2xl font-bold ${balanceDifference > 0.01 ? 'text-red-600' : 'text-green-600'}`} data-testid="text-difference">
-                    ${balanceDifference.toFixed(2)}
+                    {formatCurrency(balanceDifference)}
                   </p>
                 </div>
                 <div>
@@ -919,25 +919,25 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Beginning Balance:</span>
-                      <span className="font-medium">${parseFloat(reconciliation.beginningBalance).toFixed(2)}</span>
+                      <span className="font-medium">{formatCurrency(reconciliation.beginningBalance)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">+ Total Income:</span>
-                      <span className="font-medium text-green-600">${periodIncome.toFixed(2)}</span>
+                      <span className="font-medium text-green-600">{formatCurrency(periodIncome)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">- Total Expenses:</span>
-                      <span className="font-medium text-red-600">${periodExpenses.toFixed(2)}</span>
+                      <span className="font-medium text-red-600">{formatCurrency(periodExpenses)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 font-semibold">
                       <span>Calculated Book Balance:</span>
-                      <span>${calculatedBookBalance.toFixed(2)}</span>
+                      <span>{formatCurrency(calculatedBookBalance)}</span>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Statement Ending Balance:</span>
-                      <span className="font-medium">${parseFloat(reconciliation.endingBalance).toFixed(2)}</span>
+                      <span className="font-medium">{formatCurrency(reconciliation.endingBalance)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Reconciled Transactions:</span>
@@ -949,7 +949,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                     </div>
                     <div className={`flex justify-between border-t pt-2 font-semibold ${balanceDifference > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
                       <span>Difference:</span>
-                      <span>${balanceDifference.toFixed(2)}</span>
+                      <span>{formatCurrency(balanceDifference)}</span>
                     </div>
                   </div>
                 </div>
@@ -962,7 +962,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                     <p className="font-medium">
                       {balanceDifference <= 0.01 
                         ? "Balances match! Ready to reconcile all transactions."
-                        : `There is a $${balanceDifference.toFixed(2)} difference. Review transactions before reconciling.`
+                        : `There is a ${formatCurrency(balanceDifference)} difference. Review transactions before reconciling.`
                       }
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -1031,7 +1031,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                           <p className="text-sm text-muted-foreground">{safeFormatDate(txn.date, 'MMM dd, yyyy')}</p>
                         </div>
                         <p className={`font-bold ${parseFloat(txn.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${Math.abs(parseFloat(txn.amount)).toFixed(2)}
+                          {formatCurrency(Math.abs(parseFloat(txn.amount)))}
                         </p>
                       </div>
                     ))}
@@ -1067,7 +1067,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                           </p>
                         </div>
                         <p className={`font-bold ${parseFloat(entry.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${Math.abs(parseFloat(entry.amount)).toFixed(2)}
+                          {formatCurrency(Math.abs(parseFloat(entry.amount)))}
                         </p>
                       </div>
                     ))}
@@ -1106,13 +1106,13 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                             <p className="text-sm text-muted-foreground">Transaction</p>
                             <p className="font-medium">{suggestion.transaction.description}</p>
                             <p className="text-sm">{safeFormatDate(suggestion.transaction.date, 'MMM dd, yyyy')}</p>
-                            <p className="font-bold">${parseFloat(suggestion.transaction.amount).toFixed(2)}</p>
+                            <p className="font-bold">{formatCurrency(suggestion.transaction.amount)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Statement</p>
                             <p className="font-medium">{suggestion.statementEntry.description}</p>
                             <p className="text-sm">{safeFormatDate(suggestion.statementEntry.date, 'MMM dd, yyyy')}</p>
-                            <p className="font-bold">${parseFloat(suggestion.statementEntry.amount).toFixed(2)}</p>
+                            <p className="font-bold">{formatCurrency(suggestion.statementEntry.amount)}</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-center gap-2">
@@ -1167,7 +1167,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                               <p className="text-sm text-muted-foreground">{safeFormatDate(entry.date, 'MMM dd, yyyy')}</p>
                             </div>
                           </div>
-                          <p className="font-bold">${parseFloat(txn.amount).toFixed(2)}</p>
+                          <p className="font-bold">{formatCurrency(txn.amount)}</p>
                           <Button
                             variant="ghost"
                             size="icon"
