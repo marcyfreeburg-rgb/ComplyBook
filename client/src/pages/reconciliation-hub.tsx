@@ -72,6 +72,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   const [openingBalanceVerified, setOpeningBalanceVerified] = useState(false);
   const [isEditingBalance, setIsEditingBalance] = useState(false);
   const [editedBeginningBalance, setEditedBeginningBalance] = useState("");
+  const [isEditingEndingBalance, setIsEditingEndingBalance] = useState(false);
+  const [editedEndingBalance, setEditedEndingBalance] = useState("");
   const [amountMismatchDialog, setAmountMismatchDialog] = useState<{
     open: boolean;
     transactionId: number;
@@ -368,6 +370,32 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
         variant: "destructive",
         title: "Error",
         description: "Failed to update beginning balance",
+      });
+    },
+  });
+
+  // Update ending balance
+  const updateEndingBalanceMutation = useMutation({
+    mutationFn: async (newBalance: string) => {
+      return await apiRequest('PATCH', `/api/bank-reconciliations/${activeReconciliation}`, {
+        endingBalance: newBalance,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      setIsEditingEndingBalance(false);
+      setEditedEndingBalance("");
+      toast({
+        title: "Success",
+        description: "Statement ending balance updated",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update ending balance",
       });
     },
   });
@@ -1066,7 +1094,59 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Statement Ending Balance</p>
-                  <p className="text-2xl font-bold" data-testid="text-statement-balance">{formatCurrency(reconciliation.endingBalance)}</p>
+                  {isEditingEndingBalance ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editedEndingBalance}
+                        onChange={(e) => setEditedEndingBalance(e.target.value)}
+                        className="w-28 h-8"
+                        data-testid="input-edit-ending-balance"
+                      />
+                      <Button 
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          const trimmedValue = editedEndingBalance.trim();
+                          if (trimmedValue && !isNaN(parseFloat(trimmedValue))) {
+                            updateEndingBalanceMutation.mutate(trimmedValue);
+                          }
+                        }}
+                        disabled={!editedEndingBalance.trim() || isNaN(parseFloat(editedEndingBalance)) || updateEndingBalanceMutation.isPending}
+                        data-testid="button-save-ending-balance"
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsEditingEndingBalance(false);
+                          setEditedEndingBalance("");
+                        }}
+                        data-testid="button-cancel-edit-ending-balance"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-bold" data-testid="text-statement-balance">{formatCurrency(reconciliation.endingBalance)}</p>
+                      <Button 
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsEditingEndingBalance(true);
+                          setEditedEndingBalance(reconciliation.endingBalance?.toString() || "");
+                        }}
+                        data-testid="button-edit-ending-balance"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Difference</p>
