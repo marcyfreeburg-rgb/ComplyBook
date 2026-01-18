@@ -895,7 +895,17 @@ export const transactions = pgTable("transactions", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_transactions_org_id").on(table.organizationId),
+  index("idx_transactions_org_date").on(table.organizationId, table.date),
+  index("idx_transactions_org_type").on(table.organizationId, table.type),
+  index("idx_transactions_org_category").on(table.organizationId, table.categoryId),
+  index("idx_transactions_org_reconciliation").on(table.organizationId, table.reconciliationStatus),
+  index("idx_transactions_org_fund").on(table.organizationId, table.fundId),
+  index("idx_transactions_org_program").on(table.organizationId, table.programId),
+  index("idx_transactions_org_donor").on(table.organizationId, table.donorId),
+  index("idx_transactions_date").on(table.date),
+]);
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
   id: true,
