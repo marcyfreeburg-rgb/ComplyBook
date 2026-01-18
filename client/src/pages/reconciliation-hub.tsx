@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +83,11 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     transactionDescription: string;
     statementDescription: string;
   } | null>(null);
+  const [noTransactionsDialog, setNoTransactionsDialog] = useState<{
+    open: boolean;
+    rawText: string;
+  } | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<NewReconciliationFormData>({
     resolver: zodResolver(newReconciliationSchema),
@@ -470,10 +475,9 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
           description: `Found ${data.transactions.length} transactions in the statement`,
         });
       } else {
-        toast({
-          variant: "destructive",
-          title: "No Transactions Found",
-          description: "Could not extract transactions from this PDF. Try a different format or use CSV.",
+        setNoTransactionsDialog({
+          open: true,
+          rawText: data.rawText || "",
         });
       }
     } catch (error) {
@@ -862,6 +866,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   </DialogHeader>
                   <div className="space-y-4">
                     <Input
+                      ref={pdfInputRef}
                       type="file"
                       accept=".pdf"
                       onChange={handlePdfUpload}
@@ -1588,6 +1593,74 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
             </Button>
             <Button onClick={confirmMismatchedMatch} data-testid="button-confirm-mismatch">
               Match Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={noTransactionsDialog?.open ?? false} onOpenChange={(open) => !open && setNoTransactionsDialog(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              No Transactions Found in Statement
+            </DialogTitle>
+            <DialogDescription>
+              We could not extract any transactions from this bank statement PDF. This could mean:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+              <li>The statement period has no transactions (statement is intentionally empty)</li>
+              <li>The PDF format is not supported or the text could not be extracted</li>
+              <li>The transactions are in an unexpected format</li>
+            </ul>
+            
+            {noTransactionsDialog?.rawText && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Extracted text preview:</p>
+                <div className="max-h-32 overflow-y-auto p-3 bg-muted rounded-md text-xs font-mono whitespace-pre-wrap">
+                  {noTransactionsDialog.rawText.substring(0, 500)}
+                  {noTransactionsDialog.rawText.length > 500 && "..."}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                If the statement period had no transactions, you can confirm and continue with reconciliation.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setNoTransactionsDialog(null);
+                if (pdfInputRef.current) {
+                  pdfInputRef.current.value = "";
+                }
+              }} 
+              data-testid="button-reupload-statement"
+            >
+              Upload Different Statement
+            </Button>
+            <Button 
+              onClick={() => {
+                setNoTransactionsDialog(null);
+                setIsPdfImportOpen(false);
+                if (pdfInputRef.current) {
+                  pdfInputRef.current.value = "";
+                }
+                toast({
+                  title: "Statement Confirmed",
+                  description: "Continuing with reconciliation. No transactions to import from this statement.",
+                });
+              }} 
+              data-testid="button-confirm-no-transactions"
+            >
+              Confirm No Transactions
             </Button>
           </DialogFooter>
         </DialogContent>
