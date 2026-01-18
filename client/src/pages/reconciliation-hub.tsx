@@ -87,6 +87,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     open: boolean;
     rawText: string;
   } | null>(null);
+  const [statementConfirmedEmpty, setStatementConfirmedEmpty] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<NewReconciliationFormData>({
@@ -202,6 +203,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
       setActiveReconciliation(data.id);
       setOpeningBalanceVerified(false);
+      setStatementConfirmedEmpty(false);
       setIsNewReconciliationOpen(false);
       form.reset();
       toast({
@@ -234,6 +236,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/bank-statement-entries/${activeReconciliation}`] });
       setIsImportOpen(false);
+      setStatementConfirmedEmpty(false);
       toast({
         title: "Success",
         description: "Bank statement imported successfully",
@@ -470,6 +473,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
       
       if (data.transactions && data.transactions.length > 0) {
         setParsedPdfTransactions(data.transactions);
+        setStatementConfirmedEmpty(false);
         toast({
           title: "PDF Parsed Successfully",
           description: `Found ${data.transactions.length} transactions in the statement`,
@@ -505,6 +509,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     importStatementMutation.mutate(entries);
     setParsedPdfTransactions(null);
     setIsPdfImportOpen(false);
+    setStatementConfirmedEmpty(false);
   };
 
   const handleMatch = () => {
@@ -936,7 +941,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               </Button>
               <Button
                 onClick={() => completeReconciliationMutation.mutate()}
-                disabled={unmatchedTransactions.length > 0 || unmatchedStatements.length > 0}
+                disabled={!statementConfirmedEmpty && (unmatchedTransactions.length > 0 || unmatchedStatements.length > 0)}
                 data-testid="button-complete-reconciliation"
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -1063,7 +1068,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
-              <Button onClick={() => { setActiveReconciliation(lastReconciliation.id); setOpeningBalanceVerified(false); }} data-testid="button-resume-reconciliation">
+              <Button onClick={() => { setActiveReconciliation(lastReconciliation.id); setOpeningBalanceVerified(false); setStatementConfirmedEmpty(false); }} data-testid="button-resume-reconciliation">
                 Resume
               </Button>
             </div>
@@ -1392,10 +1397,29 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Bank Statement ({unmatchedStatements.length})</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      Bank Statement ({unmatchedStatements.length})
+                      {statementConfirmedEmpty && (
+                        <Badge variant="secondary" className="ml-2">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Confirmed Empty
+                        </Badge>
+                      )}
+                    </CardTitle>
                     <CardDescription>Select a statement entry to match</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2 max-h-[600px] overflow-y-auto">
+                    {statementConfirmedEmpty && unmatchedStatements.length === 0 && (
+                      <div className="flex items-center gap-2 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium text-blue-700 dark:text-blue-300">Statement confirmed as empty</p>
+                          <p className="text-sm text-blue-600 dark:text-blue-400">
+                            No transactions were found in the bank statement for this period. You can now complete the reconciliation.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {unmatchedStatements.map((entry) => (
                       <div
                         key={entry.id}
@@ -1650,12 +1674,13 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               onClick={() => {
                 setNoTransactionsDialog(null);
                 setIsPdfImportOpen(false);
+                setStatementConfirmedEmpty(true);
                 if (pdfInputRef.current) {
                   pdfInputRef.current.value = "";
                 }
                 toast({
                   title: "Statement Confirmed",
-                  description: "Continuing with reconciliation. No transactions to import from this statement.",
+                  description: "Statement confirmed as having no transactions. You can now complete the reconciliation.",
                 });
               }} 
               data-testid="button-confirm-no-transactions"
