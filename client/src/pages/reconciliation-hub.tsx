@@ -311,7 +311,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
   const completeReconciliationMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest('PATCH', `/api/bank-reconciliations/${activeReconciliation}`, {
-        status: 'completed',
+        status: 'reconciled',
         completedDate: new Date(),
       });
     },
