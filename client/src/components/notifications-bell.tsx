@@ -36,7 +36,8 @@ export function NotificationsBell({ organizationId }: NotificationsBellProps) {
   // Fetch unread count
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ['/api/notifications', organizationId, 'unread-count'],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 60000, // Refetch every 60 seconds (reduced to minimize db load)
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   // Fetch recent notifications
