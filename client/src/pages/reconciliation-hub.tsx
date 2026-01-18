@@ -941,7 +941,11 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               </Button>
               <Button
                 onClick={() => completeReconciliationMutation.mutate()}
-                disabled={!statementConfirmedEmpty && (unmatchedTransactions.length > 0 || unmatchedStatements.length > 0)}
+                disabled={
+                  !statementConfirmedEmpty && 
+                  !(periodTransactions.length === 0 && unmatchedStatements.length === 0) &&
+                  (unmatchedTransactions.length > 0 || unmatchedStatements.length > 0)
+                }
                 data-testid="button-complete-reconciliation"
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
