@@ -155,39 +155,46 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
     retry: false,
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
     retry: false,
+    staleTime: 60000, // Categories rarely change - cache for 1 minute
   });
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: [`/api/vendors/${currentOrganization.id}`],
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: [`/api/clients/${currentOrganization.id}`],
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const { data: donors } = useQuery<Donor[]>({
     queryKey: [`/api/donors/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const { data: funds } = useQuery<Fund[]>({
     queryKey: ['/api/funds', currentOrganization.id],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const { data: programs } = useQuery<Program[]>({
     queryKey: ['/api/programs', currentOrganization.id],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const { data: attachments, refetch: refetchAttachments } = useQuery<TransactionAttachment[]>({
@@ -199,11 +206,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const { data: lastReconciliation } = useQuery({
     queryKey: [`/api/bank-reconciliations/${currentOrganization.id}/last`],
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const { data: matchedTransactionIds } = useQuery<number[]>({
     queryKey: [`/api/matched-transaction-ids/${currentOrganization.id}`],
     retry: false,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   const matchedIdsSet = useMemo(() => new Set(matchedTransactionIds || []), [matchedTransactionIds]);
