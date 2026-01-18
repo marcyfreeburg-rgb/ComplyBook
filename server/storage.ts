@@ -334,6 +334,7 @@ export interface IStorage {
   // Transaction operations
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
+  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
   findMatchingManualTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
@@ -1868,6 +1869,47 @@ export class DatabaseStorage implements IStorage {
       .from(transactions)
       .where(eq(transactions.organizationId, organizationId))
       .orderBy(desc(transactions.date), desc(transactions.id));
+  }
+
+  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
+    const { limit, offset, search } = options;
+    
+    // Build where conditions
+    let whereConditions = eq(transactions.organizationId, organizationId);
+    
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim().toLowerCase()}%`;
+      whereConditions = and(
+        eq(transactions.organizationId, organizationId),
+        or(
+          sql`LOWER(${transactions.description}) LIKE ${searchTerm}`,
+          sql`${transactions.amount}::text LIKE ${searchTerm}`
+        )
+      ) as any;
+    }
+    
+    // Get total count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(transactions)
+      .where(whereConditions);
+    
+    const total = countResult?.count || 0;
+    
+    // Get paginated transactions
+    const result = await db
+      .select()
+      .from(transactions)
+      .where(whereConditions)
+      .orderBy(desc(transactions.date), desc(transactions.id))
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      transactions: result,
+      total,
+      hasMore: offset + result.length < total,
+    };
   }
 
   async getTransactionsByDateRange(

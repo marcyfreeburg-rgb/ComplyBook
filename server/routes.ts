@@ -2437,8 +2437,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      const transactions = await storage.getTransactions(organizationId);
-      res.json(transactions);
+      // Check if pagination is requested
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const search = req.query.search as string | undefined;
+
+      if (limit !== undefined) {
+        // Paginated response
+        const result = await storage.getTransactionsPaginated(organizationId, { limit, offset, search });
+        res.json(result);
+      } else {
+        // Legacy: return all transactions (for backwards compatibility)
+        const transactions = await storage.getTransactions(organizationId);
+        res.json(transactions);
+      }
     } catch (error) {
       console.error("Error fetching transactions:", error);
       res.status(500).json({ message: "Failed to fetch transactions" });

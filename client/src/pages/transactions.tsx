@@ -152,11 +152,95 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     createdBy: userId,
   });
 
-  const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useQuery<Transaction[]>({
-    queryKey: [`/api/transactions/${currentOrganization.id}`],
+  // Pagination state
+  const TRANSACTIONS_PER_PAGE = 100;
+  const [loadedTransactions, setLoadedTransactions] = useState<Transaction[]>([]);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setLoadedTransactions([]);
+    setHasMoreTransactions(true);
+    setTotalTransactions(0);
+  }, [debouncedSearchQuery, currentOrganization.id]);
+
+  interface PaginatedTransactionsResponse {
+    transactions: Transaction[];
+    total: number;
+    hasMore: boolean;
+  }
+
+  const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useQuery<PaginatedTransactionsResponse>({
+    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: TRANSACTIONS_PER_PAGE.toString(),
+        offset: '0',
+      });
+      if (debouncedSearchQuery) {
+        params.append('search', debouncedSearchQuery);
+      }
+      const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      return response.json();
+    },
     retry: false,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   });
+
+  // Update loaded transactions when data changes
+  useEffect(() => {
+    if (transactionsData) {
+      setLoadedTransactions(transactionsData.transactions);
+      setHasMoreTransactions(transactionsData.hasMore);
+      setTotalTransactions(transactionsData.total);
+    }
+  }, [transactionsData]);
+
+  // Load more transactions
+  const loadMoreTransactions = async () => {
+    if (isLoadingMore || !hasMoreTransactions) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const params = new URLSearchParams({
+        limit: TRANSACTIONS_PER_PAGE.toString(),
+        offset: loadedTransactions.length.toString(),
+      });
+      if (debouncedSearchQuery) {
+        params.append('search', debouncedSearchQuery);
+      }
+      const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch more transactions');
+      const data: PaginatedTransactionsResponse = await response.json();
+      
+      setLoadedTransactions(prev => [...prev, ...data.transactions]);
+      setHasMoreTransactions(data.hasMore);
+    } catch (error) {
+      console.error('Error loading more transactions:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load more transactions",
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Use loaded transactions instead of raw query data
+  const transactions = loadedTransactions;
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -818,9 +902,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     }
   };
 
-  const filteredTransactions = transactions?.filter(t => 
-    t.description.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Server-side search is now used, so we just use the loaded transactions directly
+  const filteredTransactions = transactions || [];
 
   // Bulk operations handlers
   const toggleSelectAll = () => {
@@ -1886,6 +1969,23 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   })}
                 </tbody>
               </table>
+              </div>
+              
+              {/* Load More / Pagination Info */}
+              <div className="flex items-center justify-between px-4 py-3 border-t">
+                <p className="text-sm text-muted-foreground" data-testid="text-transaction-count-info">
+                  Showing {filteredTransactions.length} of {totalTransactions} transactions
+                </p>
+                {hasMoreTransactions && (
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreTransactions}
+                    disabled={isLoadingMore}
+                    data-testid="button-load-more"
+                  >
+                    {isLoadingMore ? "Loading..." : `Load More (${totalTransactions - filteredTransactions.length} remaining)`}
+                  </Button>
+                )}
               </div>
             </div>
           )}
