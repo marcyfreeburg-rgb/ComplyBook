@@ -362,8 +362,10 @@ export interface IStorage {
   getLastBankReconciliation(organizationId: number, accountName?: string): Promise<BankReconciliation | undefined>;
   createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation>;
   updateBankReconciliation(id: number, updates: Partial<InsertBankReconciliation>): Promise<BankReconciliation>;
+  deleteBankReconciliation(id: number): Promise<void>;
   
   // Bank Statement Entry operations
+  getBankStatementEntry(id: number): Promise<BankStatementEntry | undefined>;
   getBankStatementEntries(reconciliationId: number): Promise<BankStatementEntry[]>;
   createBankStatementEntry(entry: InsertBankStatementEntry): Promise<BankStatementEntry>;
   bulkCreateBankStatementEntries(entries: InsertBankStatementEntry[]): Promise<BankStatementEntry[]>;
@@ -2370,7 +2372,32 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async deleteBankReconciliation(id: number): Promise<void> {
+    // First delete all related reconciliation matches
+    await db
+      .delete(reconciliationMatches)
+      .where(eq(reconciliationMatches.reconciliationId, id));
+    
+    // Then delete all bank statement entries
+    await db
+      .delete(bankStatementEntries)
+      .where(eq(bankStatementEntries.reconciliationId, id));
+    
+    // Finally delete the reconciliation itself
+    await db
+      .delete(bankReconciliations)
+      .where(eq(bankReconciliations.id, id));
+  }
+
   // Bank Statement Entry operations
+  async getBankStatementEntry(id: number): Promise<BankStatementEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(bankStatementEntries)
+      .where(eq(bankStatementEntries.id, id));
+    return entry;
+  }
+
   async getBankStatementEntries(reconciliationId: number): Promise<BankStatementEntry[]> {
     return await db
       .select()

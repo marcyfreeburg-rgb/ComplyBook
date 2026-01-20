@@ -3994,6 +3994,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all reconciliations for an organization (history)
+  app.get('/api/bank-reconciliations/:organizationId/all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const reconciliations = await storage.getBankReconciliations(organizationId);
+      res.json(reconciliations);
+    } catch (error) {
+      console.error("Error fetching reconciliation history:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation history" });
+    }
+  });
+
+  // Delete a reconciliation and all its related data
+  app.delete('/api/bank-reconciliations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reconciliationId = parseInt(req.params.id);
+
+      const reconciliation = await storage.getBankReconciliation(reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete reconciliations" });
+      }
+
+      await storage.deleteBankReconciliation(reconciliationId);
+      res.json({ success: true, message: "Reconciliation deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting reconciliation:", error);
+      res.status(500).json({ message: "Failed to delete reconciliation" });
+    }
+  });
+
   // Get transactions within reconciliation date range
   app.get('/api/bank-reconciliations/:id/transactions', isAuthenticated, async (req: any, res) => {
     try {
@@ -4393,6 +4442,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating statement entries:", error);
       console.error("Request body:", JSON.stringify(req.body, null, 2));
       res.status(500).json({ message: "Failed to create statement entries" });
+    }
+  });
+
+  // Delete a single bank statement entry
+  app.delete('/api/bank-statement-entries/:entryId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entryId = parseInt(req.params.entryId);
+
+      // Get the entry first to find the reconciliation
+      const entry = await storage.getBankStatementEntry(entryId);
+      if (!entry) {
+        return res.status(404).json({ message: "Bank statement entry not found" });
+      }
+
+      // Get the reconciliation to verify permissions
+      const reconciliation = await storage.getBankReconciliation(entry.reconciliationId);
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+
+      // Check user has access and permission
+      const userRole = await storage.getUserRole(userId, reconciliation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete statement entries" });
+      }
+
+      await storage.deleteBankStatementEntry(entryId);
+      res.json({ success: true, message: "Bank statement entry deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting statement entry:", error);
+      res.status(500).json({ message: "Failed to delete statement entry" });
     }
   });
 

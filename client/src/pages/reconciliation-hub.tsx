@@ -162,6 +162,115 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     staleTime: 0,
   });
 
+  // Fetch all reconciliations for history view
+  const { data: reconciliationHistory = [], refetch: refetchHistory } = useQuery<BankReconciliation[]>({
+    queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/all`],
+    enabled: !!currentOrganization,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
+  // Delete reconciliation state
+  const [deleteReconciliationDialog, setDeleteReconciliationDialog] = useState<{
+    open: boolean;
+    reconciliationId: number;
+    accountName: string;
+    statementEndDate: string;
+  } | null>(null);
+
+  // Delete reconciliation mutation
+  const deleteReconciliationMutation = useMutation({
+    mutationFn: async (reconciliationId: number) => {
+      return await apiRequest('DELETE', `/api/bank-reconciliations/${reconciliationId}`);
+    },
+    onSuccess: () => {
+      const deletedId = deleteReconciliationDialog?.reconciliationId;
+      
+      // Invalidate all related queries
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/all`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      if (deletedId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${deletedId}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/reconciliation-matches/${deletedId}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/bank-statement-entries/${deletedId}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${deletedId}/transactions`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/reconciliation-suggestions/${deletedId}`] });
+      }
+      
+      refetchHistory();
+      refetchLastReconciliation();
+      setDeleteReconciliationDialog(null);
+      
+      // Clear all client-side state if deleting the active reconciliation
+      if (activeReconciliation === deletedId) {
+        setActiveReconciliation(null);
+        setSelectedTransactions(new Set());
+        setSelectedStatements(new Set());
+        setOpeningBalanceVerified(false);
+        setStatementConfirmedEmpty(false);
+        setIsEditingBalance(false);
+        setIsEditingEndingBalance(false);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Reconciliation deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete reconciliation",
+      });
+    },
+  });
+
+  // Delete bank statement entry state
+  const [deleteEntryDialog, setDeleteEntryDialog] = useState<{
+    open: boolean;
+    entryId: number;
+    description: string;
+    amount: string;
+  } | null>(null);
+
+  // Delete bank statement entry mutation
+  const deleteEntryMutation = useMutation({
+    mutationFn: async (entryId: number) => {
+      return await apiRequest('DELETE', `/api/bank-statement-entries/${entryId}`);
+    },
+    onSuccess: () => {
+      // Invalidate all related queries
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-statement-entries/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation-matches/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation-suggestions/${activeReconciliation}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${activeReconciliation}`] });
+      
+      refetchStatementEntries();
+      refetchMatches();
+      refetchSuggestions();
+      refetchReconciliation();
+      
+      // Clear selection state if the deleted entry was selected
+      if (deleteEntryDialog?.entryId && selectedStatements.has(deleteEntryDialog.entryId)) {
+        setSelectedStatements(new Set());
+      }
+      
+      setDeleteEntryDialog(null);
+      toast({
+        title: "Success",
+        description: "Bank statement entry deleted",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete bank statement entry",
+      });
+    },
+  });
+
   // Refetch all data when page becomes visible (handles navigation back)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1064,19 +1173,63 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
         </div>
       </div>
 
-      {!activeReconciliation && lastReconciliation && (
+      {!activeReconciliation && reconciliationHistory.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Last Reconciliation</CardTitle>
+            <CardTitle>Reconciliation History</CardTitle>
             <CardDescription>
-              {lastReconciliation.accountName} - {safeFormatDate(lastReconciliation.statementEndDate, 'MMM dd, yyyy')}
+              View and manage past reconciliations
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
-              <Button onClick={() => { setActiveReconciliation(lastReconciliation.id); setOpeningBalanceVerified(false); setStatementConfirmedEmpty(false); }} data-testid="button-resume-reconciliation">
-                Resume
-              </Button>
+            <div className="space-y-3">
+              {reconciliationHistory.map((rec) => (
+                <div 
+                  key={rec.id} 
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                  data-testid={`reconciliation-history-item-${rec.id}`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{rec.accountName}</p>
+                      <Badge variant={rec.status === 'reconciled' ? 'default' : 'secondary'} data-testid={`badge-history-status-${rec.id}`}>
+                        {rec.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {safeFormatDate(rec.statementStartDate, 'MMM dd, yyyy')} - {safeFormatDate(rec.statementEndDate, 'MMM dd, yyyy')}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Balance: {formatCurrency(rec.endingBalance)} | Difference: {formatCurrency(rec.difference || '0')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      onClick={() => { 
+                        setActiveReconciliation(rec.id); 
+                        setOpeningBalanceVerified(false); 
+                        setStatementConfirmedEmpty(false); 
+                      }} 
+                      data-testid={`button-open-reconciliation-${rec.id}`}
+                    >
+                      {rec.status === 'reconciled' ? 'View' : 'Resume'}
+                    </Button>
+                    <Button 
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setDeleteReconciliationDialog({
+                        open: true,
+                        reconciliationId: rec.id,
+                        accountName: rec.accountName,
+                        statementEndDate: rec.statementEndDate?.toString() || '',
+                      })}
+                      data-testid={`button-delete-reconciliation-${rec.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -1451,6 +1604,22 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                         <p className={`font-bold ${parseFloat(entry.amount) > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {formatCurrency(Math.abs(parseFloat(entry.amount)))}
                         </p>
+                        <Button 
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteEntryDialog({
+                              open: true,
+                              entryId: entry.id,
+                              description: entry.description,
+                              amount: entry.amount,
+                            });
+                          }}
+                          data-testid={`button-delete-entry-${entry.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
                       </div>
                     ))}
                   </CardContent>
@@ -1693,6 +1862,84 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               data-testid="button-confirm-no-transactions"
             >
               Confirm No Transactions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteReconciliationDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteReconciliationDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete Reconciliation
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this reconciliation? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteReconciliationDialog && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-muted rounded-md">
+                <p className="font-medium">{deleteReconciliationDialog.accountName}</p>
+                <p className="text-sm text-muted-foreground">
+                  Statement ending: {safeFormatDate(deleteReconciliationDialog.statementEndDate, 'MMM dd, yyyy')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  This will also delete all bank statement entries and matches associated with this reconciliation.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteReconciliationDialog(null)} data-testid="button-cancel-delete-reconciliation">
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => deleteReconciliationDialog && deleteReconciliationMutation.mutate(deleteReconciliationDialog.reconciliationId)}
+              disabled={deleteReconciliationMutation.isPending}
+              data-testid="button-confirm-delete-reconciliation"
+            >
+              {deleteReconciliationMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteEntryDialog?.open ?? false} onOpenChange={(open) => !open && setDeleteEntryDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete Bank Statement Entry
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this bank statement entry?
+            </DialogDescription>
+          </DialogHeader>
+          {deleteEntryDialog && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-muted rounded-md">
+                <p className="font-medium">{deleteEntryDialog.description}</p>
+                <p className="text-lg font-bold">{formatCurrency(deleteEntryDialog.amount)}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteEntryDialog(null)} data-testid="button-cancel-delete-entry">
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => deleteEntryDialog && deleteEntryMutation.mutate(deleteEntryDialog.entryId)}
+              disabled={deleteEntryMutation.isPending}
+              data-testid="button-confirm-delete-entry"
+            >
+              {deleteEntryMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
