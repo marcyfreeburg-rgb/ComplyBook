@@ -310,6 +310,9 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/all`] });
+      refetchHistory();
+      refetchLastReconciliation();
       setActiveReconciliation(data.id);
       setOpeningBalanceVerified(false);
       setStatementConfirmedEmpty(false);
@@ -426,6 +429,10 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/all`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/matched-transaction-ids/${currentOrganization?.id}`] });
+      refetchHistory();
+      refetchLastReconciliation();
       toast({
         title: "Success",
         description: "Reconciliation completed successfully",
@@ -450,6 +457,10 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${activeReconciliation}/transactions`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/last`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/bank-reconciliations/${currentOrganization?.id}/all`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/matched-transaction-ids/${currentOrganization?.id}`] });
+      refetchHistory();
+      refetchLastReconciliation();
       toast({
         title: "Reconciliation Complete",
         description: data.message,
