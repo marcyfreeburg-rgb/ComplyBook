@@ -121,6 +121,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [bulkFundId, setBulkFundId] = useState<number | undefined>(undefined);
   const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
   const [bulkFunctionalCategory, setBulkFunctionalCategory] = useState<'program' | 'administrative' | 'fundraising' | undefined>(undefined);
+  
+  // New transaction split mode state
+  const [isFormSplitMode, setIsFormSplitMode] = useState(false);
+  const [formSplitItems, setFormSplitItems] = useState<SplitItem[]>([]);
+  
   const [aiBatchSize, setAiBatchSize] = useState<number>(() => {
     // Try to load from localStorage with validation
     if (typeof window !== 'undefined') {
@@ -760,6 +765,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setIsDialogOpen(false);
     setEditingTransaction(null);
     setAiSuggestion(null);
+    setIsFormSplitMode(false);
+    setFormSplitItems([]);
     setFormData({
       organizationId: currentOrganization.id,
       type: 'expense',
@@ -873,13 +880,74 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     return parseFloat(transactionToSplit.amount) - getSplitTotal();
   };
 
+  // Form split mode helpers
+  const initializeFormSplitMode = () => {
+    const totalAmount = parseFloat(formData.amount) || 0;
+    const halfAmount = (totalAmount / 2).toFixed(2);
+    setFormSplitItems([
+      {
+        amount: halfAmount,
+        description: formData.description,
+        categoryId: formData.categoryId || null,
+        grantId: formData.grantId || null,
+        fundId: formData.fundId || null,
+        programId: formData.programId || null,
+        functionalCategory: formData.functionalCategory || null,
+      },
+      {
+        amount: (totalAmount - parseFloat(halfAmount)).toFixed(2),
+        description: formData.description,
+        categoryId: null,
+        grantId: null,
+        fundId: null,
+        programId: null,
+        functionalCategory: null,
+      },
+    ]);
+    setIsFormSplitMode(true);
+  };
+
+  const handleFormSplitItemChange = (index: number, field: keyof SplitItem, value: any) => {
+    const newItems = [...formSplitItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setFormSplitItems(newItems);
+  };
+
+  const handleAddFormSplitItem = () => {
+    setFormSplitItems([
+      ...formSplitItems,
+      {
+        amount: '0',
+        description: formData.description,
+        categoryId: null,
+        grantId: null,
+        fundId: null,
+        programId: null,
+        functionalCategory: null,
+      },
+    ]);
+  };
+
+  const handleRemoveFormSplitItem = (index: number) => {
+    if (formSplitItems.length <= 2) return;
+    setFormSplitItems(formSplitItems.filter((_, i) => i !== index));
+  };
+
+  const getFormSplitTotal = () => {
+    return formSplitItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  };
+
+  const getFormSplitDifference = () => {
+    return parseFloat(formData.amount || '0') - getFormSplitTotal();
+  };
+
   const confirmDelete = () => {
     if (deleteTransactionId) {
       deleteMutation.mutate(deleteTransactionId);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || !formData.amount || !formData.date) {
       toast({
@@ -892,6 +960,48 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
     if (editingTransaction) {
       updateMutation.mutate({ id: editingTransaction.id, data: formData });
+    } else if (isFormSplitMode && formSplitItems.length >= 2) {
+      // Validate split amounts match total
+      const splitDiff = Math.abs(getFormSplitDifference());
+      if (splitDiff > 0.01) {
+        toast({
+          title: "Split amounts don't match",
+          description: `The split amounts must equal the total transaction amount. Difference: $${splitDiff.toFixed(2)}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create the parent transaction first, then immediately split it
+      const transactionData: InsertTransaction = {
+        ...formData,
+        date: new Date(formData.date),
+        hasSplits: true,
+      };
+      
+      try {
+        // Create the parent transaction
+        const response = await apiRequest('POST', '/api/transactions', transactionData);
+        const parentTransaction = response as Transaction;
+        
+        // Then split it with the defined splits
+        await apiRequest('POST', `/api/transactions/${parentTransaction.id}/split`, { 
+          splits: formSplitItems 
+        });
+        
+        queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+        toast({
+          title: "Transaction created and split",
+          description: `Created transaction with ${formSplitItems.length} category splits.`,
+        });
+        handleCloseDialog();
+      } catch (error: any) {
+        toast({
+          title: "Failed to create split transaction",
+          description: error.message || "An error occurred while creating the split transaction.",
+          variant: "destructive",
+        });
+      }
     } else {
       // Convert form data to InsertTransaction with Date object
       const transactionData: InsertTransaction = {
@@ -1518,35 +1628,200 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </div>
               )}
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="category">Category {!aiSuggestion && "(Optional)"}</Label>
+              {/* Category Section - with split mode toggle */}
+              {!isFormSplitMode ? (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="category">Category {!aiSuggestion && "(Optional)"}</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setNewCategoryType(formData.type || 'expense');
+                          setIsCategoryDialogOpen(true);
+                        }}
+                        data-testid="button-add-category-inline"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        New Category
+                      </Button>
+                    </div>
+                    <CategoryCombobox
+                      categories={categories || []}
+                      value={formData.categoryId}
+                      onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                      type={formData.type}
+                      placeholder="Select a category"
+                      allowNone={true}
+                      noneSentinel={null}
+                      className="w-full"
+                      testId="select-transaction-category"
+                    />
+                  </div>
+
+                  {/* Split Categories Button - only for new transactions */}
+                  {!editingTransaction && formData.amount && parseFloat(formData.amount) > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={initializeFormSplitMode}
+                      className="w-full"
+                      data-testid="button-enable-split-mode"
+                    >
+                      <Split className="h-4 w-4 mr-2" />
+                      Split Into Multiple Categories
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4 p-4 border rounded-md bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Split Categories</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsFormSplitMode(false);
+                        setFormSplitItems([]);
+                      }}
+                      data-testid="button-cancel-split-mode"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel Split
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formSplitItems.map((item, index) => (
+                      <div key={index} className="p-3 border rounded-md bg-background space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Split {index + 1}</span>
+                          {formSplitItems.length > 2 && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveFormSplitItem(index)}
+                              data-testid={`button-remove-form-split-${index}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Amount</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={item.amount}
+                              onChange={(e) => handleFormSplitItemChange(index, 'amount', e.target.value)}
+                              data-testid={`input-form-split-amount-${index}`}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Description</Label>
+                            <Input
+                              value={item.description}
+                              onChange={(e) => handleFormSplitItemChange(index, 'description', e.target.value)}
+                              data-testid={`input-form-split-description-${index}`}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Category</Label>
+                          <CategoryCombobox
+                            categories={categories || []}
+                            value={item.categoryId || undefined}
+                            onValueChange={(value) => handleFormSplitItemChange(index, 'categoryId', value || null)}
+                            type={formData.type}
+                            placeholder="Select category"
+                            allowClear={true}
+                            clearLabel="No category"
+                            className="w-full"
+                            testId={`select-form-split-category-${index}`}
+                          />
+                        </div>
+
+                        {currentOrganization.type === 'nonprofit' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Fund</Label>
+                              <Select
+                                value={item.fundId?.toString() || "none"}
+                                onValueChange={(value) => handleFormSplitItemChange(index, 'fundId', value === "none" ? null : parseInt(value))}
+                              >
+                                <SelectTrigger data-testid={`select-form-split-fund-${index}`}>
+                                  <SelectValue placeholder="Select fund" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  {funds?.map(fund => (
+                                    <SelectItem key={fund.id} value={fund.id.toString()}>
+                                      {fund.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Program</Label>
+                              <Select
+                                value={item.programId?.toString() || "none"}
+                                onValueChange={(value) => handleFormSplitItemChange(index, 'programId', value === "none" ? null : parseInt(value))}
+                              >
+                                <SelectTrigger data-testid={`select-form-split-program-${index}`}>
+                                  <SelectValue placeholder="Select program" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  {programs?.map(program => (
+                                    <SelectItem key={program.id} value={program.id.toString()}>
+                                      {program.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setNewCategoryType(formData.type || 'expense');
-                      setIsCategoryDialogOpen(true);
-                    }}
-                    data-testid="button-add-category-inline"
+                    variant="outline"
+                    onClick={handleAddFormSplitItem}
+                    className="w-full"
+                    data-testid="button-add-form-split"
                   >
-                    <Plus className="h-3 w-3 mr-1" />
-                    New Category
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Another Split
                   </Button>
+
+                  <div className="p-3 border rounded-md bg-background">
+                    <div className="flex justify-between text-sm">
+                      <span>Total of splits:</span>
+                      <span className="font-mono">${getFormSplitTotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span>Transaction amount:</span>
+                      <span className="font-mono">${parseFloat(formData.amount || '0').toFixed(2)}</span>
+                    </div>
+                    <div className={`flex justify-between text-sm mt-1 font-medium ${Math.abs(getFormSplitDifference()) > 0.01 ? 'text-destructive' : 'text-chart-2'}`}>
+                      <span>Difference:</span>
+                      <span className="font-mono">${getFormSplitDifference().toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
-                <CategoryCombobox
-                  categories={categories || []}
-                  value={formData.categoryId}
-                  onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
-                  type={formData.type}
-                  placeholder="Select a category"
-                  allowNone={true}
-                  noneSentinel={null}
-                  className="w-full"
-                  testId="select-transaction-category"
-                />
-              </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button
