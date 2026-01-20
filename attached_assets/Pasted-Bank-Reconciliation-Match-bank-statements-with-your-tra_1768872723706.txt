@@ -1,0 +1,1961 @@
+Bank Reconciliation
+Match bank statements with your transactions
+
+Import CSV
+Import PDF
+Generate Report
+Complete Reconciliation
+New Reconciliation
+J & M Solutions
+Mar 01, 2021 - Mar 30, 2021
+unreconciled
+Beginning Balance
+
+$1,097.30
+
+Calculated Book Balance
+
+$2,287.95
+
+Statement Ending Balance
+
+$1,964.66
+
+
+Difference
+
+$323.29
+
+Transactions in Period
+
+103
+
+Opening Balance Verification
+Please verify that your opening balance of $1,097.30 matches your bank statement's starting balance for this period.
+
+Edit Balance
+Confirm Opening Balance Matches
+Balance Reconciliation Summary
+Beginning Balance:
+$1,097.30
++ Total Income:
+$5,555.00
+- Total Expenses:
+$4,364.35
+Calculated Book Balance:
+$2,287.95
+Statement Ending Balance:
+$1,964.66
+Reconciled Transactions:
+103 of 103
+Unreconciled Transactions:
+0
+Difference:
+$323.29
+All 103 transactions in this period are reconciled.
+
+Match Transactions
+AI Suggestions
+Matched (103)
+Transactions (271)
+Select a transaction to match
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Jan 17, 2026
+
+$2,000.00
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Jan 15, 2026
+
+$552.45
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Jan 15, 2026
+
+$32.00
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Jan 11, 2026
+
+$60.00
+
+
+FARMERS INS COMMERCIAL
+
+Jan 11, 2026
+
+$60.00
+
+
+FARMERS INS COMMERCIAL
+
+Jan 11, 2026
+
+$80.66
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Jan 11, 2026
+
+$80.66
+
+
+Wave Payroll : COL : 12093060 (Ent Credit Union)
+
+Jan 09, 2026
+
+$0.02
+
+
+Wave Payroll : COL : 12093060 (Ent Credit Union)
+
+Jan 08, 2026
+
+$0.02
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Jan 07, 2026
+
+$552.45
+
+
+Visa Check TWILIO SENDGRID WWW. (Ent Credit Union)
+
+Jan 05, 2026
+
+$19.95
+
+
+Visa Check RENDER.COM RENDER.CO (Ent Credit Union)
+
+Jan 04, 2026
+
+$7.03
+
+
+Deposit Bulk Checks 1,60 (Ent Credit Union)
+
+Jan 02, 2026
+
+$1,600.00
+
+
+Deposit Bulk Checks 1,600 - Pueblo Plex 2 days of instruction for Microsoft 365
+
+Jan 01, 2026
+
+$1,600.00
+
+
+Visa Check OPENAI OPENAI.COM (Ent Credit Union)
+
+Dec 31, 2025
+
+$5.00
+
+
+Visa Check OPENAI OPENAI.COM
+
+Dec 30, 2025
+
+$5.00
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Dec 29, 2025
+
+$549.57
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Dec 26, 2025
+
+$29.96
+
+
+Visa Check DELTEK INC (Ent Credit Union)
+
+Dec 24, 2025
+
+$1,750.00
+
+
+Withdrawal Home Banking Transfer (Ent Credit Union)
+
+Dec 23, 2025
+
+$750.00
+
+
+Withdrawal Home Banking Transfer (Ent Credit Union) Reimbursement of Fees paid by home account for build of Complybook
+
+Dec 22, 2025
+
+$750.00
+
+
+Check #1510 Withdrawal #0000001510 (Ent Credit Union)
+
+Dec 22, 2025
+
+$100.00
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Dec 22, 2025
+
+$549.57
+
+
+Check #1510 Withdrawal #0000001510 (Ent Credit Union) - Backflow Testing
+
+Dec 21, 2025
+
+$100.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Dec 17, 2025
+
+$2,000.00
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Dec 17, 2025
+
+$549.57
+
+
+WAVE SV9T : : 1043 (Ent Credit Union)
+
+Dec 15, 2025
+
+$194.20
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Dec 11, 2025
+
+$80.66
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Dec 11, 2025
+
+$60.00
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Dec 10, 2025
+
+$80.66
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Dec 10, 2025
+
+$60.00
+
+
+Visa Check TWILIO SENDGRID WWW. (Ent Credit Union)
+
+Dec 06, 2025
+
+$16.73
+
+
+Deposit Home Banking Transfer RE (Ent Credit Union)
+
+Dec 05, 2025
+
+$2,000.00
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Dec 04, 2025
+
+$549.57
+
+
+Visa Check BLD*MYPERFECTRESUME (Ent Credit Union)
+
+Dec 02, 2025
+
+$23.95
+
+
+Visa Check FINDRFP.COM MINNEAPO (Ent Credit Union)
+
+Nov 29, 2025
+
+$29.95
+
+
+FINDRFP.COM MINNEAPOLIS MN 11/28/25 Card 0872 Visa Check
+
+Nov 29, 2025
+
+$29.95
+
+
+GODADDY.COM (Ent Credit Union)
+
+Nov 26, 2025
+
+$50.59
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Nov 26, 2025
+
+$549.57
+
+
+PUBLIC DATA CHECK 800-9894662 CA 11/25/25 Card 0872 Visa Check
+
+Nov 26, 2025
+
+$29.96
+
+
+Wave Payroll : PCR : 1209306000
+
+Nov 26, 2025
+
+$549.57
+
+
+GODADDY.COM
+
+Nov 26, 2025
+
+$50.59
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Nov 26, 2025
+
+$29.96
+
+
+Wave Payroll : PCR : 1209306000
+
+Nov 20, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Nov 20, 2025
+
+$549.57
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Nov 17, 2025
+
+$2,000.00
+
+
+Transfer From C CUBED TRAINING *******339 Share 10 FOR INVOICE
+
+Nov 17, 2025
+
+$2,000.00
+
+
+WAVE SV9T : 8888334751 : 1043575881
+
+Nov 17, 2025
+
+$194.20
+
+
+WAVE SV9T : : 1043 (Ent Credit Union)
+
+Nov 17, 2025
+
+$194.20
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Nov 11, 2025
+
+$80.66
+
+
+FARMERS INS COMMERCIAL 855-323-5350 CA Card 0872
+
+Nov 11, 2025
+
+$80.66
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Nov 11, 2025
+
+$60.00
+
+
+FARMERS INS COMMERCIAL
+
+Nov 10, 2025
+
+$60.00
+
+
+GODADDY.COM (Ent Credit Union)
+
+Nov 06, 2025
+
+$12.19
+
+
+GODADDY.COM
+
+Nov 06, 2025
+
+$12.19
+
+
+Visa Check POSTCARDMANIA CLEARW (Ent Credit Union)
+
+Nov 05, 2025
+
+$1,745.61
+
+
+POSTCARDMANIA CLEARWATER FL 11/05/25 Card 0872 Visa Check
+
+Nov 05, 2025
+
+$1,745.61
+
+
+BLD*MYPERFECTRESUME 8552130348 PR 11/03/25 Card 0872 Visa Check
+
+Nov 03, 2025
+
+$23.95
+
+
+Visa Check BLD*MYPERFECTRESUME (Ent Credit Union)
+
+Nov 03, 2025
+
+$23.95
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Nov 01, 2025
+
+$32.00
+
+
+WAVE - PAYROLL FEES WAVEAPPS.COM CO 11/01/25 Card 0872 Visa Check
+
+Nov 01, 2025
+
+$32.00
+
+
+Visa Check FINDRFP.COM MINNEAPO
+
+Oct 29, 2025
+
+$29.95
+
+
+Visa Check FINDRFP.COM MINNEAPO (Ent Credit Union)
+
+Oct 29, 2025
+
+$29.95
+
+
+Visa Check AMAZON MKTPL*N48B27K (Ent Credit Union)
+
+Oct 28, 2025
+
+$19.53
+
+
+AMAZON MKTPL*N48B27K10 Amzn.com/bill WA 10/28/25 Card 0872 Visa Check
+
+Oct 28, 2025
+
+$19.53
+
+
+PUBLIC DATA CHECK 800-9894662 CA 10/26/25 Card 0872 Visa Check
+
+Oct 27, 2025
+
+$29.96
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Oct 27, 2025
+
+$29.96
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Oct 21, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 1209306000
+
+Oct 21, 2025
+
+$549.57
+
+
+WAVE SV9T : 8888334751 : 1043575881
+
+Oct 20, 2025
+
+$194.20
+
+
+POCKET PREP - IT/CYBER POCKETPREP.CO WA 10/20/25 Card 0872 Visa Check
+
+Oct 20, 2025
+
+$20.99
+
+
+Visa Check BLD*MYPERFECTRESUME (Ent Credit Union)
+
+Oct 20, 2025
+
+$2.95
+
+
+Visa Check POCKET PREP - IT/CYB (Ent Credit Union)
+
+Oct 20, 2025
+
+$20.99
+
+
+WAVE SV9T : : 1043 (Ent Credit Union)
+
+Oct 20, 2025
+
+$194.20
+
+
+BLD*MYPERFECTRESUME 8552130348 PR 10/20/25 Card 0872 Visa Check
+
+Oct 20, 2025
+
+$2.95
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Oct 17, 2025
+
+$2,000.00
+
+
+Transfer From C CUBED TRAINING *******339 Share 10 FOR INVOICE
+
+Oct 17, 2025
+
+$2,000.00
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Oct 11, 2025
+
+$60.00
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Oct 11, 2025
+
+$80.66
+
+
+FARMERS INS COMMERCIAL
+
+Oct 10, 2025
+
+$60.00
+
+
+FARMERS INS COMMERCIAL
+
+Oct 10, 2025
+
+$80.66
+
+
+Wave Payroll : PCR : 1209306000
+
+Oct 08, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Oct 08, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 1209306000
+
+Oct 01, 2025
+
+$549.57
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Oct 01, 2025
+
+$32.00
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Oct 01, 2025
+
+$549.57
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Oct 01, 2025
+
+$32.00
+
+
+Card Fee VISA INTERNATIONAL SERVICE ASSESSMENT Date 09/29/25 Card 0872
+
+Sep 29, 2025
+
+$0.54
+
+
+Withdrawal Card Fee VISA INTERN (Ent Credit Union)
+
+Sep 29, 2025
+
+$0.54
+
+
+IMSTECK1 SINGAPORE SG 09/29/25 Card 0872 Visa Check
+
+Sep 29, 2025
+
+$68.00
+
+
+Visa Check IMSTECK1 SINGAPORE S (Ent Credit Union)
+
+Sep 29, 2025
+
+$68.00
+
+
+PAYPAL *MICROSOFT 402-935-7733 WA 09/28/25 Card 0872 Visa Check
+
+Sep 28, 2025
+
+$129.99
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Sep 28, 2025
+
+$29.96
+
+
+Visa Check MICROSOFT 40 (Ent Credit Union)
+
+Sep 28, 2025
+
+$129.99
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Sep 28, 2025
+
+$29.96
+
+
+Visa Check VISTAPRINT (Ent Credit Union)
+
+Sep 25, 2025
+
+$29.07
+
+
+Visa Check CO SECRETARY STATE F (Ent Credit Union)
+
+Sep 25, 2025
+
+$25.00
+
+
+VISTAPRINT 866-207-4955 MA 09/25/25 Card 0872 Visa Check
+
+Sep 25, 2025
+
+$29.07
+
+
+CO SECRETARY STATE FEE 303-860-6962 CO 09/25/25 Card 0872 Visa Check
+
+Sep 25, 2025
+
+$25.00
+
+
+Wave Payroll : PCR : 1209306000
+
+Sep 24, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Sep 24, 2025
+
+$549.57
+
+
+WAVE SV9T : : 1043 (Ent Credit Union)
+
+Sep 23, 2025
+
+$194.20
+
+
+WAVE SV9T : : 1043 - 2 student instruction
+
+Sep 22, 2025
+
+$194.20
+
+
+Visa Check POCKET PREP - IT/CYB (Ent Credit Union)
+
+Sep 20, 2025
+
+$20.99
+
+
+Visa Check POCKET PREP - IT/CYB
+
+Sep 20, 2025
+
+$20.99
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Sep 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr
+
+Sep 17, 2025
+
+$2,000.00
+
+
+Wave Payroll : PCR : 1209306000
+
+Sep 17, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Sep 17, 2025
+
+$549.57
+
+
+SOUTHWES 52623862720 800-435-9792 TX 09/11/25 Card 0872 Visa Check
+
+Sep 12, 2025
+
+$248.36
+
+
+Visa Check SOUTHWES 52623862720 (Ent Credit Union)
+
+Sep 12, 2025
+
+$248.36
+
+
+FARMERS INS COMMERCIAL
+
+Sep 11, 2025
+
+$108.00
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Sep 11, 2025
+
+$149.40
+
+
+FARMERS INS COMMERCIAL (Ent Credit Union)
+
+Sep 11, 2025
+
+$108.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Sep 11, 2025
+
+$1,000.00
+
+
+Transfer From C CUBED TRAINING *******339 Share 10 QUARTERLY BOOK KEEPING
+
+Sep 11, 2025
+
+$1,000.00
+
+
+FARMERS INS COMMERCIAL
+
+Sep 10, 2025
+
+$149.40
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Sep 10, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 1209306000
+
+Sep 10, 2025
+
+$549.57
+
+
+EVENT:CS5 EAST 2025 CS5EAST.ORG MD 09/04/25 Card 0872 Visa Check
+
+Sep 04, 2025
+
+$833.00
+
+
+Wave Payroll : PCR : 1209306000
+
+Sep 04, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Sep 04, 2025
+
+$549.57
+
+
+Visa Check EVENT:CS5 EAST 2025 (Ent Credit Union)
+
+Sep 04, 2025
+
+$833.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Sep 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Sep 01, 2025
+
+$32.00
+
+
+SHADOWSCAPE SHADOWSCAPE.I ID Car (Ent Credit Union)
+
+Aug 30, 2025
+
+$2,379.00
+
+
+SHADOWSCAPE SHADOWSCAPE.I ID Car
+
+Aug 29, 2025
+
+$2,379.00
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Aug 28, 2025
+
+$29.96
+
+
+Wave Payroll : PCR : 12093060
+
+Aug 28, 2025
+
+$549.57
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Aug 28, 2025
+
+$29.96
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Aug 28, 2025
+
+$549.57
+
+
+Wave Payroll : PCR : 12093060 (Ent Credit Union)
+
+Aug 22, 2025
+
+$549.57
+
+
+OnPay Inc : ACCTVERIFY : 7581 (Ent Credit Union)
+
+Aug 22, 2025
+
+$0.11
+
+
+OnPay Inc : ACCTVERIFY : 7581 (Ent Credit Union)
+
+Aug 22, 2025
+
+$0.82
+
+
+Wave Payroll : PCR : 12093060
+
+Aug 22, 2025
+
+$549.57
+
+
+OnPay Inc : ACCTVERIFY : 7581 (Ent Credit Union)
+
+Aug 22, 2025
+
+$0.71
+
+
+OnPay Inc : ACCTVERIFY : 7581 - Account Verification
+
+Aug 21, 2025
+
+$0.71
+
+
+OnPay Inc : ACCTVERIFY : 7581 - Account Verification
+
+Aug 21, 2025
+
+$0.82
+
+
+OnPay Inc : ACCTVERIFY : 7581 - Account Verification
+
+Aug 21, 2025
+
+$0.11
+
+
+Visa Check OPENAI OPENAI.COM
+
+Aug 17, 2025
+
+$25.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Aug 17, 2025
+
+$2,000.00
+
+
+Visa Check OPENAI OPENAI.COM (Ent Credit Union)
+
+Aug 17, 2025
+
+$25.00
+
+
+Deposit Home Banking Transfer Fr
+
+Aug 17, 2025
+
+$2,000.00
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Aug 02, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Aug 02, 2025
+
+$32.00
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Jul 29, 2025
+
+$29.96
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Jul 29, 2025
+
+$29.96
+
+
+Deposit Home Banking Transfer RE (Ent Credit Union)
+
+Jul 17, 2025
+
+$1,700.00
+
+
+Deposit Home Banking Transfer Fr
+
+Jul 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Jul 17, 2025
+
+$2,000.00
+
+
+Cash Withdrawal (Ent Credit Union)
+
+Jul 17, 2025
+
+$1,700.00
+
+
+Cash Withdrawal - Payment to student interns
+
+Jul 16, 2025
+
+$1,700.00
+
+
+Deposit Home Banking Transfer RE
+
+Jul 16, 2025
+
+$1,700.00
+
+
+Cash Withdrawal (Ent Credit Union)
+
+Jul 09, 2025
+
+$2,000.00
+
+
+Cash Withdrawal - Payment for student interns
+
+Jul 08, 2025
+
+$2,000.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Jul 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Jul 01, 2025
+
+$32.00
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Jun 29, 2025
+
+$29.96
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Jun 29, 2025
+
+$29.96
+
+
+DEP PRENOTIFICATION FROM Check P
+
+Jun 23, 2025
+
+$0.00
+
+
+DEP PRENOTIFICATION FROM Check P (Ent Credit Union)
+
+Jun 23, 2025
+
+$0.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Jun 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr
+
+Jun 17, 2025
+
+$2,000.00
+
+
+Sanair
+
+Jun 16, 2025
+
+$75.00
+
+
+Cash Withdrawal (Ent Credit Union)
+
+Jun 16, 2025
+
+$1,000.00
+
+
+Cash Withdrawal - Payment for student helpers
+
+Jun 15, 2025
+
+$1,000.00
+
+
+Deposit Home Banking Transfer Fr
+
+Jun 14, 2025
+
+$1,000.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Jun 14, 2025
+
+$1,000.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jun 12, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jun 12, 2025
+
+$420.83
+
+
+DEP PRENOTIFICATION FROM Check P
+
+Jun 09, 2025
+
+$0.00
+
+
+DEP PRENOTIFICATION FROM Check P
+
+Jun 09, 2025
+
+$0.00
+
+
+DEP PRENOTIFICATION FROM Check P (Ent Credit Union)
+
+Jun 09, 2025
+
+$0.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jun 02, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jun 02, 2025
+
+$420.83
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Jun 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Jun 01, 2025
+
+$32.00
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+May 30, 2025
+
+$29.96
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+May 30, 2025
+
+$29.96
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+May 27, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+May 27, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+May 19, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+May 19, 2025
+
+$420.83
+
+
+Deposit Home Banking Transfer Fr
+
+May 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+May 17, 2025
+
+$2,000.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+May 12, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+May 12, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+May 12, 2025
+
+$420.83
+
+
+Visa Check QUEENSBORO INDUSTRIE (Ent Credit Union)
+
+May 08, 2025
+
+$87.63
+
+
+Visa Check QUEENSBORO INDUSTRIE
+
+May 07, 2025
+
+$87.63
+
+
+Visa Check WAVE - PAYROLL FEES
+
+May 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+May 01, 2025
+
+$32.00
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Apr 30, 2025
+
+$29.96
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Apr 30, 2025
+
+$29.96
+
+
+Square Inc : SQ250426 : 94243 (Ent Credit Union)
+
+Apr 28, 2025
+
+$96.40
+
+
+Square Inc : SQ250426 : 94243 - 1 student instruction
+
+Apr 27, 2025
+
+$96.40
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Apr 24, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Apr 24, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Apr 17, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Apr 17, 2025
+
+$420.83
+
+
+Deposit Home Banking Transfer Fr
+
+Apr 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Apr 17, 2025
+
+$2,000.00
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Apr 11, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Apr 11, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Apr 04, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Apr 04, 2025
+
+$420.83
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Apr 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Apr 01, 2025
+
+$32.00
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Mar 31, 2025
+
+$29.96
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Mar 31, 2025
+
+$29.96
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Mar 27, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Mar 27, 2025
+
+$420.83
+
+
+Square Inc : SQ250327 : 94243 (Ent Credit Union)
+
+Mar 27, 2025
+
+$96.40
+
+
+Square Inc : SQ250327 : 94243 - 1 student instruction
+
+Mar 26, 2025
+
+$96.40
+
+
+Visa Check PUBLIC DATA CHECK 80
+
+Mar 23, 2025
+
+$1.00
+
+
+Visa Check PUBLIC DATA CHECK 80 (Ent Credit Union)
+
+Mar 23, 2025
+
+$1.00
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Mar 20, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Mar 20, 2025
+
+$420.83
+
+
+Deposit Home Banking Transfer Fr
+
+Mar 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Mar 17, 2025
+
+$2,000.00
+
+
+Check 1147
+
+Mar 16, 2025
+
+$325.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Mar 13, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Mar 13, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Mar 06, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Mar 06, 2025
+
+$420.83
+
+
+Square Inc : SQ250305 : 94243 (Ent Credit Union)
+
+Mar 05, 2025
+
+$96.40
+
+
+Square Inc : SQ250305 : 94243 - 1 student instruction
+
+Mar 04, 2025
+
+$96.40
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Mar 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Mar 01, 2025
+
+$32.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Feb 27, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Feb 27, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Feb 20, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Feb 20, 2025
+
+$420.83
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Feb 17, 2025
+
+$2,000.00
+
+
+Deposit Home Banking Transfer Fr
+
+Feb 17, 2025
+
+$2,000.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Feb 13, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Feb 13, 2025
+
+$420.83
+
+
+Square Inc : SQ250213 : 94243 (Ent Credit Union)
+
+Feb 13, 2025
+
+$96.40
+
+
+Square Inc : SQ250213 : 94243 - 1 student instruction
+
+Feb 12, 2025
+
+$96.40
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Feb 06, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Feb 06, 2025
+
+$420.83
+
+
+Check #1508 Withdrawal #0000001508 (Ent Credit Union)
+
+Feb 03, 2025
+
+$400.00
+
+
+Check #1508 Withdrawal #0000001508 - Snow Shoveling
+
+Feb 02, 2025
+
+$400.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Feb 01, 2025
+
+$20.00
+
+
+Visa Check WAVE - PAYROLL FEES (Ent Credit Union)
+
+Feb 01, 2025
+
+$32.00
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Feb 01, 2025
+
+$20.00
+
+
+Visa Check WAVE - PAYROLL FEES
+
+Feb 01, 2025
+
+$32.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jan 30, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jan 30, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jan 22, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jan 22, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jan 17, 2025
+
+$420.83
+
+
+Deposit Home Banking Transfer Fr (Ent Credit Union)
+
+Jan 17, 2025
+
+$2,000.00
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jan 17, 2025
+
+$420.83
+
+
+Deposit Home Banking Transfer Fr
+
+Jan 17, 2025
+
+$2,000.00
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jan 13, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jan 13, 2025
+
+$420.83
+
+
+Wave PYRL : PAYROLL : 2981044 (Ent Credit Union)
+
+Jan 02, 2025
+
+$209.91
+
+
+Square Inc : SQ250101 : 94243 (Ent Credit Union)
+
+Jan 02, 2025
+
+$96.40
+
+
+Wave PYRL : PAYROLL : 2981044
+
+Jan 02, 2025
+
+$209.91
+
+
+Square Inc : SQ250101 : 94243 - 1 Student instruction
+
+Jan 01, 2025
+
+$96.40
+
+
+Big O Tires (Ent Credit Union)
+
+Dec 05, 2024
+
+$665.08
+
+
+Big O Tires
+
+Dec 05, 2024
+
+$665.08
+
+
+Square Inc : SQ241125 : 94243 (Ent Credit Union)
+
+Nov 25, 2024
+
+$96.40
+
+
+Square Inc : SQ241125 : 94243 - 1 Student instruction
+
+Nov 24, 2024
+
+$96.40
+
+
+Square Inc : SQ241109 : 94243 (Ent Credit Union)
+
+Nov 12, 2024
+
+$289.50
+
+
+Square Inc : SQ241109 : 94243 - 2 Students instruction
+
+Nov 11, 2024
+
+$289.50
+
+
+PAYPAL : INST XFER : PAYPALSI (Ent Credit Union)
+
+Oct 01, 2024
+
+$99.99
+
+
+PAYPAL : INST XFER : PAYPALSI - Microsoft 365
+
+Sep 29, 2024
+
+$99.99
+
+
+Loaf N Jug
+
+Feb 12, 2019
+
+$19.58
+
+
+ISN Cloud Inspect
+
+N/A
+
+$56.00
+
+Bank Statement (0)
+Select a statement entry to match
+Match Selected Items
