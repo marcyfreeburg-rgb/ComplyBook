@@ -2780,14 +2780,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMatchedTransactionIds(organizationId: number): Promise<number[]> {
-    // Get all active reconciliations for this organization (status = 'in_progress')
+    // Get all active reconciliations for this organization (status = 'unreconciled' means in progress)
     const activeReconciliations = await db
       .select({ id: bankReconciliations.id })
       .from(bankReconciliations)
       .where(
         and(
           eq(bankReconciliations.organizationId, organizationId),
-          eq(bankReconciliations.status, 'in_progress')
+          eq(bankReconciliations.status, 'unreconciled')
         )
       );
 
