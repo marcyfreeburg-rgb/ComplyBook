@@ -645,7 +645,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${existingMatches.length}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">
                   ${formatCurrency(existingMatches.reduce((sum, match) => {
-                    const txn = unreconciledTransactions.find(t => t.id === match.transactionId);
+                    const txn = unreconciledTransactions.find(t => t.id === match.transactionId)
+                      || periodTransactions.find(t => t.id === match.transactionId);
                     return sum + (txn ? parseFloat(txn.amount) : 0);
                   }, 0))}
                 </td>
@@ -682,7 +683,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               </thead>
               <tbody>
                 ${existingMatches.map(match => {
-                  const txn = unreconciledTransactions.find(t => t.id === match.transactionId);
+                  const txn = unreconciledTransactions.find(t => t.id === match.transactionId)
+                    || periodTransactions.find(t => t.id === match.transactionId);
                   const entry = statementEntries.find(e => e.id === match.statementEntryId);
                   if (!txn || !entry) return '';
                   return `
@@ -1529,7 +1531,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                     </p>
                   ) : (
                     existingMatches.map((match) => {
-                      const txn = unreconciledTransactions.find(t => t.id === match.transactionId);
+                      const txn = unreconciledTransactions.find(t => t.id === match.transactionId) 
+                        || periodTransactions.find(t => t.id === match.transactionId);
                       const entry = statementEntries.find(e => e.id === match.statementEntryId);
                       
                       if (!txn || !entry) return null;
