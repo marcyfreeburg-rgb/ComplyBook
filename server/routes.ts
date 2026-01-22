@@ -2472,6 +2472,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to edit transactions" });
       }
 
+      // Server-side grant overspending validation
+      if (data.grantId && data.type === 'expense') {
+        const grantsWithSpent = await storage.getGrants(data.organizationId);
+        const grant = grantsWithSpent.find(g => g.id === data.grantId);
+        if (grant) {
+          const remaining = parseFloat(grant.remainingBalance);
+          const expenseAmount = parseFloat(data.amount);
+          if (expenseAmount > remaining) {
+            return res.status(400).json({ 
+              message: `Grant balance exceeded. This expense ($${expenseAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}).` 
+            });
+          }
+        }
+      }
+
       const transaction = await storage.createTransaction(data);
       
       // Log audit trail
@@ -2507,6 +2522,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to edit transactions" });
+      }
+
+      // Server-side grant overspending validation for updates
+      const newGrantId = updates.grantId !== undefined ? updates.grantId : existingTransaction.grantId;
+      const newType = updates.type !== undefined ? updates.type : existingTransaction.type;
+      const newAmount = updates.amount !== undefined ? updates.amount : existingTransaction.amount;
+      
+      if (newGrantId && newType === 'expense') {
+        const grantsWithSpent = await storage.getGrants(existingTransaction.organizationId);
+        const grant = grantsWithSpent.find(g => g.id === newGrantId);
+        if (grant) {
+          let remaining = parseFloat(grant.remainingBalance);
+          // Add back the current transaction's amount if it was already assigned to this grant
+          if (existingTransaction.grantId === newGrantId && existingTransaction.type === 'expense') {
+            remaining += parseFloat(existingTransaction.amount);
+          }
+          const expenseAmount = parseFloat(newAmount);
+          if (expenseAmount > remaining) {
+            return res.status(400).json({ 
+              message: `Grant balance exceeded. This expense ($${expenseAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}).` 
+            });
+          }
+        }
       }
 
       const updatedTransaction = await storage.updateTransaction(transactionId, updates);
@@ -2593,6 +2631,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to edit transactions" });
+      }
+
+      // Server-side grant overspending validation for splits
+      if (existingTransaction.type === 'expense') {
+        const grantsWithSpent = await storage.getGrants(existingTransaction.organizationId);
+        
+        // Calculate total allocation per grant from all splits
+        const grantAllocations = new Map<number, number>();
+        for (const split of splits) {
+          if (split.grantId) {
+            const grantId = typeof split.grantId === 'string' ? parseInt(split.grantId) : split.grantId;
+            const current = grantAllocations.get(grantId) || 0;
+            grantAllocations.set(grantId, current + parseFloat(split.amount));
+          }
+        }
+        
+        // Check each grant allocation against remaining balance
+        for (const [grantId, allocated] of Array.from(grantAllocations.entries())) {
+          const grant = grantsWithSpent.find(g => g.id === grantId);
+          if (grant) {
+            let remaining = parseFloat(grant.remainingBalance);
+            // Add back what was previously allocated to this grant from the original transaction
+            if (existingTransaction.grantId === grantId) {
+              remaining += parseFloat(existingTransaction.amount);
+            }
+            if (allocated > remaining) {
+              return res.status(400).json({ 
+                message: `Grant "${grant.name}" balance exceeded. Split allocates $${allocated.toFixed(2)} but only $${remaining.toFixed(2)} remains.` 
+              });
+            }
+          }
+        }
       }
 
       const createdSplits = await storage.splitTransaction(transactionId, splits, userId);
