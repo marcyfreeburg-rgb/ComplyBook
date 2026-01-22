@@ -475,7 +475,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     return parseFloat(grant.remainingBalance);
   };
 
-  const getGrantName = (grantId: number): string => {
+  const getGrantName = (grantId: number | null): string => {
+    if (!grantId) return '';
     const grant = grants.find(g => g.id === grantId);
     return grant?.name || '';
   };
@@ -606,12 +607,6 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       }
     }
     return category.name;
-  };
-
-  const getGrantName = (grantId: number | null) => {
-    if (!grantId) return "";
-    const grant = grants.find(g => g.id === grantId);
-    return grant?.name || "Unknown";
   };
 
   // Handle column header click for sorting
