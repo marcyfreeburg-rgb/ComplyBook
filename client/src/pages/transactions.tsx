@@ -883,6 +883,22 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setSplitItems(newItems);
   };
 
+  // Grant helper functions - defined before use in validation
+  const getGrantRemainingBalance = (grantId: number): number => {
+    if (!grants) return 0;
+    const grant = grants.find(g => g.id === grantId);
+    if (!grant) return 0;
+    const totalAmount = parseFloat(grant.amount);
+    const totalSpent = parseFloat(grant.totalSpent);
+    return totalAmount - totalSpent;
+  };
+
+  const getGrantName = (grantId: number): string => {
+    if (!grants) return '';
+    const grant = grants.find(g => g.id === grantId);
+    return grant?.name || '';
+  };
+
   const handleSubmitSplit = () => {
     if (!transactionToSplit) return;
     
@@ -895,7 +911,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       }
     }
     
-    for (const [grantId, allocated] of grantAllocations) {
+    const entries = Array.from(grantAllocations.entries());
+    for (let i = 0; i < entries.length; i++) {
+      const [grantId, allocated] = entries[i];
       // Add back what was previously allocated to this grant from the original transaction
       const previousAllocation = transactionToSplit.grantId === grantId ? parseFloat(transactionToSplit.amount) : 0;
       const remaining = getGrantRemainingBalance(grantId) + previousAllocation;
@@ -985,22 +1003,6 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const getFormSplitDifference = () => {
     return parseFloat(formData.amount || '0') - getFormSplitTotal();
-  };
-
-  // Grant balance validation helpers
-  const getGrantRemainingBalance = (grantId: number): number => {
-    if (!grants) return 0;
-    const grant = grants.find(g => g.id === grantId);
-    if (!grant) return 0;
-    const totalAmount = parseFloat(grant.amount);
-    const totalSpent = parseFloat(grant.totalSpent);
-    return totalAmount - totalSpent;
-  };
-
-  const getGrantName = (grantId: number): string => {
-    if (!grants) return '';
-    const grant = grants.find(g => g.id === grantId);
-    return grant?.name || '';
   };
 
   // Check if expense amount exceeds grant remaining balance
@@ -1217,7 +1219,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         }
       }
       
-      for (const [grantId, allocated] of grantAllocations) {
+      const splitEntries = Array.from(grantAllocations.entries());
+      for (let i = 0; i < splitEntries.length; i++) {
+        const [grantId, allocated] = splitEntries[i];
         const remaining = getGrantRemainingBalance(grantId);
         if (allocated > remaining) {
           const grantName = getGrantName(grantId);
