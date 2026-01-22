@@ -39,7 +39,7 @@ import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, 
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
-import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation } from "@shared/schema";
+import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation, Grant } from "@shared/schema";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryCombobox, CATEGORY_SENTINEL_NO_CHANGE } from "@/components/category-combobox";
@@ -281,6 +281,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const { data: programs } = useQuery<Program[]>({
     queryKey: ['/api/programs', currentOrganization.id],
+    enabled: currentOrganization.type === 'nonprofit',
+    retry: false,
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  const { data: grants } = useQuery<Grant[]>({
+    queryKey: [`/api/grants/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
     staleTime: 60000, // Cache for 1 minute
@@ -1507,6 +1514,29 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </div>
               )}
 
+              {/* Grant selection for expenses - nonprofits only */}
+              {formData.type === 'expense' && currentOrganization.type === 'nonprofit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="grant">Grant (Optional)</Label>
+                  <Select
+                    value={formData.grantId?.toString() || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, grantId: value === "none" ? undefined : parseInt(value) })}
+                  >
+                    <SelectTrigger id="grant" data-testid="select-transaction-grant">
+                      <SelectValue placeholder="Select a grant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No grant</SelectItem>
+                      {grants?.map((grant) => (
+                        <SelectItem key={grant.id} value={grant.id.toString()}>
+                          {grant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Functional category for expenses - nonprofits only */}
               {formData.type === 'expense' && currentOrganization.type === 'nonprofit' && (
                 <div className="space-y-2">
@@ -1784,6 +1814,25 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                                   {programs?.map(program => (
                                     <SelectItem key={program.id} value={program.id.toString()}>
                                       {program.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Grant</Label>
+                              <Select
+                                value={item.grantId?.toString() || "none"}
+                                onValueChange={(value) => handleFormSplitItemChange(index, 'grantId', value === "none" ? null : parseInt(value))}
+                              >
+                                <SelectTrigger data-testid={`select-form-split-grant-${index}`}>
+                                  <SelectValue placeholder="Select grant" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  {grants?.map(grant => (
+                                    <SelectItem key={grant.id} value={grant.id.toString()}>
+                                      {grant.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -2622,6 +2671,25 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                               {programs?.map(program => (
                                 <SelectItem key={program.id} value={program.id.toString()}>
                                   {program.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Grant</Label>
+                          <Select
+                            value={item.grantId?.toString() || "none"}
+                            onValueChange={(value) => handleSplitItemChange(index, 'grantId', value === "none" ? null : parseInt(value))}
+                          >
+                            <SelectTrigger data-testid={`select-split-grant-${index}`}>
+                              <SelectValue placeholder="Select grant" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              {grants?.map(grant => (
+                                <SelectItem key={grant.id} value={grant.id.toString()}>
+                                  {grant.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
