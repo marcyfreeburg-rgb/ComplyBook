@@ -126,17 +126,19 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
     },
     {
       title: "8. Record Transactions",
-      description: "Track income and expenses with split transactions and AI categorization",
+      description: "Track income and expenses with grants, funds, programs, and AI categorization",
       icon: Receipt,
       color: "text-cyan-600",
       bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
       steps: [
-        { text: "Use Transaction Log for day-to-day entries with running balances", link: "/transaction-log" },
+        { text: "Use Transaction Log or Expenses for day-to-day entries with running balances", link: "/transaction-log" },
         { text: "Sync transactions automatically from connected bank accounts", link: "/bank-accounts" },
         { text: "Import transactions from QuickBooks, Wave, or CSV files", link: "/accounting-imports" },
-        { text: "Split transactions into multiple categories for accurate fund allocation", link: "/transaction-log" },
+        { text: "When adding an EXPENSE: Select Type 'Expense', then choose Category, Grant, Fund, Program, and Functional Category (Program/Administrative/Fundraising)", link: "/transactions" },
+        { text: "When adding INCOME: Select Type 'Income', choose Category, and optionally link to a Donor or Client", link: "/transactions" },
+        { text: "To assign a Grant to an expense, select the Grant from the 'Grant (Optional)' dropdown - expenses will automatically roll up to the grant's spent total", link: "/grants" },
+        { text: "Split transactions into multiple categories/grants for accurate fund allocation", link: "/transaction-log" },
         { text: "Use AI categorization to automatically classify transactions in bulk", link: "/transaction-log" },
-        { text: "Link transactions to grants, funds, and programs for detailed tracking", link: "/transaction-log" },
       ],
     },
     {

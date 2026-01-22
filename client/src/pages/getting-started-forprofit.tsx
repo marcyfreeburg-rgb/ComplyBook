@@ -137,16 +137,19 @@ export default function GettingStartedForprofit({ currentOrganization }: Getting
     },
     {
       title: "9. Record Transactions",
-      description: "Track income and expenses with split transactions and AI categorization",
+      description: "Track income and expenses with client/vendor linking and AI categorization",
       icon: Receipt,
       color: "text-amber-600",
       bgColor: "bg-amber-100 dark:bg-amber-900/30",
       steps: [
-        { text: "Use Transaction Log for day-to-day entries with running balances", link: "/transaction-log" },
+        { text: "Use Transaction Log or Expenses for day-to-day entries with running balances", link: "/transaction-log" },
         { text: "Sync transactions automatically from connected bank accounts", link: "/bank-accounts" },
         { text: "Import transactions from QuickBooks, Wave, or CSV files", link: "/accounting-imports" },
-        { text: "Split transactions into multiple categories for accurate cost allocation", link: "/transaction-log" },
+        { text: "When adding an EXPENSE: Select Type 'Expense', choose Category, and link to a Vendor for tracking and 1099 reporting", link: "/transactions" },
+        { text: "When adding INCOME: Select Type 'Income', choose Category, and link to a Client for invoicing and revenue tracking", link: "/transactions" },
+        { text: "Split transactions into multiple categories for accurate cost allocation across projects", link: "/transaction-log" },
         { text: "Use AI categorization to automatically classify transactions in bulk", link: "/transaction-log" },
+        { text: "For government contracts: Link expenses to projects for job costing and DCAA compliance", link: "/government-contracts" },
       ],
     },
     {

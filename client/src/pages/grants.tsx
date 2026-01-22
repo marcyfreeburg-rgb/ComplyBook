@@ -70,6 +70,8 @@ export default function Grants({ currentOrganization }: GrantsProps) {
   const { data: grants, isLoading, error } = useQuery<GrantWithSpent[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
     retry: false,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds to pick up transaction changes
+    refetchOnWindowFocus: true, // Refresh when user returns to the page
   });
 
   useEffect(() => {
