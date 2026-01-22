@@ -40,6 +40,10 @@ import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation, Grant } from "@shared/schema";
+
+interface GrantWithSpent extends Grant {
+  totalSpent: string;
+}
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryCombobox, CATEGORY_SENTINEL_NO_CHANGE } from "@/components/category-combobox";
@@ -125,6 +129,15 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   // New transaction split mode state
   const [isFormSplitMode, setIsFormSplitMode] = useState(false);
   const [formSplitItems, setFormSplitItems] = useState<SplitItem[]>([]);
+  
+  // Grant overspending prevention state
+  const [grantOverspendWarning, setGrantOverspendWarning] = useState<{
+    grantId: number;
+    grantName: string;
+    remaining: number;
+    requestedAmount: number;
+    splitIndex?: number; // For split item validation
+  } | null>(null);
   
   const [aiBatchSize, setAiBatchSize] = useState<number>(() => {
     // Try to load from localStorage with validation
@@ -286,11 +299,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     staleTime: 60000, // Cache for 1 minute
   });
 
-  const { data: grants } = useQuery<Grant[]>({
+  const { data: grants } = useQuery<GrantWithSpent[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
     retry: false,
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 30000, // Refresh more frequently to get accurate remaining balances
   });
 
   const { data: attachments, refetch: refetchAttachments } = useQuery<TransactionAttachment[]>({
@@ -872,6 +885,32 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
   const handleSubmitSplit = () => {
     if (!transactionToSplit) return;
+    
+    // Hard validation: Check for grant overspending in split items
+    const grantAllocations = new Map<number, number>();
+    for (const item of splitItems) {
+      if (item.grantId) {
+        const current = grantAllocations.get(item.grantId) || 0;
+        grantAllocations.set(item.grantId, current + (parseFloat(item.amount) || 0));
+      }
+    }
+    
+    for (const [grantId, allocated] of grantAllocations) {
+      // Add back what was previously allocated to this grant from the original transaction
+      const previousAllocation = transactionToSplit.grantId === grantId ? parseFloat(transactionToSplit.amount) : 0;
+      const remaining = getGrantRemainingBalance(grantId) + previousAllocation;
+      
+      if (allocated > remaining) {
+        const grantName = getGrantName(grantId);
+        toast({
+          title: "Grant Balance Exceeded in Split",
+          description: `Split items allocate $${allocated.toFixed(2)} to "${grantName}" but only $${remaining.toFixed(2)} remains. Please adjust the split amounts.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     splitTransactionMutation.mutate({
       transactionId: transactionToSplit.id,
       splits: splitItems,
@@ -948,6 +987,193 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     return parseFloat(formData.amount || '0') - getFormSplitTotal();
   };
 
+  // Grant balance validation helpers
+  const getGrantRemainingBalance = (grantId: number): number => {
+    if (!grants) return 0;
+    const grant = grants.find(g => g.id === grantId);
+    if (!grant) return 0;
+    const totalAmount = parseFloat(grant.amount);
+    const totalSpent = parseFloat(grant.totalSpent);
+    return totalAmount - totalSpent;
+  };
+
+  const getGrantName = (grantId: number): string => {
+    if (!grants) return '';
+    const grant = grants.find(g => g.id === grantId);
+    return grant?.name || '';
+  };
+
+  // Check if expense amount exceeds grant remaining balance
+  const checkGrantOverspend = (grantId: number | undefined | null, amount: number, currentGrantSpendInTransaction: number = 0): boolean => {
+    if (!grantId || !grants) return false;
+    const remaining = getGrantRemainingBalance(grantId) + currentGrantSpendInTransaction; // Add back current spend if editing
+    return amount > remaining;
+  };
+
+  // Handle grant selection with validation
+  const handleGrantSelection = (value: string) => {
+    const newGrantId = value === "none" ? undefined : parseInt(value);
+    const expenseAmount = parseFloat(formData.amount) || 0;
+    
+    if (newGrantId && expenseAmount > 0) {
+      const remaining = getGrantRemainingBalance(newGrantId);
+      if (expenseAmount > remaining) {
+        // Show warning and force split
+        setGrantOverspendWarning({
+          grantId: newGrantId,
+          grantName: getGrantName(newGrantId),
+          remaining,
+          requestedAmount: expenseAmount,
+        });
+        return;
+      }
+    }
+    
+    setFormData({ ...formData, grantId: newGrantId });
+  };
+
+  // Handle amount change with grant validation
+  const handleAmountChange = (newAmount: string) => {
+    const amount = parseFloat(newAmount) || 0;
+    
+    if (formData.grantId && amount > 0 && formData.type === 'expense') {
+      const remaining = getGrantRemainingBalance(formData.grantId);
+      if (amount > remaining) {
+        // Show warning and force split
+        setGrantOverspendWarning({
+          grantId: formData.grantId,
+          grantName: getGrantName(formData.grantId),
+          remaining,
+          requestedAmount: amount,
+        });
+        setFormData({ ...formData, amount: newAmount });
+        return;
+      }
+    }
+    
+    setFormData({ ...formData, amount: newAmount });
+  };
+
+  // Handle confirming grant split from warning dialog
+  const handleConfirmGrantSplit = () => {
+    if (!grantOverspendWarning) return;
+    
+    const { grantId, remaining, requestedAmount } = grantOverspendWarning;
+    const overAmount = requestedAmount - remaining;
+    
+    // If not already in split mode, initialize it
+    if (!isFormSplitMode) {
+      setFormSplitItems([
+        {
+          amount: remaining.toFixed(2),
+          description: formData.description,
+          categoryId: formData.categoryId || null,
+          grantId: grantId,
+          fundId: formData.fundId || null,
+          programId: formData.programId || null,
+          functionalCategory: formData.functionalCategory || null,
+        },
+        {
+          amount: overAmount.toFixed(2),
+          description: formData.description,
+          categoryId: formData.categoryId || null,
+          grantId: null, // The overage goes to no grant
+          fundId: formData.fundId || null,
+          programId: formData.programId || null,
+          functionalCategory: formData.functionalCategory || null,
+        },
+      ]);
+      setIsFormSplitMode(true);
+    }
+    
+    // Clear the grant from main form (will be in split items)
+    setFormData({ ...formData, grantId: undefined });
+    setGrantOverspendWarning(null);
+  };
+
+  // Validate split item grant selection
+  const handleSplitItemGrantChange = (index: number, field: 'grantId', value: number | null, isFormSplit: boolean = true) => {
+    if (value === null) {
+      if (isFormSplit) {
+        handleFormSplitItemChange(index, field, value);
+      } else {
+        handleSplitItemChange(index, field, value);
+      }
+      return;
+    }
+    
+    const items = isFormSplit ? formSplitItems : splitItems;
+    const item = items[index];
+    const itemAmount = parseFloat(item.amount) || 0;
+    
+    // Calculate how much is already allocated to this grant in other split items
+    const existingGrantAllocation = items
+      .filter((_, i) => i !== index)
+      .filter(i => i.grantId === value)
+      .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+    
+    const remaining = getGrantRemainingBalance(value);
+    const availableForThisItem = remaining - existingGrantAllocation;
+    
+    if (itemAmount > availableForThisItem) {
+      setGrantOverspendWarning({
+        grantId: value,
+        grantName: getGrantName(value),
+        remaining: availableForThisItem,
+        requestedAmount: itemAmount,
+        splitIndex: index,
+      });
+      return;
+    }
+    
+    if (isFormSplit) {
+      handleFormSplitItemChange(index, field, value);
+    } else {
+      handleSplitItemChange(index, field, value);
+    }
+  };
+
+  // Handle split item amount change with grant validation
+  const handleSplitItemAmountChange = (index: number, newAmount: string, isFormSplit: boolean = true) => {
+    const amount = parseFloat(newAmount) || 0;
+    const items = isFormSplit ? formSplitItems : splitItems;
+    const item = items[index];
+    
+    if (item.grantId) {
+      // Calculate how much is already allocated to this grant in other split items
+      const existingGrantAllocation = items
+        .filter((_, i) => i !== index)
+        .filter(i => i.grantId === item.grantId)
+        .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+      
+      const remaining = getGrantRemainingBalance(item.grantId);
+      const availableForThisItem = remaining - existingGrantAllocation;
+      
+      if (amount > availableForThisItem) {
+        setGrantOverspendWarning({
+          grantId: item.grantId,
+          grantName: getGrantName(item.grantId),
+          remaining: availableForThisItem,
+          requestedAmount: amount,
+          splitIndex: index,
+        });
+        // Still update the amount so user sees what they typed
+        if (isFormSplit) {
+          handleFormSplitItemChange(index, 'amount', newAmount);
+        } else {
+          handleSplitItemChange(index, 'amount', newAmount);
+        }
+        return;
+      }
+    }
+    
+    if (isFormSplit) {
+      handleFormSplitItemChange(index, 'amount', newAmount);
+    } else {
+      handleSplitItemChange(index, 'amount', newAmount);
+    }
+  };
+
   const confirmDelete = () => {
     if (deleteTransactionId) {
       deleteMutation.mutate(deleteTransactionId);
@@ -963,6 +1189,46 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         variant: "destructive",
       });
       return;
+    }
+
+    const parsedAmount = parseFloat(formData.amount) || 0;
+
+    // Hard validation: Block overspending on grants for non-split transactions
+    if (!isFormSplitMode && formData.grantId && formData.type === 'expense') {
+      const remaining = getGrantRemainingBalance(formData.grantId);
+      if (parsedAmount > remaining) {
+        toast({
+          title: "Grant Balance Exceeded",
+          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}). Please use the split feature to allocate within the grant limit.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // For split mode, validate each split item's grant allocation
+    if (isFormSplitMode && formSplitItems.length >= 2) {
+      // Check for grant overspending in split items
+      const grantAllocations = new Map<number, number>();
+      for (const item of formSplitItems) {
+        if (item.grantId) {
+          const current = grantAllocations.get(item.grantId) || 0;
+          grantAllocations.set(item.grantId, current + (parseFloat(item.amount) || 0));
+        }
+      }
+      
+      for (const [grantId, allocated] of grantAllocations) {
+        const remaining = getGrantRemainingBalance(grantId);
+        if (allocated > remaining) {
+          const grantName = getGrantName(grantId);
+          toast({
+            title: "Grant Balance Exceeded in Split",
+            description: `Split items allocate $${allocated.toFixed(2)} to "${grantName}" but only $${remaining.toFixed(2)} remains. Please adjust the split amounts.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
     }
 
     if (editingTransaction) {
@@ -1378,7 +1644,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   min="0"
                   placeholder="0.00"
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={(e) => handleAmountChange(e.target.value)}
                   data-testid="input-transaction-amount"
                   required
                 />
@@ -1520,18 +1786,21 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   <Label htmlFor="grant">Grant (Optional)</Label>
                   <Select
                     value={formData.grantId?.toString() || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, grantId: value === "none" ? undefined : parseInt(value) })}
+                    onValueChange={handleGrantSelection}
                   >
                     <SelectTrigger id="grant" data-testid="select-transaction-grant">
                       <SelectValue placeholder="Select a grant" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No grant</SelectItem>
-                      {grants?.map((grant) => (
-                        <SelectItem key={grant.id} value={grant.id.toString()}>
-                          {grant.name}
-                        </SelectItem>
-                      ))}
+                      {grants?.map((grant) => {
+                        const remaining = parseFloat(grant.amount) - parseFloat(grant.totalSpent);
+                        return (
+                          <SelectItem key={grant.id} value={grant.id.toString()}>
+                            {grant.name} (${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })} remaining)
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1823,18 +2092,21 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                               <Label className="text-xs">Grant</Label>
                               <Select
                                 value={item.grantId?.toString() || "none"}
-                                onValueChange={(value) => handleFormSplitItemChange(index, 'grantId', value === "none" ? null : parseInt(value))}
+                                onValueChange={(value) => handleSplitItemGrantChange(index, 'grantId', value === "none" ? null : parseInt(value), true)}
                               >
                                 <SelectTrigger data-testid={`select-form-split-grant-${index}`}>
                                   <SelectValue placeholder="Select grant" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">None</SelectItem>
-                                  {grants?.map(grant => (
-                                    <SelectItem key={grant.id} value={grant.id.toString()}>
-                                      {grant.name}
-                                    </SelectItem>
-                                  ))}
+                                  {grants?.map(grant => {
+                                    const remaining = parseFloat(grant.amount) - parseFloat(grant.totalSpent);
+                                    return (
+                                      <SelectItem key={grant.id} value={grant.id.toString()}>
+                                        {grant.name} (${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })} left)
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -2361,6 +2633,37 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Grant Overspending Warning Dialog */}
+      <AlertDialog open={grantOverspendWarning !== null} onOpenChange={(open) => !open && setGrantOverspendWarning(null)}>
+        <AlertDialogContent data-testid="dialog-grant-overspend-warning">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Grant Balance Exceeded</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                The expense amount of <strong>${grantOverspendWarning?.requestedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong> exceeds 
+                the remaining balance for grant "{grantOverspendWarning?.grantName}".
+              </p>
+              <p className="font-medium text-foreground">
+                Remaining grant balance: ${grantOverspendWarning?.remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </p>
+              <p>
+                To proceed, you must split this transaction. The grant can only cover ${grantOverspendWarning?.remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })} of this expense.
+                The remaining ${((grantOverspendWarning?.requestedAmount || 0) - (grantOverspendWarning?.remaining || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })} must be assigned to a different grant or left unassigned.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-grant-overspend">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmGrantSplit}
+              data-testid="button-confirm-grant-split"
+            >
+              Split Transaction
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Attachments Dialog */}
       <Dialog open={isAttachmentsDialogOpen} onOpenChange={setIsAttachmentsDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -2680,18 +2983,21 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                           <Label className="text-xs">Grant</Label>
                           <Select
                             value={item.grantId?.toString() || "none"}
-                            onValueChange={(value) => handleSplitItemChange(index, 'grantId', value === "none" ? null : parseInt(value))}
+                            onValueChange={(value) => handleSplitItemGrantChange(index, 'grantId', value === "none" ? null : parseInt(value), false)}
                           >
                             <SelectTrigger data-testid={`select-split-grant-${index}`}>
                               <SelectValue placeholder="Select grant" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
-                              {grants?.map(grant => (
-                                <SelectItem key={grant.id} value={grant.id.toString()}>
-                                  {grant.name}
-                                </SelectItem>
-                              ))}
+                              {grants?.map(grant => {
+                                const remaining = parseFloat(grant.amount) - parseFloat(grant.totalSpent);
+                                return (
+                                  <SelectItem key={grant.id} value={grant.id.toString()}>
+                                    {grant.name} (${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })} left)
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>

@@ -8,6 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -94,6 +104,15 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   
   const [suggestingForTransaction, setSuggestingForTransaction] = useState<number | null>(null);
   const [isSyncingPlaid, setIsSyncingPlaid] = useState(false);
+  
+  // Grant overspending prevention state
+  const [grantOverspendWarning, setGrantOverspendWarning] = useState<{
+    grantId: number;
+    grantName: string;
+    remaining: number;
+    requestedAmount: number;
+    formType: 'add' | 'edit';
+  } | null>(null);
 
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
@@ -120,6 +139,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const { data: grants = [] } = useQuery<GrantWithBalances[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
+    staleTime: 30000, // Refresh more frequently to get accurate remaining balances
+    refetchOnWindowFocus: true,
   });
 
   // Check if organization has connected bank accounts
@@ -296,6 +317,20 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return;
     }
 
+    // Hard validation: Block overspending on grants
+    if (addForm.grantId && addForm.grantId !== "none" && addForm.type === 'expense') {
+      const grantId = parseInt(addForm.grantId);
+      const remaining = getGrantRemainingBalance(grantId);
+      if (parsedAmount > remaining) {
+        toast({
+          title: "Grant Balance Exceeded",
+          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}). Please reduce the amount or remove the grant assignment.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     createTransactionMutation.mutate({
       organizationId: currentOrganization.id,
       date: addForm.date,
@@ -393,6 +428,25 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const handleSaveEdit = () => {
     if (!editingTransaction) return;
     
+    const parsedAmount = parseFloat(editForm.amount);
+    
+    // Hard validation: Block overspending on grants
+    if (editForm.grantId && editForm.grantId !== "none" && editForm.type === 'expense') {
+      const grantId = parseInt(editForm.grantId);
+      // Add back current transaction's grant spend if editing same grant
+      const currentGrantSpend = editingTransaction.grantId === grantId ? parseFloat(editingTransaction.amount) : 0;
+      const remaining = getGrantRemainingBalance(grantId) + currentGrantSpend;
+      
+      if (parsedAmount > remaining) {
+        toast({
+          title: "Grant Balance Exceeded",
+          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}). Please reduce the amount or remove the grant assignment.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     updateTransactionMutation.mutate({
       id: editingTransaction.id,
       updates: {
@@ -412,6 +466,108 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const getSelectedGrant = () => {
     if (!editForm.grantId) return null;
     return grants.find(g => g.id === parseInt(editForm.grantId));
+  };
+
+  // Grant overspending validation helpers
+  const getGrantRemainingBalance = (grantId: number): number => {
+    const grant = grants.find(g => g.id === grantId);
+    if (!grant) return 0;
+    return parseFloat(grant.remainingBalance);
+  };
+
+  const getGrantName = (grantId: number): string => {
+    const grant = grants.find(g => g.id === grantId);
+    return grant?.name || '';
+  };
+
+  // Handle grant selection with validation for add form
+  const handleAddGrantSelection = (value: string) => {
+    const newGrantId = value === "none" ? "" : value;
+    const expenseAmount = parseFloat(addForm.amount) || 0;
+    
+    if (newGrantId && expenseAmount > 0 && addForm.type === 'expense') {
+      const remaining = getGrantRemainingBalance(parseInt(newGrantId));
+      if (expenseAmount > remaining) {
+        setGrantOverspendWarning({
+          grantId: parseInt(newGrantId),
+          grantName: getGrantName(parseInt(newGrantId)),
+          remaining,
+          requestedAmount: expenseAmount,
+          formType: 'add',
+        });
+        return;
+      }
+    }
+    
+    setAddForm({ ...addForm, grantId: newGrantId });
+  };
+
+  // Handle grant selection with validation for edit form
+  const handleEditGrantSelection = (value: string) => {
+    const newGrantId = value === "none" ? "" : value;
+    const expenseAmount = parseFloat(editForm.amount) || 0;
+    
+    if (newGrantId && expenseAmount > 0 && editForm.type === 'expense') {
+      // Add back current transaction's grant spend if editing same grant
+      const currentGrantSpend = editingTransaction?.grantId === parseInt(newGrantId) ? parseFloat(editingTransaction.amount) : 0;
+      const remaining = getGrantRemainingBalance(parseInt(newGrantId)) + currentGrantSpend;
+      
+      if (expenseAmount > remaining) {
+        setGrantOverspendWarning({
+          grantId: parseInt(newGrantId),
+          grantName: getGrantName(parseInt(newGrantId)),
+          remaining,
+          requestedAmount: expenseAmount,
+          formType: 'edit',
+        });
+        return;
+      }
+    }
+    
+    setEditForm({ ...editForm, grantId: newGrantId });
+  };
+
+  // Handle amount change with grant validation for add form
+  const handleAddAmountChange = (newAmount: string) => {
+    const amount = parseFloat(newAmount) || 0;
+    
+    if (addForm.grantId && amount > 0 && addForm.type === 'expense') {
+      const remaining = getGrantRemainingBalance(parseInt(addForm.grantId));
+      if (amount > remaining) {
+        setGrantOverspendWarning({
+          grantId: parseInt(addForm.grantId),
+          grantName: getGrantName(parseInt(addForm.grantId)),
+          remaining,
+          requestedAmount: amount,
+          formType: 'add',
+        });
+      }
+    }
+    
+    setAddForm({ ...addForm, amount: newAmount });
+  };
+
+  // Handle amount change with grant validation for edit form
+  const handleEditAmountChange = (newAmount: string) => {
+    const amount = parseFloat(newAmount) || 0;
+    
+    if (editForm.grantId && amount > 0 && editForm.type === 'expense') {
+      // Add back current transaction's grant spend if editing same grant
+      const currentGrantSpend = editingTransaction?.grantId === parseInt(editForm.grantId) ? parseFloat(editingTransaction.amount) : 0;
+      const remaining = getGrantRemainingBalance(parseInt(editForm.grantId)) + currentGrantSpend;
+      
+      if (amount > remaining) {
+        setGrantOverspendWarning({
+          grantId: parseInt(editForm.grantId),
+          grantName: getGrantName(parseInt(editForm.grantId)),
+          remaining,
+          requestedAmount: amount,
+          formType: 'edit',
+        });
+      }
+    }
+    
+    setEditForm({ ...editForm, amount: newAmount });
   };
 
   const getSourceBadge = (source: string | null) => {
@@ -964,7 +1120,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                   type="number"
                   step="0.01"
                   value={editForm.amount}
-                  onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                  onChange={(e) => handleEditAmountChange(e.target.value)}
                   data-testid="input-edit-amount"
                 />
               </div>
@@ -1056,7 +1212,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
             {currentOrganization.type === 'nonprofit' && (
               <div>
                 <Label htmlFor="edit-grant">Grant / Fund</Label>
-                <Select value={editForm.grantId || "none"} onValueChange={(value) => setEditForm({ ...editForm, grantId: value === "none" ? "" : value })}>
+                <Select value={editForm.grantId || "none"} onValueChange={handleEditGrantSelection}>
                   <SelectTrigger id="edit-grant" data-testid="select-edit-grant">
                     <SelectValue placeholder="Select grant" />
                   </SelectTrigger>
@@ -1187,7 +1343,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 min="0"
                 placeholder="0.00"
                 value={addForm.amount}
-                onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })}
+                onChange={(e) => handleAddAmountChange(e.target.value)}
                 data-testid="input-add-amount"
               />
             </div>
@@ -1266,7 +1422,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
             {currentOrganization.type === 'nonprofit' && (
               <div>
                 <Label htmlFor="add-grant">Grant / Fund (Optional)</Label>
-                <Select value={addForm.grantId || "none"} onValueChange={(value) => setAddForm({ ...addForm, grantId: value === "none" ? "" : value })}>
+                <Select value={addForm.grantId || "none"} onValueChange={handleAddGrantSelection}>
                   <SelectTrigger id="add-grant" data-testid="select-add-grant">
                     <SelectValue placeholder="Select grant" />
                   </SelectTrigger>
@@ -1306,6 +1462,31 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Grant Overspending Warning Dialog */}
+      <AlertDialog open={grantOverspendWarning !== null} onOpenChange={(open) => !open && setGrantOverspendWarning(null)}>
+        <AlertDialogContent data-testid="dialog-grant-overspend-warning">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Grant Balance Exceeded</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                The expense amount of <strong>${grantOverspendWarning?.requestedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong> exceeds 
+                the remaining balance for grant "{grantOverspendWarning?.grantName}".
+              </p>
+              <p className="font-medium text-foreground">
+                Remaining grant balance: ${grantOverspendWarning?.remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </p>
+              <p>
+                To charge this expense to this grant, please reduce the amount to ${grantOverspendWarning?.remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })} or less.
+                Alternatively, you can use the Expenses page to split this transaction across multiple grants.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-close-grant-overspend">Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
