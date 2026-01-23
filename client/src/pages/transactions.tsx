@@ -2392,16 +2392,60 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                   </Button>
                 </div>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowBulkCategorization(false);
-                    setBulkSuggestions(new Map());
-                  }}
-                  data-testid="button-hide-bulk-suggestions"
-                >
-                  Hide Suggestions
-                </Button>
+                <div className="flex items-center gap-3">
+                  {/* Show batch size and run another batch when there are more uncategorized transactions */}
+                  {uncategorizedTransactions.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="batch-size-next" className="text-sm whitespace-nowrap">
+                          Batch size:
+                        </Label>
+                        <Select
+                          value={aiBatchSize.toString()}
+                          onValueChange={(value) => {
+                            const newSize = parseInt(value);
+                            setAiBatchSize(newSize);
+                            localStorage.setItem('aiBatchSize', value);
+                          }}
+                        >
+                          <SelectTrigger id="batch-size-next" className="w-24" data-testid="select-ai-batch-size-next">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="20">20</SelectItem>
+                            <SelectItem value="30">30</SelectItem>
+                            <SelectItem value="40">40</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const transactionsToProcess = uncategorizedTransactions.slice(0, aiBatchSize);
+                          bulkCategorizeMutation.mutate(transactionsToProcess);
+                        }}
+                        disabled={bulkCategorizeMutation.isPending}
+                        data-testid="button-bulk-categorize-next"
+                      >
+                        {bulkCategorizeMutation.isPending 
+                          ? "Analyzing..." 
+                          : `Categorize ${Math.min(aiBatchSize, uncategorizedTransactions.length)} More`
+                        }
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowBulkCategorization(false);
+                      setBulkSuggestions(new Map());
+                    }}
+                    data-testid="button-hide-bulk-suggestions"
+                  >
+                    {uncategorizedTransactions.length === 0 ? "Done" : "Hide Suggestions"}
+                  </Button>
+                </div>
               )}
             </div>
           </CardHeader>
