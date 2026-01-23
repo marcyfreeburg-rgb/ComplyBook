@@ -438,6 +438,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction created",
         description: "Your transaction has been added successfully.",
@@ -605,6 +606,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction updated",
         description: "Your transaction has been updated successfully.",
@@ -638,6 +640,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction deleted",
         description: "The transaction has been deleted successfully.",
@@ -692,6 +695,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction split",
         description: "The transaction has been split successfully.",
@@ -717,6 +721,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction restored",
         description: "The transaction has been unsplit and restored to its original state.",
@@ -797,6 +802,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       setIsImportDialogOpen(false);
       setImportFile(null);
       const successCount = data.summary?.success || data.created?.length || 0;
@@ -833,6 +839,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       setIsBulkCategorizeDialogOpen(false);
       setSelectedTransactionIds(new Set());
       setBulkCategoryId(undefined);
@@ -861,6 +868,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       setSelectedTransactionIds(new Set());
       toast({
         title: "Bulk Delete Complete",
