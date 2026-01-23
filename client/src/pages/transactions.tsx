@@ -1339,7 +1339,46 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     }
 
     if (editingTransaction) {
-      updateMutation.mutate({ id: editingTransaction.id, data: formData });
+      // Check if we're in split mode for an existing transaction
+      if (isFormSplitMode && formSplitItems.length >= 2) {
+        // Validate split amounts match total
+        const splitDiff = Math.abs(getFormSplitDifference());
+        if (splitDiff > 0.01) {
+          toast({
+            title: "Split amounts don't match",
+            description: `The split amounts must equal the total transaction amount. Difference: $${splitDiff.toFixed(2)}`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        try {
+          // First update the parent transaction
+          await apiRequest('PATCH', `/api/transactions/${editingTransaction.id}`, formData);
+          
+          // Then split it with the defined splits
+          await apiRequest('POST', `/api/transactions/${editingTransaction.id}/split`, { 
+            splits: formSplitItems 
+          });
+          
+          queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+          queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+          toast({
+            title: "Transaction updated and split",
+            description: `Updated transaction with ${formSplitItems.length} category splits.`,
+          });
+          handleCloseDialog();
+        } catch (error: any) {
+          toast({
+            title: "Failed to split transaction",
+            description: error.message || "An error occurred while splitting the transaction.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Regular update without splitting
+        updateMutation.mutate({ id: editingTransaction.id, data: formData });
+      }
     } else if (isFormSplitMode && formSplitItems.length >= 2) {
       // Validate split amounts match total
       const splitDiff = Math.abs(getFormSplitDifference());
