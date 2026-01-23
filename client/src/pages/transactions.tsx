@@ -178,10 +178,21 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   
-  // Date range filter state
+  // Date range filter state (with debounce to prevent refetch while typing)
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [debouncedStartDate, setDebouncedStartDate] = useState("");
+  const [debouncedEndDate, setDebouncedEndDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Debounce date filters
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedStartDate(startDate);
+      setDebouncedEndDate(endDate);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [startDate, endDate]);
   
   // Ref for scroll position preservation
   const transactionListRef = useRef<HTMLDivElement>(null);
@@ -199,7 +210,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setLoadedTransactions([]);
     setHasMoreTransactions(true);
     setTotalTransactions(0);
-  }, [debouncedSearchQuery, currentOrganization.id, startDate, endDate]);
+  }, [debouncedSearchQuery, currentOrganization.id, debouncedStartDate, debouncedEndDate]);
 
   interface PaginatedTransactionsResponse {
     transactions: Transaction[];
@@ -208,7 +219,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   }
 
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError, refetch: refetchTransactions } = useQuery<PaginatedTransactionsResponse>({
-    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate, endDate }],
+    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate: debouncedStartDate, endDate: debouncedEndDate }],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: TRANSACTIONS_PER_PAGE.toString(),
@@ -217,11 +228,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedSearchQuery) {
         params.append('search', debouncedSearchQuery);
       }
-      if (startDate) {
-        params.append('startDate', startDate);
+      if (debouncedStartDate) {
+        params.append('startDate', debouncedStartDate);
       }
-      if (endDate) {
-        params.append('endDate', endDate);
+      if (debouncedEndDate) {
+        params.append('endDate', debouncedEndDate);
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
@@ -253,11 +264,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedSearchQuery) {
         params.append('search', debouncedSearchQuery);
       }
-      if (startDate) {
-        params.append('startDate', startDate);
+      if (debouncedStartDate) {
+        params.append('startDate', debouncedStartDate);
       }
-      if (endDate) {
-        params.append('endDate', endDate);
+      if (debouncedEndDate) {
+        params.append('endDate', debouncedEndDate);
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch more transactions');
@@ -297,11 +308,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedSearchQuery) {
         params.append('search', debouncedSearchQuery);
       }
-      if (startDate) {
-        params.append('startDate', startDate);
+      if (debouncedStartDate) {
+        params.append('startDate', debouncedStartDate);
       }
-      if (endDate) {
-        params.append('endDate', endDate);
+      if (debouncedEndDate) {
+        params.append('endDate', debouncedEndDate);
       }
       
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
