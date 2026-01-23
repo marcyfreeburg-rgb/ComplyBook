@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2 } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
@@ -177,6 +177,14 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  
+  // Date range filter state
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Ref for scroll position preservation
+  const transactionListRef = useRef<HTMLDivElement>(null);
 
   // Debounce search query
   useEffect(() => {
@@ -186,12 +194,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset pagination when search changes
+  // Reset pagination when search or filters change
   useEffect(() => {
     setLoadedTransactions([]);
     setHasMoreTransactions(true);
     setTotalTransactions(0);
-  }, [debouncedSearchQuery, currentOrganization.id]);
+  }, [debouncedSearchQuery, currentOrganization.id, startDate, endDate]);
 
   interface PaginatedTransactionsResponse {
     transactions: Transaction[];
@@ -199,8 +207,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     hasMore: boolean;
   }
 
-  const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useQuery<PaginatedTransactionsResponse>({
-    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery }],
+  const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError, refetch: refetchTransactions } = useQuery<PaginatedTransactionsResponse>({
+    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate, endDate }],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: TRANSACTIONS_PER_PAGE.toString(),
@@ -208,6 +216,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       });
       if (debouncedSearchQuery) {
         params.append('search', debouncedSearchQuery);
+      }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
@@ -239,6 +253,12 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedSearchQuery) {
         params.append('search', debouncedSearchQuery);
       }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch more transactions');
       const data: PaginatedTransactionsResponse = await response.json();
@@ -254,6 +274,67 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       });
     } finally {
       setIsLoadingMore(false);
+    }
+  };
+  
+  // Refresh transactions - preserves scroll position and loaded count
+  const refreshTransactions = async () => {
+    // Capture scroll position before refresh
+    const scrollContainer = transactionListRef.current;
+    const savedScrollTop = scrollContainer?.scrollTop || 0;
+    
+    setIsRefreshing(true);
+    try {
+      // Calculate how many transactions we need to reload to maintain current position
+      const currentCount = loadedTransactions.length;
+      const pagesToLoad = Math.ceil(currentCount / TRANSACTIONS_PER_PAGE);
+      
+      // Reload all currently visible transactions
+      const params = new URLSearchParams({
+        limit: (pagesToLoad * TRANSACTIONS_PER_PAGE).toString(),
+        offset: '0',
+      });
+      if (debouncedSearchQuery) {
+        params.append('search', debouncedSearchQuery);
+      }
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
+      
+      const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
+      if (!response.ok) throw new Error('Failed to refresh transactions');
+      const data: PaginatedTransactionsResponse = await response.json();
+      
+      setLoadedTransactions(data.transactions);
+      setHasMoreTransactions(data.hasMore);
+      setTotalTransactions(data.total);
+      
+      // Also invalidate related queries that might affect transaction display
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      
+      // Restore scroll position after state updates
+      requestAnimationFrame(() => {
+        if (scrollContainer) {
+          scrollContainer.scrollTop = savedScrollTop;
+        }
+      });
+      
+      toast({
+        title: "Refreshed",
+        description: `${data.transactions.length} transactions reloaded`,
+      });
+    } catch (error) {
+      console.error('Error refreshing transactions:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to refresh transactions",
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -2174,16 +2255,64 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search transactions..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-          data-testid="input-search-transactions"
-        />
+      {/* Search, Date Range Filter, and Refresh */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search transactions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-transactions"
+          />
+        </div>
+        <div className="flex items-end gap-2">
+          <div>
+            <Label htmlFor="start-date" className="text-xs text-muted-foreground">From</Label>
+            <Input
+              id="start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-[140px]"
+              data-testid="input-start-date"
+            />
+          </div>
+          <div>
+            <Label htmlFor="end-date" className="text-xs text-muted-foreground">To</Label>
+            <Input
+              id="end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-[140px]"
+              data-testid="input-end-date"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+              }}
+              data-testid="button-clear-date-filter"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refreshTransactions}
+            disabled={isRefreshing || transactionsLoading}
+            data-testid="button-refresh-transactions"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Bulk Categorization */}
@@ -2424,7 +2553,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             </div>
           ) : (
             <div style={{ maxHeight: 'calc(100vh - 250px)', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
-              <div className="overflow-x-auto flex-1 overflow-y-auto scroll-smooth">
+              <div ref={transactionListRef} className="overflow-x-auto flex-1 overflow-y-auto scroll-smooth">
                 <table className="w-full" style={{ minWidth: '900px' }}>
                   <thead className="sticky top-0 bg-card z-10 border-b">
                     <tr>

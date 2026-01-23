@@ -334,7 +334,7 @@ export interface IStorage {
   // Transaction operations
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
-  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
+  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
   findMatchingManualTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
@@ -1873,22 +1873,38 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(transactions.date), desc(transactions.id));
   }
 
-  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
-    const { limit, offset, search } = options;
+  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
+    const { limit, offset, search, startDate, endDate } = options;
     
-    // Build where conditions
-    let whereConditions = eq(transactions.organizationId, organizationId);
+    // Build where conditions array
+    const conditions: any[] = [eq(transactions.organizationId, organizationId)];
     
     if (search && search.trim()) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
-      whereConditions = and(
-        eq(transactions.organizationId, organizationId),
+      conditions.push(
         or(
           sql`LOWER(${transactions.description}) LIKE ${searchTerm}`,
           sql`${transactions.amount}::text LIKE ${searchTerm}`
         )
-      ) as any;
+      );
     }
+    
+    // Add date range filtering
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      conditions.push(sql`${transactions.date} >= ${start}`);
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      conditions.push(sql`${transactions.date} <= ${end}`);
+    }
+    
+    const whereConditions = conditions.length > 1 
+      ? and(...conditions) as any
+      : conditions[0];
     
     // Get total count
     const [countResult] = await db

@@ -2441,10 +2441,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       const search = req.query.search as string | undefined;
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
 
       if (limit !== undefined) {
         // Paginated response
-        const result = await storage.getTransactionsPaginated(organizationId, { limit, offset, search });
+        const result = await storage.getTransactionsPaginated(organizationId, { limit, offset, search, startDate, endDate });
         res.json(result);
       } else {
         // Legacy: return all transactions (for backwards compatibility)

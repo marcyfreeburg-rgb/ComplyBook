@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,8 @@ import {
   Loader2,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  X
 } from "lucide-react";
 import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant } from "@shared/schema";
 import { format } from "date-fns";
@@ -105,6 +106,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [suggestingForTransaction, setSuggestingForTransaction] = useState<number | null>(null);
   const [isSyncingPlaid, setIsSyncingPlaid] = useState(false);
   
+  // Date range filter state
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Ref for scroll position preservation
+  const transactionListRef = useRef<HTMLDivElement>(null);
+  
   // Grant overspending prevention state
   const [grantOverspendWarning, setGrantOverspendWarning] = useState<{
     grantId: number;
@@ -114,9 +123,46 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     formType: 'add' | 'edit';
   } | null>(null);
 
-  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
+  const { data: transactions = [], isLoading, refetch: refetchTransactions } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}`],
   });
+  
+  // Refresh transactions - preserves scroll position
+  const refreshTransactions = async () => {
+    // Capture scroll position before refresh
+    const scrollContainer = transactionListRef.current;
+    const savedScrollTop = scrollContainer?.scrollTop || 0;
+    
+    setIsRefreshing(true);
+    try {
+      await refetchTransactions();
+      // Also refresh grants for accurate remaining balances
+      if (currentOrganization.type === 'nonprofit') {
+        queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      }
+      
+      // Restore scroll position after state updates
+      requestAnimationFrame(() => {
+        if (scrollContainer) {
+          scrollContainer.scrollTop = savedScrollTop;
+        }
+      });
+      
+      toast({
+        title: "Refreshed",
+        description: `Transactions reloaded`,
+      });
+    } catch (error) {
+      console.error('Error refreshing transactions:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to refresh transactions",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -638,7 +684,13 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       const matchesAccount = accountFilter === "all" || 
         (accountFilter === "unlinked" && !transaction.bankAccountId) ||
         (transaction.bankAccountId?.toString() === accountFilter);
-      return matchesSearch && matchesSource && matchesType && matchesAccount;
+      
+      // Date range filter
+      const transactionDate = new Date(transaction.date);
+      const matchesStartDate = !startDate || transactionDate >= new Date(startDate);
+      const matchesEndDate = !endDate || transactionDate <= new Date(endDate + 'T23:59:59');
+      
+      return matchesSearch && matchesSource && matchesType && matchesAccount && matchesStartDate && matchesEndDate;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -894,6 +946,52 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                   </SelectContent>
                 </Select>
               )}
+              <div className="flex items-end gap-2">
+                <div>
+                  <Label htmlFor="start-date-log" className="text-xs text-muted-foreground">From</Label>
+                  <Input
+                    id="start-date-log"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-[130px]"
+                    data-testid="input-start-date"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end-date-log" className="text-xs text-muted-foreground">To</Label>
+                  <Input
+                    id="end-date-log"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-[130px]"
+                    data-testid="input-end-date"
+                  />
+                </div>
+                {(startDate || endDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    data-testid="button-clear-date-filter"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={refreshTransactions}
+                  disabled={isRefreshing || isLoading}
+                  data-testid="button-refresh-transactions"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -922,7 +1020,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               No transactions found. Import transactions or connect your bank.
             </div>
           ) : (
-            <div className="overflow-auto max-h-[60vh]">
+            <div ref={transactionListRef} className="overflow-auto max-h-[60vh]">
               <table className="w-full">
                 <thead className="sticky top-0 bg-card z-20">
                   <tr className="border-b">
