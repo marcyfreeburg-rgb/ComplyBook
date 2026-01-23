@@ -1,4 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
+import crypto from 'crypto';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const cookieParser = require('cookie-parser');
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { getStripeSync } from './stripeClient';
@@ -136,6 +140,70 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false }));
+
+// Cookie parser middleware for CSRF protection
+app.use(cookieParser());
+
+// NIST 800-53 SC-8: CSRF Protection using Double-Submit Cookie Pattern
+
+const CSRF_COOKIE_NAME = 'csrf_token';
+const CSRF_HEADER_NAME = 'x-csrf-token';
+
+// Generate and set CSRF token cookie for all requests
+app.use((req, res, next) => {
+  // Check if CSRF token cookie exists
+  const existingToken = req.cookies?.[CSRF_COOKIE_NAME];
+  
+  if (!existingToken) {
+    // Generate a new CSRF token
+    const csrfToken = crypto.randomBytes(32).toString('hex');
+    res.cookie(CSRF_COOKIE_NAME, csrfToken, {
+      httpOnly: false, // Must be readable by JavaScript
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 12 * 60 * 60 * 1000, // 12 hours (match session duration)
+    });
+  }
+  next();
+});
+
+// CSRF validation middleware for state-changing requests
+app.use('/api', (req, res, next) => {
+  // Skip CSRF check for safe methods
+  const safeMethods = ['GET', 'HEAD', 'OPTIONS'];
+  
+  if (safeMethods.includes(req.method)) {
+    return next();
+  }
+  
+  // Exempt paths relative to /api mount point (req.path excludes /api prefix)
+  // Auth endpoints and webhooks have their own security mechanisms
+  const csrfExemptPaths = [
+    '/login',           // POST /api/login - uses session auth
+    '/callback',        // POST /api/callback - OIDC callback
+    '/logout',          // POST /api/logout - session logout
+    '/auth/login',      // Alternative auth path
+    '/auth/callback',   // Alternative auth callback
+    '/stripe/webhook',  // Stripe webhooks - uses signature verification
+    '/plaid/webhook',   // Plaid webhooks - uses signature verification
+  ];
+  
+  // Check if request path matches any exempt path
+  if (csrfExemptPaths.some(exemptPath => req.path === exemptPath || req.path.startsWith(exemptPath + '/'))) {
+    return next();
+  }
+  
+  const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
+  const headerToken = req.headers[CSRF_HEADER_NAME] as string;
+  
+  // Validate double-submit: header must match cookie
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    console.warn(`[CSRF] Token mismatch - Path: ${req.path}, Method: ${req.method}, IP: ${req.ip}`);
+    return res.status(403).json({ message: 'CSRF token validation failed' });
+  }
+  
+  next();
+});
 
 // NIST 800-53 SC-7: Boundary Protection - Security Headers
 app.use((req, res, next) => {

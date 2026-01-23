@@ -294,13 +294,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve local uploads (for non-Replit environments like Render)
   // SECURITY: Path traversal protection - ensure requested path stays within uploads directory
-  app.get('/uploads/*', (req, res) => {
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    const requestedPath = path.normalize(req.path).replace(/^\/uploads\/?/, '');
-    const filePath = path.join(uploadsDir, requestedPath);
+  // NOTE: Unencoded path traversal (../) is normalized by HTTP clients before reaching server
+  // URL-encoded traversal (%2e%2e/ or %2f) bypasses client normalization and IS blocked here
+  app.get('/uploads/*', async (req, res) => {
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
     
-    // Prevent path traversal by ensuring resolved path is within uploads directory
+    // Extract path after /uploads/ - do NOT normalize before extraction
+    // Use req.params[0] for wildcard match (preserves encoding better than req.path)
+    const rawPath = req.params[0] || '';
+    
+    // Decode URL-encoded characters and normalize the path
+    const decodedPath = decodeURIComponent(rawPath);
+    
+    // Resolve the full path (this handles .. sequences)
+    const filePath = path.resolve(uploadsDir, decodedPath);
+    
+    // CRITICAL: Check if resolved path is within uploads directory
+    // Using path.resolve ensures we get absolute paths for accurate comparison
     if (!filePath.startsWith(uploadsDir + path.sep) && filePath !== uploadsDir) {
+      // Log path traversal attempt as security event
+      try {
+        await storage.logSecurityEvent({
+          eventType: 'suspicious_activity',
+          severity: 'warning',
+          userId: null,
+          email: null,
+          ipAddress: req.ip || req.socket.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          eventData: {
+            type: 'path_traversal_attempt',
+            requestedPath: req.path,
+            decodedPath: decodedPath,
+            resolvedPath: filePath,
+            uploadsDir: uploadsDir,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      } catch (logError) {
+        console.error('Failed to log path traversal attempt:', logError);
+      }
       return res.status(403).json({ message: "Access denied" });
     }
     
