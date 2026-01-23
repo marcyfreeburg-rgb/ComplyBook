@@ -293,9 +293,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve local uploads (for non-Replit environments like Render)
+  // SECURITY: Path traversal protection - ensure requested path stays within uploads directory
   app.get('/uploads/*', (req, res) => {
-    const filePath = path.join(process.cwd(), req.path);
-    if (fs.existsSync(filePath)) {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const requestedPath = path.normalize(req.path).replace(/^\/uploads\/?/, '');
+    const filePath = path.join(uploadsDir, requestedPath);
+    
+    // Prevent path traversal by ensuring resolved path is within uploads directory
+    if (!filePath.startsWith(uploadsDir + path.sep) && filePath !== uploadsDir) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       res.sendFile(filePath);
     } else {
       res.status(404).json({ message: "File not found" });
