@@ -121,10 +121,15 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
       const formData = new FormData();
       formData.append('logo', logoFile);
 
+      // Get CSRF token from cookie for file upload
+      const csrfToken = document.cookie.split(';').find(c => c.trim().startsWith('csrf_token='))?.split('=')[1];
+      
       // Upload file to server (server handles object storage upload)
       const uploadResponse = await fetch(`/api/organizations/${currentOrganization.id}/logo`, {
         method: "POST",
         body: formData,
+        credentials: 'include',
+        headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
       });
 
       if (!uploadResponse.ok) {

@@ -52,10 +52,13 @@ export default function AccountingImports({ organizationId }: AccountingImportsP
 
   const importMutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      // Get CSRF token from cookie for file upload
+      const csrfToken = document.cookie.split(';').find(c => c.trim().startsWith('csrf_token='))?.split('=')[1];
       const response = await fetch(`/api/transactions/import-accounting/${organizationId}?source=${importSource}`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
       });
       if (!response.ok) {
         const error = await response.json();

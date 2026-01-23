@@ -781,10 +781,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
+      // Get CSRF token from cookie for file upload
+      const csrfToken = document.cookie.split(';').find(c => c.trim().startsWith('csrf_token='))?.split('=')[1];
       const response = await fetch(`/api/transactions/import-csv/${currentOrganization.id}`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
       });
       if (!response.ok) {
         const errorData = await response.json();

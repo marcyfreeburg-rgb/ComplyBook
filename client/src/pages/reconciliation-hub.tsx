@@ -579,10 +579,14 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
       const formData = new FormData();
       formData.append('pdf', file);
 
+      // Get CSRF token from cookie for file upload
+      const csrfToken = document.cookie.split(';').find(c => c.trim().startsWith('csrf_token='))?.split('=')[1];
+      
       const response = await fetch(`/api/bank-reconciliations/${activeReconciliation}/parse-pdf`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
       });
 
       if (!response.ok) {
