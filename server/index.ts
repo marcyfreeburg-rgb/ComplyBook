@@ -198,7 +198,7 @@ app.use('/api', (req, res, next) => {
   
   // Validate double-submit: header must match cookie
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-    console.warn(`[CSRF] Token mismatch - Path: ${req.path}, Method: ${req.method}, IP: ${req.ip}`);
+    console.warn(`[CSRF] Token mismatch - Path: ${req.path}, Method: ${req.method}, IP: ${req.ip}, Cookie: ${cookieToken ? 'present' : 'missing'}, Header: ${headerToken ? 'present' : 'missing'}`);
     return res.status(403).json({ message: 'CSRF token validation failed' });
   }
   
