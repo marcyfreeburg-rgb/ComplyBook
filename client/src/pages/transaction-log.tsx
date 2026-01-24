@@ -55,6 +55,7 @@ interface PlaidAccountWithInitialBalance {
   institutionName: string | null;
   initialBalance: string | null;
   initialBalanceDate: string | null;
+  currentBalance: string | null;
 }
 
 interface TransactionLogProps {
@@ -799,6 +800,52 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     { income: 0, expense: 0 }
   );
 
+  // Calculate monthly totals (current month to date) for for-profit orgs
+  const currentMonth = new Date();
+  const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+  const monthlyTotals = transactions.reduce(
+    (acc, t) => {
+      const transactionDate = new Date(t.date);
+      if (transactionDate >= monthStart && transactionDate <= currentMonth) {
+        const amount = parseFloat(t.amount);
+        if (t.type === "income") {
+          acc.income += amount;
+        } else {
+          acc.expense += amount;
+        }
+      }
+      return acc;
+    },
+    { income: 0, expense: 0 }
+  );
+
+  // Get bank balance - use Plaid current_balance if available, otherwise use running balance
+  const getCurrentBankBalance = (): number | null => {
+    if (plaidAccounts.length === 0) return null;
+    
+    // If specific account selected, use its current balance from Plaid
+    if (selectedAccount && selectedAccount.currentBalance) {
+      return parseFloat(selectedAccount.currentBalance);
+    }
+    
+    // If account selected but no Plaid balance, use running balance
+    if (selectedAccount && runningBalance !== 0) {
+      return runningBalance;
+    }
+    
+    // If no account selected, sum all accounts' current balances from Plaid
+    const totalBalance = plaidAccounts.reduce((sum, account) => {
+      if (account.currentBalance) {
+        return sum + parseFloat(account.currentBalance);
+      }
+      return sum;
+    }, 0);
+    
+    return totalBalance > 0 ? totalBalance : (runningBalance !== 0 ? runningBalance : null);
+  };
+
+  const currentBankBalance = getCurrentBankBalance();
+
   return (
     <div className="space-y-6" data-testid="page-transaction-log">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -838,36 +885,78 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-income">
-              {formatCurrency(totals.income)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-expenses">
-              {formatCurrency(totals.expense)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totals.income - totals.expense >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-net-balance">
-              {formatCurrency(totals.income - totals.expense)}
-            </div>
-          </CardContent>
-        </Card>
+        {currentOrganization.type === 'forprofit' ? (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
+                <CardDescription className="text-xs">{format(currentMonth, 'MMMM yyyy')} to date</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-monthly-income">
+                  {formatCurrency(monthlyTotals.income)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Monthly Expenses</CardTitle>
+                <CardDescription className="text-xs">{format(currentMonth, 'MMMM yyyy')} to date</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-monthly-expenses">
+                  {formatCurrency(monthlyTotals.expense)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Bank Balance</CardTitle>
+                <CardDescription className="text-xs">
+                  {selectedAccount ? selectedAccount.name : (plaidAccounts.length > 0 ? 'Primary account' : 'No bank connected')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${currentBankBalance && currentBankBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-bank-balance">
+                  {currentBankBalance !== null ? formatCurrency(currentBankBalance) : '—'}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-income">
+                  {formatCurrency(totals.income)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-expenses">
+                  {formatCurrency(totals.expense)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${totals.income - totals.expense >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-net-balance">
+                  {formatCurrency(totals.income - totals.expense)}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <Card>
