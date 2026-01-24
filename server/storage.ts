@@ -325,9 +325,11 @@ export interface IStorage {
 
   // Donor Letter operations
   getDonorLetters(organizationId: number): Promise<Array<DonorLetter & { donorName: string }>>;
+  getDonorLettersByDonorAndYear(donorId: number, year: number): Promise<DonorLetter[]>;
   getDonorLetter(id: number): Promise<DonorLetter | undefined>;
   createDonorLetter(letter: InsertDonorLetter, userId: string): Promise<DonorLetter>;
   updateDonorLetter(id: number, updates: Partial<InsertDonorLetter>): Promise<DonorLetter>;
+  updateDonorLetterDelivery(id: number, delivery: { letterStatus: string; deliveryMode: string; deliveryRef: string }): Promise<DonorLetter>;
   finalizeDonorLetter(id: number, renderedHtml: string): Promise<DonorLetter>;
   deleteDonorLetter(id: number): Promise<void>;
 
@@ -1854,6 +1856,27 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(donorLetters)
       .where(eq(donorLetters.id, id));
+  }
+
+  async getDonorLettersByDonorAndYear(donorId: number, year: number): Promise<DonorLetter[]> {
+    return await db
+      .select()
+      .from(donorLetters)
+      .where(and(eq(donorLetters.donorId, donorId), eq(donorLetters.year, year)));
+  }
+
+  async updateDonorLetterDelivery(id: number, delivery: { letterStatus: string; deliveryMode: string; deliveryRef: string }): Promise<DonorLetter> {
+    const [letter] = await db
+      .update(donorLetters)
+      .set({
+        letterStatus: delivery.letterStatus as any,
+        deliveryMode: delivery.deliveryMode,
+        deliveryRef: delivery.deliveryRef,
+        updatedAt: new Date(),
+      })
+      .where(eq(donorLetters.id, id))
+      .returning();
+    return letter;
   }
 
   // Transaction operations

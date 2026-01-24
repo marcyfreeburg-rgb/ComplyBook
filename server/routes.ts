@@ -13,7 +13,7 @@ import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
-import { sendInvoiceEmail } from "./email";
+import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import gustoRoutes from "./gusto";
@@ -1714,6 +1714,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error finalizing donor letter:", error);
       res.status(500).json({ message: "Failed to finalize donor letter" });
+    }
+  });
+
+  // Email donation letter to donor
+  app.post('/api/donor-letters/:id/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const letterId = parseInt(req.params.id);
+
+      const letter = await storage.getDonorLetter(letterId);
+      if (!letter) {
+        return res.status(404).json({ message: "Letter not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, letter.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(letter.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor letters are only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to email donor letters" });
+      }
+
+      // Only finalized letters can be emailed
+      if (letter.letterStatus !== 'finalized' && letter.letterStatus !== 'sent') {
+        return res.status(400).json({ message: "Only finalized letters can be emailed" });
+      }
+
+      // Get the donor
+      const donor = await storage.getDonor(letter.donorId);
+      if (!donor) {
+        return res.status(404).json({ message: "Donor not found" });
+      }
+
+      if (!donor.email) {
+        return res.status(400).json({ message: "Donor does not have an email address" });
+      }
+
+      // Format the donation amount
+      const formattedAmount = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }).format(parseFloat(letter.donationAmount));
+
+      // Get the base URL for logo
+      const baseUrl = process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+
+      // Send the email
+      await sendDonationLetterEmail({
+        to: donor.email,
+        donorName: donor.name,
+        organizationName: organization.companyName || organization.name,
+        year: letter.year,
+        donationAmount: formattedAmount,
+        letterHtml: letter.renderedHtml || '',
+        branding: {
+          primaryColor: organization.invoicePrimaryColor || undefined,
+          accentColor: organization.invoiceAccentColor || undefined,
+          fontFamily: organization.invoiceFontFamily || undefined,
+          logoUrl: organization.logoUrl ? `${baseUrl}${organization.logoUrl}` : undefined,
+          footer: organization.invoiceFooter || undefined,
+        }
+      });
+
+      // Update letter status to 'sent' and track delivery info
+      const updatedLetter = await storage.updateDonorLetterDelivery(letterId, {
+        letterStatus: 'sent',
+        deliveryMode: 'email',
+        deliveryRef: donor.email,
+      });
+
+      res.json({ data: updatedLetter, message: "Email sent successfully" });
+    } catch (error) {
+      console.error("Error emailing donor letter:", error);
+      res.status(500).json({ message: "Failed to send donor letter email" });
     }
   });
 

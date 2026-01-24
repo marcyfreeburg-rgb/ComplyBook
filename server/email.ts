@@ -616,3 +616,116 @@ ComplyBook - Financial Management Made Simple
   await client.send(msg);
   console.log(`Trial ending reminder sent to ${to}`);
 }
+
+// Donation Letter Email (for nonprofits)
+interface DonationLetterEmailParams {
+  to: string;
+  donorName: string;
+  organizationName: string;
+  year: number;
+  donationAmount: string;
+  letterHtml: string;
+  branding?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    footer?: string;
+  };
+}
+
+export async function sendDonationLetterEmail({
+  to,
+  donorName,
+  organizationName,
+  year,
+  donationAmount,
+  letterHtml,
+  branding
+}: DonationLetterEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const primaryColor = branding?.primaryColor || '#3b82f6';
+  const accentColor = branding?.accentColor || '#1e40af';
+  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  const logoHtml = branding?.logoUrl 
+    ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 180px; max-height: 60px; width: auto; height: auto; object-fit: contain;" /></div>`
+    : '';
+  
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `${year} Donation Acknowledgment Letter from ${organizationName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${year} Donation Acknowledgment Letter</title>
+        </head>
+        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+          ${logoHtml}
+          
+          <div style="background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); border-radius: 8px; padding: 30px; margin-bottom: 20px; color: white;">
+            <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">Thank You for Your Generosity!</h1>
+            <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">Your ${year} Donation Acknowledgment Letter is attached below</p>
+          </div>
+          
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+            <p style="color: #1a1a1a; margin: 0 0 15px 0; font-size: 16px;">Dear ${donorName},</p>
+            
+            <p style="color: #666; margin: 0 0 15px 0; font-size: 15px;">
+              Thank you for your generous donation of <strong>${donationAmount}</strong> to ${organizationName} during ${year}.
+            </p>
+            
+            <p style="color: #666; margin: 0 0 20px 0; font-size: 15px;">
+              Your support makes a meaningful difference in our mission. Please find your official donation acknowledgment letter below, which you can use for tax deduction purposes.
+            </p>
+            
+            <div style="background-color: #f0f9ff; border-left: 4px solid ${primaryColor}; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+              <p style="color: #1a1a1a; margin: 0; font-size: 14px;">
+                <strong>Important Tax Information:</strong><br>
+                This letter serves as your official acknowledgment of donation for tax purposes. Please retain it for your records.
+              </p>
+            </div>
+          </div>
+          
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+            <h2 style="color: ${primaryColor}; margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid ${primaryColor}20; padding-bottom: 10px;">Official Donation Acknowledgment Letter</h2>
+            ${letterHtml}
+          </div>
+          
+          <div style="text-align: center; color: #666; font-size: 12px; padding: 20px 0;">
+            <p style="margin: 0 0 10px 0;">
+              Questions about your donation? Reply to this email - we're here to help!
+            </p>
+            <p style="margin: 0;">
+              ${organizationName}
+            </p>
+          </div>
+          
+          ${branding?.footer ? `<div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px; text-align: center; color: #666; font-size: 12px; white-space: pre-line;">${branding.footer}</div>` : ''}
+        </body>
+      </html>
+    `,
+    text: `
+${year} Donation Acknowledgment Letter from ${organizationName}
+
+Dear ${donorName},
+
+Thank you for your generous donation of ${donationAmount} to ${organizationName} during ${year}.
+
+Your support makes a meaningful difference in our mission. This email serves as your official donation acknowledgment letter, which you can use for tax deduction purposes.
+
+Please retain this letter for your tax records.
+
+Thank you again for your generosity!
+
+${organizationName}
+    `.trim()
+  };
+
+  await client.send(msg);
+  console.log(`Donation letter email sent to ${to} for donor ${donorName}`);
+}
