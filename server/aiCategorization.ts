@@ -184,22 +184,128 @@ export async function suggestCategoryBulk(
     return suggestions;
   }
 
-  // Process transactions one at a time to avoid rate limits
-  for (const transaction of transactions) {
-    const suggestion = await suggestCategory(
-      organizationId,
-      transaction.description,
-      parseFloat(transaction.amount),
-      transaction.type
-    );
-    
-    if (suggestion) {
-      suggestions.set(transaction.id, suggestion);
-    }
-    
-    // Small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
+  if (transactions.length === 0) {
+    return suggestions;
   }
-  
-  return suggestions;
+
+  try {
+    // Fetch categories and examples ONCE for the entire batch
+    const categories = await storage.getCategories(organizationId);
+    if (categories.length === 0) {
+      console.log(`[AI Bulk Categorization] No categories found for organization ${organizationId}`);
+      return suggestions;
+    }
+
+    // Get existing transactions for learning examples
+    const existingTransactions = await storage.getTransactions(organizationId);
+    
+    // Build category info with examples for both income and expense
+    const buildCategoryList = (type: 'income' | 'expense') => {
+      const relevantCategories = categories.filter(cat => cat.type === type);
+      return relevantCategories.map(cat => {
+        const examples = existingTransactions
+          .filter(t => t.categoryId === cat.id && t.description)
+          .slice(0, 3)
+          .map(t => t.description);
+        const examplesText = examples.length > 0 ? ` Examples: ${examples.map(e => `"${e}"`).join(', ')}` : '';
+        return `  - ID: ${cat.id}, Name: "${cat.name}"${examplesText}`;
+      }).join('\n');
+    };
+
+    const incomeCategories = buildCategoryList('income');
+    const expenseCategories = buildCategoryList('expense');
+
+    // Build batch of transactions for categorization
+    const transactionList = transactions.map((t, idx) => 
+      `${idx + 1}. ID: ${t.id}, Type: ${t.type}, Amount: $${t.amount}, Description: "${t.description}"`
+    ).join('\n');
+
+    const prompt = `You are a financial categorization expert. Categorize ALL of the following transactions.
+
+INCOME Categories:
+${incomeCategories}
+
+EXPENSE Categories:
+${expenseCategories}
+
+Transactions to categorize:
+${transactionList}
+
+Instructions:
+1. For EACH transaction, choose the most appropriate category based on its type (income/expense)
+2. Provide confidence scores (0-100) and brief reasoning
+3. Use the transaction ID exactly as provided
+
+Respond with a JSON object containing an array of suggestions:
+{
+  "suggestions": [
+    {"transactionId": <number>, "categoryId": <number>, "categoryName": "<string>", "confidence": <number>, "reasoning": "<brief>"},
+    ...
+  ]
+}`;
+
+    const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
+    console.log(`[AI Bulk Categorization] Processing ${transactions.length} transactions in single batch...`);
+    
+    const completion = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a financial categorization expert. Categorize all transactions in a single response. Always respond with valid JSON." 
+        },
+        { 
+          role: "user", 
+          content: prompt 
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+    if (!responseText) {
+      console.error('[AI Bulk Categorization] No response from AI');
+      return suggestions;
+    }
+
+    console.log(`[AI Bulk Categorization] Received response, parsing...`);
+    
+    const parsed = JSON.parse(responseText) as { suggestions: Array<CategorySuggestion & { transactionId: number }> };
+    
+    // Validate and add each suggestion
+    for (const suggestion of parsed.suggestions || []) {
+      const transaction = transactions.find(t => t.id === suggestion.transactionId);
+      if (!transaction) continue;
+
+      // Validate category exists and matches transaction type
+      const relevantCategories = categories.filter(c => c.type === transaction.type);
+      let categoryExists = relevantCategories.find(cat => cat.id === suggestion.categoryId);
+      
+      // Try to find by name if ID doesn't match
+      if (!categoryExists && suggestion.categoryName) {
+        categoryExists = relevantCategories.find(cat => 
+          cat.name.toLowerCase() === suggestion.categoryName.toLowerCase()
+        );
+        if (categoryExists) {
+          suggestion.categoryId = categoryExists.id;
+        }
+      }
+      
+      if (categoryExists) {
+        suggestions.set(suggestion.transactionId, {
+          categoryId: suggestion.categoryId,
+          categoryName: suggestion.categoryName,
+          confidence: suggestion.confidence,
+          reasoning: suggestion.reasoning
+        });
+      }
+    }
+
+    console.log(`[AI Bulk Categorization] Successfully categorized ${suggestions.size} of ${transactions.length} transactions`);
+    return suggestions;
+  } catch (error) {
+    console.error('[AI Bulk Categorization] Error:', error);
+    return suggestions;
+  }
 }
