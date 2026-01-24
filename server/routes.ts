@@ -13031,6 +13031,387 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // ============== FORMS & SURVEYS ==============
+
+  // Get all forms/surveys for an organization
+  app.get("/api/forms/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const formType = req.query.type as 'survey' | 'form' | undefined;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const forms = await storage.getForms(organizationId, formType);
+      res.json({ data: forms });
+    } catch (error: any) {
+      console.error("Error fetching forms:", error);
+      res.status(500).json({ message: "Failed to fetch forms" });
+    }
+  });
+
+  // Get a single form with questions
+  app.get("/api/forms/:organizationId/:formId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const formId = parseInt(req.params.formId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const form = await storage.getForm(formId);
+      if (!form || form.organizationId !== organizationId) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const questions = await storage.getFormQuestions(formId);
+      res.json({ data: { ...form, questions } });
+    } catch (error: any) {
+      console.error("Error fetching form:", error);
+      res.status(500).json({ message: "Failed to fetch form" });
+    }
+  });
+
+  // Create a new form/survey
+  app.post("/api/forms", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...formData } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to create forms" });
+      }
+
+      // Generate a unique public ID
+      const publicId = crypto.randomBytes(16).toString('hex');
+
+      const form = await storage.createForm({
+        ...formData,
+        organizationId,
+        publicId,
+        createdBy: userId,
+      });
+
+      res.status(201).json({ data: form });
+    } catch (error: any) {
+      console.error("Error creating form:", error);
+      res.status(500).json({ message: "Failed to create form" });
+    }
+  });
+
+  // Update a form
+  app.patch("/api/forms/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.id);
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to update forms" });
+      }
+
+      const updatedForm = await storage.updateForm(formId, req.body);
+      res.json({ data: updatedForm });
+    } catch (error: any) {
+      console.error("Error updating form:", error);
+      res.status(500).json({ message: "Failed to update form" });
+    }
+  });
+
+  // Delete a form
+  app.delete("/api/forms/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.id);
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to delete forms" });
+      }
+
+      await storage.deleteForm(formId);
+      res.json({ message: "Form deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting form:", error);
+      res.status(500).json({ message: "Failed to delete form" });
+    }
+  });
+
+  // Add a question to a form
+  app.post("/api/forms/:formId/questions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const question = await storage.createFormQuestion({
+        ...req.body,
+        formId,
+      });
+
+      res.status(201).json({ data: question });
+    } catch (error: any) {
+      console.error("Error creating question:", error);
+      res.status(500).json({ message: "Failed to create question" });
+    }
+  });
+
+  // Update a question
+  app.patch("/api/forms/questions/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const questionId = parseInt(req.params.id);
+
+      const questions = await storage.getFormQuestions(req.body.formId);
+      const question = questions.find(q => q.id === questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      const form = await storage.getForm(question.formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedQuestion = await storage.updateFormQuestion(questionId, req.body);
+      res.json({ data: updatedQuestion });
+    } catch (error: any) {
+      console.error("Error updating question:", error);
+      res.status(500).json({ message: "Failed to update question" });
+    }
+  });
+
+  // Delete a question
+  app.delete("/api/forms/questions/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const questionId = parseInt(req.params.id);
+      const formId = parseInt(req.query.formId as string);
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteFormQuestion(questionId);
+      res.json({ message: "Question deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
+    }
+  });
+
+  // Reorder questions
+  app.post("/api/forms/:formId/questions/reorder", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+      const { questionIds } = req.body;
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.reorderFormQuestions(formId, questionIds);
+      res.json({ message: "Questions reordered successfully" });
+    } catch (error: any) {
+      console.error("Error reordering questions:", error);
+      res.status(500).json({ message: "Failed to reorder questions" });
+    }
+  });
+
+  // Get form responses
+  app.get("/api/forms/:formId/responses", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const responses = await storage.getFormResponses(formId);
+      res.json({ data: responses });
+    } catch (error: any) {
+      console.error("Error fetching responses:", error);
+      res.status(500).json({ message: "Failed to fetch responses" });
+    }
+  });
+
+  // Delete a response
+  app.delete("/api/forms/responses/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const responseId = parseInt(req.params.id);
+
+      const response = await storage.getFormResponse(responseId);
+      if (!response) {
+        return res.status(404).json({ message: "Response not found" });
+      }
+
+      const form = await storage.getForm(response.formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteFormResponse(responseId);
+      res.json({ message: "Response deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting response:", error);
+      res.status(500).json({ message: "Failed to delete response" });
+    }
+  });
+
+  // PUBLIC ENDPOINTS - No authentication required
+
+  // Get public form by public ID
+  app.get("/api/public/forms/:publicId", async (req: any, res: Response) => {
+    try {
+      const form = await storage.getFormByPublicId(req.params.publicId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      if (form.status !== 'active') {
+        return res.status(403).json({ message: "This form is not currently accepting responses" });
+      }
+
+      // Get organization for branding
+      const organization = await storage.getOrganization(form.organizationId);
+      const questions = await storage.getFormQuestions(form.id);
+
+      // Build branding from organization and form settings
+      const branding = form.branding?.useBranding && organization ? {
+        primaryColor: form.branding?.primaryColor || organization.invoicePrimaryColor || undefined,
+        accentColor: form.branding?.accentColor || organization.invoiceAccentColor || undefined,
+        fontFamily: form.branding?.fontFamily || organization.invoiceFontFamily || undefined,
+        logoUrl: form.branding?.logoUrl || organization.logoUrl || undefined,
+        headerImage: form.branding?.headerImage || undefined,
+        organizationName: organization.companyName || organization.name,
+      } : {
+        organizationName: organization?.companyName || organization?.name || 'Organization',
+      };
+
+      res.json({
+        data: {
+          id: form.id,
+          title: form.title,
+          description: form.description,
+          formType: form.formType,
+          settings: form.settings,
+          branding,
+          questions,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching public form:", error);
+      res.status(500).json({ message: "Failed to fetch form" });
+    }
+  });
+
+  // Submit a public form response
+  app.post("/api/public/forms/:publicId/submit", async (req: any, res: Response) => {
+    try {
+      const form = await storage.getFormByPublicId(req.params.publicId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      if (form.status !== 'active') {
+        return res.status(403).json({ message: "This form is not currently accepting responses" });
+      }
+
+      const { answers, respondentEmail, respondentName } = req.body;
+
+      const response = await storage.createFormResponse({
+        formId: form.id,
+        answers,
+        respondentEmail,
+        respondentName,
+        metadata: {
+          userAgent: req.headers['user-agent'],
+          referrer: req.headers.referer,
+        },
+      });
+
+      // Increment response count
+      await storage.incrementFormResponseCount(form.id);
+
+      res.status(201).json({
+        message: form.settings?.confirmationMessage || "Thank you for your response!",
+        data: { id: response.id },
+      });
+    } catch (error: any) {
+      console.error("Error submitting form response:", error);
+      res.status(500).json({ message: "Failed to submit response" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

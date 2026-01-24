@@ -33,6 +33,15 @@ import {
   donorLetters,
   type DonorLetter,
   type InsertDonorLetter,
+  forms,
+  formQuestions,
+  formResponses,
+  type Form,
+  type InsertForm,
+  type FormQuestion,
+  type InsertFormQuestion,
+  type FormResponse,
+  type InsertFormResponse,
   type Transaction,
   type InsertTransaction,
   type Grant,
@@ -972,6 +981,28 @@ export interface IStorage {
   createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder>;
   updateChangeOrder(id: number, updates: Partial<InsertChangeOrder>): Promise<ChangeOrder>;
   deleteChangeOrder(id: number): Promise<void>;
+
+  // Form/Survey operations
+  getForms(organizationId: number, formType?: 'survey' | 'form'): Promise<Form[]>;
+  getForm(id: number): Promise<Form | undefined>;
+  getFormByPublicId(publicId: string): Promise<Form | undefined>;
+  createForm(form: InsertForm): Promise<Form>;
+  updateForm(id: number, updates: Partial<InsertForm>): Promise<Form>;
+  deleteForm(id: number): Promise<void>;
+  incrementFormResponseCount(id: number): Promise<void>;
+
+  // Form Question operations
+  getFormQuestions(formId: number): Promise<FormQuestion[]>;
+  createFormQuestion(question: InsertFormQuestion): Promise<FormQuestion>;
+  updateFormQuestion(id: number, updates: Partial<InsertFormQuestion>): Promise<FormQuestion>;
+  deleteFormQuestion(id: number): Promise<void>;
+  reorderFormQuestions(formId: number, questionIds: number[]): Promise<void>;
+
+  // Form Response operations
+  getFormResponses(formId: number): Promise<FormResponse[]>;
+  getFormResponse(id: number): Promise<FormResponse | undefined>;
+  createFormResponse(response: InsertFormResponse): Promise<FormResponse>;
+  deleteFormResponse(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -7745,6 +7776,104 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChangeOrder(id: number): Promise<void> {
     await db.delete(changeOrders).where(eq(changeOrders.id, id));
+  }
+
+  // Form/Survey operations
+  async getForms(organizationId: number, formType?: 'survey' | 'form'): Promise<Form[]> {
+    if (formType) {
+      return await db.select().from(forms)
+        .where(and(eq(forms.organizationId, organizationId), eq(forms.formType, formType)))
+        .orderBy(desc(forms.createdAt));
+    }
+    return await db.select().from(forms)
+      .where(eq(forms.organizationId, organizationId))
+      .orderBy(desc(forms.createdAt));
+  }
+
+  async getForm(id: number): Promise<Form | undefined> {
+    const [form] = await db.select().from(forms).where(eq(forms.id, id));
+    return form;
+  }
+
+  async getFormByPublicId(publicId: string): Promise<Form | undefined> {
+    const [form] = await db.select().from(forms).where(eq(forms.publicId, publicId));
+    return form;
+  }
+
+  async createForm(form: InsertForm): Promise<Form> {
+    const [newForm] = await db.insert(forms).values(form).returning();
+    return newForm;
+  }
+
+  async updateForm(id: number, updates: Partial<InsertForm>): Promise<Form> {
+    const [updated] = await db.update(forms)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(forms.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteForm(id: number): Promise<void> {
+    await db.delete(forms).where(eq(forms.id, id));
+  }
+
+  async incrementFormResponseCount(id: number): Promise<void> {
+    await db.update(forms)
+      .set({ responseCount: sql`${forms.responseCount} + 1` })
+      .where(eq(forms.id, id));
+  }
+
+  // Form Question operations
+  async getFormQuestions(formId: number): Promise<FormQuestion[]> {
+    return await db.select().from(formQuestions)
+      .where(eq(formQuestions.formId, formId))
+      .orderBy(formQuestions.orderIndex);
+  }
+
+  async createFormQuestion(question: InsertFormQuestion): Promise<FormQuestion> {
+    const [newQuestion] = await db.insert(formQuestions).values(question).returning();
+    return newQuestion;
+  }
+
+  async updateFormQuestion(id: number, updates: Partial<InsertFormQuestion>): Promise<FormQuestion> {
+    const [updated] = await db.update(formQuestions)
+      .set(updates)
+      .where(eq(formQuestions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFormQuestion(id: number): Promise<void> {
+    await db.delete(formQuestions).where(eq(formQuestions.id, id));
+  }
+
+  async reorderFormQuestions(formId: number, questionIds: number[]): Promise<void> {
+    for (let i = 0; i < questionIds.length; i++) {
+      await db.update(formQuestions)
+        .set({ orderIndex: i })
+        .where(and(eq(formQuestions.id, questionIds[i]), eq(formQuestions.formId, formId)));
+    }
+  }
+
+  // Form Response operations
+  async getFormResponses(formId: number): Promise<FormResponse[]> {
+    return await db.select().from(formResponses)
+      .where(eq(formResponses.formId, formId))
+      .orderBy(desc(formResponses.submittedAt));
+  }
+
+  async getFormResponse(id: number): Promise<FormResponse | undefined> {
+    const [response] = await db.select().from(formResponses).where(eq(formResponses.id, id));
+    return response;
+  }
+
+  async createFormResponse(response: InsertFormResponse): Promise<FormResponse> {
+    const [newResponse] = await db.insert(formResponses).values(response).returning();
+    return newResponse;
+  }
+
+  async deleteFormResponse(id: number): Promise<void> {
+    await db.delete(formResponses).where(eq(formResponses.id, id));
   }
 }
 
