@@ -110,7 +110,11 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             border-bottom: 2px solid ${currentOrganization.invoicePrimaryColor || '#3b82f6'};
           }
           .logo {
-            max-width: 200px;
+            max-width: 180px;
+            max-height: 60px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
             margin-bottom: 20px;
           }
           .org-name {

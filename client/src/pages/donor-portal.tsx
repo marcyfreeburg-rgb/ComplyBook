@@ -245,7 +245,8 @@ export default function DonorPortal() {
               <img 
                 src={portalData.brandSettings.logoUrl} 
                 alt={portalData.organization.name}
-                className="h-16 w-auto"
+                className="object-contain"
+                style={{ maxWidth: '180px', maxHeight: '60px', width: 'auto', height: 'auto' }}
               />
             )}
             <div>
