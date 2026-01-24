@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { queryClient } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
 
 interface OrganizationSwitcherProps {
@@ -26,6 +27,23 @@ export function OrganizationSwitcher({
   onCreateNew,
 }: OrganizationSwitcherProps) {
   const currentOrg = organizations.find(org => org.id === currentOrganizationId);
+
+  const handlePrefetch = (orgId: number) => {
+    if (orgId === currentOrganizationId) return;
+    
+    queryClient.prefetchQuery({
+      queryKey: [`/api/dashboard/${orgId}`],
+      staleTime: 30000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: [`/api/dashboard/${orgId}/monthly-trends`],
+      staleTime: 60000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: [`/api/dashboard/${orgId}/category-breakdown`],
+      staleTime: 60000,
+    });
+  };
 
   return (
     <DropdownMenu>
@@ -67,6 +85,8 @@ export function OrganizationSwitcher({
           <DropdownMenuItem
             key={org.id}
             onClick={() => onSwitch(org.id)}
+            onMouseEnter={() => handlePrefetch(org.id)}
+            onFocus={() => handlePrefetch(org.id)}
             className="flex items-center gap-2 cursor-pointer"
             data-testid={`option-organization-${org.id}`}
           >

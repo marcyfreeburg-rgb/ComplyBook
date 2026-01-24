@@ -33,10 +33,12 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
   const { data: stats, isLoading, error } = useQuery<DashboardStats>({
     queryKey: [`/api/dashboard/${currentOrganization.id}`],
     retry: false,
+    staleTime: 30000, // Show cached data for 30 seconds while refetching
   });
 
   const { data: budgets = [] } = useQuery<Budget[]>({
     queryKey: ["/api/budgets", currentOrganization.id],
+    staleTime: 60000, // Cache budgets for 1 minute
   });
 
   // Find active budget for current month
@@ -67,6 +69,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
     netIncome: string;
   }>>({
     queryKey: [`/api/dashboard/${currentOrganization.id}/monthly-trends`],
+    staleTime: 60000, // Cache trends for 1 minute
   });
 
   const { data: categoryBreakdown } = useQuery<{
@@ -74,6 +77,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
     expensesByCategory: Array<{ categoryName: string; amount: string }>;
   }>({
     queryKey: [`/api/dashboard/${currentOrganization.id}/category-breakdown`],
+    staleTime: 60000, // Cache breakdown for 1 minute
   });
 
   useEffect(() => {
