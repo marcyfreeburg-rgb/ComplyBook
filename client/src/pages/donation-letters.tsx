@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Heart, FileDown, Calendar, FileText, Edit3 } from "lucide-react";
+import { Heart, FileDown, Calendar, FileText, Edit3, Mail, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Organization, Donor, Transaction } from "@shared/schema";
@@ -39,6 +40,24 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     enabled: !!selectedYear,
   });
 
+  // Query to get existing donor letters for status checking
+  const { data: existingLetters = [] } = useQuery<Array<{ id: number; donorId: number; year: number; letterStatus: string; deliveryMode: string | null }>>({
+    queryKey: [`/api/donor-letters`, currentOrganization.id, selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/donor-letters/${currentOrganization.id}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.data?.filter((l: any) => l.year === parseInt(selectedYear)) || [];
+    },
+    enabled: !!currentOrganization.id && !!selectedYear,
+  });
+
+  // Check if a letter was sent for a donor in the selected year
+  const getLetterStatusForDonor = (donorId: number) => {
+    const letter = existingLetters.find((l) => l.donorId === donorId && l.year === parseInt(selectedYear));
+    return letter ? { status: letter.letterStatus, deliveryMode: letter.deliveryMode, letterId: letter.id } : null;
+  };
+
   const createLetterMutation = useMutation({
     mutationFn: async ({ donorId, year, letterType, donationAmount, customContent, renderedHtml }: any) => {
       // First create the draft letter
@@ -59,8 +78,8 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       return await finalizeResponse.json();
     },
     onSuccess: () => {
-      // Invalidate donation letters query in case we add a letters list view later
-      queryClient.invalidateQueries({ queryKey: [`/api/donor-letters`] });
+      // Invalidate donation letters query to update status
+      queryClient.invalidateQueries({ queryKey: [`/api/donor-letters`, currentOrganization.id, selectedYear] });
       toast({
         title: "Letter created",
         description: "Donor letter has been created and saved successfully.",
@@ -74,6 +93,40 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       });
     },
   });
+
+  const emailLetterMutation = useMutation({
+    mutationFn: async (letterId: number) => {
+      const response = await apiRequest('POST', `/api/donor-letters/${letterId}/email`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/donor-letters`, currentOrganization.id, selectedYear] });
+      toast({
+        title: "Email sent",
+        description: "Donation letter has been emailed to the donor successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send donation letter email",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEmailLetter = async (donorId: number) => {
+    const letterInfo = getLetterStatusForDonor(donorId);
+    if (letterInfo?.letterId) {
+      emailLetterMutation.mutate(letterInfo.letterId);
+    } else {
+      toast({
+        title: "No letter found",
+        description: "Please generate a letter first before sending an email.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleGenerateLetter = (donor: Donor, totalAmount: string) => {
     setSelectedDonor(donor);
@@ -303,14 +356,57 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
                         </p>
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handleGenerateLetter(donor, totalAmount)}
-                      variant="outline"
-                      data-testid={`button-generate-letter-${donor.id}`}
-                    >
-                      <FileDown className="w-4 h-4 mr-2" />
-                      Generate Letter
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const letterInfo = getLetterStatusForDonor(donor.id);
+                        const hasLetter = !!letterInfo;
+                        const isSent = letterInfo?.status === 'sent';
+                        const hasEmail = !!donor.email;
+                        
+                        return (
+                          <>
+                            {isSent && (
+                              <Badge variant="secondary" className="gap-1" data-testid={`badge-sent-${donor.id}`}>
+                                <Check className="w-3 h-3" />
+                                Sent
+                              </Badge>
+                            )}
+                            {hasLetter && hasEmail && !isSent && (
+                              <Button
+                                onClick={() => handleEmailLetter(donor.id)}
+                                variant="outline"
+                                size="sm"
+                                disabled={emailLetterMutation.isPending}
+                                data-testid={`button-email-letter-${donor.id}`}
+                              >
+                                <Mail className="w-4 h-4 mr-2" />
+                                {emailLetterMutation.isPending ? "Sending..." : "Email Letter"}
+                              </Button>
+                            )}
+                            {hasLetter && hasEmail && isSent && (
+                              <Button
+                                onClick={() => handleEmailLetter(donor.id)}
+                                variant="ghost"
+                                size="sm"
+                                disabled={emailLetterMutation.isPending}
+                                data-testid={`button-resend-letter-${donor.id}`}
+                              >
+                                <Mail className="w-4 h-4 mr-2" />
+                                {emailLetterMutation.isPending ? "Sending..." : "Resend"}
+                              </Button>
+                            )}
+                            <Button
+                              onClick={() => handleGenerateLetter(donor, totalAmount)}
+                              variant="outline"
+                              data-testid={`button-generate-letter-${donor.id}`}
+                            >
+                              <FileDown className="w-4 h-4 mr-2" />
+                              {hasLetter ? "Regenerate Letter" : "Generate Letter"}
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                   
                   <div className="mt-4 pt-4 border-t">

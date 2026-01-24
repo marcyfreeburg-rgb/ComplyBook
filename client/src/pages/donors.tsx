@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Heart, Mail, Phone, MapPin, Edit2, FileText, Send } from "lucide-react";
+import { Plus, Trash2, Heart, Mail, Phone, MapPin, Edit2, FileText, Send, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Donor, Organization } from "@shared/schema";
@@ -35,6 +36,26 @@ export default function Donors({ currentOrganization, userId }: DonorsProps) {
   const { data: donors = [], isLoading } = useQuery<Donor[]>({
     queryKey: [`/api/donors/${currentOrganization.id}`],
   });
+
+  const currentYear = new Date().getFullYear();
+
+  // Query for donor letters to check sent status
+  const { data: donorLetters = [] } = useQuery<Array<{ id: number; donorId: number; year: number; letterStatus: string }>>({
+    queryKey: [`/api/donor-letters`, currentOrganization.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/donor-letters/${currentOrganization.id}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.data || [];
+    },
+  });
+
+  // Check if a letter was sent for a donor for the current year
+  const getLetterSentForCurrentYear = (donorId: number) => {
+    return donorLetters.find(
+      (l) => l.donorId === donorId && l.year === currentYear && l.letterStatus === 'sent'
+    );
+  };
 
   const resetForm = () => {
     setFormData({
@@ -386,9 +407,17 @@ export default function Donors({ currentOrganization, userId }: DonorsProps) {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 space-y-2">
-                      <h3 className="font-semibold text-lg" data-testid={`donor-name-${donor.id}`}>
-                        {donor.name}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-lg" data-testid={`donor-name-${donor.id}`}>
+                          {donor.name}
+                        </h3>
+                        {getLetterSentForCurrentYear(donor.id) && (
+                          <Badge variant="secondary" className="gap-1" data-testid={`badge-letter-sent-${donor.id}`}>
+                            <Check className="w-3 h-3" />
+                            {currentYear} Letter Sent
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                         {donor.email && (
                           <div className="flex items-center gap-2">
