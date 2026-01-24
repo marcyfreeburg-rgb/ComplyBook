@@ -2490,6 +2490,90 @@ export default function Transactions({ currentOrganization, userId }: Transactio
           </CardHeader>
           {showBulkCategorization && bulkSuggestions.size > 0 && (
             <CardContent>
+              {/* Apply All button for faster batch processing */}
+              <div className="flex gap-2 mb-4">
+                <Button
+                  onClick={async () => {
+                    try {
+                      // Build bulk update payload - group by categoryId
+                      const updates: Array<{ transactionId: number; categoryId: number; historyId?: number }> = [];
+                      bulkSuggestions.forEach((suggestion, transactionId) => {
+                        updates.push({
+                          transactionId,
+                          categoryId: suggestion.categoryId,
+                          historyId: suggestion.historyId,
+                        });
+                      });
+
+                      // Use existing bulk-categorize endpoint
+                      const transactionIds = updates.map(u => u.transactionId);
+                      
+                      // Apply each category (group by categoryId for efficiency)
+                      const byCategory = new Map<number, number[]>();
+                      updates.forEach(u => {
+                        const ids = byCategory.get(u.categoryId) || [];
+                        ids.push(u.transactionId);
+                        byCategory.set(u.categoryId, ids);
+                      });
+
+                      // Execute bulk updates per category
+                      for (const [categoryId, ids] of byCategory.entries()) {
+                        await apiRequest('POST', '/api/transactions/bulk-categorize', {
+                          transactionIds: ids,
+                          categoryId,
+                        });
+                      }
+
+                      // Send all feedback in parallel
+                      await Promise.all(updates.map(u => 
+                        u.historyId 
+                          ? apiRequest('POST', '/api/ai/categorization-feedback', {
+                              historyId: u.historyId,
+                              userDecision: 'accepted',
+                              finalCategoryId: u.categoryId,
+                            }).catch(() => {})
+                          : Promise.resolve()
+                      ));
+
+                      // Clear all suggestions and refresh
+                      setBulkSuggestions(new Map());
+                      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+                      
+                      toast({
+                        title: "All Categories Applied",
+                        description: `Applied ${updates.length} AI suggestions at once.`,
+                      });
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to apply some categories.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="flex-1"
+                  data-testid="button-apply-all-suggestions"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Apply All ({bulkSuggestions.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Reject all and clear
+                    bulkSuggestions.forEach((suggestion) => {
+                      if (suggestion.historyId) {
+                        sendCategorizationFeedback(suggestion.historyId, 'rejected');
+                      }
+                    });
+                    setBulkSuggestions(new Map());
+                  }}
+                  data-testid="button-reject-all-suggestions"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Ignore All
+                </Button>
+              </div>
               <div className="space-y-3">
                 {Array.from(bulkSuggestions.entries()).map(([transactionId, suggestion]) => {
                   const transaction = transactions?.find(t => t.id === transactionId);
