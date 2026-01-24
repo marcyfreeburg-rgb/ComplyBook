@@ -36,12 +36,13 @@ export function InvoicePreview({ invoice, lineItems, organization }: InvoicePrev
             <img
               src={organization.logoUrl}
               alt="Company logo"
-              className="w-20 h-20 object-contain"
+              className="object-contain"
+              style={{ maxWidth: '180px', maxHeight: '60px', width: 'auto', height: 'auto' }}
               data-testid="img-company-logo"
             />
           ) : (
-            <div className="w-20 h-20 rounded bg-muted flex items-center justify-center">
-              <Building2 className="w-10 h-10 text-muted-foreground" />
+            <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-muted-foreground" />
             </div>
           )}
           <div className="space-y-1">
