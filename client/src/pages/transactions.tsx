@@ -122,9 +122,10 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [transactionToSplit, setTransactionToSplit] = useState<Transaction | null>(null);
   const [splitItems, setSplitItems] = useState<SplitItem[]>([]);
   const [bulkCategoryId, setBulkCategoryId] = useState<number | undefined>(undefined);
-  const [bulkFundId, setBulkFundId] = useState<number | undefined>(undefined);
-  const [bulkProgramId, setBulkProgramId] = useState<number | undefined>(undefined);
-  const [bulkFunctionalCategory, setBulkFunctionalCategory] = useState<'program' | 'administrative' | 'fundraising' | undefined>(undefined);
+  const [bulkFundId, setBulkFundId] = useState<number | null | undefined>(undefined);
+  const [bulkProgramId, setBulkProgramId] = useState<number | null | undefined>(undefined);
+  const [bulkGrantId, setBulkGrantId] = useState<number | null | undefined>(undefined);
+  const [bulkFunctionalCategory, setBulkFunctionalCategory] = useState<'program' | 'administrative' | 'fundraising' | null | undefined>(undefined);
   
   // New transaction split mode state
   const [isFormSplitMode, setIsFormSplitMode] = useState(false);
@@ -828,8 +829,10 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (bulkCategoryId !== undefined && bulkCategoryId !== CATEGORY_SENTINEL_NO_CHANGE) {
         updates.categoryId = bulkCategoryId;
       }
+      // Handle null (clear) and number values, but skip undefined (no change)
       if (bulkFundId !== undefined) updates.fundId = bulkFundId;
       if (bulkProgramId !== undefined) updates.programId = bulkProgramId;
+      if (bulkGrantId !== undefined) updates.grantId = bulkGrantId;
       if (bulkFunctionalCategory !== undefined) updates.functionalCategory = bulkFunctionalCategory;
 
       return await apiRequest('POST', '/api/transactions/bulk-categorize', {
@@ -845,6 +848,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       setBulkCategoryId(undefined);
       setBulkFundId(undefined);
       setBulkProgramId(undefined);
+      setBulkGrantId(undefined);
       setBulkFunctionalCategory(undefined);
       toast({
         title: "Bulk Update Complete",
@@ -3103,16 +3107,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
             {currentOrganization.type === 'nonprofit' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-fund">Fund (Optional)</Label>
+                  <Label htmlFor="bulk-fund">Fund</Label>
                   <Select
-                    value={bulkFundId?.toString() || "none"}
-                    onValueChange={(value) => setBulkFundId(value === "none" ? undefined : parseInt(value))}
+                    value={bulkFundId === null ? "clear" : bulkFundId?.toString() || "none"}
+                    onValueChange={(value) => setBulkFundId(value === "none" ? undefined : value === "clear" ? null : parseInt(value))}
                   >
                     <SelectTrigger id="bulk-fund" data-testid="select-bulk-fund">
                       <SelectValue placeholder="Select fund" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No change</SelectItem>
+                      <SelectItem value="clear" className="text-muted-foreground">Clear fund</SelectItem>
                       {funds?.map(fund => (
                         <SelectItem key={fund.id} value={fund.id.toString()}>
                           {fund.name}
@@ -3123,16 +3128,38 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-program">Program (Optional)</Label>
+                  <Label htmlFor="bulk-grant">Grant</Label>
                   <Select
-                    value={bulkProgramId?.toString() || "none"}
-                    onValueChange={(value) => setBulkProgramId(value === "none" ? undefined : parseInt(value))}
+                    value={bulkGrantId === null ? "clear" : bulkGrantId?.toString() || "none"}
+                    onValueChange={(value) => setBulkGrantId(value === "none" ? undefined : value === "clear" ? null : parseInt(value))}
+                  >
+                    <SelectTrigger id="bulk-grant" data-testid="select-bulk-grant">
+                      <SelectValue placeholder="Select grant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No change</SelectItem>
+                      <SelectItem value="clear" className="text-muted-foreground">Clear grant</SelectItem>
+                      {grants?.map(grant => (
+                        <SelectItem key={grant.id} value={grant.id.toString()}>
+                          {grant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-program">Program</Label>
+                  <Select
+                    value={bulkProgramId === null ? "clear" : bulkProgramId?.toString() || "none"}
+                    onValueChange={(value) => setBulkProgramId(value === "none" ? undefined : value === "clear" ? null : parseInt(value))}
                   >
                     <SelectTrigger id="bulk-program" data-testid="select-bulk-program">
                       <SelectValue placeholder="Select program" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No change</SelectItem>
+                      <SelectItem value="clear" className="text-muted-foreground">Clear program</SelectItem>
                       {programs?.map(program => (
                         <SelectItem key={program.id} value={program.id.toString()}>
                           {program.name}
@@ -3143,16 +3170,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-functional">Functional Category (Optional)</Label>
+                  <Label htmlFor="bulk-functional">Functional Category</Label>
                   <Select
-                    value={bulkFunctionalCategory || "none"}
-                    onValueChange={(value: any) => setBulkFunctionalCategory(value === "none" ? undefined : value)}
+                    value={bulkFunctionalCategory === null ? "clear" : bulkFunctionalCategory || "none"}
+                    onValueChange={(value: any) => setBulkFunctionalCategory(value === "none" ? undefined : value === "clear" ? null : value)}
                   >
                     <SelectTrigger id="bulk-functional" data-testid="select-bulk-functional">
                       <SelectValue placeholder="Select functional category" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No change</SelectItem>
+                      <SelectItem value="clear" className="text-muted-foreground">Clear functional category</SelectItem>
                       <SelectItem value="program">Program Services</SelectItem>
                       <SelectItem value="administrative">Management & General</SelectItem>
                       <SelectItem value="fundraising">Fundraising</SelectItem>

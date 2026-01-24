@@ -2778,7 +2778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/transactions/bulk-categorize', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { transactionIds, categoryId, fundId, programId, functionalCategory } = req.body;
+      const { transactionIds, categoryId, fundId, programId, grantId, functionalCategory } = req.body;
 
       if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
         return res.status(400).json({ message: "transactionIds must be a non-empty array" });
@@ -2829,6 +2829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (categoryId !== undefined) updates.categoryId = categoryId;
       if (fundId !== undefined) updates.fundId = fundId;
       if (programId !== undefined) updates.programId = programId;
+      if (grantId !== undefined) updates.grantId = grantId;
       if (functionalCategory !== undefined) updates.functionalCategory = functionalCategory;
 
       // Update all transactions
