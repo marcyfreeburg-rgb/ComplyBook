@@ -6,6 +6,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  serial,
   text,
   timestamp,
   varchar,
@@ -3201,6 +3202,115 @@ export const insertFinchConnectionSchema = createInsertSchema(finchConnections).
 
 export type InsertFinchConnection = z.infer<typeof insertFinchConnectionSchema>;
 export type FinchConnection = typeof finchConnections.$inferSelect;
+
+// ============================================
+// SURVEYS & FORMS
+// ============================================
+
+export const formTypeEnum = pgEnum('form_type', ['survey', 'form']);
+export const questionTypeEnum = pgEnum('question_type', [
+  'short_text',
+  'long_text',
+  'single_choice',
+  'multiple_choice',
+  'dropdown',
+  'rating',
+  'date',
+  'email',
+  'phone',
+  'number',
+  'file_upload'
+]);
+export const formStatusEnum = pgEnum('form_status', ['draft', 'active', 'closed']);
+
+export const forms = pgTable("forms", {
+  id: serial("id").primaryKey(),
+  organizationId: integer("organization_id").references(() => organizations.id).notNull(),
+  formType: formTypeEnum("form_type").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: formStatusEnum("status").default('draft').notNull(),
+  publicId: varchar("public_id", { length: 64 }).notNull().unique(),
+  settings: jsonb("settings").$type<{
+    collectEmail?: boolean;
+    confirmationMessage?: string;
+    redirectUrl?: string;
+    allowMultiple?: boolean;
+    showProgressBar?: boolean;
+  }>().default({}),
+  branding: jsonb("branding").$type<{
+    useBranding?: boolean;
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    headerImage?: string;
+  }>().default({ useBranding: true }),
+  responseCount: integer("response_count").default(0).notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  closedAt: timestamp("closed_at"),
+});
+
+export const insertFormSchema = createInsertSchema(forms).omit({ 
+  id: true, 
+  responseCount: true,
+  createdAt: true, 
+  updatedAt: true,
+  closedAt: true 
+});
+export type InsertForm = z.infer<typeof insertFormSchema>;
+export type Form = typeof forms.$inferSelect;
+
+export const formQuestions = pgTable("form_questions", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").references(() => forms.id, { onDelete: 'cascade' }).notNull(),
+  questionType: questionTypeEnum("question_type").notNull(),
+  question: text("question").notNull(),
+  description: text("description"),
+  required: boolean("required").default(false).notNull(),
+  options: jsonb("options").$type<string[]>(),
+  settings: jsonb("settings").$type<{
+    minValue?: number;
+    maxValue?: number;
+    placeholder?: string;
+    allowedFileTypes?: string[];
+    maxFileSize?: number;
+    ratingMax?: number;
+    ratingLabels?: { min?: string; max?: string };
+  }>().default({}),
+  orderIndex: integer("order_index").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertFormQuestionSchema = createInsertSchema(formQuestions).omit({ 
+  id: true, 
+  createdAt: true 
+});
+export type InsertFormQuestion = z.infer<typeof insertFormQuestionSchema>;
+export type FormQuestion = typeof formQuestions.$inferSelect;
+
+export const formResponses = pgTable("form_responses", {
+  id: serial("id").primaryKey(),
+  formId: integer("form_id").references(() => forms.id, { onDelete: 'cascade' }).notNull(),
+  respondentEmail: varchar("respondent_email", { length: 255 }),
+  respondentName: varchar("respondent_name", { length: 255 }),
+  answers: jsonb("answers").$type<Record<number, any>>().notNull(),
+  metadata: jsonb("metadata").$type<{
+    userAgent?: string;
+    ipAddress?: string;
+    referrer?: string;
+  }>(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+});
+
+export const insertFormResponseSchema = createInsertSchema(formResponses).omit({ 
+  id: true, 
+  submittedAt: true 
+});
+export type InsertFormResponse = z.infer<typeof insertFormResponseSchema>;
+export type FormResponse = typeof formResponses.$inferSelect;
 
 // ============================================
 // RELATIONS
