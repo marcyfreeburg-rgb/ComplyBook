@@ -885,78 +885,41 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {currentOrganization.type === 'forprofit' ? (
-          <>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
-                <CardDescription className="text-xs">{format(currentMonth, 'MMMM yyyy')} to date</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-monthly-income">
-                  {formatCurrency(monthlyTotals.income)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Monthly Expenses</CardTitle>
-                <CardDescription className="text-xs">{format(currentMonth, 'MMMM yyyy')} to date</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-monthly-expenses">
-                  {formatCurrency(monthlyTotals.expense)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Bank Balance</CardTitle>
-                <CardDescription className="text-xs">
-                  {selectedAccount ? selectedAccount.name : (plaidAccounts.length > 0 ? 'Primary account' : 'No bank connected')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${currentBankBalance && currentBankBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-bank-balance">
-                  {currentBankBalance !== null ? formatCurrency(currentBankBalance) : '—'}
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-income">
-                  {formatCurrency(totals.income)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-expenses">
-                  {formatCurrency(totals.expense)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${totals.income - totals.expense >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-net-balance">
-                  {formatCurrency(totals.income - totals.expense)}
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
+            <CardDescription className="text-xs">{format(currentMonth, 'MMMM yyyy')} to date</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-monthly-income">
+              {formatCurrency(monthlyTotals.income)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Expenses</CardTitle>
+            <CardDescription className="text-xs">{format(currentMonth, 'MMMM yyyy')} to date</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-monthly-expenses">
+              {formatCurrency(monthlyTotals.expense)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Bank Balance</CardTitle>
+            <CardDescription className="text-xs">
+              {selectedAccount ? selectedAccount.name : (plaidAccounts.length > 0 ? 'Primary account' : 'No bank connected')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${currentBankBalance && currentBankBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-bank-balance">
+              {currentBankBalance !== null ? formatCurrency(currentBankBalance) : '—'}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
