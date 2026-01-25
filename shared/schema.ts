@@ -3233,12 +3233,15 @@ export const forms = pgTable("forms", {
   publicId: varchar("public_id", { length: 64 }).notNull().unique(),
   settings: jsonb("settings").$type<{
     collectEmail?: boolean;
+    collectName?: boolean;
     confirmationMessage?: string;
     redirectUrl?: string;
     allowMultiple?: boolean;
     showProgressBar?: boolean;
     allowAnonymous?: boolean;
     shuffleQuestions?: boolean;
+    notifyOnSubmission?: boolean;
+    notificationEmail?: string;
   }>().default({}),
   branding: jsonb("branding").$type<{
     useBranding?: boolean;
