@@ -67,6 +67,7 @@ import DonorPortal from "@/pages/donor-portal";
 import Surveys from "@/pages/surveys";
 import Forms from "@/pages/forms";
 import PublicForm from "@/pages/public-form";
+import InvoicePaid from "@/pages/invoice-paid";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -517,6 +518,11 @@ function Router() {
   // Public form page (unauthenticated)
   if (location.startsWith('/f/')) {
     return <PublicForm formType="form" />;
+  }
+
+  // Invoice payment success page (unauthenticated)
+  if (location.startsWith('/invoice-paid')) {
+    return <InvoicePaid />;
   }
 
   // Handle MFA verification page for users with pending MFA
