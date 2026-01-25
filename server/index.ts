@@ -109,6 +109,50 @@ app.post(
   }
 );
 
+// Simple Stripe webhook endpoint (without UUID) for manual webhook configuration
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const signature = req.headers['stripe-signature'];
+
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing stripe-signature' });
+    }
+
+    try {
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+
+      if (!Buffer.isBuffer(req.body)) {
+        console.error('Stripe webhook: req.body is not a Buffer');
+        return res.status(500).json({ error: 'Webhook processing error' });
+      }
+
+      // Verify webhook signature using STRIPE_WEBHOOK_SECRET
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const Stripe = (await import('stripe')).default;
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-01-27.acacia' as any });
+        const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        console.log('Stripe webhook received:', event.type);
+        await WebhookHandlers.handleEvent(event, stripe);
+      } else {
+        // Fallback: process without signature verification (not recommended for production)
+        const event = JSON.parse(req.body.toString());
+        console.log('Stripe webhook received (unverified):', event.type);
+        const { getUncachableStripeClient } = await import('./stripeClient');
+        const stripe = await getUncachableStripeClient();
+        await WebhookHandlers.handleEvent(event, stripe);
+      }
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('Stripe webhook error:', error.message);
+      res.status(400).json({ error: 'Webhook processing error' });
+    }
+  }
+);
+
 // Plaid webhook endpoint (registered before express.json())
 app.post(
   '/api/plaid/webhook',
