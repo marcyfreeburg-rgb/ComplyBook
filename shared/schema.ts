@@ -3237,6 +3237,8 @@ export const forms = pgTable("forms", {
     redirectUrl?: string;
     allowMultiple?: boolean;
     showProgressBar?: boolean;
+    allowAnonymous?: boolean;
+    shuffleQuestions?: boolean;
   }>().default({}),
   branding: jsonb("branding").$type<{
     useBranding?: boolean;
