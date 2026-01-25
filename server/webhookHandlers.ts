@@ -181,8 +181,8 @@ export class WebhookHandlers {
       // Update user subscription info - grant full tier access even during trial
       await storage.updateUser(userId, {
         stripeSubscriptionId: session.subscription,
-        subscriptionTier, // Full tier access during trial
-        subscriptionStatus: subscription.status, // 'trialing' or 'active'
+        subscriptionTier: subscriptionTier as SubscriptionTier,
+        subscriptionStatus: subscription.status,
         subscriptionCurrentPeriodEnd: trialEnd || new Date(subscription.current_period_end * 1000),
         billingInterval: interval || (subscription.items.data[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly'),
       });
@@ -209,7 +209,7 @@ export class WebhookHandlers {
 
     // Update user subscription info
     await storage.updateUser(user.id, {
-      subscriptionTier,
+      subscriptionTier: subscriptionTier as SubscriptionTier,
       subscriptionStatus: subscription.status,
       subscriptionCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
       billingInterval: subscription.items.data[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly',

@@ -768,6 +768,11 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   subtotal: z.string().or(z.number()).transform(val => String(val)),
   taxAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
   totalAmount: z.string().or(z.number()).transform(val => String(val)),
+  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional(),
+  paidAt: z.coerce.date().optional().nullable(),
+  stripePaymentIntentId: z.string().optional().nullable(),
+  stripeCheckoutSessionId: z.string().optional().nullable(),
+  paymentUrl: z.string().optional().nullable(),
 });
 
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;

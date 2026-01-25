@@ -1,0 +1,35 @@
+ Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+8:29:41 PM [express] GET /api/auth/user 200 in 371ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+8:29:41 PM [express] GET /api/organizations 200 in 294ms :: [{"id":168,"name":"C Cubed Training","ty…
+8:29:42 PM [express] GET /api/security/mfa/status 200 in 524ms :: {"mfaEnabled":true,"mfaRequired":t…
+8:29:42 PM [express] GET /api/notifications/167/unread-count 200 in 249ms :: {"count":"0"}
+8:29:42 PM [express] GET /api/invoices/167 200 in 256ms :: [{"id":43,"organizationId":167,"clientId"…
+8:29:42 PM [express] GET /api/clients/167 200 in 615ms :: [{"id":29,"organizationId":167,"name":"C C…
+8:29:46 PM [express] GET /api/dashboard/168 200 in 437ms :: {"totalIncome":"275.00","totalExpenses":…
+8:29:47 PM [express] GET /api/dashboard/168/category-breakdown 200 in 615ms :: {"incomeByCategory":[…
+8:29:47 PM [express] GET /api/dashboard/168/monthly-trends 200 in 959ms :: [{"month":"Aug 2025","inc…
+8:29:47 PM [express] GET /api/notifications/168/unread-count 304 in 237ms :: {"count":"0"}
+8:29:47 PM [express] GET /api/budgets/168 304 in 247ms :: [{"id":10,"organizationId":168,"grantId":1…
+Menu
+8:29:51 PM [express] GET /api/invoices/168 304 in 235ms :: []
+8:29:51 PM [express] GET /api/clients/168 304 in 241ms :: []
+8:29:53 PM [express] GET /api/invoices/168/next-number 200 in 236ms :: {"nextInvoiceNumber":"INV-001…
+8:30:20 PM [express] POST /api/clients 201 in 782ms :: {"id":30,"organizationId":168,"name":"J & M S…
+8:30:37 PM [express] POST /api/invoices 201 in 1161ms :: {"id":44,"organizationId":168,"clientId":30…
+8:30:37 PM [express] POST /api/invoices/44/line-items 201 in 299ms :: {"id":41,"invoiceId":44,"descr…
+8:30:40 PM [express] POST /api/invoices/44/send-email 200 in 2731ms :: {"message":"Invoice sent succ…
+8:30:41 PM [express] GET /api/invoices/168 200 in 237ms :: [{"id":44,"organizationId":168,"clientId"…
+8:30:47 PM [express] GET /api/notifications/168/unread-count 304 in 245ms :: {"count":"0"}
+8:32:06 PM [express] POST /api/stripe/webhook 200 in 1ms
+8:32:24 PM [express] GET /api/auth/user 304 in 2416ms :: {"id":"43852944","email":"marcy.freeburg@gm…
+8:32:43 PM [express] GET /api/budgets/168 304 in 846ms :: [{"id":10,"organizationId":168,"grantId":1…
+8:32:44 PM [express] GET /api/dashboard/168 304 in 1090ms :: {"totalIncome":"275.00","totalExpenses"…
+8:32:44 PM [express] GET /api/dashboard/168/category-breakdown 304 in 1033ms :: {"incomeByCategory":…
+8:32:44 PM [express] GET /api/dashboard/168/monthly-trends 304 in 1580ms :: [{"month":"Aug 2025","in…
+8:32:48 PM [express] GET /api/notifications/168/unread-count 304 in 255ms :: {"count":"0"}

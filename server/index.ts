@@ -122,6 +122,7 @@ app.post(
 
     try {
       const sig = Array.isArray(signature) ? signature[0] : signature;
+      console.log('Stripe webhook: processing incoming request...');
 
       if (!Buffer.isBuffer(req.body)) {
         console.error('Stripe webhook: req.body is not a Buffer');
@@ -130,12 +131,15 @@ app.post(
 
       // Verify webhook signature using STRIPE_WEBHOOK_SECRET
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      console.log('Stripe webhook: secret configured:', !!webhookSecret);
+      
       if (webhookSecret) {
         const Stripe = (await import('stripe')).default;
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-01-27.acacia' as any });
         const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        console.log('Stripe webhook received:', event.type);
+        console.log('Stripe webhook received:', event.type, '- session:', event.data?.object?.id);
         await WebhookHandlers.handleEvent(event, stripe);
+        console.log('Stripe webhook: handleEvent completed');
       } else {
         // Fallback: process without signature verification (not recommended for production)
         const event = JSON.parse(req.body.toString());
@@ -143,11 +147,12 @@ app.post(
         const { getUncachableStripeClient } = await import('./stripeClient');
         const stripe = await getUncachableStripeClient();
         await WebhookHandlers.handleEvent(event, stripe);
+        console.log('Stripe webhook: handleEvent completed (unverified)');
       }
 
       res.status(200).json({ received: true });
     } catch (error: any) {
-      console.error('Stripe webhook error:', error.message);
+      console.error('Stripe webhook error:', error.message, error.stack);
       res.status(400).json({ error: 'Webhook processing error' });
     }
   }
