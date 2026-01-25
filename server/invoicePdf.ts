@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import PDFDocument from 'pdfkit';
 
 interface InvoicePdfParams {
   invoiceNumber: string;
@@ -46,180 +46,150 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
     branding
   } = params;
 
-  const primaryColor = branding?.primaryColor || '#0070f3';
-  const accentColor = branding?.accentColor || '#0052cc';
-  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-  
-  const logoHtml = branding?.logoUrl 
-    ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 120px; max-height: 40px; object-fit: contain;" />`
-    : '';
-  
-  const footerHtml = branding?.footer
-    ? `<div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; text-align: center; color: #666; font-size: 10px; white-space: pre-line;">${branding.footer}</div>`
-    : '';
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ 
+        size: 'A4', 
+        margin: 50,
+        info: {
+          Title: `Invoice ${invoiceNumber}`,
+          Author: organizationName
+        }
+      });
 
-  const paymentButtonHtml = paymentUrl
-    ? `<div style="text-align: center; margin: 30px 0;">
-         <a href="${paymentUrl}" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: 600; font-size: 16px;">Pay Now - $${amount.toFixed(2)}</a>
-         <p style="color: #666; font-size: 12px; margin-top: 10px;">Click the button above or visit: ${paymentUrl}</p>
-       </div>`
-    : '';
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-  const itemsHtml = items.map(item => `
-    <tr>
-      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #1a1a1a;">${item.description}</td>
-      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center; color: #1a1a1a;">${item.quantity}</td>
-      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #1a1a1a;">$${item.unitPrice.toFixed(2)}</td>
-      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #1a1a1a; font-weight: 500;">$${item.total.toFixed(2)}</td>
-    </tr>
-  `).join('');
+      const primaryColor = branding?.primaryColor || '#0070f3';
+      
+      // Header section
+      doc.fontSize(10).fillColor('#666666');
+      doc.text(organizationName, 50, 50, { width: 250 });
+      if (organizationEmail) doc.text(organizationEmail);
+      if (organizationPhone) doc.text(organizationPhone);
+      if (organizationAddress) {
+        organizationAddress.split('\n').forEach(line => doc.text(line));
+      }
 
-  const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-  const tax = amount - subtotal;
+      // Invoice title - right aligned
+      doc.fontSize(28).fillColor(primaryColor);
+      doc.text('INVOICE', 400, 50, { width: 145, align: 'right' });
+      doc.fontSize(12).fillColor('#666666');
+      doc.text(`#${invoiceNumber}`, 400, 85, { width: 145, align: 'right' });
 
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Invoice ${invoiceNumber}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: ${fontFamily}; line-height: 1.5; color: #333; padding: 40px; background: white; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-          .logo { max-width: 120px; max-height: 40px; }
-          .invoice-title { text-align: right; }
-          .invoice-title h1 { font-size: 32px; color: ${primaryColor}; margin-bottom: 5px; }
-          .invoice-title p { color: #666; font-size: 14px; }
-          .parties { display: flex; gap: 60px; margin-bottom: 30px; }
-          .party h3 { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-          .party p { color: #1a1a1a; font-size: 14px; margin: 2px 0; }
-          .party .name { font-weight: 600; font-size: 16px; }
-          .meta-box { background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px; display: flex; gap: 40px; }
-          .meta-item label { display: block; color: #666; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
-          .meta-item span { font-size: 14px; font-weight: 500; color: #1a1a1a; }
-          .meta-item.amount span { color: ${primaryColor}; font-size: 20px; font-weight: 700; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: #f9fafb; padding: 12px; text-align: left; color: #666; font-size: 11px; text-transform: uppercase; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-          th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: center; }
-          th:nth-child(3), th:nth-child(4) { text-align: right; }
-          .totals { margin-left: auto; width: 250px; }
-          .totals-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-          .totals-row.total { border-bottom: none; border-top: 2px solid #1a1a1a; font-weight: 700; font-size: 18px; color: ${primaryColor}; }
-          .notes { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 15px; margin-top: 20px; }
-          .notes h4 { color: #92400e; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
-          .notes p { color: #78350f; font-size: 13px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="logo">${logoHtml}</div>
-          <div class="invoice-title">
-            <h1>INVOICE</h1>
-            <p>#${invoiceNumber}</p>
-          </div>
-        </div>
+      // Bill To section
+      doc.moveDown(2);
+      const billToY = 140;
+      doc.fontSize(10).fillColor('#666666');
+      doc.text('BILL TO', 50, billToY);
+      doc.fontSize(12).fillColor('#1a1a1a');
+      doc.text(customerName, 50, billToY + 15);
+      if (customerEmail) {
+        doc.fontSize(10).fillColor('#666666');
+        doc.text(customerEmail);
+      }
 
-        <div class="parties">
-          <div class="party">
-            <h3>From</h3>
-            <p class="name">${organizationName}</p>
-            ${organizationEmail ? `<p>${organizationEmail}</p>` : ''}
-            ${organizationPhone ? `<p>${organizationPhone}</p>` : ''}
-            ${organizationAddress ? `<p style="white-space: pre-line;">${organizationAddress}</p>` : ''}
-          </div>
-          <div class="party">
-            <h3>Bill To</h3>
-            <p class="name">${customerName}</p>
-            ${customerEmail ? `<p>${customerEmail}</p>` : ''}
-          </div>
-        </div>
+      // Invoice details box
+      const detailsY = 140;
+      doc.fontSize(10).fillColor('#666666');
+      doc.text('Invoice Date', 350, detailsY);
+      doc.fontSize(11).fillColor('#1a1a1a');
+      doc.text(invoiceDate, 350, detailsY + 12);
+      
+      doc.fontSize(10).fillColor('#666666');
+      doc.text('Due Date', 350, detailsY + 35);
+      doc.fontSize(11).fillColor('#1a1a1a');
+      doc.text(dueDate, 350, detailsY + 47);
+      
+      doc.fontSize(10).fillColor('#666666');
+      doc.text('Amount Due', 350, detailsY + 70);
+      doc.fontSize(16).fillColor(primaryColor);
+      doc.text(`$${amount.toFixed(2)}`, 350, detailsY + 82);
 
-        <div class="meta-box">
-          <div class="meta-item">
-            <label>Invoice Date</label>
-            <span>${invoiceDate}</span>
-          </div>
-          <div class="meta-item">
-            <label>Due Date</label>
-            <span>${dueDate}</span>
-          </div>
-          <div class="meta-item amount">
-            <label>Amount Due</label>
-            <span>$${amount.toFixed(2)}</span>
-          </div>
-        </div>
+      // Items table
+      const tableTop = 260;
+      const tableLeft = 50;
+      
+      // Table header
+      doc.rect(tableLeft, tableTop, 495, 25).fill('#f3f4f6');
+      doc.fontSize(9).fillColor('#666666');
+      doc.text('DESCRIPTION', tableLeft + 10, tableTop + 8, { width: 240 });
+      doc.text('QTY', tableLeft + 260, tableTop + 8, { width: 50, align: 'center' });
+      doc.text('UNIT PRICE', tableLeft + 320, tableTop + 8, { width: 80, align: 'right' });
+      doc.text('AMOUNT', tableLeft + 410, tableTop + 8, { width: 75, align: 'right' });
 
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
+      // Table rows
+      let rowY = tableTop + 30;
+      items.forEach((item) => {
+        doc.fontSize(10).fillColor('#1a1a1a');
+        doc.text(item.description, tableLeft + 10, rowY, { width: 240 });
+        doc.text(item.quantity.toString(), tableLeft + 260, rowY, { width: 50, align: 'center' });
+        doc.text(`$${item.unitPrice.toFixed(2)}`, tableLeft + 320, rowY, { width: 80, align: 'right' });
+        doc.text(`$${item.total.toFixed(2)}`, tableLeft + 410, rowY, { width: 75, align: 'right' });
+        
+        // Row separator
+        rowY += 25;
+        doc.moveTo(tableLeft, rowY - 5).lineTo(tableLeft + 495, rowY - 5).stroke('#e5e7eb');
+      });
 
-        <div class="totals">
-          <div class="totals-row">
-            <span>Subtotal</span>
-            <span>$${subtotal.toFixed(2)}</span>
-          </div>
-          ${tax > 0 ? `
-          <div class="totals-row">
-            <span>Tax</span>
-            <span>$${tax.toFixed(2)}</span>
-          </div>
-          ` : ''}
-          <div class="totals-row total">
-            <span>Total Due</span>
-            <span>$${amount.toFixed(2)}</span>
-          </div>
-        </div>
+      // Totals
+      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+      const tax = amount - subtotal;
+      
+      const totalsX = 380;
+      doc.fontSize(10).fillColor('#666666');
+      doc.text('Subtotal', totalsX, rowY + 10);
+      doc.fillColor('#1a1a1a');
+      doc.text(`$${subtotal.toFixed(2)}`, totalsX + 70, rowY + 10, { width: 75, align: 'right' });
+      
+      if (tax > 0.01) {
+        doc.fillColor('#666666');
+        doc.text('Tax', totalsX, rowY + 28);
+        doc.fillColor('#1a1a1a');
+        doc.text(`$${tax.toFixed(2)}`, totalsX + 70, rowY + 28, { width: 75, align: 'right' });
+      }
+      
+      // Total line
+      doc.moveTo(totalsX, rowY + 48).lineTo(totalsX + 145, rowY + 48).stroke('#1a1a1a');
+      doc.fontSize(12).fillColor(primaryColor);
+      doc.text('Total Due', totalsX, rowY + 55);
+      doc.text(`$${amount.toFixed(2)}`, totalsX + 70, rowY + 55, { width: 75, align: 'right' });
 
-        ${paymentButtonHtml}
+      // Payment URL section
+      if (paymentUrl) {
+        const paymentY = rowY + 90;
+        doc.rect(50, paymentY, 495, 50).fill('#f0fdf4');
+        doc.fontSize(11).fillColor('#166534');
+        doc.text('Pay this invoice online:', 60, paymentY + 10);
+        doc.fontSize(9).fillColor('#0070f3');
+        doc.text(paymentUrl, 60, paymentY + 28, { 
+          link: paymentUrl,
+          underline: true,
+          width: 475
+        });
+      }
 
-        ${notes ? `
-        <div class="notes">
-          <h4>Notes</h4>
-          <p>${notes}</p>
-        </div>
-        ` : ''}
+      // Notes section
+      if (notes) {
+        const notesY = paymentUrl ? rowY + 155 : rowY + 90;
+        doc.rect(50, notesY, 495, 60).fill('#fffbeb').stroke('#fbbf24');
+        doc.fontSize(9).fillColor('#92400e');
+        doc.text('NOTES', 60, notesY + 10);
+        doc.fontSize(10).fillColor('#78350f');
+        doc.text(notes, 60, notesY + 25, { width: 475 });
+      }
 
-        ${footerHtml}
-      </body>
-    </html>
-  `;
+      // Footer
+      if (branding?.footer) {
+        doc.fontSize(9).fillColor('#666666');
+        doc.text(branding.footer, 50, 750, { width: 495, align: 'center' });
+      }
 
-  // Use bundled Chromium from puppeteer, or environment variable override
-  const launchOptions: any = {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-  };
-  
-  // Allow override via environment variable if needed
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-  
-  const browser = await puppeteer.launch(launchOptions);
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
-    });
-
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
-  }
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
