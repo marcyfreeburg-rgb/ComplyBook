@@ -334,6 +334,8 @@ interface InvoiceEmailParams {
     total: number;
   }>;
   notes?: string;
+  paymentUrl?: string;
+  pdfBuffer?: Buffer;
   branding?: {
     primaryColor?: string;
     accentColor?: string;
@@ -356,6 +358,8 @@ export async function sendInvoiceEmail({
   organizationAddress,
   items,
   notes,
+  paymentUrl,
+  pdfBuffer,
   branding
 }: InvoiceEmailParams): Promise<void> {
   const { client, fromEmail } = await getUncachableSendGridClient();
@@ -370,6 +374,13 @@ export async function sendInvoiceEmail({
     ? `<div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px; text-align: center; color: #666; font-size: 12px; white-space: pre-line;">${branding.footer}</div>`
     : '';
   
+  const paymentButtonHtml = paymentUrl
+    ? `<div style="text-align: center; margin: 30px 0; padding: 20px; background-color: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+         <p style="color: #166534; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">Pay this invoice securely online</p>
+         <a href="${paymentUrl}" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: 600; font-size: 16px;">Pay Now - $${amount.toFixed(2)}</a>
+       </div>`
+    : '';
+
   const itemsHtml = items.map(item => `
     <tr>
       <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #1a1a1a;">${item.description}</td>
@@ -464,6 +475,8 @@ export async function sendInvoiceEmail({
             ` : ''}
           </div>
           
+          ${paymentButtonHtml}
+          
           <div style="text-align: center; margin-bottom: 20px;">
             <p style="color: #666; font-size: 14px; margin: 0 0 10px 0;">
               Questions about this invoice? Contact us at ${organizationEmail}
@@ -489,11 +502,17 @@ ITEMS:
 ${itemsText}
 
 TOTAL: $${amount.toFixed(2)}
-
+${paymentUrl ? `\nPAY ONLINE: ${paymentUrl}\n` : ''}
 ${notes ? `Notes:\n${notes}\n` : ''}
 
 Questions? Contact us at ${organizationEmail}
-    `.trim()
+    `.trim(),
+    attachments: pdfBuffer ? [{
+      content: pdfBuffer.toString('base64'),
+      filename: `Invoice-${invoiceNumber}.pdf`,
+      type: 'application/pdf',
+      disposition: 'attachment'
+    }] : undefined
   };
 
   await client.send(msg);

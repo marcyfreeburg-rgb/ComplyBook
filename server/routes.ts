@@ -15,7 +15,8 @@ import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
 import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
 import { stripeService } from "./stripeService";
-import { getStripePublishableKey } from "./stripeClient";
+import { getStripePublishableKey, createInvoiceCheckoutSession } from "./stripeClient";
+import { generateInvoicePdf } from "./invoicePdf";
 import gustoRoutes from "./gusto";
 import finchRoutes from "./finch";
 import memoize from "memoizee";
@@ -7110,10 +7111,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `${req.protocol}://${req.get('host')}${organization.logoUrl}`
         : undefined;
 
-      // Update invoice status to 'emailed' first (regardless of email send result)
-      await storage.updateInvoice(invoiceId, { status: 'emailed' });
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      let paymentUrl: string | undefined;
+      let stripeSessionId: string | undefined;
 
-      // Try to send email, but don't fail the entire operation if it doesn't work
+      // Create Stripe checkout session for payment
+      try {
+        const checkoutResult = await createInvoiceCheckoutSession({
+          invoiceId,
+          invoiceNumber: invoice.invoiceNumber,
+          amount: Number(invoice.totalAmount),
+          customerEmail: recipientEmail,
+          customerName: customer.name,
+          organizationId: invoice.organizationId,
+          organizationName: organization.name,
+          successUrl: `${baseUrl}/invoice-paid?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${baseUrl}/`,
+        });
+        paymentUrl = checkoutResult.paymentUrl;
+        stripeSessionId = checkoutResult.sessionId;
+      } catch (stripeError) {
+        console.error("Error creating Stripe checkout session:", stripeError);
+        // Continue without payment link
+      }
+
+      // Generate PDF attachment
+      let pdfBuffer: Buffer | undefined;
+      try {
+        pdfBuffer = await generateInvoicePdf({
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: new Date(invoice.issueDate).toLocaleDateString(),
+          dueDate: new Date(invoice.dueDate).toLocaleDateString(),
+          amount: Number(invoice.totalAmount),
+          customerName: customer.name,
+          customerEmail: recipientEmail,
+          organizationName: organization.name,
+          organizationEmail: organization.companyEmail || undefined,
+          organizationPhone: organization.companyPhone || undefined,
+          organizationAddress: organization.companyAddress || undefined,
+          items: lineItems.map(item => ({
+            description: item.description,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.rate),
+            total: Number(item.amount)
+          })),
+          notes: invoice.notes || undefined,
+          paymentUrl,
+          branding: {
+            primaryColor: organization.invoicePrimaryColor || undefined,
+            accentColor: organization.invoiceAccentColor || undefined,
+            fontFamily: organization.invoiceFontFamily || undefined,
+            logoUrl,
+            footer: organization.invoiceFooter || undefined
+          }
+        });
+      } catch (pdfError) {
+        console.error("Error generating invoice PDF:", pdfError);
+        // Continue without PDF attachment
+      }
+
+      // Update invoice with payment info and status
+      await storage.updateInvoice(invoiceId, { 
+        status: 'emailed',
+        stripeCheckoutSessionId: stripeSessionId || null,
+        paymentUrl: paymentUrl || null
+      });
+
+      // Try to send email
       try {
         await sendInvoiceEmail({
           to: recipientEmail,
@@ -7133,6 +7197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             total: Number(item.amount)
           })),
           notes: invoice.notes || undefined,
+          paymentUrl,
+          pdfBuffer,
           branding: {
             primaryColor: organization.invoicePrimaryColor || undefined,
             accentColor: organization.invoiceAccentColor || undefined,
@@ -7154,12 +7220,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: invoiceId.toString(),
         action: 'update',
         oldValues: { status: invoice.status },
-        newValues: { status: 'emailed', emailSentTo: recipientEmail, emailSentAt: new Date() },
+        newValues: { status: 'emailed', emailSentTo: recipientEmail, emailSentAt: new Date(), paymentUrl },
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null
       });
 
-      res.json({ message: "Invoice sent successfully" });
+      res.json({ message: "Invoice sent successfully", paymentUrl });
     } catch (error) {
       console.error("Error sending invoice email:", error);
       res.status(500).json({ message: "Failed to send invoice email" });

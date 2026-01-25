@@ -82,3 +82,51 @@ export async function getStripeSync() {
   }
   return stripeSync;
 }
+
+export async function createInvoiceCheckoutSession(params: {
+  invoiceId: number;
+  invoiceNumber: string;
+  amount: number;
+  customerEmail: string;
+  customerName: string;
+  organizationId: number;
+  organizationName: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<{ sessionId: string; paymentUrl: string }> {
+  const stripe = await getUncachableStripeClient();
+  
+  const amountCents = Math.round(params.amount * 100);
+  
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    mode: 'payment',
+    customer_email: params.customerEmail,
+    line_items: [{
+      price_data: {
+        currency: 'usd',
+        product_data: {
+          name: `Invoice #${params.invoiceNumber}`,
+          description: `Payment for invoice from ${params.organizationName}`,
+        },
+        unit_amount: amountCents,
+      },
+      quantity: 1,
+    }],
+    metadata: {
+      invoiceId: params.invoiceId.toString(),
+      invoiceNumber: params.invoiceNumber,
+      organizationId: params.organizationId.toString(),
+      amountCents: amountCents.toString(),
+      currency: 'usd',
+      type: 'invoice_payment',
+    },
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+  });
+
+  return {
+    sessionId: session.id,
+    paymentUrl: session.url || '',
+  };
+}

@@ -101,7 +101,57 @@ export class WebhookHandlers {
   static async handleCheckoutComplete(session: any, stripe: any): Promise<void> {
     console.log('Processing checkout.session.completed:', session.id);
 
-    const { userId, tier, interval } = session.metadata || {};
+    const { userId, tier, interval, invoiceId, type } = session.metadata || {};
+    
+    // Handle invoice payment completion
+    if (type === 'invoice_payment' && invoiceId) {
+      console.log('Processing invoice payment:', invoiceId);
+      try {
+        // Validate payment was completed
+        if (session.payment_status !== 'paid') {
+          console.log('Payment not yet completed, skipping');
+          return;
+        }
+
+        const invoice = await storage.getInvoice(parseInt(invoiceId));
+        if (!invoice) {
+          console.error('Invoice not found:', invoiceId);
+          return;
+        }
+
+        // Validate organization ID matches
+        const { organizationId, amountCents, currency } = session.metadata || {};
+        if (organizationId && parseInt(organizationId) !== invoice.organizationId) {
+          console.error('Organization ID mismatch in webhook - possible fraud attempt');
+          return;
+        }
+
+        // Validate amount matches (within 1 cent tolerance for rounding)
+        const expectedAmountCents = Math.round(Number(invoice.totalAmount) * 100);
+        const sessionAmountCents = session.amount_total || parseInt(amountCents || '0');
+        if (Math.abs(expectedAmountCents - sessionAmountCents) > 1) {
+          console.error(`Amount mismatch: expected ${expectedAmountCents}, got ${sessionAmountCents}`);
+          return;
+        }
+
+        // Validate checkout session ID matches what we stored
+        if (invoice.stripeCheckoutSessionId && invoice.stripeCheckoutSessionId !== session.id) {
+          console.error('Checkout session ID mismatch - possible fraud attempt');
+          return;
+        }
+
+        await storage.updateInvoice(parseInt(invoiceId), {
+          status: 'paid',
+          stripePaymentIntentId: session.payment_intent,
+          paidAt: new Date()
+        });
+        console.log(`Invoice ${invoiceId} marked as paid - amount: $${(sessionAmountCents / 100).toFixed(2)}`);
+      } catch (error) {
+        console.error('Error updating invoice payment status:', error);
+      }
+      return;
+    }
+
     if (!userId) {
       console.log('No userId in session metadata, skipping');
       return;
