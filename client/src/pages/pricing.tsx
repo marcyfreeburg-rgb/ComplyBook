@@ -137,10 +137,10 @@ export default function PricingPage() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight mb-4" data-testid="text-pricing-title">
-            Simple, Transparent Pricing
+            One Platform Replaces Five Tools
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
-            Choose the plan that fits your organization. All plans include core financial management features.
+            Replace your accounting software, grant tracking, compliance reporting, donor management, and payroll systems with ComplyBook.
           </p>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium mb-4">
             <Sparkles className="h-4 w-4" />

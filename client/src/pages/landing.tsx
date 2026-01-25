@@ -336,11 +336,13 @@ export default function Landing() {
             30-Day Free Trial - No Credit Card Required
           </Badge>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground mb-6 leading-tight" data-testid="text-hero-headline">
-            Simple Financial Management & Budgeting for Nonprofits and Small Organizations
+            Financial Management for Nonprofits, Grants & Government Compliance
           </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Track budgets, categorize expenses, manage grants and fund accounting, generate compliance reports, 
-            and sync with your bank—all in one intuitive platform built specifically for mission-driven organizations.
+          <p className="text-lg sm:text-xl text-muted-foreground mb-4 max-w-3xl mx-auto">
+            Replace your accounting software, grant tracking spreadsheets, compliance tools, and donor management with one audit-ready platform.
+          </p>
+          <p className="text-base text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Built for nonprofits, government contractors, and grantees who need Form 990, SF-425, DCAA compliance, and fund accounting—without stitching together five tools.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/login">
@@ -368,15 +370,51 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Trust Signals Section */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 border-b">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Shield className="h-6 w-6 text-green-600" />
+              </div>
+              <p className="font-medium text-sm">NIST 800-53</p>
+              <p className="text-xs text-muted-foreground">Security Controls</p>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Check className="h-6 w-6 text-blue-600" />
+              </div>
+              <p className="font-medium text-sm">ASVS Level 2</p>
+              <p className="text-xs text-muted-foreground">Verified Security</p>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <FileText className="h-6 w-6 text-purple-600" />
+              </div>
+              <p className="font-medium text-sm">Immutable Audit Logs</p>
+              <p className="text-xs text-muted-foreground">Complete Trail</p>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <Landmark className="h-6 w-6 text-orange-600" />
+              </div>
+              <p className="font-medium text-sm">Bank-Level Encryption</p>
+              <p className="text-xs text-muted-foreground">AES-256-GCM</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Key Features List */}
       <section id="features" className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-semibold text-foreground mb-4">
-              Everything You Need to Manage Your Finances
+              One Platform. Complete Financial Control.
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Purpose-built for nonprofits and small organizations. Easier than QuickBooks, more powerful than spreadsheets.
+              Stop juggling QuickBooks, spreadsheets, and compliance tools. ComplyBook handles it all—purpose-built for mission-driven organizations.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

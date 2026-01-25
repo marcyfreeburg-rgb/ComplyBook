@@ -290,7 +290,7 @@ export const SUBSCRIPTION_TIERS: Record<string, {
       fundraisingBasics: true,
     },
     supportLevel: 'priority_chat_email',
-    description: 'For growing nonprofits & contractors - Compliance tools (Form 990, grants, DCAA)',
+    description: 'Audit-ready. Grant-ready. Government-ready. Built for federal reporting & restricted funds.',
   },
   growth: {
     name: 'Growth',

@@ -1,0 +1,115 @@
+Got it — thanks for the nudge. Sounds like that one’s on my side, not yours. Web access can be annoyingly inconsistent depending on routing, cache, or redirects, so I won’t push back on that. If Grok saw it and you’re seeing it, I’m good assuming the site is live and correct 👍
+
+Rather than re-litigate access, let’s do something useful.
+
+Based on what you shared and assuming the site reflects that pricing/features, here’s the straight, founder-to-founder take:
+
+The real question now isn’t “is this good?”
+
+It’s “does the site clearly communicate why this is different and worth paying for?”
+
+Your product is not:
+
+Another bookkeeping app
+
+Another nonprofit CRM
+
+Another QuickBooks add-on
+
+It’s a compliance-grade financial system that spans:
+
+Nonprofits
+
+Government grants
+
+DCAA contractors
+
+Payroll + reporting + audits
+
+That’s rare — but it’s also easy for visitors to miss unless the messaging is ruthless.
+
+What I’d sanity-check on the live site (high impact)
+1. Above-the-fold clarity (10-second test)
+
+A stranger should immediately understand:
+
+Who it’s for + what pain it removes
+
+Something like (example, not prescriptive):
+
+Financial management built for nonprofits, grants, and government compliance — without stitching together five tools.
+
+If the hero section leans too generic (“all-in-one,” “streamlined,” etc.), you’re underselling.
+
+2. Pricing page: anchor on replacement cost
+
+Your pricing is reasonable — but buyers don’t evaluate it in a vacuum.
+
+You want them subconsciously comparing this to:
+
+QuickBooks
+
+Aplos / Blackbaud
+
+Grant tracking spreadsheets
+
+Payroll software
+
+Compliance consultants
+
+If the pricing page doesn’t implicitly say:
+
+“This replaces multiple systems”
+
+…you’ll get hesitation at checkout.
+
+A single line like:
+
+Replace accounting, grant tracking, compliance reporting, and donor systems with one platform
+
+can materially increase conversion.
+
+3. Professional tier = compliance hero
+
+This tier should scream:
+
+“Audit-ready”
+
+“Grant-ready”
+
+“Government-ready”
+
+Even one bold callout helps:
+
+Designed for federal reporting, audits, and restricted funds
+
+Right now (based on your written pricing), the value is there — it just needs louder framing.
+
+4. Trust signals (you’ve earned them — use them)
+
+You already have:
+
+NIST 800-53
+
+ASVS Level 2
+
+Immutable audit logs
+
+SF-425 / Form 990
+
+If those aren’t visually surfaced (icons, badges, short callouts), that’s a missed opportunity. These are buyer-calming features, especially for CFOs and EDs.
+
+One very practical next step
+
+If you want, paste just one of these here:
+
+Homepage hero + subhead
+
+Pricing page copy
+
+“Who it’s for” section
+
+I’ll give you line-level edits, not vibes — focused on conversion, not marketing fluff.
+
+You’ve clearly built something real.
+Now it’s about making sure the site tells that story instantly.
