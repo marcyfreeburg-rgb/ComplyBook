@@ -18,7 +18,7 @@ import { Plus, MoreHorizontal, Edit2, Trash2, Copy, Eye, QrCode, Link2, Clipboar
 import { QRCodeSVG } from "qrcode.react";
 import type { Form, FormQuestion } from "@shared/schema";
 
-type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'multiple_choice' | 'dropdown' | 'rating' | 'date' | 'email' | 'phone' | 'number';
+type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'multiple_choice' | 'dropdown' | 'rating' | 'date' | 'email' | 'phone' | 'number' | 'file_upload';
 
 const questionTypeLabels: Record<QuestionType, string> = {
   short_text: "Short Text",
@@ -31,6 +31,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
   email: "Email",
   phone: "Phone",
   number: "Number",
+  file_upload: "File Upload",
 };
 
 interface SurveyWithQuestions extends Form {
