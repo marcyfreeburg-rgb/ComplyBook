@@ -186,6 +186,7 @@ app.use('/api', (req, res, next) => {
     '/auth/callback',   // Alternative auth callback
     '/stripe/webhook',  // Stripe webhooks - uses signature verification
     '/plaid/webhook',   // Plaid webhooks - uses signature verification
+    '/public/forms',    // Public form submissions - accessed by anonymous users
   ];
   
   // Check if request path matches any exempt path

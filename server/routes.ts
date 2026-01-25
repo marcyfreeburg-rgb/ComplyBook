@@ -13387,6 +13387,94 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // Configure multer for public form file uploads
+  const formFileUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+      // Allow common file types
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain', 'text/csv'
+      ];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('File type not allowed'));
+      }
+    }
+  });
+
+  // Public form file upload endpoint
+  app.post("/api/public/forms/upload", formFileUpload.single('file'), async (req: any, res: Response) => {
+    try {
+      const { formPublicId, questionId } = req.body;
+      
+      if (!formPublicId) {
+        return res.status(400).json({ message: "Form ID is required" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Verify form exists and is active
+      const form = await storage.getFormByPublicId(formPublicId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+      if (form.status !== 'active') {
+        return res.status(403).json({ message: "This form is not accepting responses" });
+      }
+      
+      // Validate questionId exists on the form if provided
+      if (questionId) {
+        const questions = await storage.getFormQuestions(form.id);
+        const question = questions.find(q => q.id === parseInt(questionId));
+        if (!question || question.questionType !== 'file_upload') {
+          return res.status(400).json({ message: "Invalid question for file upload" });
+        }
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const sanitizedName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `form-uploads/${formPublicId}/${timestamp}-${sanitizedName}`;
+
+      // Store file using object storage if available, otherwise save locally
+      let fileUrl: string;
+      
+      if (process.env.REPLIT_DEPLOYMENT || process.env.REPL_ID) {
+        // Use object storage on Replit - use /objects/ prefix to match existing route
+        const { Client } = await import("@replit/object-storage");
+        const client = new Client();
+        await client.uploadFromBytes(fileName, req.file.buffer);
+        fileUrl = `/objects/${fileName}`;
+      } else {
+        // Save locally for non-Replit environments
+        const fs = await import('fs/promises');
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'form-uploads', formPublicId);
+        await fs.mkdir(uploadsDir, { recursive: true });
+        const localPath = path.join(uploadsDir, `${timestamp}-${sanitizedName}`);
+        await fs.writeFile(localPath, req.file.buffer);
+        fileUrl = `/uploads/form-uploads/${formPublicId}/${timestamp}-${sanitizedName}`;
+      }
+
+      res.json({ 
+        url: fileUrl,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype
+      });
+    } catch (error: any) {
+      console.error("Error uploading form file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
   // Submit a public form response
   app.post("/api/public/forms/:publicId/submit", async (req: any, res: Response) => {
     try {

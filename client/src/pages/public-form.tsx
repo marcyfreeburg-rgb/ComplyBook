@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
-type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'multiple_choice' | 'dropdown' | 'rating' | 'date' | 'email' | 'phone' | 'number';
+type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'multiple_choice' | 'dropdown' | 'rating' | 'date' | 'email' | 'phone' | 'number' | 'file_upload';
 
 interface PublicFormProps {
   formType: 'survey' | 'form';
@@ -64,6 +64,9 @@ export default function PublicForm({ formType }: PublicFormProps) {
   const [respondentName, setRespondentName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState("");
+  const [validationErrors, setValidationErrors] = useState<Record<number, string>>({});
+  const [uploadingFiles, setUploadingFiles] = useState<Record<number, boolean>>({});
+  const [respondentEmailError, setRespondentEmailError] = useState<string>("");
 
   const { data: formResponse, isLoading, error } = useQuery<{ data: PublicFormData }>({
     queryKey: ["/api/public/forms", publicId],
@@ -102,8 +105,87 @@ export default function PublicForm({ formType }: PublicFormProps) {
     },
   });
 
-  const handleAnswer = (questionId: number, value: any) => {
+  // Validation patterns
+  const validateInput = (type: QuestionType, value: string): string | null => {
+    if (!value) return null; // Empty values are handled by required validation
+    
+    switch (type) {
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          return "Please enter a valid email address";
+        }
+        break;
+      case 'phone':
+        // Allow digits, spaces, dashes, parentheses, and plus sign
+        const phoneRegex = /^[\d\s\-\(\)\+]+$/;
+        if (!phoneRegex.test(value) || value.replace(/\D/g, '').length < 7) {
+          return "Please enter a valid phone number";
+        }
+        break;
+      case 'number':
+        if (isNaN(Number(value))) {
+          return "Please enter a valid number";
+        }
+        break;
+      case 'date':
+        if (value && isNaN(Date.parse(value))) {
+          return "Please enter a valid date";
+        }
+        break;
+    }
+    return null;
+  };
+
+  const handleAnswer = (questionId: number, value: any, questionType?: QuestionType) => {
     setAnswers({ ...answers, [questionId]: value });
+    
+    // Validate and clear/set error
+    if (questionType && typeof value === 'string') {
+      const error = validateInput(questionType, value);
+      if (error) {
+        setValidationErrors({ ...validationErrors, [questionId]: error });
+      } else {
+        const newErrors = { ...validationErrors };
+        delete newErrors[questionId];
+        setValidationErrors(newErrors);
+      }
+    }
+  };
+
+  const handleFileUpload = async (questionId: number, file: File) => {
+    setUploadingFiles({ ...uploadingFiles, [questionId]: true });
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('formPublicId', publicId);
+      formData.append('questionId', questionId.toString());
+      
+      const response = await fetch('/api/public/forms/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const result = await response.json();
+      handleAnswer(questionId, {
+        fileName: file.name,
+        fileUrl: result.url,
+        fileSize: file.size,
+        fileType: file.type,
+      });
+    } catch (error) {
+      setValidationErrors({ 
+        ...validationErrors, 
+        [questionId]: 'File upload failed. Please try again.' 
+      });
+    } finally {
+      setUploadingFiles({ ...uploadingFiles, [questionId]: false });
+    }
   };
 
   const handleMultipleChoiceToggle = (questionId: number, option: string) => {
@@ -127,18 +209,51 @@ export default function PublicForm({ formType }: PublicFormProps) {
     return true;
   };
 
+  const validateRespondentEmail = (email: string): string | null => {
+    if (!email) return null;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    return null;
+  };
+
+  const handleRespondentEmailChange = (email: string) => {
+    setRespondentEmail(email);
+    const error = validateRespondentEmail(email);
+    setRespondentEmailError(error || "");
+  };
+
   const validateForm = (): boolean => {
+    // Check if there are any validation errors
+    if (Object.keys(validationErrors).length > 0) return false;
+    if (respondentEmailError) return false;
+    
     // Check required contact info
     if (settings.collectEmail && !respondentEmail) return false;
     if (settings.collectName && !respondentName) return false;
+    
+    // Validate email format if collected
+    if (settings.collectEmail && respondentEmail) {
+      const emailError = validateRespondentEmail(respondentEmail);
+      if (emailError) return false;
+    }
 
-    // Check all required questions
+    // Check all required questions and validate field-specific formats
     for (const question of questions) {
+      const answer = answers[question.id];
+      
+      // Check required
       if (question.required) {
-        const answer = answers[question.id];
         if (answer === undefined || answer === "" || (Array.isArray(answer) && answer.length === 0)) {
           return false;
         }
+      }
+      
+      // Validate format if there's a value
+      if (answer && typeof answer === 'string') {
+        const error = validateInput(question.questionType, answer);
+        if (error) return false;
       }
     }
     return true;
@@ -202,27 +317,38 @@ export default function PublicForm({ formType }: PublicFormProps) {
 
   const renderQuestionInput = (question: PublicFormData['questions'][0]) => {
     const value = answers[question.id];
+    const error = validationErrors[question.id];
+    
+    const renderError = () => error ? (
+      <p className="text-sm text-destructive mt-1">{error}</p>
+    ) : null;
     
     switch (question.questionType) {
       case 'short_text':
         return (
-          <Input
-            placeholder="Your answer..."
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-            data-testid={`input-question-${question.id}`}
-          />
+          <>
+            <Input
+              placeholder="Your answer..."
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value)}
+              data-testid={`input-question-${question.id}`}
+            />
+            {renderError()}
+          </>
         );
       
       case 'long_text':
         return (
-          <Textarea
-            placeholder="Your answer..."
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-            className="min-h-[100px]"
-            data-testid={`textarea-question-${question.id}`}
-          />
+          <>
+            <Textarea
+              placeholder="Your answer..."
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value)}
+              className="min-h-[100px]"
+              data-testid={`textarea-question-${question.id}`}
+            />
+            {renderError()}
+          </>
         );
       
       case 'single_choice':
@@ -273,7 +399,7 @@ export default function PublicForm({ formType }: PublicFormProps) {
       
       case 'rating':
         return (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {[1, 2, 3, 4, 5].map((rating) => (
               <Button
                 key={rating}
@@ -291,54 +417,124 @@ export default function PublicForm({ formType }: PublicFormProps) {
       
       case 'date':
         return (
-          <Input
-            type="date"
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-            data-testid={`input-date-${question.id}`}
-          />
+          <>
+            <Input
+              type="date"
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value, 'date')}
+              data-testid={`input-date-${question.id}`}
+            />
+            {renderError()}
+          </>
         );
       
       case 'email':
         return (
-          <Input
-            type="email"
-            placeholder="email@example.com"
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-            data-testid={`input-email-${question.id}`}
-          />
+          <>
+            <Input
+              type="email"
+              placeholder="email@example.com"
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value, 'email')}
+              className={error ? "border-destructive" : ""}
+              data-testid={`input-email-${question.id}`}
+            />
+            {renderError()}
+          </>
         );
       
       case 'phone':
         return (
-          <Input
-            type="tel"
-            placeholder="(555) 555-5555"
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-            data-testid={`input-phone-${question.id}`}
-          />
+          <>
+            <Input
+              type="tel"
+              placeholder="(555) 555-5555"
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value, 'phone')}
+              className={error ? "border-destructive" : ""}
+              data-testid={`input-phone-${question.id}`}
+            />
+            {renderError()}
+          </>
         );
       
       case 'number':
         return (
-          <Input
-            type="number"
-            placeholder="0"
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-            data-testid={`input-number-${question.id}`}
-          />
+          <>
+            <Input
+              type="number"
+              placeholder="0"
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value, 'number')}
+              className={error ? "border-destructive" : ""}
+              data-testid={`input-number-${question.id}`}
+            />
+            {renderError()}
+          </>
+        );
+      
+      case 'file_upload':
+        return (
+          <div className="space-y-2">
+            {value?.fileName ? (
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span className="text-sm">{value.fileName}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAnswer(question.id, null)}
+                  className="ml-auto"
+                >
+                  Remove
+                </Button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed rounded-md p-6 text-center">
+                <input
+                  type="file"
+                  id={`file-${question.id}`}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleFileUpload(question.id, file);
+                    }
+                  }}
+                  data-testid={`input-file-${question.id}`}
+                />
+                <label 
+                  htmlFor={`file-${question.id}`}
+                  className="cursor-pointer"
+                >
+                  {uploadingFiles[question.id] ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Uploading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground">Click to upload a file</p>
+                      <p className="text-xs text-muted-foreground mt-1">Max file size: 10MB</p>
+                    </>
+                  )}
+                </label>
+              </div>
+            )}
+            {renderError()}
+          </div>
         );
       
       default:
         return (
-          <Input
-            placeholder="Your answer..."
-            value={value || ""}
-            onChange={(e) => handleAnswer(question.id, e.target.value)}
-          />
+          <>
+            <Input
+              placeholder="Your answer..."
+              value={value || ""}
+              onChange={(e) => handleAnswer(question.id, e.target.value)}
+            />
+            {renderError()}
+          </>
         );
     }
   };
@@ -408,9 +604,13 @@ export default function PublicForm({ formType }: PublicFormProps) {
                     type="email"
                     placeholder="your@email.com"
                     value={respondentEmail}
-                    onChange={(e) => setRespondentEmail(e.target.value)}
+                    onChange={(e) => handleRespondentEmailChange(e.target.value)}
+                    className={respondentEmailError ? "border-destructive" : ""}
                     data-testid="input-respondent-email"
                   />
+                  {respondentEmailError && (
+                    <p className="text-sm text-destructive">{respondentEmailError}</p>
+                  )}
                 </div>
               )}
             </CardContent>
