@@ -28,6 +28,17 @@ interface InvoicePdfParams {
   };
 }
 
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buffer> {
   const {
     invoiceNumber,
@@ -45,6 +56,12 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
     paymentUrl,
     branding
   } = params;
+
+  // Fetch logo if available
+  let logoBuffer: Buffer | null = null;
+  if (branding?.logoUrl) {
+    logoBuffer = await fetchImageBuffer(branding.logoUrl);
+  }
 
   return new Promise((resolve, reject) => {
     try {
@@ -64,13 +81,42 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
 
       const primaryColor = branding?.primaryColor || '#0070f3';
       
-      // Header section
-      doc.fontSize(10).fillColor('#666666');
-      doc.text(organizationName, 50, 50, { width: 250 });
-      if (organizationEmail) doc.text(organizationEmail);
-      if (organizationPhone) doc.text(organizationPhone);
+      // Header section - Logo or Company Name (not both)
+      let headerBottomY = 50;
+      
+      if (logoBuffer) {
+        // Add logo image
+        try {
+          doc.image(logoBuffer, 50, 50, { width: 120, height: 40, fit: [120, 40] });
+          headerBottomY = 95;
+        } catch {
+          // If logo fails, show company name
+          doc.fontSize(14).fillColor('#1a1a1a');
+          doc.text(organizationName, 50, 50, { width: 250 });
+          headerBottomY = 70;
+        }
+      } else {
+        // No logo - show company name as header
+        doc.fontSize(14).fillColor('#1a1a1a');
+        doc.text(organizationName, 50, 50, { width: 250 });
+        headerBottomY = 70;
+      }
+      
+      // Company contact info (below logo/name)
+      doc.fontSize(9).fillColor('#666666');
+      if (organizationEmail) {
+        doc.text(organizationEmail, 50, headerBottomY);
+        headerBottomY += 12;
+      }
+      if (organizationPhone) {
+        doc.text(organizationPhone, 50, headerBottomY);
+        headerBottomY += 12;
+      }
       if (organizationAddress) {
-        organizationAddress.split('\n').forEach(line => doc.text(line));
+        organizationAddress.split('\n').forEach(line => {
+          doc.text(line, 50, headerBottomY);
+          headerBottomY += 12;
+        });
       }
 
       // Invoice title - right aligned
@@ -80,19 +126,18 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
       doc.text(`#${invoiceNumber}`, 400, 85, { width: 145, align: 'right' });
 
       // Bill To section
-      doc.moveDown(2);
-      const billToY = 140;
+      const billToY = Math.max(headerBottomY + 20, 150);
       doc.fontSize(10).fillColor('#666666');
       doc.text('BILL TO', 50, billToY);
       doc.fontSize(12).fillColor('#1a1a1a');
       doc.text(customerName, 50, billToY + 15);
       if (customerEmail) {
         doc.fontSize(10).fillColor('#666666');
-        doc.text(customerEmail);
+        doc.text(customerEmail, 50, billToY + 30);
       }
 
-      // Invoice details box
-      const detailsY = 140;
+      // Invoice details box - right side
+      const detailsY = billToY;
       doc.fontSize(10).fillColor('#666666');
       doc.text('Invoice Date', 350, detailsY);
       doc.fontSize(11).fillColor('#1a1a1a');
@@ -109,7 +154,7 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
       doc.text(`$${amount.toFixed(2)}`, 350, detailsY + 82);
 
       // Items table
-      const tableTop = 260;
+      const tableTop = billToY + 120;
       const tableLeft = 50;
       
       // Table header
@@ -157,23 +202,33 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
       doc.text('Total Due', totalsX, rowY + 55);
       doc.text(`$${amount.toFixed(2)}`, totalsX + 70, rowY + 55, { width: 75, align: 'right' });
 
-      // Payment URL section
+      // Payment button section
       if (paymentUrl) {
         const paymentY = rowY + 90;
-        doc.rect(50, paymentY, 495, 50).fill('#f0fdf4');
-        doc.fontSize(11).fillColor('#166534');
-        doc.text('Pay this invoice online:', 60, paymentY + 10);
-        doc.fontSize(9).fillColor('#0070f3');
-        doc.text(paymentUrl, 60, paymentY + 28, { 
-          link: paymentUrl,
-          underline: true,
-          width: 475
+        
+        // Green background box
+        doc.rect(50, paymentY, 495, 45).fill('#f0fdf4');
+        
+        // Payment button (styled rectangle with text)
+        const buttonX = 180;
+        const buttonY = paymentY + 8;
+        const buttonWidth = 180;
+        const buttonHeight = 30;
+        
+        doc.rect(buttonX, buttonY, buttonWidth, buttonHeight)
+           .fill('#16a34a');
+        
+        doc.fontSize(12).fillColor('#ffffff');
+        doc.text('Click Here To Pay', buttonX, buttonY + 9, { 
+          width: buttonWidth, 
+          align: 'center',
+          link: paymentUrl
         });
       }
 
       // Notes section
       if (notes) {
-        const notesY = paymentUrl ? rowY + 155 : rowY + 90;
+        const notesY = paymentUrl ? rowY + 150 : rowY + 90;
         doc.rect(50, notesY, 495, 60).fill('#fffbeb').stroke('#fbbf24');
         doc.fontSize(9).fillColor('#92400e');
         doc.text('NOTES', 60, notesY + 10);
