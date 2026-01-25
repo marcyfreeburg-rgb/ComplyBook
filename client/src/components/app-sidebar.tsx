@@ -4,7 +4,8 @@ import {
   ClipboardCheck, FileLineChart, History, CheckSquare, Heart, FileDown, UserCog, 
   DollarSign, PiggyBank, CalendarCheck, Folder, FileBarChart, FileCheck, Briefcase, 
   Award, ShieldCheck, Sparkles, Database, Shield, FileSpreadsheet, List,
-  ChevronDown, ArrowDownCircle, ArrowUpCircle, LineChart, Cog, HandHeart
+  ChevronDown, ArrowDownCircle, ArrowUpCircle, LineChart, Cog, HandHeart,
+  ClipboardList, FileEdit
 } from "lucide-react";
 import {
   Sidebar,
@@ -125,6 +126,14 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       ],
     },
     {
+      title: "Engagement",
+      icon: ClipboardList,
+      items: [
+        { title: "Surveys", url: "/surveys", icon: ClipboardList },
+        { title: "Forms", url: "/forms", icon: FileEdit },
+      ],
+    },
+    {
       title: "Reports & Compliance",
       icon: LineChart,
       items: [
@@ -224,6 +233,14 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Transaction Log", url: "/transaction-log", icon: List },
         { title: "Bank Reconciliation", url: "/reconciliation-hub", icon: CheckSquare },
         { title: "Accounting Imports", url: "/accounting-imports", icon: FileSpreadsheet },
+      ],
+    },
+    {
+      title: "Engagement",
+      icon: ClipboardList,
+      items: [
+        { title: "Surveys", url: "/surveys", icon: ClipboardList },
+        { title: "Forms", url: "/forms", icon: FileEdit },
       ],
     },
     {

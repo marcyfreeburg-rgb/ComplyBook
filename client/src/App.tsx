@@ -64,6 +64,9 @@ import Login from "@/pages/login";
 import GettingStartedNonprofit from "@/pages/getting-started-nonprofit";
 import GettingStartedForprofit from "@/pages/getting-started-forprofit";
 import DonorPortal from "@/pages/donor-portal";
+import Surveys from "@/pages/surveys";
+import Forms from "@/pages/forms";
+import PublicForm from "@/pages/public-form";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -320,6 +323,18 @@ function AuthenticatedApp() {
               <Route path="/custom-reports">
                 <CustomReports currentOrganization={currentOrganization} />
               </Route>
+              <Route path="/surveys">
+                <Surveys 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
+              <Route path="/forms">
+                <Forms 
+                  currentOrganization={currentOrganization}
+                  userId={user?.id || ''}
+                />
+              </Route>
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/grants">
                   <Grants currentOrganization={currentOrganization} />
@@ -492,6 +507,16 @@ function Router() {
   // Allow pricing page for both authenticated and non-authenticated users
   if (location === '/pricing' || location.startsWith('/pricing')) {
     return <Pricing />;
+  }
+
+  // Public survey page (unauthenticated)
+  if (location.startsWith('/s/')) {
+    return <PublicForm formType="survey" />;
+  }
+
+  // Public form page (unauthenticated)
+  if (location.startsWith('/f/')) {
+    return <PublicForm formType="form" />;
   }
 
   // Handle MFA verification page for users with pending MFA
