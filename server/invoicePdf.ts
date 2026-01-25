@@ -51,7 +51,7 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
   const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   
   const logoHtml = branding?.logoUrl 
-    ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 180px; max-height: 60px; object-fit: contain;" />`
+    ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 120px; max-height: 40px; object-fit: contain;" />`
     : '';
   
   const footerHtml = branding?.footer
@@ -86,8 +86,8 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: ${fontFamily}; line-height: 1.5; color: #333; padding: 40px; background: white; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-          .logo { max-width: 180px; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+          .logo { max-width: 120px; max-height: 40px; }
           .invoice-title { text-align: right; }
           .invoice-title h1 { font-size: 32px; color: ${primaryColor}; margin-bottom: 5px; }
           .invoice-title p { color: #666; font-size: 14px; }
