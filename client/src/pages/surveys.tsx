@@ -327,7 +327,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               Create Survey
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Survey</DialogTitle>
               <DialogDescription>Set up a new survey to collect responses</DialogDescription>
@@ -512,7 +512,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       )}
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Survey Settings</DialogTitle>
             <DialogDescription>Update survey details and settings</DialogDescription>

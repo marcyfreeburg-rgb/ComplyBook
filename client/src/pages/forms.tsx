@@ -326,7 +326,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
               Create Form
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Form</DialogTitle>
               <DialogDescription>Set up a new form to collect submissions</DialogDescription>
@@ -525,7 +525,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
       )}
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Form Settings</DialogTitle>
             <DialogDescription>Update form details and settings</DialogDescription>
