@@ -4,7 +4,7 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
 import type { SubscriptionTier } from '@shared/schema';
-import { sendTrialEndingEmail } from './email';
+import { sendTrialEndingEmail, sendInvoicePaymentConfirmationEmail } from './email';
 
 // Map Stripe metadata tier to our subscription tier
 function mapMetadataToTier(metadata: Record<string, string> | null | undefined): SubscriptionTier | null {
@@ -140,12 +140,36 @@ export class WebhookHandlers {
           return;
         }
 
+        const paidAt = new Date();
         await storage.updateInvoice(parseInt(invoiceId), {
           status: 'paid',
           stripePaymentIntentId: session.payment_intent,
-          paidAt: new Date()
+          paidAt
         });
         console.log(`Invoice ${invoiceId} marked as paid - amount: $${(sessionAmountCents / 100).toFixed(2)}`);
+        
+        // Send payment confirmation email to the customer
+        try {
+          const client = invoice.clientId ? await storage.getClient(invoice.clientId) : null;
+          const organization = await storage.getOrganization(invoice.organizationId);
+          
+          if (client?.email && organization) {
+            await sendInvoicePaymentConfirmationEmail({
+              to: client.email,
+              clientName: client.name,
+              invoiceNumber: invoice.invoiceNumber,
+              amount: Number(invoice.totalAmount).toFixed(2),
+              organizationName: organization.name,
+              paidAt
+            });
+            console.log(`Payment confirmation email sent for invoice ${invoiceId}`);
+          } else {
+            console.log(`No client email found for invoice ${invoiceId}, skipping confirmation email`);
+          }
+        } catch (emailError) {
+          console.error('Failed to send payment confirmation email:', emailError);
+          // Don't throw - email failure shouldn't break webhook processing
+        }
       } catch (error) {
         console.error('Error updating invoice payment status:', error);
       }

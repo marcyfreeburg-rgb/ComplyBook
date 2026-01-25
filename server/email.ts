@@ -636,6 +636,114 @@ ComplyBook - Financial Management Made Simple
   console.log(`Trial ending reminder sent to ${to}`);
 }
 
+// Invoice Payment Confirmation Email
+interface InvoicePaymentConfirmationParams {
+  to: string;
+  clientName: string;
+  invoiceNumber: string;
+  amount: string;
+  organizationName: string;
+  paidAt: Date;
+}
+
+export async function sendInvoicePaymentConfirmationEmail({
+  to,
+  clientName,
+  invoiceNumber,
+  amount,
+  organizationName,
+  paidAt
+}: InvoicePaymentConfirmationParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+  
+  const formattedDate = paidAt.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `Payment Received - Invoice ${invoiceNumber}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Payment Confirmation</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 30px; margin-bottom: 20px; color: white; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">&#10003;</div>
+            <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">Payment Received!</h1>
+            <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">Thank you for your payment</p>
+          </div>
+          
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px; margin-bottom: 20px;">
+            <p style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 16px;">Hi ${clientName},</p>
+            
+            <p style="color: #666; margin: 0 0 20px 0; font-size: 15px;">
+              We've received your payment. Here are the details:
+            </p>
+            
+            <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">Invoice Number:</td>
+                  <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; text-align: right; font-weight: 600;">${invoiceNumber}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">Amount Paid:</td>
+                  <td style="padding: 8px 0; color: #10b981; font-size: 18px; text-align: right; font-weight: 700;">$${amount}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">Payment Date:</td>
+                  <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; text-align: right;">${formattedDate}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">From:</td>
+                  <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; text-align: right;">${organizationName}</td>
+                </tr>
+              </table>
+            </div>
+            
+            <p style="color: #666; margin: 0; font-size: 14px;">
+              This email serves as your payment confirmation. Please keep it for your records.
+            </p>
+          </div>
+          
+          <div style="text-align: center; color: #666; font-size: 12px;">
+            <p style="margin: 0;">
+              Thank you for your business!
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Payment Received!
+
+Hi ${clientName},
+
+We've received your payment. Here are the details:
+
+Invoice Number: ${invoiceNumber}
+Amount Paid: $${amount}
+Payment Date: ${formattedDate}
+From: ${organizationName}
+
+This email serves as your payment confirmation. Please keep it for your records.
+
+Thank you for your business!
+    `.trim()
+  };
+
+  await client.send(msg);
+  console.log(`Payment confirmation email sent to ${to} for invoice ${invoiceNumber}`);
+}
+
 // Donation Letter Email (for nonprofits)
 interface DonationLetterEmailParams {
   to: string;
