@@ -813,7 +813,7 @@ export const bills = pgTable("bills", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: 'set null' }),
-  billNumber: varchar("bill_number", { length: 100 }).notNull(),
+  billNumber: varchar("bill_number", { length: 100 }).notNull(), // Can be bill number or account number
   issueDate: timestamp("issue_date").notNull(),
   dueDate: timestamp("due_date").notNull(),
   status: billStatusEnum("status").notNull().default('received'),
@@ -824,6 +824,11 @@ export const bills = pgTable("bills", {
   // Fund allocation for nonprofits - track payment source
   fundingSource: varchar("funding_source", { length: 50 }).default('unrestricted'), // 'unrestricted' or 'grant'
   grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }), // If funded by specific grant
+  // Recurring bill settings
+  isRecurring: boolean("is_recurring").default(false),
+  recurringFrequency: recurringFrequencyEnum("recurring_frequency"), // daily, weekly, biweekly, monthly, quarterly, yearly
+  recurringEndDate: timestamp("recurring_end_date"), // When to stop generating recurring bills
+  parentBillId: integer("parent_bill_id"), // Reference to original recurring bill template
   transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -843,6 +848,10 @@ export const insertBillSchema = createInsertSchema(bills).omit({
   totalAmount: z.string().or(z.number()).transform(val => String(val)),
   fundingSource: z.enum(['unrestricted', 'grant']).optional().default('unrestricted'),
   grantId: z.number().optional().nullable(),
+  isRecurring: z.boolean().optional().default(false),
+  recurringFrequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).optional().nullable(),
+  recurringEndDate: z.coerce.date().optional().nullable(),
+  parentBillId: z.number().optional().nullable(),
 });
 
 export type InsertBill = z.infer<typeof insertBillSchema>;

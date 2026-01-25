@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import type { Bill, BillLineItem, Vendor, Organization, Grant } from "@shared/schema";
@@ -49,6 +50,9 @@ interface BillFormData {
   taxAmount: string;
   fundingSource: 'unrestricted' | 'grant';
   grantId: string;
+  isRecurring: boolean;
+  recurringFrequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | '';
+  recurringEndDate: string;
   lineItems: Array<{
     description: string;
     quantity: string;
@@ -162,6 +166,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
         notes: data.notes || null,
         fundingSource: data.fundingSource || 'unrestricted',
         grantId: (data.fundingSource === 'grant' && data.grantId && data.grantId !== "none") ? parseInt(data.grantId) : null,
+        isRecurring: data.isRecurring || false,
+        recurringFrequency: data.isRecurring && data.recurringFrequency ? data.recurringFrequency : null,
+        recurringEndDate: data.isRecurring && data.recurringEndDate ? new Date(data.recurringEndDate) : null,
       });
       const bill = await res.json() as Bill;
 
@@ -215,6 +222,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
         notes: updates.notes || null,
         fundingSource: updates.fundingSource || 'unrestricted',
         grantId: (updates.fundingSource === 'grant' && updates.grantId && updates.grantId !== "none") ? parseInt(updates.grantId) : null,
+        isRecurring: updates.isRecurring || false,
+        recurringFrequency: updates.isRecurring && updates.recurringFrequency ? updates.recurringFrequency : null,
+        recurringEndDate: updates.isRecurring && updates.recurringEndDate ? new Date(updates.recurringEndDate) : null,
       });
     },
     onSuccess: () => {
@@ -356,6 +366,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
       taxAmount: "0.00",
       fundingSource: "unrestricted",
       grantId: "none",
+      isRecurring: false,
+      recurringFrequency: "",
+      recurringEndDate: "",
       lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
     });
   };
@@ -372,6 +385,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
       taxAmount: bill.taxAmount || "0.00",
       fundingSource: (bill as any).fundingSource || "unrestricted",
       grantId: (bill as any).grantId?.toString() || "none",
+      isRecurring: (bill as any).isRecurring || false,
+      recurringFrequency: (bill as any).recurringFrequency || "",
+      recurringEndDate: (bill as any).recurringEndDate ? format(new Date((bill as any).recurringEndDate), "yyyy-MM-dd") : "",
       lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
     });
     setIsEditDialogOpen(true);
@@ -525,7 +541,17 @@ export default function Bills({ currentOrganization }: BillsProps) {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3">{getStatusBadge(bill.status)}</td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(bill.status)}
+                          {(bill as any).isRecurring && (
+                            <Badge variant="outline" className="text-xs">
+                              <Repeat className="w-3 h-3 mr-1" />
+                              Recurring
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <Button
@@ -635,12 +661,12 @@ export default function Bills({ currentOrganization }: BillsProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="billNumber">Bill Number *</Label>
+                <Label htmlFor="billNumber">Bill/Account Number *</Label>
                 <Input
                   id="billNumber"
                   value={formData.billNumber}
                   onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })}
-                  placeholder="BILL-001"
+                  placeholder="BILL-001 or Account #"
                   required
                   data-testid="input-bill-number"
                 />
@@ -761,6 +787,65 @@ export default function Bills({ currentOrganization }: BillsProps) {
                 </div>
               </div>
             )}
+
+            {/* Recurring Bill Settings */}
+            <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+              <div className="flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Recurring Bill</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isRecurring"
+                  checked={formData.isRecurring}
+                  onCheckedChange={(checked) => setFormData({ 
+                    ...formData, 
+                    isRecurring: checked as boolean,
+                    recurringFrequency: checked ? 'monthly' : '',
+                    recurringEndDate: ''
+                  })}
+                  data-testid="checkbox-recurring"
+                />
+                <Label htmlFor="isRecurring" className="text-sm cursor-pointer">
+                  This is a recurring bill
+                </Label>
+              </div>
+              
+              {formData.isRecurring && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recurringFrequency">Frequency</Label>
+                    <Select
+                      value={formData.recurringFrequency}
+                      onValueChange={(value: any) => setFormData({ ...formData, recurringFrequency: value })}
+                    >
+                      <SelectTrigger id="recurringFrequency" data-testid="select-recurring-frequency">
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="recurringEndDate">End Date (Optional)</Label>
+                    <Input
+                      id="recurringEndDate"
+                      type="date"
+                      value={formData.recurringEndDate}
+                      onChange={(e) => setFormData({ ...formData, recurringEndDate: e.target.value })}
+                      data-testid="input-recurring-end-date"
+                    />
+                    <p className="text-xs text-muted-foreground">Leave blank for no end date</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
