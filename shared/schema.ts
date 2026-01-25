@@ -821,6 +821,9 @@ export const bills = pgTable("bills", {
   taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
   notes: text("notes"),
+  // Fund allocation for nonprofits - track payment source
+  fundingSource: varchar("funding_source", { length: 50 }).default('unrestricted'), // 'unrestricted' or 'grant'
+  grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }), // If funded by specific grant
   transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -838,6 +841,8 @@ export const insertBillSchema = createInsertSchema(bills).omit({
   subtotal: z.string().or(z.number()).transform(val => String(val)),
   taxAmount: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
   totalAmount: z.string().or(z.number()).transform(val => String(val)),
+  fundingSource: z.enum(['unrestricted', 'grant']).optional().default('unrestricted'),
+  grantId: z.number().optional().nullable(),
 });
 
 export type InsertBill = z.infer<typeof insertBillSchema>;

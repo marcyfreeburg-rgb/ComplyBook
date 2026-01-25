@@ -1,0 +1,35 @@
+
+The purpose of a "bill entry" (or entering a bill) in a financial app is to record and track upcoming or due bills (recurring or one-time obligations like rent, utilities, credit card payments, insurance premiums, subscriptions, loans, etc.) before you actually pay them.
+
+This feature serves several key purposes, depending on whether the app is geared toward personal finance/budgeting or small business accounting, but the core idea is similar:
+
+Main Purposes
+Forecast cash flow and avoid surprises
+By entering bills ahead of time (with due date, amount, payee/vendor, category, etc.), the app can show you your future obligations — helping you see how much money you'll need in the coming days/weeks/months and whether you'll have enough in your accounts.
+
+Improve budgeting accuracy
+Many budgeting apps (especially zero-based ones like YNAB-style systems) distinguish between:
+
+Immediate / already-paid expenses (logged when the transaction clears)
+Anticipated bills (entered in advance so you can allocate / reserve money for them proactively)
+Entering the bill lets you assign money to cover it right away, rather than being caught off guard when it auto-drafts or you receive the paper/email bill.
+
+Track recurring bills automatically
+Most apps let you set up recurring bill entries (monthly rent, Netflix, phone bill, etc.) so the app automatically schedules the next due instance — saving manual entry and helping spot creeping costs over time.
+
+Support bill pay / reminders
+
+Many apps integrate reminders/notifications as the due date approaches.
+Some connect to bill-pay services, so entering the bill is the first step toward scheduling the actual payment.
+In business-oriented apps (QuickBooks, Xero, BILL.com, etc.), "bill entry" is the step that creates an accounts payable record — you enter vendor invoices so they can be approved, coded to expense accounts, and later paid.
+Separate planning from actual spending
+
+An expense/transactions entry usually records money that has already left your account (cleared debit/credit card charge).
+A bill entry records money that will leave your account soon — it's a planning/commitment tool rather than a historical record.
+Quick Comparison
+Feature	Bill Entry	Regular Expense/Transaction Entry
+Timing	Future / upcoming	Past / already happened
+Purpose	Planning, reserving money, forecasting	Recording what actually occurred
+Affects cash flow view	Shows future outflows	Shows historical outflows
+Typical in apps	YNAB, Monarch, PocketGuard, Goodbudget, many business apps	Mint-style trackers, bank imports
+In short: Bill entry turns reactive bill-paying into proactive financial planning — you see and prepare for obligations before they're due, which reduces stress, prevents overdrafts/late fees, and gives a much clearer picture of your real financial position.

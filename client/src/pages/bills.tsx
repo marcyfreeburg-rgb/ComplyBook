@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
-import type { Bill, BillLineItem, Vendor, Organization } from "@shared/schema";
+import type { Bill, BillLineItem, Vendor, Organization, Grant } from "@shared/schema";
 import { BillPreview } from "@/components/bill-preview";
 import html2pdf from "html2pdf.js";
 
@@ -47,6 +47,8 @@ interface BillFormData {
   status: 'received' | 'scheduled' | 'paid' | 'partial' | 'overdue' | 'cancelled';
   notes: string;
   taxAmount: string;
+  fundingSource: 'unrestricted' | 'grant';
+  grantId: string;
   lineItems: Array<{
     description: string;
     quantity: string;
@@ -96,6 +98,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
     status: "received",
     notes: "",
     taxAmount: "0.00",
+    fundingSource: "unrestricted",
+    grantId: "none",
     lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
   });
 
@@ -108,6 +112,14 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors', currentOrganization.id],
   });
+
+  // Fetch grants for nonprofits to allocate bill funding
+  const { data: grants = [] } = useQuery<Grant[]>({
+    queryKey: ['/api/grants', currentOrganization.id],
+    enabled: currentOrganization.type === 'nonprofit',
+  });
+
+  const isNonprofit = currentOrganization.type === 'nonprofit';
 
   // Fetch line items for preview
   const { data: previewLineItems = [] } = useQuery<BillLineItem[]>({
@@ -148,6 +160,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
         taxAmount: data.taxAmount || null,
         totalAmount: totalAmount.toFixed(2),
         notes: data.notes || null,
+        fundingSource: data.fundingSource || 'unrestricted',
+        grantId: (data.fundingSource === 'grant' && data.grantId && data.grantId !== "none") ? parseInt(data.grantId) : null,
       });
       const bill = await res.json() as Bill;
 
@@ -199,6 +213,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
         taxAmount: updates.taxAmount || null,
         totalAmount: totalAmount.toFixed(2),
         notes: updates.notes || null,
+        fundingSource: updates.fundingSource || 'unrestricted',
+        grantId: (updates.fundingSource === 'grant' && updates.grantId && updates.grantId !== "none") ? parseInt(updates.grantId) : null,
       });
     },
     onSuccess: () => {
@@ -338,6 +354,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
       status: "received",
       notes: "",
       taxAmount: "0.00",
+      fundingSource: "unrestricted",
+      grantId: "none",
       lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
     });
   };
@@ -352,6 +370,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
       status: bill.status as any,
       notes: bill.notes || "",
       taxAmount: bill.taxAmount || "0.00",
+      fundingSource: (bill as any).fundingSource || "unrestricted",
+      grantId: (bill as any).grantId?.toString() || "none",
       lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
     });
     setIsEditDialogOpen(true);
@@ -683,6 +703,64 @@ export default function Bills({ currentOrganization }: BillsProps) {
                 />
               </div>
             </div>
+
+            {/* Funding Source - Only for nonprofits */}
+            {isNonprofit && (
+              <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Payment Funding Source</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choose how this bill will be funded when paid. This helps track spending against unrestricted funds or specific grants.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fundingSource">Funding Source</Label>
+                    <Select
+                      value={formData.fundingSource}
+                      onValueChange={(value: 'unrestricted' | 'grant') => {
+                        setFormData({ 
+                          ...formData, 
+                          fundingSource: value,
+                          grantId: value === 'unrestricted' ? 'none' : formData.grantId
+                        });
+                      }}
+                    >
+                      <SelectTrigger id="fundingSource" data-testid="select-funding-source">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unrestricted">Unrestricted Funds</SelectItem>
+                        <SelectItem value="grant">Specific Grant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.fundingSource === 'grant' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="grantId">Select Grant</Label>
+                      <Select
+                        value={formData.grantId}
+                        onValueChange={(value) => setFormData({ ...formData, grantId: value })}
+                      >
+                        <SelectTrigger id="grantId" data-testid="select-grant">
+                          <SelectValue placeholder="Select a grant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Select a grant...</SelectItem>
+                          {grants.filter(g => g.status === 'active').map((grant) => (
+                            <SelectItem key={grant.id} value={grant.id.toString()}>
+                              {grant.name} (${Number(grant.amount).toLocaleString()})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
