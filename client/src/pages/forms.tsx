@@ -127,7 +127,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/forms", "POST", {
+      return apiRequest("POST", "/api/forms", {
         ...data,
         organizationId: organization?.id,
         formType: "form",
@@ -146,7 +146,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/forms/${id}`, "PATCH", data);
+      return apiRequest("PATCH", `/api/forms/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, "form"] });
@@ -161,7 +161,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/forms/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/forms/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, "form"] });
@@ -174,7 +174,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
 
   const addQuestionMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/forms/${selectedForm?.id}/questions`, "POST", data);
+      return apiRequest("POST", `/api/forms/${selectedForm?.id}/questions`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, selectedForm?.id] });
@@ -194,7 +194,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
 
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
-      return apiRequest(`/api/forms/questions/${questionId}?formId=${selectedForm?.id}`, "DELETE");
+      return apiRequest("DELETE", `/api/forms/questions/${questionId}?formId=${selectedForm?.id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, selectedForm?.id] });
@@ -207,7 +207,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
 
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      return apiRequest(`/api/forms/${id}`, "PATCH", { status });
+      return apiRequest("PATCH", `/api/forms/${id}`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, "form"] });

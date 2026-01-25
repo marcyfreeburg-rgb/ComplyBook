@@ -128,7 +128,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/forms", "POST", {
+      return apiRequest("POST", "/api/forms", {
         ...data,
         organizationId: organization?.id,
         formType: "survey",
@@ -147,7 +147,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/forms/${id}`, "PATCH", data);
+      return apiRequest("PATCH", `/api/forms/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, "survey"] });
@@ -162,7 +162,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/forms/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/forms/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, "survey"] });
@@ -175,7 +175,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
 
   const addQuestionMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest(`/api/forms/${selectedSurvey?.id}/questions`, "POST", data);
+      return apiRequest("POST", `/api/forms/${selectedSurvey?.id}/questions`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, selectedSurvey?.id] });
@@ -195,7 +195,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
 
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
-      return apiRequest(`/api/forms/questions/${questionId}?formId=${selectedSurvey?.id}`, "DELETE");
+      return apiRequest("DELETE", `/api/forms/questions/${questionId}?formId=${selectedSurvey?.id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, selectedSurvey?.id] });
@@ -208,7 +208,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
 
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      return apiRequest(`/api/forms/${id}`, "PATCH", { status });
+      return apiRequest("PATCH", `/api/forms/${id}`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, "survey"] });

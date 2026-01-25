@@ -13096,12 +13096,19 @@ Keep the response approximately 100-150 words.`;
       // Generate a unique public ID
       const publicId = crypto.randomBytes(16).toString('hex');
 
-      const form = await storage.createForm({
-        ...formData,
+      const insertData = {
+        title: formData.title,
+        description: formData.description || null,
+        formType: formData.formType || 'form',
+        settings: formData.settings || {},
+        branding: formData.branding || { useBranding: true },
+        status: 'draft' as const,
         organizationId,
         publicId,
         createdBy: userId,
-      });
+      };
+
+      const form = await storage.createForm(insertData);
 
       res.status(201).json({ data: form });
     } catch (error: any) {
