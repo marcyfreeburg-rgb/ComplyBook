@@ -78,6 +78,16 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
     description: "",
   });
   const [optionInput, setOptionInput] = useState("");
+  const [isEditQuestionOpen, setIsEditQuestionOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
+  const [editQuestionData, setEditQuestionData] = useState({
+    question: "",
+    questionType: "short_text" as QuestionType,
+    required: false,
+    options: [] as string[],
+    description: "",
+  });
+  const [editOptionInput, setEditOptionInput] = useState("");
 
   const { data: surveysResponse, isLoading } = useQuery<{ data: Form[] }>({
     queryKey: ["/api/forms", organization?.id, "survey"],
@@ -206,6 +216,21 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
     },
   });
 
+  const updateQuestionMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PATCH", `/api/forms/questions/${id}?formId=${selectedSurvey?.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/forms", organization?.id, selectedSurvey?.id] });
+      setIsEditQuestionOpen(false);
+      setEditingQuestion(null);
+      toast({ title: "Question updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update question", variant: "destructive" });
+    },
+  });
+
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       return apiRequest("PATCH", `/api/forms/${id}`, { status });
@@ -292,6 +317,47 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
     const options = [...newQuestion.options];
     options.splice(index, 1);
     setNewQuestion({ ...newQuestion, options });
+  };
+
+  const handleEditQuestion = (question: FormQuestion) => {
+    setEditingQuestion(question);
+    setEditQuestionData({
+      question: question.question,
+      questionType: question.questionType as QuestionType,
+      required: question.required,
+      options: (question.options as string[]) || [],
+      description: question.description || "",
+    });
+    setIsEditQuestionOpen(true);
+  };
+
+  const handleUpdateQuestion = () => {
+    if (!editingQuestion) return;
+    if (!editQuestionData.question.trim()) {
+      toast({ title: "Please enter a question", variant: "destructive" });
+      return;
+    }
+    if (["single_choice", "multiple_choice", "dropdown"].includes(editQuestionData.questionType) && editQuestionData.options.length < 2) {
+      toast({ title: "Please add at least 2 options", variant: "destructive" });
+      return;
+    }
+    updateQuestionMutation.mutate({
+      id: editingQuestion.id,
+      data: editQuestionData,
+    });
+  };
+
+  const addEditOption = () => {
+    if (editOptionInput.trim()) {
+      setEditQuestionData({ ...editQuestionData, options: [...editQuestionData.options, editOptionInput.trim()] });
+      setEditOptionInput("");
+    }
+  };
+
+  const removeEditOption = (index: number) => {
+    const options = [...editQuestionData.options];
+    options.splice(index, 1);
+    setEditQuestionData({ ...editQuestionData, options });
   };
 
   const handleAddQuestion = () => {
@@ -632,14 +698,24 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                             )}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteQuestionMutation.mutate(question.id)}
-                          data-testid={`button-delete-question-${question.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditQuestion(question)}
+                            data-testid={`button-edit-question-${question.id}`}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteQuestionMutation.mutate(question.id)}
+                            data-testid={`button-delete-question-${question.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -824,6 +900,120 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditQuestionOpen} onOpenChange={setIsEditQuestionOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Question</DialogTitle>
+            <DialogDescription>Update the question properties</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-question-label">Question *</Label>
+              <Input
+                id="edit-question-label"
+                placeholder="Enter your question..."
+                value={editQuestionData.question}
+                onChange={(e) => setEditQuestionData({ ...editQuestionData, question: e.target.value })}
+                data-testid="input-edit-question-label"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-question-type">Question Type</Label>
+                <Select
+                  value={editQuestionData.questionType}
+                  onValueChange={(value) => {
+                    const isChoiceType = ["single_choice", "multiple_choice", "dropdown"].includes(value);
+                    const wasChoiceType = ["single_choice", "multiple_choice", "dropdown"].includes(editQuestionData.questionType);
+                    setEditQuestionData({ 
+                      ...editQuestionData, 
+                      questionType: value as QuestionType, 
+                      // Only clear options when switching from choice type to non-choice type
+                      options: isChoiceType && wasChoiceType ? editQuestionData.options : (isChoiceType ? [] : [])
+                    });
+                  }}
+                >
+                  <SelectTrigger id="edit-question-type" data-testid="select-edit-question-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(questionTypeLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 pt-8">
+                <Switch
+                  checked={editQuestionData.required}
+                  onCheckedChange={(checked) => setEditQuestionData({ ...editQuestionData, required: checked })}
+                  data-testid="switch-edit-question-required"
+                />
+                <Label>Required</Label>
+              </div>
+            </div>
+            
+            {["single_choice", "multiple_choice", "dropdown"].includes(editQuestionData.questionType) && (
+              <div className="space-y-2">
+                <Label>Options</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add an option..."
+                    value={editOptionInput}
+                    onChange={(e) => setEditOptionInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addEditOption())}
+                    data-testid="input-edit-option"
+                  />
+                  <Button type="button" variant="outline" onClick={addEditOption} data-testid="button-add-edit-option">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {editQuestionData.options.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {editQuestionData.options.map((option, index) => (
+                      <Badge key={index} variant="secondary" className="pl-2 pr-1 py-1">
+                        {option}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 ml-1 hover:bg-transparent"
+                          onClick={() => removeEditOption(index)}
+                          data-testid={`button-remove-edit-option-${index}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-question-description">Description (Optional)</Label>
+              <Textarea
+                id="edit-question-description"
+                placeholder="Add helper text for this question..."
+                value={editQuestionData.description}
+                onChange={(e) => setEditQuestionData({ ...editQuestionData, description: e.target.value })}
+                data-testid="input-edit-question-description"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsEditQuestionOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleUpdateQuestion} 
+              disabled={updateQuestionMutation.isPending}
+              data-testid="button-save-question"
+            >
+              {updateQuestionMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

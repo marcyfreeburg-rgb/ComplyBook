@@ -13206,8 +13206,14 @@ Keep the response approximately 100-150 words.`;
     try {
       const userId = req.user.claims.sub;
       const questionId = parseInt(req.params.id);
+      // Accept formId from query string or body for backward compatibility
+      const formId = parseInt(req.query.formId as string) || parseInt(req.body.formId as string);
+      
+      if (!formId || isNaN(formId)) {
+        return res.status(400).json({ message: "formId is required" });
+      }
 
-      const questions = await storage.getFormQuestions(req.body.formId);
+      const questions = await storage.getFormQuestions(formId);
       const question = questions.find(q => q.id === questionId);
       if (!question) {
         return res.status(404).json({ message: "Question not found" });

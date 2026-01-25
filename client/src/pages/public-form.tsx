@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,8 +48,15 @@ interface PublicFormData {
 }
 
 export default function PublicForm({ formType }: PublicFormProps) {
-  const params = useParams();
-  const publicId = params.publicId as string;
+  // Extract publicId from URL path since we're not using wouter Route with params
+  // URLs are /f/{publicId} for forms and /s/{publicId} for surveys
+  const pathPrefix = formType === 'survey' ? '/s/' : '/f/';
+  const pathname = window.location.pathname.replace(/\/$/, ''); // Remove trailing slash
+  const segments = pathname.split('/');
+  // The publicId is the last segment after /f/ or /s/
+  const publicId = segments.length >= 2 && pathname.startsWith(pathPrefix.slice(0, -1)) 
+    ? segments[segments.length - 1] 
+    : '';
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
