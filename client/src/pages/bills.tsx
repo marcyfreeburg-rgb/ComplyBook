@@ -74,12 +74,19 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isNewVendorDialogOpen, setIsNewVendorDialogOpen] = useState(false);
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [previewingBill, setPreviewingBill] = useState<(Bill & { vendorName: string | null }) | null>(null);
   const [deleteBillId, setDeleteBillId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentFormData, setPaymentFormData] = useState<PaymentFormData>(defaultPaymentFormData);
+  const [newVendorForm, setNewVendorForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+  });
 
   const [formData, setFormData] = useState<BillFormData>({
     vendorId: "none",
@@ -227,6 +234,44 @@ export default function Bills({ currentOrganization }: BillsProps) {
       toast({
         title: "Error",
         description: error.message || "Failed to delete bill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create vendor mutation
+  const createVendorMutation = useMutation({
+    mutationFn: async (data: typeof newVendorForm) => {
+      const response = await apiRequest('POST', '/api/vendors', {
+        organizationId: currentOrganization.id,
+        name: data.name,
+        email: data.email || null,
+        phone: data.phone || null,
+        address: data.address || null,
+      });
+      const vendor = await response.json();
+      return vendor as Vendor;
+    },
+    onSuccess: (newVendor: Vendor) => {
+      // Update the cache immediately with the new vendor
+      queryClient.setQueryData(
+        ['/api/vendors', currentOrganization.id],
+        (oldData: Vendor[] | undefined) => [...(oldData || []), newVendor]
+      );
+      toast({
+        title: "Success",
+        description: "Vendor created successfully",
+      });
+      // Auto-select the newly created vendor
+      setFormData(prev => ({ ...prev, vendorId: newVendor.id.toString() }));
+      // Reset form and close dialog
+      setNewVendorForm({ name: "", email: "", phone: "", address: "" });
+      setIsNewVendorDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create vendor",
         variant: "destructive",
       });
     },
@@ -538,7 +583,19 @@ export default function Bills({ currentOrganization }: BillsProps) {
           >
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="vendorId">Vendor</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="vendorId">Vendor</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsNewVendorDialogOpen(true)}
+                    data-testid="button-create-vendor"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    New Vendor
+                  </Button>
+                </div>
                 <Select
                   value={formData.vendorId}
                   onValueChange={(value) => setFormData({ ...formData, vendorId: value })}
@@ -959,6 +1016,91 @@ export default function Bills({ currentOrganization }: BillsProps) {
                 {recordPaymentMutation.isPending ? "Recording..." : "Record Payment"}
               </Button>
             </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create New Vendor Dialog */}
+      <Dialog open={isNewVendorDialogOpen} onOpenChange={setIsNewVendorDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Vendor</DialogTitle>
+            <DialogDescription>
+              Add a new vendor to quickly select when creating bills
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              createVendorMutation.mutate(newVendorForm);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="vendor-name">Vendor Name *</Label>
+              <Input
+                id="vendor-name"
+                value={newVendorForm.name}
+                onChange={(e) => setNewVendorForm({ ...newVendorForm, name: e.target.value })}
+                placeholder="Enter vendor name"
+                required
+                data-testid="input-new-vendor-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vendor-email">Email</Label>
+              <Input
+                id="vendor-email"
+                type="email"
+                value={newVendorForm.email}
+                onChange={(e) => setNewVendorForm({ ...newVendorForm, email: e.target.value })}
+                placeholder="vendor@example.com"
+                data-testid="input-new-vendor-email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vendor-phone">Phone</Label>
+              <Input
+                id="vendor-phone"
+                value={newVendorForm.phone}
+                onChange={(e) => setNewVendorForm({ ...newVendorForm, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+                data-testid="input-new-vendor-phone"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vendor-address">Address</Label>
+              <Textarea
+                id="vendor-address"
+                value={newVendorForm.address}
+                onChange={(e) => setNewVendorForm({ ...newVendorForm, address: e.target.value })}
+                placeholder="Enter vendor address"
+                data-testid="input-new-vendor-address"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNewVendorForm({ name: "", email: "", phone: "", address: "" });
+                  setIsNewVendorDialogOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createVendorMutation.isPending || !newVendorForm.name.trim()}
+                data-testid="button-submit-new-vendor"
+              >
+                {createVendorMutation.isPending ? "Creating..." : "Create Vendor"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
