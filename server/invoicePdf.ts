@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-core';
+import puppeteer from 'puppeteer';
 
 interface InvoicePdfParams {
   invoiceNumber: string;
@@ -195,11 +195,18 @@ export async function generateInvoicePdf(params: InvoicePdfParams): Promise<Buff
     </html>
   `;
 
-  const browser = await puppeteer.launch({
-    executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+  // Use bundled Chromium from puppeteer, or environment variable override
+  const launchOptions: any = {
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-  });
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+  };
+  
+  // Allow override via environment variable if needed
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  
+  const browser = await puppeteer.launch(launchOptions);
 
   try {
     const page = await browser.newPage();

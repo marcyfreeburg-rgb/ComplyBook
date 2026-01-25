@@ -368,7 +368,7 @@ export async function sendInvoiceEmail({
   const accentColor = branding?.accentColor || '#0052cc';
   const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   const logoHtml = branding?.logoUrl 
-    ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 200px; height: auto;" /></div>`
+    ? `<div style="margin-bottom: 15px;"><img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 120px; max-height: 40px; object-fit: contain;" /></div>`
     : '';
   const footerHtml = branding?.footer
     ? `<div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px; text-align: center; color: #666; font-size: 12px; white-space: pre-line;">${branding.footer}</div>`
