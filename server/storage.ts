@@ -226,6 +226,10 @@ import {
   changeOrders,
   type ChangeOrder,
   type InsertChangeOrder,
+  // Dismissed recurring patterns
+  dismissedPatterns,
+  type DismissedPattern,
+  type InsertDismissedPattern,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull } from "drizzle-orm";
@@ -584,6 +588,12 @@ export interface IStorage {
   createBillLineItem(item: InsertBillLineItem): Promise<BillLineItem>;
   updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem>;
   deleteBillLineItem(id: number): Promise<void>;
+
+  // Dismissed pattern operations
+  getDismissedPatterns(organizationId: number): Promise<DismissedPattern[]>;
+  createDismissedPattern(pattern: InsertDismissedPattern & { dismissedBy: string }): Promise<DismissedPattern>;
+  deleteDismissedPattern(id: number): Promise<void>;
+  isPatternDismissed(organizationId: number, vendorName: string, patternType: 'income' | 'expense'): Promise<boolean>;
 
   // Auto-pay rule operations
   getAutoPayRules(organizationId: number): Promise<Array<AutoPayRule & { vendorName: string | null }>>;
@@ -4694,6 +4704,42 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBillLineItem(id: number): Promise<void> {
     await db.delete(billLineItems).where(eq(billLineItems.id, id));
+  }
+
+  // ============================================
+  // DISMISSED PATTERN OPERATIONS
+  // ============================================
+
+  async getDismissedPatterns(organizationId: number): Promise<DismissedPattern[]> {
+    return await db
+      .select()
+      .from(dismissedPatterns)
+      .where(eq(dismissedPatterns.organizationId, organizationId))
+      .orderBy(desc(dismissedPatterns.dismissedAt));
+  }
+
+  async createDismissedPattern(pattern: InsertDismissedPattern & { dismissedBy: string }): Promise<DismissedPattern> {
+    const [newPattern] = await db.insert(dismissedPatterns).values(pattern).returning();
+    return newPattern;
+  }
+
+  async deleteDismissedPattern(id: number): Promise<void> {
+    await db.delete(dismissedPatterns).where(eq(dismissedPatterns.id, id));
+  }
+
+  async isPatternDismissed(organizationId: number, vendorName: string, patternType: 'income' | 'expense'): Promise<boolean> {
+    const [dismissed] = await db
+      .select()
+      .from(dismissedPatterns)
+      .where(
+        and(
+          eq(dismissedPatterns.organizationId, organizationId),
+          eq(dismissedPatterns.vendorName, vendorName),
+          eq(dismissedPatterns.patternType, patternType)
+        )
+      )
+      .limit(1);
+    return !!dismissed;
   }
 
   // ============================================

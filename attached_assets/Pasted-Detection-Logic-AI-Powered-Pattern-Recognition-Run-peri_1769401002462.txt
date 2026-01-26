@@ -1,0 +1,41 @@
+Detection Logic (AI-Powered Pattern Recognition)
+Run periodically (e.g., daily/weekly on synced transactions).
+Criteria for "recurring":
+Same vendor/payee (or very similar name after cleaning).
+Similar amount (±10–20% tolerance, since utilities vary).
+Occurs at regular intervals (e.g., every 28–35 days for monthly, or exact day-of-month).
+Minimum occurrences: 2–3 in last 6–12 months (configurable).
+Exclude one-offs (e.g., large equipment purchases).
+
+Use simple stats first (no heavy ML needed initially):
+Group by vendor + rounded amount + day-of-month.
+Calculate frequency (e.g., mean/median interval in days).
+Confidence score: High if 3+ matches within tolerance; medium if 2.
+
+For revenue/deposits: Same logic but on income-side transactions (e.g., recurring donor ACH, grant reimbursements).
+
+User Experience Flow
+Suggestions Inbox/Dashboard: Add a "Recurring Suggestions" section (e.g., in Bills or a new "Smart Insights" tab).
+"We detected 3 payments to Netflix (~$15.99 each, every ~30 days). Add as recurring bill?"
+Buttons: "Add to Bills" (pre-fills modal with vendor, estimated amount, frequency, funding source defaulted to Unrestricted or last-used grant).
+"Ignore" / "Not recurring" (train the model—future detections improve).
+"Review transactions" link to show evidence.
+
+Auto-Add Option (with toggle): For high-confidence ones, auto-create as "scheduled" bill (user approves/edits later).
+Revenue Side: Similar suggestions for "Recurring Deposits" → feed into budget as "expected monthly revenue" (e.g., "Detected $500/month average from Donor Y—include in forecast?").
+
+Integration with Budgeting & Forecasting
+Auto-populate budgets: When recurring bill added → suggest allocating in next budget period (e.g., divide annual amount by 12).
+Forecast boost: Factor recurrings into cash flow projection:
+Outflows: Subtract projected bills monthly.
+Inflows: Add projected deposits.
+Highlight: "Based on patterns, expect $X net outflow next month—review grants."
+
+Tie to grants: If bill funding source = specific grant, update remaining balance forecast (prevent overspend alerts earlier).
+Alerts: "New recurring pattern detected—may impact restricted fund Y."
+
+Edge Cases & Safeguards
+Variable amounts: Use median/average for suggestion, allow user to set "fixed" or "estimated" amount.
+False positives: Easy "dismiss forever" per vendor/pattern.
+Privacy/compliance: Process locally or anonymized—no sending raw data externally unless using external AI API (e.g., OpenAI for better pattern detection later).
+Nonprofit caution: Flag if pattern looks like restricted revenue (e.g., grant draw) → suggest fund allocation.

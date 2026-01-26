@@ -885,6 +885,35 @@ export type InsertBillLineItem = z.infer<typeof insertBillLineItemSchema>;
 export type BillLineItem = typeof billLineItems.$inferSelect;
 
 // ============================================
+// DISMISSED RECURRING PATTERNS
+// ============================================
+// Track patterns that users have dismissed/ignored to avoid showing them again
+
+export const dismissedPatterns = pgTable("dismissed_patterns", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
+  patternType: transactionTypeEnum("pattern_type").notNull(), // income or expense
+  frequency: recurringFrequencyEnum("frequency"), // The detected frequency that was dismissed
+  averageAmount: numeric("average_amount", { precision: 12, scale: 2 }), // Approximate amount for matching
+  reason: varchar("reason", { length: 50 }), // 'not_recurring', 'one_time', 'already_tracked', 'other'
+  dismissedBy: varchar("dismissed_by").notNull().references(() => users.id),
+  dismissedAt: timestamp("dismissed_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_dismissed_patterns_org").on(table.organizationId),
+  index("idx_dismissed_patterns_vendor").on(table.organizationId, table.vendorName),
+]);
+
+export const insertDismissedPatternSchema = createInsertSchema(dismissedPatterns).omit({
+  id: true,
+  dismissedBy: true,
+  dismissedAt: true,
+});
+
+export type InsertDismissedPattern = z.infer<typeof insertDismissedPatternSchema>;
+export type DismissedPattern = typeof dismissedPatterns.$inferSelect;
+
+// ============================================
 // TRANSACTIONS
 // ============================================
 

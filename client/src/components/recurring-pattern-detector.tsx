@@ -15,7 +15,9 @@ import {
   ChevronDown, 
   ChevronUp,
   RefreshCw,
-  FileText
+  FileText,
+  X,
+  Eye
 } from "lucide-react";
 import {
   Collapsible,
@@ -92,11 +94,38 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
         description: "A new recurring bill has been created from the detected pattern.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/bills'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/detect-recurring'] });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to create bill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dismissPatternMutation = useMutation({
+    mutationFn: async (pattern: RecurringPattern) => {
+      return apiRequest('POST', `/api/ai/dismiss-pattern/${organizationId}`, {
+        vendorName: pattern.vendorName,
+        patternType: pattern.transactionType,
+        frequency: pattern.frequency,
+        averageAmount: pattern.averageAmount,
+        reason: 'not_recurring'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Pattern Dismissed",
+        description: "This pattern will no longer appear in suggestions.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/detect-recurring'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to dismiss pattern",
         variant: "destructive",
       });
     },
@@ -206,7 +235,9 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                           isExpanded={expandedPatterns.has(pattern.vendorName)}
                           onToggle={() => togglePattern(pattern.vendorName)}
                           onCreateBill={() => createBillMutation.mutate(pattern)}
+                          onDismiss={() => dismissPatternMutation.mutate(pattern)}
                           isCreating={createBillMutation.isPending}
+                          isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
                         />
                       ))}
@@ -220,6 +251,9 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                       <TrendingUp className="w-4 h-4 text-green-500" />
                       Recurring Income ({incomePatterns.length})
                     </h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      These recurring deposits can be used in your budget forecast as expected monthly revenue.
+                    </p>
                     <div className="space-y-2">
                       {incomePatterns.map((pattern) => (
                         <PatternCard
@@ -227,6 +261,8 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                           pattern={pattern}
                           isExpanded={expandedPatterns.has(pattern.vendorName)}
                           onToggle={() => togglePattern(pattern.vendorName)}
+                          onDismiss={() => dismissPatternMutation.mutate(pattern)}
+                          isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
                           isIncome
                         />
@@ -248,7 +284,9 @@ interface PatternCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   onCreateBill?: () => void;
+  onDismiss?: () => void;
   isCreating?: boolean;
+  isDismissing?: boolean;
   frequencyLabels: Record<string, string>;
   isIncome?: boolean;
 }
@@ -258,18 +296,27 @@ function PatternCard({
   isExpanded, 
   onToggle, 
   onCreateBill, 
+  onDismiss,
   isCreating,
+  isDismissing,
   frequencyLabels,
   isIncome 
 }: PatternCardProps) {
+  const vendorSlug = pattern.vendorName.toLowerCase().replace(/\s+/g, '-');
+  
   return (
     <div 
       className={`border rounded-lg p-4 ${isIncome ? 'bg-green-50/50 dark:bg-green-950/20' : 'bg-orange-50/50 dark:bg-orange-950/20'}`}
-      data-testid={`pattern-card-${pattern.vendorName.toLowerCase().replace(/\s+/g, '-')}`}
+      data-testid={`pattern-card-${vendorSlug}`}
     >
-      <div className="flex items-start justify-between">
+      <div className="mb-2 text-sm text-muted-foreground" data-testid={`text-pattern-summary-${vendorSlug}`}>
+        We detected {pattern.transactionCount} payments to <span className="font-medium text-foreground">{pattern.vendorName}</span> (~${pattern.averageAmount.toFixed(2)} each, every ~{frequencyLabels[pattern.frequency]?.toLowerCase() || pattern.frequency}). 
+        {!isIncome ? ' Add as recurring bill?' : ' Include in forecast?'}
+      </div>
+      
+      <div className="flex items-start justify-between gap-2 flex-wrap">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h4 className="font-medium">{pattern.vendorName}</h4>
             <Badge variant="outline" className="text-xs">
               {frequencyLabels[pattern.frequency] || pattern.frequency}
@@ -284,12 +331,12 @@ function PatternCard({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                AI confidence level for this recurring pattern
+                {pattern.confidence >= 80 ? 'High confidence' : 'Medium confidence'} - based on {pattern.transactionCount} matching transactions
               </TooltipContent>
             </Tooltip>
           </div>
           
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1">
               <DollarSign className="w-3 h-3" />
               Avg: ${pattern.averageAmount.toFixed(2)}
@@ -312,7 +359,7 @@ function PatternCard({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {!isIncome && onCreateBill && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -320,36 +367,66 @@ function PatternCard({
                   size="sm"
                   onClick={onCreateBill}
                   disabled={isCreating}
-                  data-testid={`button-create-bill-${pattern.vendorName.toLowerCase().replace(/\s+/g, '-')}`}
+                  data-testid={`button-create-bill-${vendorSlug}`}
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Add as Bill
+                  Add to Bills
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Create a recurring bill from this pattern
+                Create a recurring bill from this pattern (pre-fills vendor, amount, frequency)
               </TooltipContent>
             </Tooltip>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            data-testid={`button-toggle-${pattern.vendorName.toLowerCase().replace(/\s+/g, '-')}`}
-          >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </Button>
+          {onDismiss && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onDismiss}
+                  disabled={isDismissing}
+                  data-testid={`button-dismiss-${vendorSlug}`}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Not Recurring
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Dismiss this pattern - it won't appear in future suggestions
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                data-testid={`button-review-${vendorSlug}`}
+              >
+                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isExpanded ? 'Hide' : 'Review'} transactions
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
       {isExpanded && (
         <div className="mt-4 pt-4 border-t">
-          <h5 className="text-sm font-medium mb-2">Recent Transactions</h5>
+          <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            Transaction Evidence
+          </h5>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {pattern.transactions.map((tx) => (
               <div 
                 key={tx.id} 
                 className="flex items-center justify-between text-sm py-1 px-2 rounded bg-background"
+                data-testid={`row-transaction-${tx.id}`}
               >
                 <span className="text-muted-foreground">{tx.date}</span>
                 <span className="truncate flex-1 mx-4">{tx.description}</span>

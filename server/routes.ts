@@ -5413,10 +5413,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const patterns = await detectRecurringPatterns(organizationId, lookbackMonths);
-      res.json(patterns);
+      
+      // Filter out dismissed patterns (normalize vendor names to lowercase for matching)
+      const dismissedPatterns = await storage.getDismissedPatterns(organizationId);
+      const dismissedVendorNames = new Set(
+        dismissedPatterns.map(dp => `${dp.vendorName.toLowerCase()}-${dp.patternType}`)
+      );
+      
+      const filteredPatterns = patterns.filter(
+        p => !dismissedVendorNames.has(`${p.vendorName.toLowerCase()}-${p.transactionType}`)
+      );
+      
+      res.json(filteredPatterns);
     } catch (error) {
       console.error("Error detecting recurring patterns:", error);
       res.status(500).json({ message: "Failed to detect recurring patterns" });
+    }
+  });
+  
+  // Dismiss a detected pattern (mark as "not recurring")
+  app.post('/api/ai/dismiss-pattern/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const dismissSchema = z.object({
+        vendorName: z.string().min(1, "Vendor name is required"),
+        patternType: z.enum(['income', 'expense']),
+        frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).optional(),
+        averageAmount: z.number().optional(),
+        reason: z.enum(['not_recurring', 'one_time', 'already_tracked', 'other']).optional()
+      });
+
+      const parseResult = dismissSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid dismiss data", 
+          errors: parseResult.error.errors 
+        });
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Store vendor name in lowercase for consistent matching
+      const dismissed = await storage.createDismissedPattern({
+        organizationId,
+        vendorName: parseResult.data.vendorName.toLowerCase(),
+        patternType: parseResult.data.patternType,
+        frequency: parseResult.data.frequency || null,
+        averageAmount: parseResult.data.averageAmount ? String(parseResult.data.averageAmount) : null,
+        reason: parseResult.data.reason || 'not_recurring',
+        dismissedBy: userId
+      });
+
+      res.json(dismissed);
+    } catch (error) {
+      console.error("Error dismissing pattern:", error);
+      res.status(500).json({ message: "Failed to dismiss pattern" });
+    }
+  });
+
+  // Get dismissed patterns for an organization
+  app.get('/api/ai/dismissed-patterns/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const dismissed = await storage.getDismissedPatterns(organizationId);
+      res.json(dismissed);
+    } catch (error) {
+      console.error("Error getting dismissed patterns:", error);
+      res.status(500).json({ message: "Failed to get dismissed patterns" });
+    }
+  });
+
+  // Restore a dismissed pattern (remove from dismissed list)
+  app.delete('/api/ai/dismissed-patterns/:organizationId/:patternId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const patternId = parseInt(req.params.patternId);
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      await storage.deleteDismissedPattern(patternId);
+      res.json({ message: "Pattern restored" });
+    } catch (error) {
+      console.error("Error restoring pattern:", error);
+      res.status(500).json({ message: "Failed to restore pattern" });
     }
   });
 
