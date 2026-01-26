@@ -1,0 +1,71 @@
+Bills List Page Suggestions
+
+Add Summary Metrics / Quick Stats (Top of Page)
+Nonprofits love at-a-glance insights. Add a small row of cards or badges above the table, e.g.:
+Total Outstanding: $X.XX (sum of scheduled/received)
+Due Soon (next 7/30 days): $Y.YY (highlight in red/orange if overdue)
+Overdue Bills: Z (with count and urgent icon)
+Total Paid This Month/Year: $A.AA
+This mirrors common AP dashboards (e.g., NetSuite, QuickBooks-inspired) and ties into your cash flow forecasting.
+
+Enhance Filters & Sorting
+Current: "All Statuses" dropdown is good—expand options if not already (Scheduled, Received, Paid, Overdue, Voided).
+Add quick filters: By Vendor, By Due Date Range, By Funding Source (huge for nonprofits—e.g., filter bills funded by specific grants).
+Make table sortable on columns (click headers for date/amount/vendor).
+
+Visual Status Indicators
+Use color-coded badges consistently (like your current blue for "paid", gray for "scheduled", orange/red for "overdue").
+Add overdue highlighting: Row background tint or icon for bills past due date.
+Consider a progress bar or small chart if you have many bills (e.g., % paid vs. outstanding), but keep it optional to avoid clutter.
+
+Actions Column Polish
+Current icons (view 👁️, edit ✏️, delete 🗑️, pay 💲) are clear—great.
+Add tooltips on hover (e.g., "Record Payment" for $ Pay).
+For paid bills: Gray out or hide "Pay" button to prevent accidental clicks.
+
+Search & Pagination
+Add a search bar (by vendor, bill #, amount) if not there.
+Pagination or "Show more" for longer lists.
+
++ Create Bill Button
+Already prominent (blue, top-right)—perfect. Consider duplicating it at bottom for long lists.
+
+
+Edit/Create Bill Modal Suggestions
+
+Line Items Section
+Current placeholder ("Item description", qty 1, rate 0, amount 0) is basic—make it more robust:
+Required fields: Description, Amount (auto-calculate subtotal).
+Optional: Category (dropdown from your categories—ties to fund accounting/AI cat).
+Grant/Fund allocation per line item (advanced but powerful—e.g., split one bill across multiple grants).
+Tax per line or global (your Tax Amount field is global—consider per-line if common).
+
+Add "Add from Expense" or "Import from Transaction" button later for efficiency.
+
+Funding Source
+This is excellent—keep the tooltip/explanation.
+Make it required for nonprofits (or warn if blank).
+Dynamic options: Pull from active grants/funds (e.g., dropdown shows "Unrestricted Funds", "Science Foundation Grant - Remaining $X", etc., with balances).
+Validation: Prevent selection if grant has insufficient remaining funds (tie to your overspend guards).
+
+Layout & Flow Improvements
+Required fields — Already starred (*), good. Add red outline on submit if missing.
+Date pickers — Calendar icons are there—ensure mobile-friendly.
+Vendor — "+ New Vendor" inline is convenient—ensure it pops a quick form (name, email, address for 1099s).
+Status — "Scheduled" default makes sense; add "Draft" for incomplete bills.
+Notes — Good for internal reminders.
+Totals — Show Subtotal + Tax + Total clearly (currently at bottom—bold/large font).
+Buttons — "Update Bill" primary (blue), "Cancel" secondary (gray).
+
+Nonprofit-Specific Touches
+Add a "Attach Invoice PDF/Scan" field (upload receipt for audit trail).
+Checkbox: "Recurring Bill?" → Set frequency (monthly teaching rate example fits perfectly).
+Warning banner if due date < today or funding source low.
+
+
+General Polish Recommendations
+
+Consistency — Match styling with invoices (e.g., same fonts, colors, success messages after pay/record).
+Mobile Responsiveness — Test modal/table on phone (nonprofit admins often work remotely).
+Help Text — Add "?" icons or tooltips on funding source, status meanings.
+Audit/Compliance Tie-In — Ensure every edit/payment logs to your audit trail (visible in security dashboard).

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import type { Bill, BillLineItem, Vendor, Organization, Grant } from "@shared/schema";
@@ -45,7 +46,7 @@ interface BillFormData {
   billNumber: string;
   issueDate: string;
   dueDate: string;
-  status: 'received' | 'scheduled' | 'paid' | 'partial' | 'overdue' | 'cancelled';
+  status: 'draft' | 'received' | 'scheduled' | 'paid' | 'partial' | 'overdue' | 'cancelled';
   notes: string;
   taxAmount: string;
   fundingSource: 'unrestricted' | 'grant';
@@ -86,6 +87,11 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const [previewingBill, setPreviewingBill] = useState<(Bill & { vendorName: string | null }) | null>(null);
   const [deleteBillId, setDeleteBillId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [vendorFilter, setVendorFilter] = useState<string>("all");
+  const [fundingSourceFilter, setFundingSourceFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortField, setSortField] = useState<'dueDate' | 'amount' | 'vendor' | 'issueDate'>('dueDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [paymentFormData, setPaymentFormData] = useState<PaymentFormData>(defaultPaymentFormData);
   const [newVendorForm, setNewVendorForm] = useState({
     name: "",
@@ -447,6 +453,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      draft: "outline",
       received: "secondary",
       scheduled: "outline",
       paid: "default",
@@ -457,9 +464,101 @@ export default function Bills({ currentOrganization }: BillsProps) {
     return <Badge variant={variants[status] || "default"} data-testid={`badge-status-${status}`}>{status}</Badge>;
   };
 
-  const filteredBills = statusFilter === "all" 
-    ? bills 
-    : bills.filter(bill => bill.status === statusFilter);
+  // Calculate summary metrics using date-only comparisons
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Start of today
+  const sevenDaysFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  
+  const totalOutstanding = bills
+    .filter(b => ['received', 'scheduled', 'partial'].includes(b.status))
+    .reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+  
+  const dueSoonBills = bills.filter(b => {
+    if (['paid', 'cancelled'].includes(b.status)) return false;
+    const dueDate = new Date(b.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate >= today && dueDate <= sevenDaysFromNow;
+  });
+  const dueSoonAmount = dueSoonBills.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+  
+  const overdueBills = bills.filter(b => {
+    if (['paid', 'cancelled'].includes(b.status)) return false;
+    const dueDate = new Date(b.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  });
+  const overdueAmount = overdueBills.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+  
+  const totalPaidAllTime = bills
+    .filter(b => b.status === 'paid')
+    .reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+
+  // Filter and sort bills
+  const filteredBills = bills
+    .filter(bill => {
+      // Status filter
+      if (statusFilter !== "all" && bill.status !== statusFilter) return false;
+      
+      // Vendor filter
+      if (vendorFilter !== "all" && bill.vendorId?.toString() !== vendorFilter) return false;
+      
+      // Funding source filter (nonprofit only)
+      if (fundingSourceFilter !== "all") {
+        const billFundingSource = (bill as any).fundingSource || 'unrestricted';
+        if (fundingSourceFilter === 'unrestricted' && billFundingSource !== 'unrestricted') return false;
+        if (fundingSourceFilter.startsWith('grant-')) {
+          const grantId = fundingSourceFilter.replace('grant-', '');
+          if ((bill as any).grantId?.toString() !== grantId) return false;
+        }
+      }
+      
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesBillNumber = bill.billNumber.toLowerCase().includes(query);
+        const matchesVendor = bill.vendorName?.toLowerCase().includes(query);
+        const matchesAmount = bill.totalAmount.includes(query);
+        if (!matchesBillNumber && !matchesVendor && !matchesAmount) return false;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'dueDate':
+          comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          break;
+        case 'issueDate':
+          comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+          break;
+        case 'amount':
+          comparison = parseFloat(a.totalAmount) - parseFloat(b.totalAmount);
+          break;
+        case 'vendor':
+          comparison = (a.vendorName || '').localeCompare(b.vendorName || '');
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const isOverdue = (bill: Bill) => {
+    if (['paid', 'cancelled'].includes(bill.status)) return false;
+    const dueDate = new Date(bill.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return dueDate < todayStart;
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -474,28 +573,141 @@ export default function Bills({ currentOrganization }: BillsProps) {
         </Button>
       </div>
 
+      {/* Summary Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Outstanding</p>
+                <p className="text-2xl font-bold" data-testid="metric-outstanding">${totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Due in 7 Days</p>
+                <p className="text-2xl font-bold" data-testid="metric-due-soon">
+                  ${dueSoonAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">({dueSoonBills.length})</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className={overdueBills.length > 0 ? "border-red-200 dark:border-red-800" : ""}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${overdueBills.length > 0 ? "bg-red-100 dark:bg-red-900" : "bg-gray-100 dark:bg-gray-800"}`}>
+                <AlertTriangle className={`w-5 h-5 ${overdueBills.length > 0 ? "text-red-600 dark:text-red-400" : "text-gray-500"}`} />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Overdue</p>
+                <p className={`text-2xl font-bold ${overdueBills.length > 0 ? "text-red-600 dark:text-red-400" : ""}`} data-testid="metric-overdue">
+                  ${overdueAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">({overdueBills.length})</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Paid</p>
+                <p className="text-2xl font-bold" data-testid="metric-paid">${totalPaidAllTime.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Bill List</CardTitle>
-              <CardDescription>View and manage your bills</CardDescription>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Bill List</CardTitle>
+                <CardDescription>View and manage your bills</CardDescription>
+              </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40" data-testid="select-status-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            
+            {/* Search and Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search bills, vendors, amounts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search"
+                />
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-36" data-testid="select-status-filter">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="received">Received</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={vendorFilter} onValueChange={setVendorFilter}>
+                <SelectTrigger className="w-40" data-testid="select-vendor-filter">
+                  <SelectValue placeholder="Vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vendors</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {isNonprofit && (
+                <Select value={fundingSourceFilter} onValueChange={setFundingSourceFilter}>
+                  <SelectTrigger className="w-48" data-testid="select-funding-filter">
+                    <SelectValue placeholder="Funding Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Funding Sources</SelectItem>
+                    <SelectItem value="unrestricted">Unrestricted Funds</SelectItem>
+                    {grants.filter(g => g.status === 'active').map((grant) => (
+                      <SelectItem key={grant.id} value={`grant-${grant.id}`}>
+                        {grant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -510,18 +722,58 @@ export default function Bills({ currentOrganization }: BillsProps) {
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-3 font-medium">Bill #</th>
-                    <th className="pb-3 font-medium">Vendor</th>
-                    <th className="pb-3 font-medium">Issue Date</th>
-                    <th className="pb-3 font-medium">Due Date</th>
-                    <th className="pb-3 font-medium">Amount</th>
+                    <th className="pb-3 font-medium">Bill/Account #</th>
+                    <th className="pb-3 font-medium">
+                      <button 
+                        onClick={() => toggleSort('vendor')}
+                        className="flex items-center gap-1 hover:text-primary"
+                        data-testid="sort-vendor"
+                      >
+                        Vendor
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'vendor' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium">
+                      <button 
+                        onClick={() => toggleSort('issueDate')}
+                        className="flex items-center gap-1 hover:text-primary"
+                        data-testid="sort-issue-date"
+                      >
+                        Issue Date
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'issueDate' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium">
+                      <button 
+                        onClick={() => toggleSort('dueDate')}
+                        className="flex items-center gap-1 hover:text-primary"
+                        data-testid="sort-due-date"
+                      >
+                        Due Date
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'dueDate' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium">
+                      <button 
+                        onClick={() => toggleSort('amount')}
+                        className="flex items-center gap-1 hover:text-primary"
+                        data-testid="sort-amount"
+                      >
+                        Amount
+                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </button>
+                    </th>
                     <th className="pb-3 font-medium">Status</th>
                     <th className="pb-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredBills.map((bill) => (
-                    <tr key={bill.id} className="border-b" data-testid={`row-bill-${bill.id}`}>
+                    <tr 
+                      key={bill.id} 
+                      className={`border-b ${isOverdue(bill) ? 'bg-red-50 dark:bg-red-950/30' : ''}`} 
+                      data-testid={`row-bill-${bill.id}`}
+                    >
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-muted-foreground" />
@@ -553,40 +805,70 @@ export default function Bills({ currentOrganization }: BillsProps) {
                         </div>
                       </td>
                       <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleView(bill)}
-                            data-testid={`button-view-bill-${bill.id}`}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(bill)}
-                            data-testid={`button-edit-${bill.id}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(bill.id)}
-                            data-testid={`button-delete-${bill.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                          {bill.status !== 'paid' && bill.status !== 'cancelled' && (
+                        <div className="flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleView(bill)}
+                                data-testid={`button-view-bill-${bill.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>View Bill</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(bill)}
+                                data-testid={`button-edit-${bill.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit Bill</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(bill.id)}
+                                data-testid={`button-delete-${bill.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete Bill</TooltipContent>
+                          </Tooltip>
+                          {bill.status !== 'paid' && bill.status !== 'cancelled' ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRecordPayment(bill)}
+                                  data-testid={`button-pay-${bill.id}`}
+                                >
+                                  <DollarSign className="w-4 h-4 mr-1" />
+                                  Pay
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Record Payment</TooltipContent>
+                            </Tooltip>
+                          ) : (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleRecordPayment(bill)}
-                              data-testid={`button-pay-${bill.id}`}
+                              disabled
+                              className="opacity-50 cursor-not-allowed"
                             >
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              Pay
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              {bill.status === 'paid' ? 'Paid' : 'Cancelled'}
                             </Button>
                           )}
                         </div>
@@ -616,6 +898,41 @@ export default function Bills({ currentOrganization }: BillsProps) {
               {editingBill ? "Update the bill details" : "Fill in the details to create a new bill"}
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Warning banners */}
+          {formData.dueDate && (() => {
+            const dueDate = new Date(formData.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            return dueDate < todayStart;
+          })() && formData.status !== 'paid' && formData.status !== 'cancelled' && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium">Past Due:</span> This bill's due date has passed. Consider updating the status to "Overdue" or recording a payment.
+              </div>
+            </div>
+          )}
+          
+          {isNonprofit && formData.fundingSource === 'grant' && formData.grantId && formData.grantId !== 'none' && (() => {
+            const selectedGrant = grants.find(g => g.id.toString() === formData.grantId);
+            if (selectedGrant) {
+              const remaining = Number(selectedGrant.amount) - Number((selectedGrant as any).spentAmount || 0);
+              if (remaining < calculateTotal()) {
+                return (
+                  <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-lg text-orange-700 dark:text-orange-300">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <span className="font-medium">Low Grant Funds:</span> The selected grant has ${remaining.toLocaleString()} remaining, which is less than this bill's total of ${calculateTotal().toLocaleString()}.
+                    </div>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
+          
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -706,6 +1023,7 @@ export default function Bills({ currentOrganization }: BillsProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="received">Received</SelectItem>
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
@@ -775,11 +1093,20 @@ export default function Bills({ currentOrganization }: BillsProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Select a grant...</SelectItem>
-                          {grants.filter(g => g.status === 'active').map((grant) => (
-                            <SelectItem key={grant.id} value={grant.id.toString()}>
-                              {grant.name} (${Number(grant.amount).toLocaleString()})
-                            </SelectItem>
-                          ))}
+                          {grants.filter(g => g.status === 'active').map((grant) => {
+                            const remaining = Number(grant.amount) - Number((grant as any).spentAmount || 0);
+                            const isLowFunds = remaining < calculateTotal();
+                            return (
+                              <SelectItem key={grant.id} value={grant.id.toString()}>
+                                <div className="flex flex-col">
+                                  <span>{grant.name}</span>
+                                  <span className={`text-xs ${isLowFunds ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                                    ${remaining.toLocaleString()} remaining of ${Number(grant.amount).toLocaleString()}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
