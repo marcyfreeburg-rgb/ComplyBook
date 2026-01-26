@@ -111,6 +111,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
     taxAmount: "0.00",
     fundingSource: "unrestricted",
     grantId: "none",
+    isRecurring: false,
+    recurringFrequency: "",
+    recurringEndDate: "",
     lineItems: [{ description: "", quantity: "1", rate: "0.00" }],
   });
 
@@ -575,8 +578,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
       </div>
 
       {/* AI Pattern Detection */}
-      {organization && (
-        <RecurringPatternDetector organizationId={organization.id} />
+      {currentOrganization && (
+        <RecurringPatternDetector organizationId={currentOrganization.id} />
       )}
 
       {/* Summary Metrics */}
