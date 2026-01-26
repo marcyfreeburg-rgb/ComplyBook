@@ -23,7 +23,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar, Sparkles } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar, Sparkles, Filter, X, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import type { Bill, BillLineItem, Vendor, Organization, Grant } from "@shared/schema";
@@ -93,6 +100,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortField, setSortField] = useState<'dueDate' | 'amount' | 'vendor' | 'issueDate'>('dueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedBills, setSelectedBills] = useState<Set<number>>(new Set());
+  const [isBulkPaymentDialogOpen, setIsBulkPaymentDialogOpen] = useState(false);
+  const [quickFilter, setQuickFilter] = useState<'all' | 'due-soon' | 'overdue' | 'unpaid'>('all');
   const [paymentFormData, setPaymentFormData] = useState<PaymentFormData>(defaultPaymentFormData);
   const [newVendorForm, setNewVendorForm] = useState({
     name: "",
@@ -497,9 +507,53 @@ export default function Bills({ currentOrganization }: BillsProps) {
     .filter(b => b.status === 'paid')
     .reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
 
+  // Helper function to check if bill is due within 7 days
+  const isDueSoon = (bill: Bill) => {
+    if (['paid', 'cancelled'].includes(bill.status)) return false;
+    const dueDate = new Date(bill.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    return dueDate >= today && dueDate <= nextWeek;
+  };
+
+  // Helper function to check if bill is overdue
+  const isBillOverdue = (bill: Bill) => {
+    if (['paid', 'cancelled'].includes(bill.status)) return false;
+    const dueDate = new Date(bill.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  };
+
+  // Get days until due (negative = overdue)
+  const getDaysUntilDue = (bill: Bill) => {
+    const dueDate = new Date(bill.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = dueDate.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Calculate remaining amount for a bill
+  const getRemainingAmount = (bill: Bill) => {
+    const total = parseFloat(bill.totalAmount);
+    const paid = parseFloat((bill as any).paidAmount || '0');
+    return total - paid;
+  };
+
   // Filter and sort bills
   const filteredBills = bills
     .filter(bill => {
+      // Quick filter
+      if (quickFilter === 'due-soon' && !isDueSoon(bill)) return false;
+      if (quickFilter === 'overdue' && !isBillOverdue(bill)) return false;
+      if (quickFilter === 'unpaid' && ['paid', 'cancelled'].includes(bill.status)) return false;
+      
       // Status filter
       if (statusFilter !== "all" && bill.status !== statusFilter) return false;
       
@@ -564,17 +618,106 @@ export default function Bills({ currentOrganization }: BillsProps) {
     return dueDate < todayStart;
   };
 
+  // Bulk selection handlers
+  const toggleSelectBill = (billId: number) => {
+    setSelectedBills(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(billId)) {
+        newSet.delete(billId);
+      } else {
+        newSet.add(billId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedBills.size === filteredBills.length) {
+      setSelectedBills(new Set());
+    } else {
+      setSelectedBills(new Set(filteredBills.map(b => b.id)));
+    }
+  };
+
+  const selectedBillsData = filteredBills.filter(b => selectedBills.has(b.id));
+  const selectedTotal = selectedBillsData.reduce((sum, b) => sum + parseFloat(b.totalAmount), 0);
+
+  // Export bills to CSV
+  const exportToCSV = () => {
+    const billsToExport = selectedBills.size > 0 ? selectedBillsData : filteredBills;
+    const headers = ['Bill Number', 'Vendor', 'Issue Date', 'Due Date', 'Amount', 'Paid', 'Remaining', 'Status', 'Funding Source'];
+    const rows = billsToExport.map(bill => [
+      bill.billNumber,
+      bill.vendorName || 'No vendor',
+      safeFormatDate(bill.issueDate, "yyyy-MM-dd"),
+      safeFormatDate(bill.dueDate, "yyyy-MM-dd"),
+      parseFloat(bill.totalAmount).toFixed(2),
+      parseFloat((bill as any).paidAmount || '0').toFixed(2),
+      getRemainingAmount(bill).toFixed(2),
+      bill.status,
+      (bill as any).fundingSource || 'unrestricted'
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `bills-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    
+    toast({
+      title: "Export Complete",
+      description: `Exported ${billsToExport.length} bills to CSV`,
+    });
+  };
+
+  // Bulk mark as paid mutation
+  const bulkMarkAsPaidMutation = useMutation({
+    mutationFn: async (billIds: number[]) => {
+      const results = await Promise.all(
+        billIds.map(id => 
+          apiRequest('PATCH', `/api/bills/${id}`, {
+            status: 'paid',
+            paidAmount: bills.find(b => b.id === id)?.totalAmount
+          })
+        )
+      );
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bills', currentOrganization.id] });
+      setSelectedBills(new Set());
+      toast({
+        title: "Bills Updated",
+        description: `${selectedBills.size} bills marked as paid`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update bills",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Bills</h1>
           <p className="text-muted-foreground">Manage bills received from vendors</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-bill">
-          <Plus className="w-4 h-4 mr-2" />
-          Create Bill
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={exportToCSV} data-testid="button-export">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-bill">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Bill
+          </Button>
+        </div>
       </div>
 
       {/* AI Pattern Detection - Only show expense patterns on Bills page */}
@@ -585,50 +728,57 @@ export default function Bills({ currentOrganization }: BillsProps) {
         />
       )}
 
-      {/* Summary Metrics */}
+      {/* Summary Metrics - Enhanced with larger fonts and better visuals */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <Card className="hover-elevate cursor-pointer" onClick={() => setQuickFilter(quickFilter === 'unpaid' ? 'all' : 'unpaid')}>
+          <CardContent className="pt-6 pb-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+                <DollarSign className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Outstanding</p>
-                <p className="text-2xl font-bold" data-testid="metric-outstanding">${totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-medium text-muted-foreground">Outstanding</p>
+                <p className="text-3xl font-bold tracking-tight" data-testid="metric-outstanding">
+                  ${totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+        <Card className="hover-elevate cursor-pointer" onClick={() => setQuickFilter(quickFilter === 'due-soon' ? 'all' : 'due-soon')}>
+          <CardContent className="pt-6 pb-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-xl">
+                <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Due in 7 Days</p>
-                <p className="text-2xl font-bold" data-testid="metric-due-soon">
+                <p className="text-sm font-medium text-muted-foreground">Due in 7 Days</p>
+                <p className="text-3xl font-bold tracking-tight" data-testid="metric-due-soon">
                   ${dueSoonAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  <span className="text-sm font-normal text-muted-foreground ml-1">({dueSoonBills.length})</span>
                 </p>
+                <p className="text-sm text-muted-foreground">{dueSoonBills.length} bill{dueSoonBills.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card className={overdueBills.length > 0 ? "border-red-200 dark:border-red-800" : ""}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${overdueBills.length > 0 ? "bg-red-100 dark:bg-red-900" : "bg-gray-100 dark:bg-gray-800"}`}>
-                <AlertTriangle className={`w-5 h-5 ${overdueBills.length > 0 ? "text-red-600 dark:text-red-400" : "text-gray-500"}`} />
+        <Card 
+          className={`hover-elevate cursor-pointer ${overdueBills.length > 0 ? "border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-950/20" : ""}`}
+          onClick={() => setQuickFilter(quickFilter === 'overdue' ? 'all' : 'overdue')}
+        >
+          <CardContent className="pt-6 pb-4">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-xl ${overdueBills.length > 0 ? "bg-red-100 dark:bg-red-900/50" : "bg-gray-100 dark:bg-gray-800"}`}>
+                <AlertTriangle className={`w-6 h-6 ${overdueBills.length > 0 ? "text-red-600 dark:text-red-400" : "text-gray-500"}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className={`text-2xl font-bold ${overdueBills.length > 0 ? "text-red-600 dark:text-red-400" : ""}`} data-testid="metric-overdue">
+                <p className="text-sm font-medium text-muted-foreground">Overdue</p>
+                <p className={`text-3xl font-bold tracking-tight ${overdueBills.length > 0 ? "text-red-600 dark:text-red-400" : ""}`} data-testid="metric-overdue">
                   ${overdueAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  <span className="text-sm font-normal text-muted-foreground ml-1">({overdueBills.length})</span>
+                </p>
+                <p className={`text-sm ${overdueBills.length > 0 ? "text-red-500 dark:text-red-400" : "text-muted-foreground"}`}>
+                  {overdueBills.length} bill{overdueBills.length !== 1 ? 's' : ''}
                 </p>
               </div>
             </div>
@@ -636,19 +786,80 @@ export default function Bills({ currentOrganization }: BillsProps) {
         </Card>
         
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <CardContent className="pt-6 pb-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-xl">
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Paid</p>
-                <p className="text-2xl font-bold" data-testid="metric-paid">${totalPaidAllTime.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Paid</p>
+                <p className="text-3xl font-bold tracking-tight" data-testid="metric-paid">
+                  ${totalPaidAllTime.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Action Bar - Shows when bills are selected */}
+      {selectedBills.size > 0 && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={selectedBills.size === filteredBills.length}
+                  onCheckedChange={toggleSelectAll}
+                  data-testid="checkbox-select-all-bar"
+                />
+                <span className="font-medium">{selectedBills.size} bill{selectedBills.size !== 1 ? 's' : ''} selected</span>
+                <span className="text-muted-foreground">
+                  (${selectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsBulkPaymentDialogOpen(true)}
+                  data-testid="button-bulk-payment"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Record Bulk Payment
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => bulkMarkAsPaidMutation.mutate(Array.from(selectedBills))}
+                  disabled={bulkMarkAsPaidMutation.isPending}
+                  data-testid="button-bulk-mark-paid"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Mark as Paid
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToCSV}
+                  data-testid="button-bulk-export"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Selected
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedBills(new Set())}
+                  data-testid="button-clear-selection"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -660,6 +871,53 @@ export default function Bills({ currentOrganization }: BillsProps) {
               </div>
             </div>
             
+            {/* Quick Filter Chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground mr-1">
+                <Filter className="w-4 h-4 inline mr-1" />
+                Quick filters:
+              </span>
+              <Badge 
+                variant={quickFilter === 'all' ? 'default' : 'outline'} 
+                className="cursor-pointer"
+                onClick={() => setQuickFilter('all')}
+                data-testid="filter-chip-all"
+              >
+                All Bills
+              </Badge>
+              <Badge 
+                variant={quickFilter === 'due-soon' ? 'default' : 'outline'} 
+                className="cursor-pointer"
+                onClick={() => setQuickFilter('due-soon')}
+                data-testid="filter-chip-due-soon"
+              >
+                <Clock className="w-3 h-3 mr-1" />
+                Due Soon ({dueSoonBills.length})
+              </Badge>
+              <Badge 
+                variant={quickFilter === 'overdue' ? 'default' : 'outline'} 
+                className="cursor-pointer"
+                onClick={() => setQuickFilter('overdue')}
+                data-testid="filter-chip-overdue"
+              >
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Overdue ({overdueBills.length})
+              </Badge>
+              <Badge 
+                variant={quickFilter === 'unpaid' ? 'default' : 'outline'} 
+                className="cursor-pointer"
+                onClick={() => setQuickFilter('unpaid')}
+                data-testid="filter-chip-unpaid"
+              >
+                Unpaid
+              </Badge>
+              {quickFilter !== 'all' && (
+                <Button variant="ghost" size="sm" onClick={() => setQuickFilter('all')} className="h-6 px-2">
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+
             {/* Search and Filters */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[200px]">
@@ -734,6 +992,13 @@ export default function Bills({ currentOrganization }: BillsProps) {
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-left">
+                    <th className="pb-3 font-medium w-8">
+                      <Checkbox
+                        checked={selectedBills.size === filteredBills.length && filteredBills.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </th>
                     <th className="pb-3 font-medium">Bill/Account #</th>
                     <th className="pb-3 font-medium">
                       <button 
@@ -743,16 +1008,6 @@ export default function Bills({ currentOrganization }: BillsProps) {
                       >
                         Vendor
                         <ArrowUpDown className={`w-3 h-3 ${sortField === 'vendor' ? 'text-primary' : 'text-muted-foreground'}`} />
-                      </button>
-                    </th>
-                    <th className="pb-3 font-medium">
-                      <button 
-                        onClick={() => toggleSort('issueDate')}
-                        className="flex items-center gap-1 hover:text-primary"
-                        data-testid="sort-issue-date"
-                      >
-                        Issue Date
-                        <ArrowUpDown className={`w-3 h-3 ${sortField === 'issueDate' ? 'text-primary' : 'text-muted-foreground'}`} />
                       </button>
                     </th>
                     <th className="pb-3 font-medium">
@@ -771,21 +1026,36 @@ export default function Bills({ currentOrganization }: BillsProps) {
                         className="flex items-center gap-1 hover:text-primary"
                         data-testid="sort-amount"
                       >
-                        Amount
+                        Total
                         <ArrowUpDown className={`w-3 h-3 ${sortField === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
                       </button>
                     </th>
+                    <th className="pb-3 font-medium">Paid</th>
+                    <th className="pb-3 font-medium">Remaining</th>
                     <th className="pb-3 font-medium">Status</th>
                     <th className="pb-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBills.map((bill) => (
+                  {filteredBills.map((bill) => {
+                    const daysUntilDue = getDaysUntilDue(bill);
+                    const paidAmount = parseFloat((bill as any).paidAmount || '0');
+                    const remaining = getRemainingAmount(bill);
+                    const isUrgent = daysUntilDue <= 3 && daysUntilDue >= 0 && !['paid', 'cancelled'].includes(bill.status);
+                    
+                    return (
                     <tr 
                       key={bill.id} 
-                      className={`border-b ${isOverdue(bill) ? 'bg-red-50 dark:bg-red-950/30' : ''}`} 
+                      className={`border-b ${isOverdue(bill) ? 'bg-red-50 dark:bg-red-950/30' : isUrgent ? 'bg-orange-50 dark:bg-orange-950/20' : ''}`} 
                       data-testid={`row-bill-${bill.id}`}
                     >
+                      <td className="py-3">
+                        <Checkbox
+                          checked={selectedBills.has(bill.id)}
+                          onCheckedChange={() => toggleSelectBill(bill.id)}
+                          data-testid={`checkbox-bill-${bill.id}`}
+                        />
+                      </td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-muted-foreground" />
@@ -795,15 +1065,35 @@ export default function Bills({ currentOrganization }: BillsProps) {
                       <td className="py-3" data-testid={`text-vendor-${bill.id}`}>
                         {bill.vendorName || <span className="text-muted-foreground">No vendor</span>}
                       </td>
-                      <td className="py-3">{safeFormatDate(bill.issueDate, "MMM dd, yyyy")}</td>
-                      <td className="py-3">{safeFormatDate(bill.dueDate, "MMM dd, yyyy")}</td>
                       <td className="py-3">
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium" data-testid={`text-amount-${bill.id}`}>
-                            {parseFloat(bill.totalAmount).toFixed(2)}
-                          </span>
+                        <div className="flex flex-col">
+                          <span>{safeFormatDate(bill.dueDate, "MMM dd, yyyy")}</span>
+                          {!['paid', 'cancelled'].includes(bill.status) && (
+                            <span className={`text-xs ${daysUntilDue < 0 ? 'text-red-500' : daysUntilDue <= 3 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                              {daysUntilDue < 0 
+                                ? `${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue`
+                                : daysUntilDue === 0 
+                                  ? 'Due today'
+                                  : `${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''} left`
+                              }
+                            </span>
+                          )}
                         </div>
+                      </td>
+                      <td className="py-3">
+                        <span className="font-medium" data-testid={`text-amount-${bill.id}`}>
+                          ${parseFloat(bill.totalAmount).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className="text-green-600 dark:text-green-400">
+                          ${paidAmount.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className={`font-medium ${remaining > 0 && isOverdue(bill) ? 'text-red-600 dark:text-red-400' : remaining > 0 && isUrgent ? 'text-orange-600 dark:text-orange-400' : ''}`}>
+                          ${remaining.toFixed(2)}
+                        </span>
                       </td>
                       <td className="py-3">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -892,7 +1182,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1525,6 +1816,101 @@ export default function Bills({ currentOrganization }: BillsProps) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Payment Dialog */}
+      <Dialog open={isBulkPaymentDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsBulkPaymentDialogOpen(false);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Bulk Payment</DialogTitle>
+            <DialogDescription>
+              Record a payment for {selectedBills.size} selected bill{selectedBills.size !== 1 ? 's' : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-muted-foreground">Selected Bills:</span>
+                <span className="font-medium">{selectedBills.size}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Amount:</span>
+                <span className="text-lg font-bold">${selectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="bulkPaymentMethod">Payment Method</Label>
+              <Select defaultValue="ach">
+                <SelectTrigger id="bulkPaymentMethod" data-testid="select-bulk-payment-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ach">
+                    <div className="flex items-center gap-2">
+                      <Banknote className="w-4 h-4" />
+                      Bank Transfer (ACH)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="check">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Check
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="card">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Credit Card
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bulkPaymentDate">Payment Date</Label>
+              <Input
+                id="bulkPaymentDate"
+                type="date"
+                defaultValue={format(new Date(), "yyyy-MM-dd")}
+                data-testid="input-bulk-payment-date"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bulkPaymentNotes">Notes (Optional)</Label>
+              <Textarea
+                id="bulkPaymentNotes"
+                placeholder="Add payment notes..."
+                data-testid="input-bulk-payment-notes"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsBulkPaymentDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                bulkMarkAsPaidMutation.mutate(Array.from(selectedBills));
+                setIsBulkPaymentDialogOpen(false);
+              }}
+              disabled={bulkMarkAsPaidMutation.isPending}
+              data-testid="button-confirm-bulk-payment"
+            >
+              {bulkMarkAsPaidMutation.isPending ? "Recording..." : "Record Payments"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
