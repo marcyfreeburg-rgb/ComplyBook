@@ -60,13 +60,22 @@ interface RecurringPattern {
 
 interface RecurringPatternDetectorProps {
   organizationId: number;
+  filterType?: 'expense' | 'income' | 'all';
+  onAddRecurringIncome?: (pattern: RecurringPattern) => void;
 }
 
-export function RecurringPatternDetector({ organizationId }: RecurringPatternDetectorProps) {
+export function RecurringPatternDetector({ 
+  organizationId, 
+  filterType = 'all',
+  onAddRecurringIncome 
+}: RecurringPatternDetectorProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [lookbackMonths, setLookbackMonths] = useState("6");
   const [expandedPatterns, setExpandedPatterns] = useState<Set<string>>(new Set());
+
+  // Track patterns that have been added in this session
+  const [addedPatterns, setAddedPatterns] = useState<Set<string>>(new Set());
 
   const { data: patterns, isLoading, refetch, isFetching } = useQuery<RecurringPattern[]>({
     queryKey: ['/api/ai/detect-recurring', organizationId, lookbackMonths],
@@ -84,11 +93,52 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch existing bills to check which patterns are already added
+  const { data: existingBills } = useQuery<Array<{ vendorName: string | null }>>({
+    queryKey: ['/api/bills', organizationId],
+    enabled: isOpen && filterType !== 'income',
+  });
+
+  // Fetch existing recurring transactions to check which income patterns are already added
+  const { data: existingRecurring } = useQuery<Array<{ description: string; type: string }>>({
+    queryKey: [`/api/recurring-transactions/${organizationId}`],
+    enabled: isOpen && filterType !== 'expense',
+  });
+
+  // Check if a pattern has already been added
+  const isPatternAdded = (pattern: RecurringPattern): boolean => {
+    // Check session-added patterns first (normalized key)
+    const patternKey = `${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`;
+    if (addedPatterns.has(patternKey)) return true;
+
+    const normalizedVendor = pattern.vendorName.toLowerCase().trim();
+
+    if (pattern.transactionType === 'expense') {
+      // Check if bill with this vendor already exists (case-insensitive exact match)
+      return existingBills?.some(bill => 
+        bill.vendorName?.toLowerCase().trim() === normalizedVendor
+      ) || false;
+    } else {
+      // Check if recurring income with this description already exists (case-insensitive exact match)
+      return existingRecurring?.some(rt => 
+        rt.type === 'income' && rt.description.toLowerCase().trim() === normalizedVendor
+      ) || false;
+    }
+  };
+
+  // Track which pattern is currently being added
+  const [addingPattern, setAddingPattern] = useState<string | null>(null);
+
   const createBillMutation = useMutation({
     mutationFn: async (pattern: RecurringPattern) => {
+      setAddingPattern(`${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`);
       return apiRequest('POST', `/api/ai/create-bill-from-pattern/${organizationId}`, pattern);
     },
-    onSuccess: () => {
+    onSuccess: (_data, pattern) => {
+      // Mark pattern as added
+      const patternKey = `${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`;
+      setAddedPatterns(prev => new Set([...Array.from(prev), patternKey]));
+      setAddingPattern(null);
       toast({
         title: "Bill Created",
         description: "A new recurring bill has been created from the detected pattern.",
@@ -97,6 +147,7 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
       queryClient.invalidateQueries({ queryKey: ['/api/ai/detect-recurring'] });
     },
     onError: (error: Error) => {
+      setAddingPattern(null);
       toast({
         title: "Error",
         description: error.message || "Failed to create bill",
@@ -104,6 +155,15 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
       });
     },
   });
+
+  // Handle adding income pattern as recurring transaction
+  const handleAddIncome = (pattern: RecurringPattern) => {
+    if (onAddRecurringIncome) {
+      const patternKey = `${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`;
+      setAddedPatterns(prev => new Set([...Array.from(prev), patternKey]));
+      onAddRecurringIncome(pattern);
+    }
+  };
 
   const dismissPatternMutation = useMutation({
     mutationFn: async (pattern: RecurringPattern) => {
@@ -149,8 +209,26 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
     yearly: 'Yearly'
   };
 
-  const expensePatterns = patterns?.filter(p => p.transactionType === 'expense') || [];
-  const incomePatterns = patterns?.filter(p => p.transactionType === 'income') || [];
+  // Filter patterns based on filterType prop
+  const expensePatterns = filterType !== 'income' 
+    ? (patterns?.filter(p => p.transactionType === 'expense') || [])
+    : [];
+  const incomePatterns = filterType !== 'expense' 
+    ? (patterns?.filter(p => p.transactionType === 'income') || [])
+    : [];
+  
+  // Calculate visible count based on filter
+  const visibleCount = expensePatterns.length + incomePatterns.length;
+
+  // Generate description based on filter type
+  const getDescription = () => {
+    if (filterType === 'expense') {
+      return "Analyze transactions to find recurring expenses and create bills automatically";
+    } else if (filterType === 'income') {
+      return "Analyze transactions to find recurring income and add to your forecast";
+    }
+    return "Analyze transactions to find recurring patterns automatically";
+  };
 
   return (
     <Card className="mb-6">
@@ -163,14 +241,14 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                 <div>
                   <CardTitle className="text-lg" data-testid="text-pattern-detection-title">AI Pattern Detection</CardTitle>
                   <CardDescription>
-                    Analyze transactions to find recurring expenses and create bills automatically
+                    {getDescription()}
                   </CardDescription>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {patterns && patterns.length > 0 && (
+                {visibleCount > 0 && (
                   <Badge variant="secondary" data-testid="badge-pattern-count">
-                    {patterns.length} patterns found
+                    {visibleCount} patterns found
                   </Badge>
                 )}
                 {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -213,10 +291,10 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                 <Skeleton className="h-20 w-full" />
                 <Skeleton className="h-20 w-full" />
               </div>
-            ) : patterns && patterns.length === 0 ? (
+            ) : visibleCount === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No recurring patterns detected in your transactions.</p>
+                <p>No {filterType === 'expense' ? 'recurring expense' : filterType === 'income' ? 'recurring income' : 'recurring'} patterns detected in your transactions.</p>
                 <p className="text-sm">Try increasing the lookback period or add more transactions.</p>
               </div>
             ) : (
@@ -239,6 +317,7 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                           isCreating={createBillMutation.isPending}
                           isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
+                          isAdded={isPatternAdded(pattern)}
                         />
                       ))}
                     </div>
@@ -261,10 +340,12 @@ export function RecurringPatternDetector({ organizationId }: RecurringPatternDet
                           pattern={pattern}
                           isExpanded={expandedPatterns.has(pattern.vendorName)}
                           onToggle={() => togglePattern(pattern.vendorName)}
+                          onAddIncome={onAddRecurringIncome ? () => handleAddIncome(pattern) : undefined}
                           onDismiss={() => dismissPatternMutation.mutate(pattern)}
                           isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
                           isIncome
+                          isAdded={isPatternAdded(pattern)}
                         />
                       ))}
                     </div>
@@ -284,23 +365,27 @@ interface PatternCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   onCreateBill?: () => void;
+  onAddIncome?: () => void;
   onDismiss?: () => void;
   isCreating?: boolean;
   isDismissing?: boolean;
   frequencyLabels: Record<string, string>;
   isIncome?: boolean;
+  isAdded?: boolean;
 }
 
 function PatternCard({ 
   pattern, 
   isExpanded, 
   onToggle, 
-  onCreateBill, 
+  onCreateBill,
+  onAddIncome,
   onDismiss,
   isCreating,
   isDismissing,
   frequencyLabels,
-  isIncome 
+  isIncome,
+  isAdded = false
 }: PatternCardProps) {
   const vendorSlug = pattern.vendorName.toLowerCase().replace(/\s+/g, '-');
   
@@ -360,23 +445,51 @@ function PatternCard({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {!isIncome && onCreateBill && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  onClick={onCreateBill}
-                  disabled={isCreating}
-                  data-testid={`button-create-bill-${vendorSlug}`}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add to Bills
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Create a recurring bill from this pattern (pre-fills vendor, amount, frequency)
-              </TooltipContent>
-            </Tooltip>
+          {/* Show "Added" badge if pattern was already added */}
+          {isAdded ? (
+            <Badge variant="outline" className="text-xs" data-testid={`badge-added-${vendorSlug}`}>
+              Added
+            </Badge>
+          ) : (
+            <>
+              {/* Add to Bills button for expenses */}
+              {!isIncome && onCreateBill && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      onClick={onCreateBill}
+                      disabled={isCreating}
+                      data-testid={`button-create-bill-${vendorSlug}`}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add to Bills
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Create a recurring bill from this pattern (pre-fills vendor, amount, frequency)
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {/* Add to Recurring Income button for income */}
+              {isIncome && onAddIncome && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      onClick={onAddIncome}
+                      data-testid={`button-add-income-${vendorSlug}`}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add to Recurring Income
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Add this income pattern to your recurring transactions
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </>
           )}
           {onDismiss && (
             <Tooltip>

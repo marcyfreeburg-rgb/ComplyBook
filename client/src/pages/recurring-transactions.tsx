@@ -28,6 +28,7 @@ import { Plus, ArrowUpRight, ArrowDownRight, Edit, Trash2, RefreshCw, Clock } fr
 import { format } from "date-fns";
 import type { Organization, Category } from "@shared/schema";
 import { CategoryCombobox } from "@/components/category-combobox";
+import { RecurringPatternDetector } from "@/components/recurring-pattern-detector";
 
 interface RecurringTransaction {
   id: number;
@@ -272,6 +273,34 @@ export default function RecurringTransactions({ currentOrganization, userId }: R
           </Button>
         </div>
       </div>
+
+      {/* AI Pattern Detection - Only show income patterns */}
+      {currentOrganization && (
+        <RecurringPatternDetector 
+          organizationId={currentOrganization.id}
+          filterType="income"
+          onAddRecurringIncome={(pattern) => {
+          // Pre-fill the form with the detected pattern data
+          setFormData({
+            organizationId: currentOrganization.id,
+            type: 'income',
+            description: pattern.vendorName,
+            amount: pattern.averageAmount.toFixed(2),
+            categoryId: pattern.categoryId || undefined,
+            frequency: pattern.frequency,
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: '',
+            dayOfMonth: undefined,
+            isActive: 1,
+          });
+          setIsDialogOpen(true);
+          toast({
+            title: "Pattern Pre-filled",
+            description: "Review and confirm the recurring income details.",
+          });
+        }}
+      />
+      )}
 
       {/* Recurring Transactions List */}
       <div className="grid gap-4">

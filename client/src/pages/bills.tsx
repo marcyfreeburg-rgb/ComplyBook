@@ -577,9 +577,12 @@ export default function Bills({ currentOrganization }: BillsProps) {
         </Button>
       </div>
 
-      {/* AI Pattern Detection */}
+      {/* AI Pattern Detection - Only show expense patterns on Bills page */}
       {currentOrganization && (
-        <RecurringPatternDetector organizationId={currentOrganization.id} />
+        <RecurringPatternDetector 
+          organizationId={currentOrganization.id} 
+          filterType="expense"
+        />
       )}
 
       {/* Summary Metrics */}
