@@ -1,0 +1,85 @@
+High-impact & relatively quick additions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PriorityFeature / ChangeWhy it matters (especially for your audience)Approx. effortSuggested placement / style1Quick summary cards / KPI row (already in screenshot, but make them more prominent)Nonprofits & contractors live in “how much do I owe soon?” mode. Right now they are there but feel a bit small.lowKeep them exactly where they are, just increase font size + add subtle background colors or icons2Overdue highlighting + urgency sortingOverdue bills are a silent killer for cash-flow & compliance. Users scan for red flags first.lowRow background light red/orange + red text on Due Date when overdue
+Add default sort = Due Date ascending3“Pay now” bulk actionsSelect multiple bills → Record bulk payment (one check / ACH / credit card) or mark as paid manuallymediumCheckbox column + top bar “Actions” dropdown: “Record bulk payment”, “Mark as paid”, “Export selected”4Quick filter chips / saved viewsUsers frequently want: “Due this week”, “By grant/fund”, “Overdue only”, “Unpaid vendor X”mediumUnder the search bar: clickable chips (Due soon / Overdue / This month / By funding source)5Funding source column in the tableThe most nonprofit-relevant piece of data is missing from the list view. Critical for restricted fund tracking.lowAdd column “Funding Source” (shows “Unrestricted”, “Grant – Science Foundation”, etc.)6Attachment column / iconNonprofits need to attach scanned invoice / PO / contract / receipt for audit traillow-mediumSmall paperclip icon in row → opens viewer or download list
+Medium-to-high impact (slightly more work)
+
+“Recurring” badge on bills created from AI
+→ Small blue/purple recurring loop icon next to the bill number or in status column
+→ Reason: makes it obvious which bills are system-suggested vs manual → builds trust in the AI
+Amount paid / remaining column (for partially-paid bills)
+→ Columns: Total | Paid | Remaining
+→ Color remaining red when >0 and due date approaching
+One-click “Record payment” modal from list
+→ Clicking the $ Pay button opens a small modal:
+• Payment date (default today)
+• Amount (default full remaining)
+• Payment method (dropdown: ACH, Check, Credit Card, Other)
+• Reference / Check #
+• Notes
+→ After save → auto-updates status to Paid / Partially Paid
+Export button (CSV / PDF)
+→ Top-right next to + Create Bill: “Export bills” → choose date range / status / funding source
+→ Very common ask from bookkeepers / accountants / board treasurers
+Link to related transactions / bank line
+→ When bill is paid via bank sync → show “Matched to bank transaction #XXXXX” link in row
+→ Makes reconciliation feel magical
+
+Lower priority / nice-to-have (post-beta)
+
+Approval workflow status (Pending Approval / Approved / Rejected) – if you already have expense approvals
+Calendar view switch (month view of due dates – heatmap style)
+Vendor performance mini-stats on hover (average days to pay this vendor, total spent YTD)

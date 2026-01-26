@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import type { Bill, BillLineItem, Vendor, Organization, Grant } from "@shared/schema";
@@ -806,12 +806,18 @@ export default function Bills({ currentOrganization }: BillsProps) {
                         </div>
                       </td>
                       <td className="py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {getStatusBadge(bill.status)}
                           {(bill as any).isRecurring && (
                             <Badge variant="outline" className="text-xs">
                               <Repeat className="w-3 h-3 mr-1" />
                               Recurring
+                            </Badge>
+                          )}
+                          {(bill as any).aiSuggested && (
+                            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-700">
+                              <Sparkles className="w-3 h-3 mr-1" />
+                              Suggested by AI
                             </Badge>
                           )}
                         </div>

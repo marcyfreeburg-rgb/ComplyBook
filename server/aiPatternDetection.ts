@@ -563,7 +563,10 @@ function extractVendorFromDescription(description: string): string {
 export async function createBillFromPattern(
   organizationId: number,
   pattern: RecurringPattern,
-  userId: string
+  userId: string,
+  customDayOfMonth?: number,
+  fundingSource?: 'unrestricted' | 'grant',
+  grantId?: number | null
 ): Promise<Bill | null> {
   try {
     const frequencyMap: Record<string, Bill['recurringFrequency']> = {
@@ -587,7 +590,7 @@ export async function createBillFromPattern(
       vendorId = newVendor.id;
     }
 
-    const nextDueDate = calculateNextDueDate(pattern.transactions, pattern.frequency);
+    const nextDueDate = calculateNextDueDate(pattern.transactions, pattern.frequency, customDayOfMonth);
 
     const bill = await storage.createBill({
       organizationId,
@@ -603,8 +606,9 @@ export async function createBillFromPattern(
       isRecurring: true,
       recurringFrequency: frequencyMap[pattern.frequency] || 'monthly',
       recurringEndDate: null,
-      fundingSource: 'unrestricted',
-      grantId: null,
+      fundingSource: fundingSource || 'unrestricted',
+      grantId: grantId || null,
+      aiSuggested: true,
       createdBy: userId
     });
 
@@ -619,12 +623,18 @@ export async function createBillFromPattern(
 
 function calculateNextDueDate(
   transactions: RecurringPattern['transactions'],
-  frequency: RecurringPattern['frequency']
+  frequency: RecurringPattern['frequency'],
+  customDayOfMonth?: number
 ): string {
+  const today = new Date();
+  
   if (transactions.length === 0) {
-    const today = new Date();
-    today.setMonth(today.getMonth() + 1);
-    return today.toISOString().split('T')[0];
+    const nextMonth = new Date(today);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    if (customDayOfMonth) {
+      nextMonth.setDate(Math.min(customDayOfMonth, 28));
+    }
+    return nextMonth.toISOString().split('T')[0];
   }
 
   const sortedDates = transactions
@@ -643,16 +653,24 @@ function calculateNextDueDate(
       break;
     case 'monthly':
       nextDate.setMonth(nextDate.getMonth() + 1);
+      if (customDayOfMonth) {
+        nextDate.setDate(Math.min(customDayOfMonth, 28));
+      }
       break;
     case 'quarterly':
       nextDate.setMonth(nextDate.getMonth() + 3);
+      if (customDayOfMonth) {
+        nextDate.setDate(Math.min(customDayOfMonth, 28));
+      }
       break;
     case 'yearly':
       nextDate.setFullYear(nextDate.getFullYear() + 1);
+      if (customDayOfMonth) {
+        nextDate.setDate(Math.min(customDayOfMonth, 28));
+      }
       break;
   }
 
-  const today = new Date();
   while (nextDate < today) {
     switch (frequency) {
       case 'weekly':

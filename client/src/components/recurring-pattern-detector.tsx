@@ -36,6 +36,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
+type DismissReason = 'one_off' | 'variable' | 'ignore_vendor' | 'not_recurring';
+
+const dismissReasonLabels: Record<DismissReason, string> = {
+  one_off: 'One-time purchase',
+  variable: 'Variable/irregular amount',
+  ignore_vendor: 'Ignore this vendor',
+  not_recurring: 'Not a recurring pattern',
+};
 
 interface RecurringPattern {
   vendorName: string;
@@ -77,6 +104,15 @@ export function RecurringPatternDetector({
   // Track patterns that have been added in this session
   const [addedPatterns, setAddedPatterns] = useState<Set<string>>(new Set());
 
+  // Confirmation dialog state for customizing bill creation
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [selectedPattern, setSelectedPattern] = useState<RecurringPattern | null>(null);
+  const [customFrequency, setCustomFrequency] = useState<RecurringPattern['frequency']>('monthly');
+  const [dayOfMonth, setDayOfMonth] = useState<string>('15');
+  const [fundingSource, setFundingSource] = useState<'unrestricted' | 'grant'>('unrestricted');
+  const [selectedGrantId, setSelectedGrantId] = useState<number | null>(null);
+  const [suggestedGrant, setSuggestedGrant] = useState<{ id: number; name: string } | null>(null);
+
   const { data: patterns, isLoading, refetch, isFetching } = useQuery<RecurringPattern[]>({
     queryKey: ['/api/ai/detect-recurring', organizationId, lookbackMonths],
     queryFn: async () => {
@@ -105,6 +141,12 @@ export function RecurringPatternDetector({
     enabled: isOpen && filterType !== 'expense',
   });
 
+  // Fetch grants for funding source suggestions
+  const { data: grants } = useQuery<Array<{ id: number; name: string; status: string }>>({
+    queryKey: [`/api/grants/${organizationId}`],
+    enabled: confirmDialogOpen,
+  });
+
   // Check if a pattern has already been added
   const isPatternAdded = (pattern: RecurringPattern): boolean => {
     // Check session-added patterns first (normalized key)
@@ -129,16 +171,65 @@ export function RecurringPatternDetector({
   // Track which pattern is currently being added
   const [addingPattern, setAddingPattern] = useState<string | null>(null);
 
+  // Open the confirmation dialog for a pattern
+  const openConfirmDialog = async (pattern: RecurringPattern) => {
+    setSelectedPattern(pattern);
+    setCustomFrequency(pattern.frequency);
+    // Calculate suggested day of month from transaction dates
+    if (pattern.transactions.length > 0) {
+      const days = pattern.transactions.map(t => new Date(t.date).getDate());
+      const avgDay = Math.round(days.reduce((a, b) => a + b, 0) / days.length);
+      setDayOfMonth(String(Math.min(28, avgDay))); // Cap at 28 for safety
+    }
+    // Reset funding source
+    setFundingSource('unrestricted');
+    setSelectedGrantId(null);
+    setSuggestedGrant(null);
+    
+    // Try to get grant suggestions based on past transactions for this vendor
+    try {
+      const response = await fetch(`/api/ai/suggest-funding-source/${organizationId}?vendorName=${encodeURIComponent(pattern.vendorName)}`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const suggestion = await response.json();
+        if (suggestion.suggestedGrantId && suggestion.suggestedGrantName) {
+          setSuggestedGrant({ id: suggestion.suggestedGrantId, name: suggestion.suggestedGrantName });
+          setFundingSource('grant');
+          setSelectedGrantId(suggestion.suggestedGrantId);
+        }
+      }
+    } catch (e) {
+      // Ignore errors for suggestions - they're optional
+    }
+    
+    setConfirmDialogOpen(true);
+  };
+
   const createBillMutation = useMutation({
-    mutationFn: async (pattern: RecurringPattern) => {
+    mutationFn: async ({ pattern, frequency, dayOfMonth, fundingSource, grantId }: { 
+      pattern: RecurringPattern; 
+      frequency: RecurringPattern['frequency']; 
+      dayOfMonth: number;
+      fundingSource: 'unrestricted' | 'grant';
+      grantId: number | null;
+    }) => {
       setAddingPattern(`${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`);
-      return apiRequest('POST', `/api/ai/create-bill-from-pattern/${organizationId}`, pattern);
+      return apiRequest('POST', `/api/ai/create-bill-from-pattern/${organizationId}`, {
+        ...pattern,
+        frequency,
+        dayOfMonth,
+        fundingSource,
+        grantId
+      });
     },
-    onSuccess: (_data, pattern) => {
+    onSuccess: (_data, { pattern }) => {
       // Mark pattern as added
       const patternKey = `${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`;
       setAddedPatterns(prev => new Set([...Array.from(prev), patternKey]));
       setAddingPattern(null);
+      setConfirmDialogOpen(false);
+      setSelectedPattern(null);
       toast({
         title: "Bill Created",
         description: "A new recurring bill has been created from the detected pattern.",
@@ -166,13 +257,13 @@ export function RecurringPatternDetector({
   };
 
   const dismissPatternMutation = useMutation({
-    mutationFn: async (pattern: RecurringPattern) => {
+    mutationFn: async ({ pattern, reason }: { pattern: RecurringPattern; reason: DismissReason }) => {
       return apiRequest('POST', `/api/ai/dismiss-pattern/${organizationId}`, {
         vendorName: pattern.vendorName,
         patternType: pattern.transactionType,
         frequency: pattern.frequency,
         averageAmount: pattern.averageAmount,
-        reason: 'not_recurring'
+        reason
       });
     },
     onSuccess: () => {
@@ -312,9 +403,9 @@ export function RecurringPatternDetector({
                           pattern={pattern}
                           isExpanded={expandedPatterns.has(pattern.vendorName)}
                           onToggle={() => togglePattern(pattern.vendorName)}
-                          onCreateBill={() => createBillMutation.mutate(pattern)}
-                          onDismiss={() => dismissPatternMutation.mutate(pattern)}
-                          isCreating={createBillMutation.isPending}
+                          onCreateBill={() => openConfirmDialog(pattern)}
+                          onDismiss={(reason) => dismissPatternMutation.mutate({ pattern, reason })}
+                          isCreating={createBillMutation.isPending || (confirmDialogOpen && selectedPattern?.vendorName === pattern.vendorName)}
                           isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
                           isAdded={isPatternAdded(pattern)}
@@ -341,7 +432,7 @@ export function RecurringPatternDetector({
                           isExpanded={expandedPatterns.has(pattern.vendorName)}
                           onToggle={() => togglePattern(pattern.vendorName)}
                           onAddIncome={onAddRecurringIncome ? () => handleAddIncome(pattern) : undefined}
-                          onDismiss={() => dismissPatternMutation.mutate(pattern)}
+                          onDismiss={(reason) => dismissPatternMutation.mutate({ pattern, reason })}
                           isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
                           isIncome
@@ -356,6 +447,143 @@ export function RecurringPatternDetector({
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Confirmation Dialog for customizing bill creation */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Recurring Bill</DialogTitle>
+            <DialogDescription>
+              Customize the schedule for this recurring bill before creating it.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPattern && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Vendor</Label>
+                <p className="font-medium">{selectedPattern.vendorName}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Average Amount</Label>
+                <p className="font-medium">${selectedPattern.averageAmount.toFixed(2)}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="frequency">Frequency</Label>
+                  <Select value={customFrequency} onValueChange={(v) => setCustomFrequency(v as RecurringPattern['frequency'])}>
+                    <SelectTrigger id="frequency" data-testid="select-bill-frequency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(customFrequency === 'monthly' || customFrequency === 'quarterly' || customFrequency === 'yearly') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="dayOfMonth">Day of Month</Label>
+                    <Input
+                      id="dayOfMonth"
+                      type="number"
+                      min="1"
+                      max="28"
+                      value={dayOfMonth}
+                      onChange={(e) => setDayOfMonth(e.target.value)}
+                      data-testid="input-day-of-month"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Funding Source Selection */}
+              <div className="space-y-2">
+                <Label>Funding Source</Label>
+                <Select 
+                  value={fundingSource} 
+                  onValueChange={(v) => {
+                    setFundingSource(v as 'unrestricted' | 'grant');
+                    if (v === 'unrestricted') setSelectedGrantId(null);
+                  }}
+                >
+                  <SelectTrigger data-testid="select-funding-source">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unrestricted">Unrestricted Funds</SelectItem>
+                    <SelectItem value="grant">Grant Funded</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {fundingSource === 'grant' && (
+                <div className="space-y-2">
+                  <Label>Select Grant</Label>
+                  <Select 
+                    value={selectedGrantId?.toString() || ''} 
+                    onValueChange={(v) => setSelectedGrantId(parseInt(v))}
+                  >
+                    <SelectTrigger data-testid="select-grant">
+                      <SelectValue placeholder="Select a grant..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {grants?.filter(g => g.status === 'active').map((grant) => (
+                        <SelectItem key={grant.id} value={grant.id.toString()}>
+                          {grant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {suggestedGrant && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-500" />
+                      Suggested: <span className="font-medium">{suggestedGrant.name}</span> (based on past transactions)
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                <p>Based on {selectedPattern.transactionCount} transactions with amounts ranging from ${selectedPattern.minAmount.toFixed(2)} to ${selectedPattern.maxAmount.toFixed(2)}</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setConfirmDialogOpen(false)}
+              data-testid="button-cancel-create-bill"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedPattern) {
+                  createBillMutation.mutate({
+                    pattern: selectedPattern,
+                    frequency: customFrequency,
+                    dayOfMonth: parseInt(dayOfMonth) || 15,
+                    fundingSource,
+                    grantId: fundingSource === 'grant' ? selectedGrantId : null
+                  });
+                }
+              }}
+              disabled={createBillMutation.isPending || (fundingSource === 'grant' && !selectedGrantId)}
+              data-testid="button-confirm-create-bill"
+            >
+              {createBillMutation.isPending ? 'Creating...' : 'Create Bill'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -366,7 +594,7 @@ interface PatternCardProps {
   onToggle: () => void;
   onCreateBill?: () => void;
   onAddIncome?: () => void;
-  onDismiss?: () => void;
+  onDismiss?: (reason: DismissReason) => void;
   isCreating?: boolean;
   isDismissing?: boolean;
   frequencyLabels: Record<string, string>;
@@ -387,6 +615,7 @@ function PatternCard({
   isIncome,
   isAdded = false
 }: PatternCardProps) {
+  const [dismissOpen, setDismissOpen] = useState(false);
   const vendorSlug = pattern.vendorName.toLowerCase().replace(/\s+/g, '-');
   
   return (
@@ -409,14 +638,21 @@ function PatternCard({
             <Tooltip>
               <TooltipTrigger>
                 <Badge 
-                  variant={pattern.confidence >= 80 ? "default" : "secondary"}
-                  className="text-xs"
+                  variant="outline"
+                  className={`text-xs ${
+                    pattern.confidence > 90 
+                      ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700' 
+                      : pattern.confidence >= 70 
+                        ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700'
+                        : 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700'
+                  }`}
+                  data-testid={`badge-confidence-${pattern.vendorName.toLowerCase().replace(/\s+/g, '-')}`}
                 >
                   {pattern.confidence}% confident
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                {pattern.confidence >= 80 ? 'High confidence' : 'Medium confidence'} - based on {pattern.transactionCount} matching transactions
+                {pattern.confidence > 90 ? 'High confidence' : pattern.confidence >= 70 ? 'Medium confidence' : 'Low confidence'} - based on {pattern.transactionCount} matching transactions
               </TooltipContent>
             </Tooltip>
           </div>
@@ -492,23 +728,49 @@ function PatternCard({
             </>
           )}
           {onDismiss && (
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <DropdownMenu open={dismissOpen} onOpenChange={setDismissOpen}>
+              <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={onDismiss}
                   disabled={isDismissing}
                   data-testid={`button-dismiss-${vendorSlug}`}
                 >
                   <X className="w-4 h-4 mr-1" />
                   Not Recurring
+                  <ChevronDown className="w-3 h-3 ml-1" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Dismiss this pattern - it won't appear in future suggestions
-              </TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Why isn't this recurring?</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => { onDismiss('one_off'); setDismissOpen(false); }}
+                  data-testid={`dismiss-reason-one-off-${vendorSlug}`}
+                >
+                  One-time purchase
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => { onDismiss('variable'); setDismissOpen(false); }}
+                  data-testid={`dismiss-reason-variable-${vendorSlug}`}
+                >
+                  Variable/irregular amount
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => { onDismiss('ignore_vendor'); setDismissOpen(false); }}
+                  data-testid={`dismiss-reason-ignore-${vendorSlug}`}
+                >
+                  Ignore this vendor
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => { onDismiss('not_recurring'); setDismissOpen(false); }}
+                  data-testid={`dismiss-reason-other-${vendorSlug}`}
+                >
+                  Other / not sure
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Tooltip>
             <TooltipTrigger asChild>

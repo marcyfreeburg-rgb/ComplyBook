@@ -830,6 +830,7 @@ export const bills = pgTable("bills", {
   recurringEndDate: timestamp("recurring_end_date"), // When to stop generating recurring bills
   parentBillId: integer("parent_bill_id"), // Reference to original recurring bill template
   transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  aiSuggested: boolean("ai_suggested").default(false), // True if this bill was created from AI pattern detection
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

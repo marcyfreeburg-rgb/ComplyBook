@@ -5442,7 +5442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         patternType: z.enum(['income', 'expense']),
         frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).optional(),
         averageAmount: z.number().optional(),
-        reason: z.enum(['not_recurring', 'one_time', 'already_tracked', 'other']).optional()
+        reason: z.enum(['not_recurring', 'one_time', 'already_tracked', 'other', 'one_off', 'variable', 'ignore_vendor']).optional()
       });
 
       const parseResult = dismissSchema.safeParse(req.body);
@@ -5518,6 +5518,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Suggest funding source based on past transactions for a vendor
+  app.get('/api/ai/suggest-funding-source/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const vendorName = req.query.vendorName as string;
+
+      if (!vendorName) {
+        return res.status(400).json({ message: "Vendor name is required" });
+      }
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Look for past transactions to this vendor that were linked to grants via bills
+      const bills = await storage.getBillsByOrganizationId(organizationId);
+      const vendors = await storage.getVendorsByOrganizationId(organizationId);
+      
+      // Find vendor by name (case-insensitive)
+      const matchingVendor = vendors.find(v => 
+        v.name.toLowerCase() === vendorName.toLowerCase()
+      );
+
+      if (matchingVendor) {
+        // Find bills for this vendor that have grant funding
+        const vendorBills = bills.filter(b => 
+          b.vendorId === matchingVendor.id && 
+          b.fundingSource === 'grant' && 
+          b.grantId
+        );
+
+        if (vendorBills.length > 0) {
+          // Get the most commonly used grant
+          const grantCounts: Record<number, number> = {};
+          vendorBills.forEach(b => {
+            if (b.grantId) {
+              grantCounts[b.grantId] = (grantCounts[b.grantId] || 0) + 1;
+            }
+          });
+
+          const mostCommonGrantId = Object.entries(grantCounts)
+            .sort(([, a], [, b]) => b - a)[0]?.[0];
+
+          if (mostCommonGrantId) {
+            const grants = await storage.getGrantsByOrganizationId(organizationId);
+            const grant = grants.find(g => g.id === parseInt(mostCommonGrantId));
+            
+            if (grant && grant.status === 'active') {
+              return res.json({
+                suggestedGrantId: grant.id,
+                suggestedGrantName: grant.name,
+                confidence: Math.round((vendorBills.length / bills.filter(b => b.vendorId === matchingVendor.id).length) * 100)
+              });
+            }
+          }
+        }
+      }
+
+      // No suggestion found
+      res.json({ suggestedGrantId: null, suggestedGrantName: null });
+    } catch (error) {
+      console.error("Error suggesting funding source:", error);
+      res.status(500).json({ message: "Failed to suggest funding source" });
+    }
+  });
+
   app.post('/api/ai/create-bill-from-pattern/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -5542,7 +5611,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: z.string()
         })),
         confidence: z.number().min(0).max(100),
-        suggestedBillName: z.string().optional()
+        suggestedBillName: z.string().optional(),
+        dayOfMonth: z.number().min(1).max(28).optional(),
+        fundingSource: z.enum(['unrestricted', 'grant']).optional(),
+        grantId: z.number().nullable().optional()
       });
 
       const parseResult = patternSchema.safeParse(req.body);
@@ -5564,7 +5636,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to create bills" });
       }
 
-      const bill = await createBillFromPattern(organizationId, pattern, userId);
+      const bill = await createBillFromPattern(
+        organizationId, 
+        pattern, 
+        userId, 
+        pattern.dayOfMonth,
+        pattern.fundingSource,
+        pattern.grantId
+      );
       if (!bill) {
         return res.status(500).json({ message: "Failed to create bill from pattern" });
       }
