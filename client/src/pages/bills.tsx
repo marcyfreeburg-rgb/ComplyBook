@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import type { Bill, BillLineItem, Vendor, Organization, Grant } from "@shared/schema";
 import { BillPreview } from "@/components/bill-preview";
+import { RecurringPatternDetector } from "@/components/recurring-pattern-detector";
 import html2pdf from "html2pdf.js";
 
 type PaymentMethod = 'ach' | 'card' | 'check' | 'manual';
@@ -572,6 +573,11 @@ export default function Bills({ currentOrganization }: BillsProps) {
           Create Bill
         </Button>
       </div>
+
+      {/* AI Pattern Detection */}
+      {organization && (
+        <RecurringPatternDetector organizationId={organization.id} />
+      )}
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

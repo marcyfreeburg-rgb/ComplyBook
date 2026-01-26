@@ -18,6 +18,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { CategoryCombobox } from "@/components/category-combobox";
+import { BudgetSuggestionPanel } from "@/components/budget-suggestion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -748,6 +749,9 @@ export default function Budgets() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* AI Budget Suggestions */}
+      <BudgetSuggestionPanel organizationId={organizationId} />
 
       {budgetsLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading budgets...</div>

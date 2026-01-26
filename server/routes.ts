@@ -11,6 +11,7 @@ const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
+import { detectRecurringPatterns, suggestBudget, createBillFromPattern } from "./aiPatternDetection";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
 import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
@@ -5390,6 +5391,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error recording categorization feedback:", error);
       res.status(500).json({ message: "Failed to record feedback" });
+    }
+  });
+
+  // AI Pattern Detection routes
+  app.get('/api/ai/detect-recurring/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const lookbackMonths = parseInt(req.query.months as string) || 6;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check rate limit
+      if (!checkAiRateLimit(userId, organizationId)) {
+        return res.status(429).json({ message: "Too many AI requests. Please try again in a minute." });
+      }
+
+      const patterns = await detectRecurringPatterns(organizationId, lookbackMonths);
+      res.json(patterns);
+    } catch (error) {
+      console.error("Error detecting recurring patterns:", error);
+      res.status(500).json({ message: "Failed to detect recurring patterns" });
+    }
+  });
+
+  app.post('/api/ai/create-bill-from-pattern/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Validate pattern with Zod schema
+      const patternSchema = z.object({
+        vendorName: z.string().min(1, "Vendor name is required"),
+        vendorId: z.number().optional(),
+        categoryId: z.number().optional(),
+        categoryName: z.string().optional(),
+        averageAmount: z.number().positive("Average amount must be positive"),
+        minAmount: z.number().min(0),
+        maxAmount: z.number().min(0),
+        frequency: z.enum(['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']),
+        transactionType: z.enum(['income', 'expense']),
+        transactionCount: z.number().int().min(1),
+        transactions: z.array(z.object({
+          id: z.number(),
+          date: z.string(),
+          amount: z.string(),
+          description: z.string()
+        })),
+        confidence: z.number().min(0).max(100),
+        suggestedBillName: z.string().optional()
+      });
+
+      const parseResult = patternSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid pattern data", 
+          errors: parseResult.error.errors 
+        });
+      }
+      const pattern = parseResult.data;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to create bills" });
+      }
+
+      const bill = await createBillFromPattern(organizationId, pattern, userId);
+      if (!bill) {
+        return res.status(500).json({ message: "Failed to create bill from pattern" });
+      }
+
+      // Log audit trail
+      await storage.logAuditTrail({
+        organizationId,
+        userId,
+        entityType: 'bill',
+        entityId: bill.id.toString(),
+        action: 'create',
+        oldValues: null,
+        newValues: { ...bill, source: 'ai_pattern_detection' },
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      });
+
+      res.status(201).json(bill);
+    } catch (error) {
+      console.error("Error creating bill from pattern:", error);
+      res.status(500).json({ message: "Failed to create bill from pattern" });
+    }
+  });
+
+  app.get('/api/ai/suggest-budget/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const lookbackMonths = parseInt(req.query.months as string) || 6;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check rate limit
+      if (!checkAiRateLimit(userId, organizationId)) {
+        return res.status(429).json({ message: "Too many AI requests. Please try again in a minute." });
+      }
+
+      const suggestions = await suggestBudget(organizationId, lookbackMonths);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error suggesting budget:", error);
+      res.status(500).json({ message: "Failed to suggest budget" });
     }
   });
 
