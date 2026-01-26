@@ -1086,8 +1086,11 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
 }).extend({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
-  additionalFunds: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
-  additionalFundsDescription: z.string().optional().nullable(),
+  additionalFunds: z.string().or(z.number()).transform(val => {
+    if (val === "" || val === null || val === undefined) return "0";
+    return String(val);
+  }).optional().nullable(),
+  additionalFundsDescription: z.string().transform(val => val === "" ? null : val).optional().nullable(),
 });
 
 export type InsertBudget = z.infer<typeof insertBudgetSchema>;
