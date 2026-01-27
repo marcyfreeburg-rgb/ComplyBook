@@ -59,20 +59,6 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
     queryKey: [`/api/deductions/${currentOrganization.id}/active`],
   });
 
-  const { data: gustoConnection, isLoading: isLoadingGustoConnection } = useQuery<{
-    connected: boolean;
-    companyName?: string;
-    status?: string;
-    lastSyncedAt?: string;
-  }>({
-    queryKey: [`/api/gusto/connection/${currentOrganization.id}`],
-  });
-
-  const { data: gustoEmployees = [], isLoading: isLoadingGustoEmployees } = useQuery<any[]>({
-    queryKey: [`/api/gusto/employees/${currentOrganization.id}`],
-    enabled: gustoConnection?.connected === true,
-  });
-
   const { data: finchConnections = [], isLoading: isLoadingFinchConnections } = useQuery<Array<{
     id: number;
     connectionId: string;
@@ -86,47 +72,6 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
     createdAt: string;
   }>>({
     queryKey: [`/api/finch/connection/${currentOrganization.id}`],
-  });
-
-  const connectGustoMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('GET', `/api/gusto/authorize/${currentOrganization.id}`, undefined);
-      const data = await response.json();
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to connect to Gusto",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const disconnectGustoMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('DELETE', `/api/gusto/disconnect/${currentOrganization.id}`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/gusto/connection/${currentOrganization.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/gusto/employees/${currentOrganization.id}`] });
-      toast({
-        title: "Disconnected",
-        description: "Successfully disconnected from Gusto",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to disconnect from Gusto",
-        variant: "destructive",
-      });
-    },
   });
 
   const connectFinchMutation = useMutation({
@@ -530,8 +475,8 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
         </Card>
       )}
 
-      {/* Show onboarding card when neither Gusto nor Finch is connected */}
-      {!gustoConnection?.connected && finchConnections.length === 0 && (
+      {/* Show onboarding card when no payroll provider is connected */}
+      {finchConnections.length === 0 && (
         <Card data-testid="card-payroll-onboarding">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -539,171 +484,31 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                 <DollarSign className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Connect Your Payroll</CardTitle>
+                <CardTitle className="text-lg">Connect Your Payroll Provider</CardTitle>
                 <CardDescription>
-                  Sync employee data and streamline payroll processing
+                  Sync employee data from your existing payroll system
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Finch - Already have payroll */}
-              <div className="border rounded-lg p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold">Already running payroll?</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Sync with your existing payroll provider. We connect to 200+ systems including ADP, Paychex, BambooHR, Paylocity, and more.
-                </p>
-                <Button
-                  onClick={() => connectFinchMutation.mutate()}
-                  disabled={connectFinchMutation.isPending}
-                  className="w-full"
-                  data-testid="button-connect-finch"
-                >
-                  {connectFinchMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Link2 className="h-4 w-4 mr-2" />
-                  )}
-                  Sync with Finch
-                </Button>
-              </div>
-
-              {/* Gusto - New to payroll */}
-              <div className="border rounded-lg p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  <h3 className="font-semibold">New to payroll?</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Sign up with Gusto for full-service payroll, benefits, and HR. Perfect for growing businesses.
-                </p>
-                <Button
-                  onClick={() => connectGustoMutation.mutate()}
-                  disabled={connectGustoMutation.isPending}
-                  variant="outline"
-                  className="w-full"
-                  data-testid="button-connect-gusto"
-                >
-                  {connectGustoMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Link2 className="h-4 w-4 mr-2" />
-                  )}
-                  Sign up with Gusto
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Show Gusto connection details when connected */}
-      {gustoConnection?.connected && (
-        <Card data-testid="card-gusto-connected">
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                  <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Gusto Payroll</CardTitle>
-                  <CardDescription>
-                    Connected to Gusto for automated payroll processing
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge variant="default" className="bg-green-600" data-testid="badge-gusto-connected">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Connected
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-md">
-                <div>
-                  <p className="text-sm text-muted-foreground">Company</p>
-                  <p className="font-semibold">{gustoConnection.companyName || 'Unknown'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="font-semibold capitalize">{gustoConnection.status || 'Active'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Last Synced</p>
-                  <p className="font-semibold">
-                    {gustoConnection.lastSyncedAt 
-                      ? new Date(gustoConnection.lastSyncedAt).toLocaleDateString()
-                      : 'Never'}
-                  </p>
-                </div>
-              </div>
-              
-              {isLoadingGustoEmployees ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                  Loading employees from Gusto...
-                </div>
-              ) : gustoEmployees.length > 0 ? (
-                <div>
-                  <h4 className="font-semibold mb-2">Gusto Employees ({gustoEmployees.length})</h4>
-                  <div className="max-h-48 overflow-y-auto border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Department</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {gustoEmployees.slice(0, 10).map((emp: any, index: number) => (
-                          <TableRow key={emp.uuid || index}>
-                            <TableCell className="font-medium">
-                              {emp.first_name} {emp.last_name}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {emp.email || '-'}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {emp.department || '-'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {gustoEmployees.length > 10 && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Showing 10 of {gustoEmployees.length} employees
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No employees found in Gusto</p>
-              )}
-              
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => disconnectGustoMutation.mutate()}
-                  disabled={disconnectGustoMutation.isPending}
-                  data-testid="button-disconnect-gusto"
-                >
-                  {disconnectGustoMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Unlink className="h-4 w-4 mr-2" />
-                  )}
-                  Disconnect Gusto
-                </Button>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Connect to 200+ payroll providers including Gusto, ADP, Paychex, BambooHR, Paylocity, Rippling, and more. 
+                Automatically sync employee information and streamline your payroll management.
+              </p>
+              <Button
+                onClick={() => connectFinchMutation.mutate()}
+                disabled={connectFinchMutation.isPending}
+                data-testid="button-connect-payroll"
+              >
+                {connectFinchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4 mr-2" />
+                )}
+                Connect Payroll Provider
+              </Button>
             </div>
           </CardContent>
         </Card>
