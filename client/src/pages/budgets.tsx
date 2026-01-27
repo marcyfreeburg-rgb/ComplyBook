@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText } from "lucide-react";
+import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText, PieChart as PieChartIcon } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant, type Organization, type Bill, type RecurringTransaction } from "@shared/schema";
@@ -29,6 +29,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+
+const EXPENSE_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', 
+  '#22c55e', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
+  '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
+];
+
+const INCOME_COLORS = [
+  '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+];
 
 export default function Budgets() {
   const [, setLocation] = useLocation();
@@ -1137,6 +1156,154 @@ export default function Budgets() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Budget Visualization - Pie Charts */}
+                  {(budgetItems.length > 0 || incomeItems.length > 0) && (
+                    <div className="mb-8">
+                      <div className="flex items-center gap-2 mb-4">
+                        <PieChartIcon className="w-5 h-5 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold">Budget Breakdown</h3>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Expected Expenses Pie Chart */}
+                        {budgetItems.length > 0 && (
+                          <Card className="border-red-200 dark:border-red-800" data-testid="card-expenses-chart">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base">Expected Expenses</CardTitle>
+                              <CardDescription data-testid="text-expenses-total">
+                                Total: ${budgetItems.reduce((sum, item) => sum + parseFloat(item.amount), 0).toLocaleString()}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="h-64" data-testid="chart-expenses-pie">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={budgetItems.map((item, index) => ({
+                                        name: item.categoryName,
+                                        value: parseFloat(item.amount),
+                                        color: EXPENSE_COLORS[index % EXPENSE_COLORS.length],
+                                      }))}
+                                      cx="50%"
+                                      cy="50%"
+                                      innerRadius={40}
+                                      outerRadius={80}
+                                      paddingAngle={2}
+                                      dataKey="value"
+                                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                      labelLine={false}
+                                    >
+                                      {budgetItems.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip 
+                                      formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </div>
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {budgetItems.map((item, index) => (
+                                  <div key={item.categoryId} className="flex items-center gap-1.5 text-xs">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: EXPENSE_COLORS[index % EXPENSE_COLORS.length] }}
+                                    />
+                                    <span>{item.categoryName}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Expected Income Pie Chart */}
+                        {incomeItems.length > 0 && (
+                          <Card className="border-green-200 dark:border-green-800" data-testid="card-income-chart">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base">Expected Income</CardTitle>
+                              <CardDescription data-testid="text-income-total">
+                                Total: ${incomeItems.reduce((sum, item) => sum + Number(item.amount), 0).toLocaleString()}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="h-64" data-testid="chart-income-pie">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={incomeItems.map((item, index) => ({
+                                        name: item.sourceName,
+                                        value: Number(item.amount),
+                                        color: INCOME_COLORS[index % INCOME_COLORS.length],
+                                      }))}
+                                      cx="50%"
+                                      cy="50%"
+                                      innerRadius={40}
+                                      outerRadius={80}
+                                      paddingAngle={2}
+                                      dataKey="value"
+                                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                      labelLine={false}
+                                    >
+                                      {incomeItems.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={INCOME_COLORS[index % INCOME_COLORS.length]} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip 
+                                      formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </div>
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {incomeItems.map((item, index) => (
+                                  <div key={item.id} className="flex items-center gap-1.5 text-xs">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: INCOME_COLORS[index % INCOME_COLORS.length] }}
+                                    />
+                                    <span>{item.sourceName}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                      
+                      {/* Summary Card */}
+                      <Card className="mt-4 bg-muted/50" data-testid="card-budget-summary">
+                        <CardContent className="pt-4">
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Expected Income</p>
+                              <p className="text-xl font-bold text-green-600" data-testid="text-summary-income">
+                                ${incomeItems.reduce((sum, item) => sum + Number(item.amount), 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Expected Expenses</p>
+                              <p className="text-xl font-bold text-red-600" data-testid="text-summary-expenses">
+                                ${budgetItems.reduce((sum, item) => sum + parseFloat(item.amount), 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Net Balance</p>
+                              <p className={`text-xl font-bold ${
+                                incomeItems.reduce((sum, item) => sum + Number(item.amount), 0) - 
+                                budgetItems.reduce((sum, item) => sum + parseFloat(item.amount), 0) >= 0 
+                                  ? 'text-green-600' : 'text-red-600'
+                              }`} data-testid="text-summary-net-balance">
+                                ${(incomeItems.reduce((sum, item) => sum + Number(item.amount), 0) - 
+                                   budgetItems.reduce((sum, item) => sum + parseFloat(item.amount), 0)).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">Budget Items</h3>
                     <Dialog open={isAddItemOpen} onOpenChange={(open) => {

@@ -215,7 +215,12 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
                           <Input
                             type="date"
                             value={field.value instanceof Date ? format(field.value, 'yyyy-MM-dd') : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const [year, month, day] = e.target.value.split('-').map(Number);
+                                field.onChange(new Date(year, month - 1, day));
+                              }
+                            }}
                             data-testid="input-start-date"
                           />
                         </FormControl>
@@ -234,7 +239,12 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
                           <Input
                             type="date"
                             value={field.value instanceof Date ? format(field.value, 'yyyy-MM-dd') : ''}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const [year, month, day] = e.target.value.split('-').map(Number);
+                                field.onChange(new Date(year, month - 1, day));
+                              }
+                            }}
                             data-testid="input-end-date"
                           />
                         </FormControl>

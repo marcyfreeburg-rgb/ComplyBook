@@ -3076,6 +3076,7 @@ export class DatabaseStorage implements IStorage {
     const items = await this.getBudgetItems(budgetId);
 
     // Get actual spending for each category during the budget period
+    // Include organizationId filter for proper data isolation
     const results = [];
     for (const item of items) {
       const [actualResult] = await db
@@ -3085,6 +3086,7 @@ export class DatabaseStorage implements IStorage {
         .from(transactions)
         .where(
           and(
+            eq(transactions.organizationId, budget.organizationId),
             eq(transactions.categoryId, item.categoryId),
             eq(transactions.type, 'expense'),
             gte(transactions.date, budget.startDate),
