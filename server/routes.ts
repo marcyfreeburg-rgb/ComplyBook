@@ -5992,7 +5992,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const itemId = parseInt(req.params.itemId);
       
-      const [item] = await storage.getBudgetItems(req.body.budgetId);
+      // Get the budget item first
+      const item = await storage.getBudgetItem(itemId);
       if (!item) {
         return res.status(404).json({ message: "Budget item not found" });
       }

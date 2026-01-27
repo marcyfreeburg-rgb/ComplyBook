@@ -127,6 +127,8 @@ export default function Budgets() {
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
   const [isCreateBudgetOpen, setIsCreateBudgetOpen] = useState(false);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [budgetSearchQuery, setBudgetSearchQuery] = useState("");
+  const [drillDownCategory, setDrillDownCategory] = useState<{ categoryId: number; categoryName: string } | null>(null);
   const [isAddIncomeOpen, setIsAddIncomeOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<number | null>(null);
@@ -262,6 +264,18 @@ export default function Budgets() {
     },
     onError: () => {
       toast({ title: "Failed to delete budget", variant: "destructive" });
+    },
+  });
+
+  const toggleLockMutation = useMutation({
+    mutationFn: ({ id, isLocked }: { id: number; isLocked: boolean }) =>
+      apiRequest('PATCH', `/api/budget-items/${id}`, { isLocked }),
+    onSuccess: (_, { isLocked }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/budgets", selectedBudgetId, "items"] });
+      toast({ title: isLocked ? "Budget item locked" : "Budget item unlocked" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update lock status", variant: "destructive" });
     },
   });
 
@@ -696,38 +710,46 @@ export default function Budgets() {
           </table>
         ` : ''}
         
-        <h2>Budget Line Items</h2>
+        <h2>Budget Line Items with Variance Analysis</h2>
         <table>
           <thead>
             <tr>
               <th>Category</th>
-              <th class="amount">Budgeted</th>
-              <th class="amount">Spent</th>
-              <th class="amount">Remaining</th>
-              <th class="amount">% Used</th>
+              <th class="amount">Planned</th>
+              <th class="amount">Actual</th>
+              <th class="amount">Variance $</th>
+              <th class="amount">Variance %</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             ${vsActual.map(item => {
               const budgeted = parseFloat(item.budgeted);
               const actual = parseFloat(item.actual);
-              const remaining = budgeted - actual;
-              return `
-                <tr>
-                  <td>${item.categoryName}</td>
-                  <td class="amount">$${budgeted.toLocaleString()}</td>
-                  <td class="amount">$${actual.toLocaleString()}</td>
-                  <td class="amount">$${remaining.toLocaleString()}</td>
-                  <td class="amount">${item.percentUsed}%</td>
-                </tr>
-              `;
+              const variance = budgeted - actual;
+              const variancePercent = budgeted > 0 ? ((variance / budgeted) * 100) : 0;
+              const status = item.percentUsed > 100 ? 'Over Budget' : item.percentUsed >= 75 ? 'At Risk' : 'On Track';
+              const statusColor = item.percentUsed > 100 ? '#dc2626' : item.percentUsed >= 75 ? '#ca8a04' : '#16a34a';
+              const varianceColor = variance < 0 ? '#dc2626' : '#16a34a';
+              const varianceSign = variance >= 0 ? '+' : '';
+              const variancePercentColor = variancePercent < 0 ? '#dc2626' : '#16a34a';
+              const variancePercentSign = variancePercent >= 0 ? '+' : '';
+              return '<tr>' +
+                '<td>' + item.categoryName + '</td>' +
+                '<td class="amount">$' + budgeted.toLocaleString() + '</td>' +
+                '<td class="amount">$' + actual.toLocaleString() + '</td>' +
+                '<td class="amount" style="color: ' + varianceColor + '">' + varianceSign + variance.toLocaleString() + '</td>' +
+                '<td class="amount" style="color: ' + variancePercentColor + '">' + variancePercentSign + variancePercent.toFixed(1) + '%</td>' +
+                '<td style="color: ' + statusColor + '; font-weight: 500;">' + status + '</td>' +
+                '</tr>';
             }).join('')}
             <tr class="total-row">
               <td>Total</td>
               <td class="amount">$${totalBudgeted.toLocaleString()}</td>
               <td class="amount">$${totalSpent.toLocaleString()}</td>
-              <td class="amount">$${(totalBudgeted - totalSpent).toLocaleString()}</td>
+              <td class="amount" style="color: ${(totalBudgeted - totalSpent) < 0 ? '#dc2626' : '#16a34a'}">${(totalBudgeted - totalSpent) >= 0 ? '+' : ''}$${(totalBudgeted - totalSpent).toLocaleString()}</td>
               <td class="amount">${totalBudgeted > 0 ? ((totalSpent / totalBudgeted) * 100).toFixed(1) : 0}%</td>
+              <td></td>
             </tr>
           </tbody>
         </table>
@@ -1154,8 +1176,23 @@ export default function Budgets() {
       ) : (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Your Budgets</h2>
-            {budgets.map((budget) => {
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h2 className="text-xl font-semibold">Your Budgets</h2>
+              <Input 
+                placeholder="Search budgets..." 
+                value={budgetSearchQuery}
+                onChange={(e) => setBudgetSearchQuery(e.target.value)}
+                className="max-w-[200px] h-8"
+                data-testid="input-search-budgets"
+              />
+            </div>
+            {budgets.filter(budget => {
+              if (!budgetSearchQuery.trim()) return true;
+              const query = budgetSearchQuery.toLowerCase();
+              return budget.name.toLowerCase().includes(query) ||
+                     budget.departmentName?.toLowerCase().includes(query) ||
+                     budget.period.toLowerCase().includes(query);
+            }).map((budget) => {
               const linkedGrant = budget.grantId ? grants.find(g => g.id === budget.grantId) : null;
               return (
               <Card
@@ -1656,6 +1693,36 @@ export default function Budgets() {
                                   </FormItem>
                                 )}
                               />
+                              
+                              {/* Budget Exceed Warning */}
+                              {(() => {
+                                const newAmount = parseFloat(itemForm.watch("amount") || "0");
+                                const currentTotal = budgetItems.reduce((sum, item) => sum + Number(item.amount), 0);
+                                const linkedGrant = selectedBudget?.grantId ? grants.find(g => g.id === selectedBudget.grantId) : null;
+                                const grantAmount = linkedGrant ? Number(linkedGrant.amount) : 0;
+                                const additionalFunds = selectedBudget?.additionalFunds ? Number(selectedBudget.additionalFunds) : 0;
+                                const incomeTotal = incomeItems.reduce((sum, item) => sum + Number(item.amount), 0);
+                                const totalFunding = grantAmount + additionalFunds + incomeTotal;
+                                const projectedTotal = currentTotal + newAmount;
+                                const wouldExceed = totalFunding > 0 && projectedTotal > totalFunding;
+                                
+                                if (newAmount > 0 && wouldExceed) {
+                                  return (
+                                    <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md" data-testid="warning-budget-exceed">
+                                      <div className="flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                                        <span className="text-sm font-medium text-red-600">Budget Warning</span>
+                                      </div>
+                                      <p className="text-xs text-red-600 mt-1">
+                                        Adding ${newAmount.toLocaleString()} would bring total budgeted to ${projectedTotal.toLocaleString()}, 
+                                        exceeding available funding of ${totalFunding.toLocaleString()} by ${(projectedTotal - totalFunding).toLocaleString()}.
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                              
                               <Button type="submit" className="w-full" disabled={addItemMutation.isPending} data-testid="button-submit-budget-item">
                                 Add Budget Item
                               </Button>
@@ -1702,17 +1769,42 @@ export default function Budgets() {
                                   {status.label}
                                 </Badge>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  if (budgetItemData) deleteItemMutation.mutate(budgetItemData.id);
-                                }}
-                                disabled={deleteItemMutation.isPending || budgetItemData?.isLocked}
-                                data-testid={`button-delete-item-${item.categoryId}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        if (budgetItemData) {
+                                          toggleLockMutation.mutate({ 
+                                            id: budgetItemData.id, 
+                                            isLocked: !budgetItemData.isLocked 
+                                          });
+                                        }
+                                      }}
+                                      disabled={toggleLockMutation.isPending}
+                                      data-testid={`button-lock-item-${item.categoryId}`}
+                                    >
+                                      <Lock className={`w-4 h-4 ${budgetItemData?.isLocked ? 'text-primary' : 'text-muted-foreground'}`} />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {budgetItemData?.isLocked ? 'Unlock item (allow edits)' : 'Lock item (prevent changes)'}
+                                  </TooltipContent>
+                                </UITooltip>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    if (budgetItemData) deleteItemMutation.mutate(budgetItemData.id);
+                                  }}
+                                  disabled={deleteItemMutation.isPending || budgetItemData?.isLocked}
+                                  data-testid={`button-delete-item-${item.categoryId}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                             
                             {/* Variance Table */}
@@ -1743,11 +1835,18 @@ export default function Budgets() {
                               </div>
                             </div>
                             
-                            {/* Progress Bar */}
-                            <Progress 
-                              value={Math.min(item.percentUsed, 100)} 
-                              className={`h-2 ${item.percentUsed > 100 ? 'bg-red-200' : item.percentUsed >= 75 ? 'bg-yellow-200' : ''}`}
-                            />
+                            {/* Progress Bar - Clickable for drill-down */}
+                            <div 
+                              className="cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setDrillDownCategory({ categoryId: item.categoryId, categoryName: item.categoryName })}
+                              title="Click to view linked transactions"
+                              data-testid={`progress-bar-${item.categoryId}`}
+                            >
+                              <Progress 
+                                value={Math.min(item.percentUsed, 100)} 
+                                className={`h-2 ${item.percentUsed > 100 ? 'bg-red-200' : item.percentUsed >= 75 ? 'bg-yellow-200' : ''}`}
+                              />
+                            </div>
                             
                             {/* Time Awareness Row */}
                             <div className="flex items-center justify-between mt-2 text-xs">
@@ -1894,6 +1993,29 @@ export default function Budgets() {
         </div>
       )}
 
+      {/* Drill-Down Dialog - Shows transactions for selected category */}
+      <Dialog open={drillDownCategory !== null} onOpenChange={(open) => !open && setDrillDownCategory(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Transactions: {drillDownCategory?.categoryName}
+            </DialogTitle>
+            <DialogDescription>
+              Showing all transactions in this category during the budget period
+            </DialogDescription>
+          </DialogHeader>
+          {drillDownCategory && selectedBudget && (
+            <DrillDownTransactions 
+              categoryId={drillDownCategory.categoryId}
+              startDate={selectedBudget.startDate}
+              endDate={selectedBudget.endDate}
+              organizationId={organizationId}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteBudgetId !== null} onOpenChange={(open) => !open && setDeleteBudgetId(null)}>
         <AlertDialogContent data-testid="dialog-confirm-delete">
           <AlertDialogHeader>
@@ -1914,6 +2036,80 @@ export default function Budgets() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// Drill-down component for showing transactions in a category
+function DrillDownTransactions({ 
+  categoryId, 
+  startDate, 
+  endDate, 
+  organizationId 
+}: { 
+  categoryId: number; 
+  startDate: Date | string; 
+  endDate: Date | string;
+  organizationId: number;
+}) {
+  // Format dates for query params
+  const startStr = new Date(startDate).toISOString().split('T')[0];
+  const endStr = new Date(endDate).toISOString().split('T')[0];
+  
+  // Use organization-scoped transactions endpoint with query params for filtering
+  const { data: transactions = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/transactions', { organizationId, categoryId, startDate: startStr, endDate: endStr }],
+    queryFn: async () => {
+      const response = await fetch(`/api/transactions?categoryId=${categoryId}&startDate=${startStr}&endDate=${endStr}`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      return response.json();
+    },
+    enabled: !!categoryId && !!organizationId,
+  });
+
+  // Filter transactions to expense type (in case server doesn't filter)
+  const filteredTransactions = transactions.filter(t => {
+    if (t.categoryId !== categoryId) return false;
+    const txDate = new Date(t.date);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return txDate >= start && txDate <= end && t.type === 'expense';
+  });
+
+  if (isLoading) {
+    return <div className="py-8 text-center text-muted-foreground">Loading transactions...</div>;
+  }
+
+  if (filteredTransactions.length === 0) {
+    return (
+      <div className="py-8 text-center text-muted-foreground">
+        No transactions found in this category during the budget period.
+      </div>
+    );
+  }
+
+  const total = filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+        <span className="text-sm font-medium">{filteredTransactions.length} transaction(s)</span>
+        <span className="font-semibold">${total.toLocaleString()}</span>
+      </div>
+      <div className="divide-y max-h-[400px] overflow-auto">
+        {filteredTransactions.map((tx) => (
+          <div key={tx.id} className="py-3 flex items-center justify-between" data-testid={`drilldown-tx-${tx.id}`}>
+            <div>
+              <p className="font-medium text-sm">{tx.description || 'No description'}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(tx.date).toLocaleDateString()} 
+                {tx.vendorName && ` • ${tx.vendorName}`}
+              </p>
+            </div>
+            <span className="font-medium">${Number(tx.amount).toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

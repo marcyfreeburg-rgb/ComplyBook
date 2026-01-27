@@ -408,6 +408,7 @@ export interface IStorage {
   updateBudget(id: number, updates: Partial<InsertBudget>): Promise<Budget>;
   deleteBudget(id: number): Promise<void>;
   getBudgetItems(budgetId: number): Promise<Array<BudgetItem & { categoryName: string }>>;
+  getBudgetItem(id: number): Promise<BudgetItem | null>;
   createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem>;
   updateBudgetItem(id: number, updates: Partial<InsertBudgetItem>): Promise<BudgetItem>;
   deleteBudgetItem(id: number): Promise<void>;
@@ -3006,6 +3007,14 @@ export class DatabaseStorage implements IStorage {
       ...r.item,
       categoryName: r.categoryName,
     }));
+  }
+
+  async getBudgetItem(id: number): Promise<BudgetItem | null> {
+    const [item] = await db
+      .select()
+      .from(budgetItems)
+      .where(eq(budgetItems.id, id));
+    return item || null;
   }
 
   async createBudgetItem(itemData: InsertBudgetItem): Promise<BudgetItem> {
