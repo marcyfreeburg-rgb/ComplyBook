@@ -47,6 +47,9 @@ PostgreSQL (Neon Serverless) serves as the primary relational database, managed 
 -   **shadcn/ui:** Component library built on Radix UI.
 -   **Lucide React:** Icon library.
 
+### Payroll Integration
+-   **Finch API:** Unified API for connecting to 200+ payroll and HRIS providers (Gusto, ADP, Paychex, BambooHR, Paylocity, Rippling, etc.). Handles employee data sync and payroll information. Use `FINCH_SANDBOX=finch` environment variable for sandbox/testing mode.
+
 ### Other Key Dependencies
 -   **React Hook Form:** For form management with Zod resolver.
 -   **Drizzle ORM & Drizzle Zod:** For ORM and Zod integration.
