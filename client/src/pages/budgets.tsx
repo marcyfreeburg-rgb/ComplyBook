@@ -15,7 +15,7 @@ import { z } from "zod";
 import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant } from "@shared/schema";
+import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant, type Organization, type Bill, type RecurringTransaction } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { CategoryCombobox } from "@/components/category-combobox";
 import { BudgetSuggestionPanel } from "@/components/budget-suggestion";
@@ -58,6 +58,23 @@ export default function Budgets() {
 
   const { data: grants = [] } = useQuery<Grant[]>({
     queryKey: ["/api/grants", organizationId],
+    enabled: organizationId > 0,
+  });
+
+  const { data: organizations = [] } = useQuery<Array<Organization & { userRole: string }>>({
+    queryKey: ['/api/organizations'],
+  });
+  
+  const currentOrganization = organizations.find(o => o.id === organizationId);
+  const isNonprofit = currentOrganization?.type === 'nonprofit';
+
+  const { data: bills = [] } = useQuery<Bill[]>({
+    queryKey: ["/api/bills", organizationId],
+    enabled: organizationId > 0,
+  });
+
+  const { data: recurringTransactions = [] } = useQuery<RecurringTransaction[]>({
+    queryKey: ["/api/recurring-transactions", organizationId],
     enabled: organizationId > 0,
   });
 
@@ -574,52 +591,54 @@ export default function Budgets() {
             </DialogHeader>
             <Form {...budgetForm}>
               <form onSubmit={budgetForm.handleSubmit(onCreateBudget)} className="space-y-4">
-                <FormField
-                  control={budgetForm.control}
-                  name="grantId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Link to Grant (Optional)</FormLabel>
-                      <Select 
-                        onValueChange={(value) => handleGrantChange(value === "none" ? null : parseInt(value))} 
-                        value={field.value ? String(field.value) : "none"}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-budget-grant">
-                            <SelectValue placeholder="Select a grant (optional)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">No linked grant</SelectItem>
-                          {grants.filter(g => g.status === 'pending').length > 0 && (
-                            <>
-                              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Pending Grants</div>
-                              {grants.filter(g => g.status === 'pending').map((grant) => (
-                                <SelectItem key={grant.id} value={String(grant.id)}>
-                                  {grant.name} (${Number(grant.amount).toLocaleString()})
-                                </SelectItem>
-                              ))}
-                            </>
-                          )}
-                          {grants.filter(g => g.status === 'active').length > 0 && (
-                            <>
-                              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Active Grants</div>
-                              {grants.filter(g => g.status === 'active').map((grant) => (
-                                <SelectItem key={grant.id} value={String(grant.id)}>
-                                  {grant.name} (${Number(grant.amount).toLocaleString()})
-                                </SelectItem>
-                              ))}
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Linking to a grant will prefill dates and track spending against the grant amount
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {isNonprofit && (
+                  <FormField
+                    control={budgetForm.control}
+                    name="grantId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Link to Grant (Optional)</FormLabel>
+                        <Select 
+                          onValueChange={(value) => handleGrantChange(value === "none" ? null : parseInt(value))} 
+                          value={field.value ? String(field.value) : "none"}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-budget-grant">
+                              <SelectValue placeholder="Select a grant (optional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">No linked grant</SelectItem>
+                            {grants.filter(g => g.status === 'pending').length > 0 && (
+                              <>
+                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Pending Grants</div>
+                                {grants.filter(g => g.status === 'pending').map((grant) => (
+                                  <SelectItem key={grant.id} value={String(grant.id)}>
+                                    {grant.name} (${Number(grant.amount).toLocaleString()})
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                            {grants.filter(g => g.status === 'active').length > 0 && (
+                              <>
+                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Active Grants</div>
+                                {grants.filter(g => g.status === 'active').map((grant) => (
+                                  <SelectItem key={grant.id} value={String(grant.id)}>
+                                    {grant.name} (${Number(grant.amount).toLocaleString()})
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Linking to a grant will prefill dates and track spending against the grant amount
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={budgetForm.control}
                   name="name"
