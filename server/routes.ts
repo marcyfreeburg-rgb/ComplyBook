@@ -18,7 +18,6 @@ import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey, createInvoiceCheckoutSession } from "./stripeClient";
 import { generateInvoicePdf } from "./invoicePdf";
-import gustoRoutes from "./gusto";
 import finchRoutes from "./finch";
 import memoize from "memoizee";
 import multer from "multer";
@@ -256,8 +255,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Gusto payroll integration routes
-  app.use('/api/gusto', gustoRoutes);
 
   // Finch payroll/HRIS integration routes
   app.use('/api/finch', finchRoutes);
