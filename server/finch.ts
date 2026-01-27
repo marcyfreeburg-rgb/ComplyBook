@@ -82,8 +82,11 @@ router.post('/create-session/:organizationId', isAuthenticated, async (req: Requ
 
     if (!sessionResponse.ok) {
       const errorData = await sessionResponse.text();
-      console.error('[Finch] Session creation failed:', errorData);
-      return res.status(500).json({ error: 'Failed to create Finch connect session' });
+      console.error('[Finch] Session creation failed. Status:', sessionResponse.status);
+      console.error('[Finch] Error response:', errorData);
+      console.error('[Finch] Redirect URI used:', getRedirectUri(req));
+      console.error('[Finch] Sandbox mode:', FINCH_SANDBOX || 'disabled');
+      return res.status(500).json({ error: 'Failed to create Finch connect session', details: errorData });
     }
 
     const sessionData = await sessionResponse.json() as {
