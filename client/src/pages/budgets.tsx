@@ -446,7 +446,7 @@ export default function Budgets() {
     let csv = "Budget Export for Grant Application\n";
     csv += `Budget Name,${selectedBudget.name}\n`;
     csv += `Period,${new Date(selectedBudget.startDate).toLocaleDateString()} - ${new Date(selectedBudget.endDate).toLocaleDateString()}\n`;
-    if (linkedGrant) {
+    if (isNonprofit && linkedGrant) {
       csv += `Linked Grant,${linkedGrant.name}\n`;
       csv += `Grant Amount,$${grantAmount.toFixed(2)}\n`;
     }
@@ -526,11 +526,11 @@ export default function Budgets() {
         <h1>Budget Export</h1>
         <h2>${selectedBudget.name}</h2>
         <p>Period: ${new Date(selectedBudget.startDate).toLocaleDateString()} - ${new Date(selectedBudget.endDate).toLocaleDateString()}</p>
-        ${linkedGrant ? `<p>Linked Grant: ${linkedGrant.name}</p>` : ''}
+        ${isNonprofit && linkedGrant ? `<p>Linked Grant: ${linkedGrant.name}</p>` : ''}
         
         <div class="summary">
           <div class="summary-grid">
-            ${linkedGrant ? `
+            ${isNonprofit && linkedGrant ? `
               <div class="summary-item">
                 <div class="summary-label">Grant Amount</div>
                 <div class="summary-value">$${grantAmount.toLocaleString()}</div>
@@ -983,7 +983,7 @@ export default function Budgets() {
                       {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)} • 
                       {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
                     </CardDescription>
-                    {linkedGrant && (
+                    {isNonprofit && linkedGrant && (
                       <p className="text-xs text-primary mt-1" data-testid={`grant-link-${budget.id}`}>
                         Grant: {linkedGrant.name} (${Number(linkedGrant.amount).toLocaleString()})
                       </p>
@@ -1021,7 +1021,7 @@ export default function Budgets() {
 
           {selectedBudget && (
             <div className="lg:col-span-2 space-y-6">
-              {selectedBudget.grantId && (() => {
+              {isNonprofit && selectedBudget.grantId && (() => {
                 const linkedGrant = grants.find(g => g.id === selectedBudget.grantId);
                 const totalBudgeted = vsActual.reduce((sum, item) => sum + parseFloat(item.budgeted || "0"), 0);
                 const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual || "0"), 0);
