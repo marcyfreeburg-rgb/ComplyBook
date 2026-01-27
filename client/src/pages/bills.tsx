@@ -723,7 +723,8 @@ export default function Bills({ currentOrganization }: BillsProps) {
       {/* AI Pattern Detection - Only show expense patterns on Bills page */}
       {currentOrganization && (
         <RecurringPatternDetector 
-          organizationId={currentOrganization.id} 
+          organizationId={currentOrganization.id}
+          organizationType={currentOrganization.type}
           filterType="expense"
         />
       )}

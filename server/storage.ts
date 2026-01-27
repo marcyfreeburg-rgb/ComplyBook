@@ -586,6 +586,7 @@ export interface IStorage {
   createBillLineItem(item: InsertBillLineItem): Promise<BillLineItem>;
   updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem>;
   deleteBillLineItem(id: number): Promise<void>;
+  getTransactionIdsLinkedToBills(organizationId: number): Promise<number[]>;
 
   // Dismissed pattern operations
   getDismissedPatterns(organizationId: number): Promise<DismissedPattern[]>;
@@ -4709,6 +4710,17 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBillLineItem(id: number): Promise<void> {
     await db.delete(billLineItems).where(eq(billLineItems.id, id));
+  }
+
+  async getTransactionIdsLinkedToBills(organizationId: number): Promise<number[]> {
+    const results = await db
+      .select({ transactionId: bills.transactionId })
+      .from(bills)
+      .where(and(
+        eq(bills.organizationId, organizationId),
+        isNotNull(bills.transactionId)
+      ));
+    return results.map(r => r.transactionId!).filter(id => id !== null);
   }
 
   // ============================================

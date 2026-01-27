@@ -5650,7 +5650,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         suggestedBillName: z.string().optional(),
         dayOfMonth: z.number().min(1).max(28).optional(),
         fundingSource: z.enum(['unrestricted', 'grant']).optional(),
-        grantId: z.number().nullable().optional()
+        grantId: z.number().nullable().optional(),
+        categoryId: z.number().nullable().optional()
       });
 
       const parseResult = patternSchema.safeParse(req.body);
@@ -5678,7 +5679,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId, 
         pattern.dayOfMonth,
         pattern.fundingSource,
-        pattern.grantId
+        pattern.grantId,
+        pattern.categoryId
       );
       if (!bill) {
         return res.status(500).json({ message: "Failed to create bill from pattern" });

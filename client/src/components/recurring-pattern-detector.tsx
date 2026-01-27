@@ -87,12 +87,14 @@ interface RecurringPattern {
 
 interface RecurringPatternDetectorProps {
   organizationId: number;
+  organizationType?: 'nonprofit' | 'forprofit';
   filterType?: 'expense' | 'income' | 'all';
   onAddRecurringIncome?: (pattern: RecurringPattern) => void;
 }
 
 export function RecurringPatternDetector({ 
   organizationId, 
+  organizationType = 'nonprofit',
   filterType = 'all',
   onAddRecurringIncome 
 }: RecurringPatternDetectorProps) {
@@ -144,8 +146,17 @@ export function RecurringPatternDetector({
   // Fetch grants for funding source suggestions
   const { data: grants } = useQuery<Array<{ id: number; name: string; status: string }>>({
     queryKey: [`/api/grants/${organizationId}`],
+    enabled: confirmDialogOpen && organizationType === 'nonprofit',
+  });
+
+  // Fetch categories for bill category assignment
+  const { data: categories } = useQuery<Array<{ id: number; name: string; type: string; parentId: number | null }>>({
+    queryKey: [`/api/categories/${organizationId}`],
     enabled: confirmDialogOpen,
   });
+
+  // State for selected category in the confirmation dialog
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   // Check if a pattern has already been added
   const isPatternAdded = (pattern: RecurringPattern): boolean => {
@@ -181,10 +192,12 @@ export function RecurringPatternDetector({
       const avgDay = Math.round(days.reduce((a, b) => a + b, 0) / days.length);
       setDayOfMonth(String(Math.min(28, avgDay))); // Cap at 28 for safety
     }
-    // Reset funding source
+    // Reset funding source and category
     setFundingSource('unrestricted');
     setSelectedGrantId(null);
     setSuggestedGrant(null);
+    // Use pattern's detected category if available
+    setSelectedCategoryId(pattern.categoryId || null);
     
     // Try to get grant suggestions based on past transactions for this vendor
     try {
@@ -207,12 +220,13 @@ export function RecurringPatternDetector({
   };
 
   const createBillMutation = useMutation({
-    mutationFn: async ({ pattern, frequency, dayOfMonth, fundingSource, grantId }: { 
+    mutationFn: async ({ pattern, frequency, dayOfMonth, fundingSource, grantId, categoryId }: { 
       pattern: RecurringPattern; 
       frequency: RecurringPattern['frequency']; 
       dayOfMonth: number;
       fundingSource: 'unrestricted' | 'grant';
       grantId: number | null;
+      categoryId: number | null;
     }) => {
       setAddingPattern(`${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`);
       return apiRequest('POST', `/api/ai/create-bill-from-pattern/${organizationId}`, {
@@ -220,7 +234,8 @@ export function RecurringPatternDetector({
         frequency,
         dayOfMonth,
         fundingSource,
-        grantId
+        grantId,
+        categoryId
       });
     },
     onSuccess: (_data, { pattern }) => {
@@ -503,52 +518,83 @@ export function RecurringPatternDetector({
                 )}
               </div>
 
-              {/* Funding Source Selection */}
+              {/* Funding Source Selection - Only for nonprofits */}
+              {organizationType === 'nonprofit' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Funding Source</Label>
+                    <Select 
+                      value={fundingSource} 
+                      onValueChange={(v) => {
+                        setFundingSource(v as 'unrestricted' | 'grant');
+                        if (v === 'unrestricted') setSelectedGrantId(null);
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-funding-source">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unrestricted">Unrestricted Funds</SelectItem>
+                        <SelectItem value="grant">Grant Funded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {fundingSource === 'grant' && (
+                    <div className="space-y-2">
+                      <Label>Select Grant</Label>
+                      <Select 
+                        value={selectedGrantId?.toString() || ''} 
+                        onValueChange={(v) => setSelectedGrantId(parseInt(v))}
+                      >
+                        <SelectTrigger data-testid="select-grant">
+                          <SelectValue placeholder="Select a grant..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {grants?.filter(g => g.status === 'active').map((grant) => (
+                            <SelectItem key={grant.id} value={grant.id.toString()}>
+                              {grant.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {suggestedGrant && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-purple-500" />
+                          Suggested: <span className="font-medium">{suggestedGrant.name}</span> (based on past transactions)
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Category Selection */}
               <div className="space-y-2">
-                <Label>Funding Source</Label>
+                <Label>Category (Optional)</Label>
                 <Select 
-                  value={fundingSource} 
-                  onValueChange={(v) => {
-                    setFundingSource(v as 'unrestricted' | 'grant');
-                    if (v === 'unrestricted') setSelectedGrantId(null);
-                  }}
+                  value={selectedCategoryId?.toString() || 'none'} 
+                  onValueChange={(v) => setSelectedCategoryId(v === 'none' ? null : parseInt(v))}
                 >
-                  <SelectTrigger data-testid="select-funding-source">
-                    <SelectValue />
+                  <SelectTrigger data-testid="select-bill-category">
+                    <SelectValue placeholder="Select a category..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unrestricted">Unrestricted Funds</SelectItem>
-                    <SelectItem value="grant">Grant Funded</SelectItem>
+                    <SelectItem value="none">No category</SelectItem>
+                    {categories?.filter(c => c.type === 'expense').map((category) => (
+                      <SelectItem key={category.id} value={category.id.toString()}>
+                        {category.parentId ? '  └ ' : ''}{category.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {selectedPattern.categoryName && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-purple-500" />
+                    Detected: <span className="font-medium">{selectedPattern.categoryName}</span> (from transactions)
+                  </p>
+                )}
               </div>
-
-              {fundingSource === 'grant' && (
-                <div className="space-y-2">
-                  <Label>Select Grant</Label>
-                  <Select 
-                    value={selectedGrantId?.toString() || ''} 
-                    onValueChange={(v) => setSelectedGrantId(parseInt(v))}
-                  >
-                    <SelectTrigger data-testid="select-grant">
-                      <SelectValue placeholder="Select a grant..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {grants?.filter(g => g.status === 'active').map((grant) => (
-                        <SelectItem key={grant.id} value={grant.id.toString()}>
-                          {grant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {suggestedGrant && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-purple-500" />
-                      Suggested: <span className="font-medium">{suggestedGrant.name}</span> (based on past transactions)
-                    </p>
-                  )}
-                </div>
-              )}
 
               <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
                 <p>Based on {selectedPattern.transactionCount} transactions with amounts ranging from ${selectedPattern.minAmount.toFixed(2)} to ${selectedPattern.maxAmount.toFixed(2)}</p>
@@ -571,12 +617,13 @@ export function RecurringPatternDetector({
                     pattern: selectedPattern,
                     frequency: customFrequency,
                     dayOfMonth: parseInt(dayOfMonth) || 15,
-                    fundingSource,
-                    grantId: fundingSource === 'grant' ? selectedGrantId : null
+                    fundingSource: organizationType === 'nonprofit' ? fundingSource : 'unrestricted',
+                    grantId: organizationType === 'nonprofit' && fundingSource === 'grant' ? selectedGrantId : null,
+                    categoryId: selectedCategoryId
                   });
                 }
               }}
-              disabled={createBillMutation.isPending || (fundingSource === 'grant' && !selectedGrantId)}
+              disabled={createBillMutation.isPending || (organizationType === 'nonprofit' && fundingSource === 'grant' && !selectedGrantId)}
               data-testid="button-confirm-create-bill"
             >
               {createBillMutation.isPending ? 'Creating...' : 'Create Bill'}

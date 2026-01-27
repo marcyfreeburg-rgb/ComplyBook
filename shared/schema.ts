@@ -869,6 +869,7 @@ export const billLineItems = pgTable("bill_line_items", {
   quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
   rate: numeric("rate", { precision: 12, scale: 2 }).notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -880,6 +881,7 @@ export const insertBillLineItemSchema = createInsertSchema(billLineItems).omit({
   quantity: z.string().or(z.number()).transform(val => String(val)),
   rate: z.string().or(z.number()).transform(val => String(val)),
   amount: z.string().or(z.number()).transform(val => String(val)),
+  categoryId: z.number().optional().nullable(),
 });
 
 export type InsertBillLineItem = z.infer<typeof insertBillLineItemSchema>;

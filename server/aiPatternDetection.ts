@@ -82,11 +82,15 @@ export async function detectRecurringPatterns(
     const vendors = await storage.getVendors(organizationId);
     const categories = await storage.getCategories(organizationId);
     
+    // Get transaction IDs already linked to bills to filter them out
+    const linkedTransactionIds = new Set(await storage.getTransactionIdsLinkedToBills(organizationId));
+    
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths);
     
+    // Filter out transactions already linked to bills
     const recentTransactions = transactions.filter(t => 
-      new Date(t.date) >= cutoffDate
+      new Date(t.date) >= cutoffDate && !linkedTransactionIds.has(t.id)
     );
 
     if (recentTransactions.length < 3) {
@@ -566,7 +570,8 @@ export async function createBillFromPattern(
   userId: string,
   customDayOfMonth?: number,
   fundingSource?: 'unrestricted' | 'grant',
-  grantId?: number | null
+  grantId?: number | null,
+  categoryId?: number | null
 ): Promise<Bill | null> {
   try {
     const frequencyMap: Record<string, Bill['recurringFrequency']> = {
@@ -610,6 +615,16 @@ export async function createBillFromPattern(
       grantId: grantId || null,
       aiSuggested: true,
       createdBy: userId
+    });
+
+    // Create a default line item for the bill with the category
+    await storage.createBillLineItem({
+      billId: bill.id,
+      description: pattern.suggestedBillName || `Recurring payment to ${pattern.vendorName}`,
+      quantity: '1',
+      rate: pattern.averageAmount.toFixed(2),
+      amount: pattern.averageAmount.toFixed(2),
+      categoryId: categoryId || null
     });
 
     console.log(`[Pattern to Bill] Created bill ${bill.id} from pattern for ${pattern.vendorName}`);
