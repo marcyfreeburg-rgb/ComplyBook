@@ -122,11 +122,67 @@ export async function detectRecurringPatterns(
       groupedByVendor[key].push(t);
     }
 
+    // Helper function to cluster transactions by amount
+    // This separates fixed-amount recurring payments (like separate insurance policies)
+    // from variable-amount payments (like utilities)
+    const clusterByAmount = (transactions: typeof transactionSummary): (typeof transactionSummary)[] => {
+      if (transactions.length < 2) return [transactions];
+      
+      const amounts = transactions.map(t => parseFloat(t.amount));
+      const minAmt = Math.min(...amounts);
+      const maxAmt = Math.max(...amounts);
+      
+      // If all amounts are within 15% of each other, treat as one group (variable like utilities)
+      const range = maxAmt - minAmt;
+      const avgAmt = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+      if (range <= avgAmt * 0.15) {
+        return [transactions];
+      }
+      
+      // Check if amounts cluster into distinct fixed values
+      // Group amounts that are within $2 of each other
+      const amountClusters: Map<number, typeof transactionSummary> = new Map();
+      
+      for (const t of transactions) {
+        const amt = parseFloat(t.amount);
+        let foundCluster = false;
+        
+        for (const [clusterAmt, clusterTxs] of amountClusters) {
+          if (Math.abs(amt - clusterAmt) <= 2) {
+            clusterTxs.push(t);
+            foundCluster = true;
+            break;
+          }
+        }
+        
+        if (!foundCluster) {
+          amountClusters.set(amt, [t]);
+        }
+      }
+      
+      // Only split if we have multiple clusters with at least 2 transactions each
+      const validClusters = Array.from(amountClusters.values()).filter(c => c.length >= 2);
+      
+      if (validClusters.length > 1) {
+        // Multiple distinct fixed-amount patterns found
+        return validClusters;
+      }
+      
+      // Otherwise treat as one variable-amount group
+      return [transactions];
+    };
+
     const potentialPatterns: typeof transactionSummary[] = [];
     for (const key of Object.keys(groupedByVendor)) {
       const vendorTransactions = groupedByVendor[key];
       if (vendorTransactions.length >= 2) {
-        potentialPatterns.push(vendorTransactions);
+        // Split vendor transactions into amount clusters if they have distinct fixed amounts
+        const clusters = clusterByAmount(vendorTransactions);
+        for (const cluster of clusters) {
+          if (cluster.length >= 2) {
+            potentialPatterns.push(cluster);
+          }
+        }
       }
     }
 
@@ -243,20 +299,26 @@ export async function detectRecurringPatterns(
 
     const prompt = `Analyze these transaction groups and identify RECURRING patterns.
 Look for transactions that occur regularly (weekly, biweekly, monthly, quarterly, yearly).
-Amount may vary slightly - that's okay for bills like utilities.
+
+IMPORTANT RULES:
+1. Variable-amount bills (like utilities): Amount may vary - group these together with a range.
+2. Fixed-amount bills (like insurance): If you see the SAME vendor with DIFFERENT fixed amounts recurring separately, 
+   these are likely SEPARATE bills/policies. Create separate patterns for each distinct amount.
+   Example: If "ABC Insurance" has recurring $60 payments AND recurring $80 payments, create TWO patterns.
+3. Transactions have already been pre-clustered by amount similarity, so each group should be analyzed as a single pattern.
 
 Transaction Groups:
 ${JSON.stringify(patternData, null, 2)}
 
 For each group that shows a recurring pattern, respond with:
-- vendorName: the vendor/company name
+- vendorName: the vendor/company name (add amount identifier if needed, e.g., "Farmers Insurance ($60)")
 - frequency: 'weekly', 'biweekly', 'monthly', 'quarterly', or 'yearly'
 - averageAmount: average transaction amount
 - minAmount: minimum transaction amount
 - maxAmount: maximum transaction amount
 - transactionIds: array of transaction IDs that are part of this pattern
 - confidence: 0-100 how confident you are this is recurring
-- suggestedBillName: a good name for this as a bill (e.g., "Monthly Electric Bill")
+- suggestedBillName: a descriptive name for this bill (e.g., "Monthly Electric Bill", "Auto Insurance Policy 1")
 
 Only include patterns with confidence >= 60.
 Respond with JSON: {"patterns": [...]}`;
