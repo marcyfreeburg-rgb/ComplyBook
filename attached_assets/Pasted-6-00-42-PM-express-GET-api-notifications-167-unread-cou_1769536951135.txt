@@ -1,0 +1,143 @@
+6:00:42 PM [express] GET /api/notifications/167/unread-count 304 in 780ms :: {"count":"0"}
+6:01:09 PM [express] GET /api/auth/user 200 in 362ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+6:01:09 PM [express] GET /api/organizations 304 in 338ms :: [{"id":168,"name":"C Cubed Training","ty…
+6:01:09 PM [express] GET /api/security/mfa/status 304 in 486ms :: {"mfaEnabled":true,"mfaRequired":t…
+6:01:10 PM [express] GET /api/notifications/167/unread-count 304 in 234ms :: {"count":"0"}
+6:01:10 PM [express] GET /api/dashboard/167 304 in 417ms :: {"totalIncome":"3794.20","totalExpenses"…
+6:01:10 PM [express] GET /api/budgets/167 304 in 589ms :: []
+6:01:10 PM [express] GET /api/dashboard/167/category-breakdown 304 in 765ms :: {"incomeByCategory":[…
+6:01:11 PM [express] GET /api/dashboard/167/monthly-trends 304 in 1084ms :: [{"month":"Aug 2025","in…
+6:01:13 PM [express] GET /api/vendors/167 304 in 236ms :: [{"id":11,"organizationId":167,"name":"FAR…
+6:01:13 PM [express] GET /api/bills/167 304 in 232ms :: []
+[AI Pattern Detection] AI response: {
+  "patterns": [
+    {
+      "vendorName": "FARMERS INS COMMERCIAL",
+      "frequency": "monthly",
+      "averageAmount": 74.44,
+      "minAmount": 60.00,
+      "maxAmount": 80.66,
+      "transactionIds": [41763, 41762, 46209, 46208, 38724, 38723, 46218, 46217, 38839, 38890, 46232, 46231, 38894, 38893, 46250, 46249, 38900, 38901],
+      "confidence": 90,
+      "suggestedBillName": "Farmers Insurance Monthly Bill"
+    },
+    {
+      "vendorName": "Visa Check PUBLIC",
+      "frequency": "monthly",
+      "averageAmount": 29.96,
+      "minAmount": 29.96,
+      "maxAmount": 29.96,
+      "transactionIds": [46197, 38715, 46212, 46225, 46239, 38896, 46256, 38904, 46265, 38913],
+      "confidence": 95,
+      "suggestedBillName": "Monthly Public Data Check"
+    },
+    {
+      "vendorName": "Visa Check WAVE",
+      "frequency": "monthly",
+      "averageAmount": 32.00,
+      "minAmount": 32.00,
+      "maxAmount": 32.00,
+      "transactionIds": [46189, 46188, 46222, 46234, 38895, 46254, 38902, 46264, 38912],
+      "confidence": 85,
+      "suggestedBillName": "Wave Payroll Fees"
+    },
+    {
+      "vendorName": "Deposit Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 2000.00,
+      "minAmount": 1000.00,
+      "maxAmount": 2000.00,
+      "transactionIds": [46187, 38720, 38726, 46215, 46230, 46245, 38899, 46248, 46262, 38910],
+      "confidence": 90,
+      "suggestedBillName": "Monthly Home Banking Deposit"
+    },
+    {
+      "vendorName": "Wave Payroll :",
+      "frequency": "biweekly",
+      "averageAmount": 549.67,
+      "minAmount": 0.02,
+      "maxAmount": 552.45,
+      "transactionIds": [46190, 41181, 40824, 38714, 38719, 38721, 38727, 46213, 38837, 46214, 38838, 46226, 38848, 46233, 38853, 46235, 38855, 46242, 38862, 46246, 38864, 46251, 38868, 46253, 38870, 46257, 38905, 46261, 38909],
+      "confidence": 95,
+      "suggestedBillName": "Biweekly Payroll Expense"
+    }
+  ]
+}
+[AI Pattern Detection] Found 5 recurring patterns
+6:01:34 PM [express] GET /api/ai/detect-recurring/167 200 in 18819ms :: [{"vendorName":"FARMERS INS …
+Error suggesting funding source: TypeError: storage.getBillsByOrganizationId is not a function
+    at file:///opt/render/project/src/dist/index.js:15130:36
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+6:01:52 PM [express] GET /api/ai/suggest-funding-source/167 500 in 717ms :: {"message":"Failed to su…
+6:01:52 PM [express] GET /api/categories/167 304 in 292ms :: [{"id":269,"organizationId":167,"name":…
+[Pattern to Bill] Created bill 23 from pattern for Visa Check PUBLIC
+6:01:57 PM [express] POST /api/ai/create-bill-from-pattern/167 201 in 747ms :: {"id":23,"organizatio…
+6:01:57 PM [express] GET /api/bills/167 200 in 238ms :: [{"id":23,"organizationId":167,"vendorId":15…
+6:02:11 PM [express] GET /api/notifications/167/unread-count 304 in 766ms :: {"count":"0"}
+[AI Pattern Detection] AI response: {
+  "patterns": [
+    {
+      "vendorName": "WAVE SV9T :",
+      "frequency": "monthly",
+      "averageAmount": 194.20,
+      "minAmount": 194.20,
+      "maxAmount": 194.20,
+      "transactionIds": [46327, 38722, 46216, 46229, 46243, 38897],
+      "confidence": 85,
+      "suggestedBillName": "Monthly Wave Payment"
+    },
+    {
+      "vendorName": "Visa Check PUBLIC",
+      "frequency": "monthly",
+      "averageAmount": 29.96,
+      "minAmount": 29.96,
+      "maxAmount": 29.96,
+      "transactionIds": [46197, 38715, 46212, 46225, 46239, 46256, 46265],
+      "confidence": 95,
+      "suggestedBillName": "Monthly Public Data Service"
+    },
+    {
+      "vendorName": "Deposit Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 2000.00,
+      "minAmount": 2000.00,
+      "maxAmount": 2000.00,
+      "transactionIds": [46187, 38720, 46215, 46230, 46245, 46262],
+      "confidence": 90,
+      "suggestedBillName": "Monthly Deposit"
+    },
+    {
+      "vendorName": "Wave Payroll :",
+      "frequency": "biweekly",
+      "averageAmount": 549.57,
+      "minAmount": 0.02,
+      "maxAmount": 552.45,
+      "transactionIds": [46190, 41181, 40824, 38714, 38719, 38721, 38727, 46213, 46214, 46226, 46233, 46235, 46242, 46246, 46251, 46253, 46257, 46261],
+      "confidence": 80,
+      "suggestedBillName": "Biweekly Payroll Expenses"
+    },
+    {
+      "vendorName": "Visa Check WAVE",
+      "frequency": "monthly",
+      "averageAmount": 32.00,
+      "minAmount": 32.00,
+      "maxAmount": 32.00,
+      "transactionIds": [46189, 46188, 46222, 46234, 46254, 46264],
+      "confidence": 75,
+      "suggestedBillName": "Monthly Payroll Fees"
+    },
+    {
+      "vendorName": "FARMERS INS COMMERCIAL",
+      "frequency": "monthly",
+      "averageAmount": 70.33,
+      "minAmount": 60.00,
+      "maxAmount": 80.66,
+Menu
+      "transactionIds": [41763, 41762, 46209, 46208, 38724, 38723],
+      "confidence": 90,
+      "suggestedBillName": "Monthly Farmers Insurance"
+    }
+  ]
+}
+[AI Pattern Detection] Found 6 recurring patterns
+6:02:15 PM [express] GET /api/ai/detect-recurring/167 200 in 17465ms :: [{"vendorName":"WAVE SV9T :"…

@@ -5572,7 +5572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Look for past transactions to this vendor that were linked to grants via bills
-      const bills = await storage.getBillsByOrganizationId(organizationId);
+      const bills = await storage.getBills(organizationId);
       const vendors = await storage.getVendorsByOrganizationId(organizationId);
       
       // Find vendor by name (case-insensitive)
