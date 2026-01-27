@@ -2,17 +2,20 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText, PieChart as PieChartIcon } from "lucide-react";
+import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText, PieChart as PieChartIcon, AlertTriangle, CheckCircle, Clock, Target, Flame, Lock, Info, TrendingDown } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant, type Organization, type Bill, type RecurringTransaction } from "@shared/schema";
@@ -48,6 +51,75 @@ const INCOME_COLORS = [
   '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
   '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
 ];
+
+type BudgetStatus = 'on_track' | 'at_risk' | 'over_budget';
+type TimeStatus = 'ahead' | 'on_schedule' | 'behind' | 'over_accelerating';
+
+function getBudgetStatus(percentUsed: number): { status: BudgetStatus; label: string; color: string; icon: typeof CheckCircle } {
+  if (percentUsed > 100) {
+    return { status: 'over_budget', label: 'Over Budget', color: 'text-red-600 bg-red-100 dark:bg-red-900/30', icon: AlertTriangle };
+  } else if (percentUsed >= 75) {
+    return { status: 'at_risk', label: 'At Risk', color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30', icon: AlertTriangle };
+  }
+  return { status: 'on_track', label: 'On Track', color: 'text-green-600 bg-green-100 dark:bg-green-900/30', icon: CheckCircle };
+}
+
+function getTimeStatus(
+  startDate: Date,
+  endDate: Date,
+  budgeted: number,
+  actual: number
+): { status: TimeStatus; expectedSpend: number; label: string; color: string } {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  if (now < start) {
+    return { status: 'ahead', expectedSpend: 0, label: 'Not started', color: 'text-muted-foreground' };
+  }
+  
+  if (now > end) {
+    return { status: actual > budgeted ? 'over_accelerating' : 'on_schedule', expectedSpend: budgeted, label: 'Period ended', color: 'text-muted-foreground' };
+  }
+  
+  const totalDays = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const elapsedDays = Math.max(0, (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const percentTimeElapsed = elapsedDays / totalDays;
+  const expectedSpend = budgeted * percentTimeElapsed;
+  
+  const spendRatio = actual / Math.max(expectedSpend, 0.01);
+  
+  if (spendRatio > 1.25) {
+    // Spending much faster than expected - dangerous
+    return { status: 'over_accelerating', expectedSpend, label: 'Spending too fast', color: 'text-red-600' };
+  } else if (spendRatio > 1) {
+    // Spending slightly ahead of expected pace
+    return { status: 'behind', expectedSpend, label: 'Slightly ahead of pace', color: 'text-yellow-600' };
+  } else if (spendRatio >= 0.75) {
+    // Spending roughly on track with time elapsed
+    return { status: 'on_schedule', expectedSpend, label: 'On track', color: 'text-green-600' };
+  }
+  // Spending less than expected - good for budget, might indicate under-utilization
+  return { status: 'ahead', expectedSpend, label: 'Under budget pace', color: 'text-blue-600' };
+}
+
+function calculateBurnRate(
+  startDate: Date,
+  endDate: Date,
+  totalSpent: number
+): { dailyBurnRate: number; projectedEndSpend: number; daysRemaining: number } {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  const elapsedDays = Math.max(1, (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const remainingDays = Math.max(0, (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  
+  const dailyBurnRate = totalSpent / elapsedDays;
+  const projectedEndSpend = totalSpent + (dailyBurnRate * remainingDays);
+  
+  return { dailyBurnRate, projectedEndSpend, daysRemaining: Math.ceil(remainingDays) };
+}
 
 export default function Budgets() {
   const [, setLocation] = useLocation();
@@ -171,6 +243,7 @@ export default function Budgets() {
         budgetId: selectedBudgetId || 0,
         categoryId: 0,
         amount: "",
+        notes: "",
       });
       toast({ title: "Budget item added successfully" });
     },
@@ -232,6 +305,10 @@ export default function Budgets() {
     endDate: z.date(),
     additionalFunds: z.string().optional(),
     additionalFundsDescription: z.string().optional(),
+    departmentName: z.string().optional().nullable(),
+    alertAt50: z.boolean().optional(),
+    alertAt75: z.boolean().optional(),
+    alertAt90: z.boolean().optional(),
     createdBy: z.string().optional(),
   });
 
@@ -246,6 +323,10 @@ export default function Budgets() {
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
       additionalFunds: "",
       additionalFundsDescription: "",
+      departmentName: "",
+      alertAt50: false,
+      alertAt75: true,
+      alertAt90: true,
     },
   });
 
@@ -253,6 +334,7 @@ export default function Budgets() {
     budgetId: z.number(),
     categoryId: z.number().min(1, "Category is required"),
     amount: z.string().min(1, "Amount is required"),
+    notes: z.string().optional(),
   });
 
   const itemForm = useForm<z.infer<typeof itemFormSchema>>({
@@ -261,6 +343,7 @@ export default function Budgets() {
       budgetId: selectedBudgetId || 0,
       categoryId: 0,
       amount: "",
+      notes: "",
     },
   });
 
@@ -826,6 +909,29 @@ export default function Budgets() {
                   />
                 </div>
                 
+                {/* Budget Assignment - Department (applies to all org types) */}
+                <FormField
+                  control={budgetForm.control}
+                  name="departmentName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assign to Department (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ''}
+                          placeholder="e.g., Marketing, Operations, HR"
+                          data-testid="input-budget-department"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Link this budget to a specific department for easier tracking
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 {/* Budget Suggestions from Bills/Recurring - Show for all orgs */}
                 {!editingBudget && budgetForm.watch("startDate") && budgetForm.watch("endDate") && (
                   (() => {
@@ -954,6 +1060,68 @@ export default function Budgets() {
                     />
                   </>
                 )}
+                
+                {/* Budget Alerts Configuration */}
+                <div className="p-3 border rounded-lg space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm font-medium">Budget Alerts</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get notified before you overspend. Alerts will appear on your dashboard.
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={budgetForm.control}
+                      name="alertAt50"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-alert-50"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal">Alert at 50%</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={budgetForm.control}
+                      name="alertAt75"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-alert-75"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal">Alert at 75%</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={budgetForm.control}
+                      name="alertAt90"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-alert-90"
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal">Alert at 90%</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={createBudgetMutation.isPending || updateBudgetMutation.isPending} data-testid="button-submit-budget">
                   {editingBudget 
                     ? (updateBudgetMutation.isPending ? "Updating..." : "Update")
@@ -997,7 +1165,14 @@ export default function Budgets() {
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
                   <div className="cursor-pointer flex-1" onClick={() => setSelectedBudgetId(budget.id)}>
-                    <CardTitle className="text-base">{budget.name}</CardTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base">{budget.name}</CardTitle>
+                      {budget.departmentName && (
+                        <Badge variant="outline" className="text-xs" data-testid={`badge-department-${budget.id}`}>
+                          {budget.departmentName}
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription>
                       {budget.period.charAt(0).toUpperCase() + budget.period.slice(1)} • 
                       {new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()}
@@ -1126,6 +1301,91 @@ export default function Budgets() {
                   </Card>
                 ) : null;
               })()}
+              
+              {/* Executive Summary Header */}
+              {(() => {
+                const totalBudget = budgetItems.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+                const totalSpent = vsActual.reduce((sum, item) => sum + parseFloat(item.actual), 0);
+                const remaining = totalBudget - totalSpent;
+                const percentUsed = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+                const burnData = calculateBurnRate(selectedBudget.startDate, selectedBudget.endDate, totalSpent);
+                const overallStatus = getBudgetStatus(percentUsed);
+                const StatusIcon = overallStatus.icon;
+                const forecastVariance = burnData.projectedEndSpend - totalBudget;
+                
+                return (
+                  <Card className="mb-4" data-testid="card-executive-summary">
+                    <CardContent className="pt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Budget</p>
+                          <p className="text-xl font-bold" data-testid="text-exec-total-budget">
+                            ${totalBudget.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Spent</p>
+                          <p className="text-xl font-bold" data-testid="text-exec-total-spent">
+                            ${totalSpent.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Remaining</p>
+                          <p className={`text-xl font-bold ${remaining < 0 ? 'text-red-600' : 'text-green-600'}`} data-testid="text-exec-remaining">
+                            ${remaining.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Days Left</p>
+                          <p className="text-xl font-bold flex items-center justify-center gap-1" data-testid="text-exec-days-remaining">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            {burnData.daysRemaining}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Daily Burn Rate</p>
+                          <p className="text-xl font-bold flex items-center justify-center gap-1" data-testid="text-exec-burn-rate">
+                            <Flame className="w-4 h-4 text-orange-500" />
+                            ${burnData.dailyBurnRate.toFixed(0)}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+                          <Badge className={`mt-1 ${overallStatus.color}`} data-testid="badge-exec-status">
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {overallStatus.label}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Forecast Alert */}
+                      {totalSpent > 0 && burnData.daysRemaining > 0 && (
+                        <div className={`mt-4 p-3 rounded-md ${forecastVariance > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'}`} data-testid="div-forecast-alert">
+                          <div className="flex items-center gap-2">
+                            {forecastVariance > 0 ? (
+                              <TrendingUp className="w-4 h-4 text-red-600" />
+                            ) : (
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                            )}
+                            <span className="text-sm font-medium">
+                              {forecastVariance > 0 ? (
+                                <span className="text-red-700 dark:text-red-400">
+                                  At current pace, you will exceed this budget by ${Math.abs(forecastVariance).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                                </span>
+                              ) : (
+                                <span className="text-green-700 dark:text-green-400">
+                                  On track to finish ${Math.abs(forecastVariance).toLocaleString(undefined, {maximumFractionDigits: 0})} under budget
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
                   <div>
@@ -1312,6 +1572,7 @@ export default function Budgets() {
                           budgetId: selectedBudgetId,
                           categoryId: 0,
                           amount: "",
+                          notes: "",
                         });
                       }
                       setIsAddItemOpen(open);
@@ -1376,6 +1637,25 @@ export default function Budgets() {
                                   </FormItem>
                                 )}
                               />
+                              <FormField
+                                control={itemForm.control}
+                                name="notes"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Notes (Optional)</FormLabel>
+                                    <FormControl>
+                                      <Textarea 
+                                        {...field} 
+                                        placeholder="Add notes for auditors or team members..."
+                                        className="resize-none"
+                                        rows={2}
+                                        data-testid="input-budget-item-notes" 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
                               <Button type="submit" className="w-full" disabled={addItemMutation.isPending} data-testid="button-submit-budget-item">
                                 Add Budget Item
                               </Button>
@@ -1392,46 +1672,103 @@ export default function Budgets() {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      {/* Enhanced Budget Items with Variance & Time Awareness */}
                       {vsActual.map((item) => {
-                        const isOverBudget = item.percentUsed > 100;
+                        const budgeted = parseFloat(item.budgeted);
+                        const actual = parseFloat(item.actual);
+                        const variance = budgeted - actual;
+                        const variancePercent = budgeted > 0 ? ((variance / budgeted) * 100) : 0;
+                        const status = getBudgetStatus(item.percentUsed);
+                        const StatusIcon = status.icon;
+                        const timeStatus = getTimeStatus(
+                          selectedBudget.startDate,
+                          selectedBudget.endDate,
+                          budgeted,
+                          actual
+                        );
+                        const budgetItemData = budgetItems.find(bi => bi.categoryId === item.categoryId);
+                        
                         return (
-                          <div key={item.categoryId} className="space-y-2" data-testid={`budget-item-${item.categoryId}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">{item.categoryName}</span>
-                              <div className="flex items-center gap-4">
-                                <span className="text-sm text-muted-foreground">
-                                  ${parseFloat(item.actual).toFixed(2)} / ${parseFloat(item.budgeted).toFixed(2)}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    const budgetItem = budgetItems.find(bi => bi.categoryId === item.categoryId);
-                                    if (budgetItem) deleteItemMutation.mutate(budgetItem.id);
-                                  }}
-                                  disabled={deleteItemMutation.isPending}
-                                  data-testid={`button-delete-item-${item.categoryId}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                          <Card key={item.categoryId} className="p-4" data-testid={`budget-item-${item.categoryId}`}>
+                            {/* Header Row: Category, Status Badge, Actions */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                {budgetItemData?.isLocked && (
+                                  <Lock className="w-4 h-4 text-muted-foreground" />
+                                )}
+                                <span className="font-medium text-base">{item.categoryName}</span>
+                                <Badge className={`text-xs ${status.color}`} data-testid={`badge-status-${item.categoryId}`}>
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {status.label}
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  if (budgetItemData) deleteItemMutation.mutate(budgetItemData.id);
+                                }}
+                                disabled={deleteItemMutation.isPending || budgetItemData?.isLocked}
+                                data-testid={`button-delete-item-${item.categoryId}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            
+                            {/* Variance Table */}
+                            <div className="grid grid-cols-5 gap-2 text-sm mb-3">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Planned</p>
+                                <p className="font-medium" data-testid={`text-planned-${item.categoryId}`}>${budgeted.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Actual</p>
+                                <p className="font-medium" data-testid={`text-actual-${item.categoryId}`}>${actual.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Variance $</p>
+                                <p className={`font-medium ${variance < 0 ? 'text-red-600' : 'text-green-600'}`} data-testid={`text-variance-${item.categoryId}`}>
+                                  {variance >= 0 ? '+' : ''}{variance.toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Variance %</p>
+                                <p className={`font-medium ${variancePercent < 0 ? 'text-red-600' : 'text-green-600'}`} data-testid={`text-variance-pct-${item.categoryId}`}>
+                                  {variancePercent >= 0 ? '+' : ''}{variancePercent.toFixed(1)}%
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Used</p>
+                                <p className="font-medium" data-testid={`text-used-${item.categoryId}`}>{item.percentUsed}%</p>
                               </div>
                             </div>
-                            <Progress value={Math.min(item.percentUsed, 100)} className={isOverBudget ? 'bg-red-200' : ''} />
-                            <div className="flex items-center justify-between text-sm">
-                              <span className={isOverBudget ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
-                                {item.percentUsed}% used
+                            
+                            {/* Progress Bar */}
+                            <Progress 
+                              value={Math.min(item.percentUsed, 100)} 
+                              className={`h-2 ${item.percentUsed > 100 ? 'bg-red-200' : item.percentUsed >= 75 ? 'bg-yellow-200' : ''}`}
+                            />
+                            
+                            {/* Time Awareness Row */}
+                            <div className="flex items-center justify-between mt-2 text-xs">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-muted-foreground">
+                                  Expected by now: ${timeStatus.expectedSpend.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                                </span>
+                              </div>
+                              <span className={`font-medium ${timeStatus.color}`} data-testid={`text-time-status-${item.categoryId}`}>
+                                {timeStatus.label}
                               </span>
-                              {parseFloat(item.difference) < 0 ? (
-                                <span className="text-red-600 font-semibold">
-                                  ${Math.abs(parseFloat(item.difference)).toFixed(2)} over budget
-                                </span>
-                              ) : (
-                                <span className="text-green-600">
-                                  ${parseFloat(item.difference).toFixed(2)} remaining
-                                </span>
-                              )}
                             </div>
-                          </div>
+                            
+                            {/* Notes (if any) */}
+                            {budgetItemData?.notes && (
+                              <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                                {budgetItemData.notes}
+                              </div>
+                            )}
+                          </Card>
                         );
                       })}
                     </div>

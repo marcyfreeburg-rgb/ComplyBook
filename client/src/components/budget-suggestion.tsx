@@ -182,6 +182,22 @@ export function BudgetSuggestionPanel({ organizationId, budgets = [] }: BudgetSu
 
         <CollapsibleContent>
           <CardContent className="space-y-4">
+            {/* AI Transparency Box */}
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="div-ai-explanation">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                <div className="text-xs text-blue-800 dark:text-blue-200">
+                  <p className="font-medium mb-1">How AI Suggestions Work</p>
+                  <ul className="space-y-0.5 text-blue-700 dark:text-blue-300">
+                    <li>Analyzes your categorized transactions from the selected period</li>
+                    <li>Excludes one-time or unusual expenses from averages</li>
+                    <li>Uses both median and average for more accurate predictions</li>
+                    <li>Confidence scores indicate data reliability (more data = higher confidence)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Based on last</span>

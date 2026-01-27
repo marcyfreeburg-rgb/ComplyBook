@@ -1072,12 +1072,19 @@ export const budgets = pgTable("budgets", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   grantId: integer("grant_id").references(() => grants.id, { onDelete: 'set null' }),
+  fundId: integer("fund_id"),
+  programId: integer("program_id"),
+  contractId: integer("contract_id"),
+  departmentName: varchar("department_name", { length: 255 }),
   name: varchar("name", { length: 255 }).notNull(),
   period: budgetPeriodEnum("period").notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   additionalFunds: numeric("additional_funds", { precision: 12, scale: 2 }).default("0"),
   additionalFundsDescription: text("additional_funds_description"),
+  alertAt50: boolean("alert_at_50").default(false),
+  alertAt75: boolean("alert_at_75").default(true),
+  alertAt90: boolean("alert_at_90").default(true),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1095,6 +1102,13 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
     return String(val);
   }).optional().nullable(),
   additionalFundsDescription: z.string().transform(val => val === "" ? null : val).optional().nullable(),
+  fundId: z.number().optional().nullable(),
+  programId: z.number().optional().nullable(),
+  contractId: z.number().optional().nullable(),
+  departmentName: z.string().optional().nullable(),
+  alertAt50: z.boolean().optional(),
+  alertAt75: z.boolean().optional(),
+  alertAt90: z.boolean().optional(),
 });
 
 export type InsertBudget = z.infer<typeof insertBudgetSchema>;
@@ -1105,6 +1119,12 @@ export const budgetItems = pgTable("budget_items", {
   budgetId: integer("budget_id").notNull().references(() => budgets.id, { onDelete: 'cascade' }),
   categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: 'cascade' }),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  notes: text("notes"),
+  alertAt50: boolean("alert_at_50").default(false),
+  alertAt75: boolean("alert_at_75").default(true),
+  alertAt90: boolean("alert_at_90").default(true),
+  hardStop: boolean("hard_stop").default(false),
+  isLocked: boolean("is_locked").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1115,6 +1135,12 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems).omit({
   updatedAt: true,
 }).extend({
   amount: z.string().or(z.number()).transform(val => String(val)),
+  notes: z.string().optional().nullable(),
+  alertAt50: z.boolean().optional(),
+  alertAt75: z.boolean().optional(),
+  alertAt90: z.boolean().optional(),
+  hardStop: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
 });
 
 export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
