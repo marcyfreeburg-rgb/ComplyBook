@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2, RefreshCw } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2, RefreshCw, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
@@ -185,6 +185,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [debouncedStartDate, setDebouncedStartDate] = useState("");
   const [debouncedEndDate, setDebouncedEndDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncingPlaid, setIsSyncingPlaid] = useState(false);
   
   // Debounce date filters
   useEffect(() => {
@@ -417,7 +418,42 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     staleTime: 60000, // Cache for 1 minute
   });
 
+  // Check if organization has connected bank accounts
+  const { data: plaidItems = [] } = useQuery<{ id: number; itemId: string; institutionName: string }[]>({
+    queryKey: [`/api/plaid/items/${currentOrganization.id}`],
+    retry: false,
+    staleTime: 60000,
+  });
+
   const matchedIdsSet = useMemo(() => new Set(matchedTransactionIds || []), [matchedTransactionIds]);
+
+  // Sync Plaid transactions mutation
+  const syncPlaidTransactionsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/plaid/sync-transactions/${currentOrganization.id}`, {});
+      return await response.json();
+    },
+    onMutate: () => {
+      setIsSyncingPlaid(true);
+    },
+    onSuccess: (data: { imported?: number; message?: string }) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      toast({
+        title: "Transactions Synced",
+        description: `Successfully synced ${data.imported || 0} new transactions from your bank accounts.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync transactions from bank.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsSyncingPlaid(false);
+    },
+  });
 
   useEffect(() => {
     if (transactionsError && isUnauthorizedError(transactionsError as Error)) {
@@ -1578,6 +1614,21 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </div>
             </DialogContent>
           </Dialog>
+          {plaidItems.length > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={() => syncPlaidTransactionsMutation.mutate()}
+              disabled={isSyncingPlaid}
+              data-testid="button-sync-bank"
+            >
+              {isSyncingPlaid ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sync Bank Account
+            </Button>
+          )}
           <Dialog open={isReconciliationDialogOpen} onOpenChange={(open) => {
             setIsReconciliationDialogOpen(open);
             if (open && lastReconciliation) {
