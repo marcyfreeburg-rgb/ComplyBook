@@ -1899,7 +1899,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/employees', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const data = insertEmployeeSchema.parse(req.body);
+      
+      // Convert date strings to Date objects before validation
+      const body = {
+        ...req.body,
+        hireDate: req.body.hireDate ? new Date(req.body.hireDate) : undefined,
+        terminationDate: req.body.terminationDate ? new Date(req.body.terminationDate) : undefined,
+      };
+      
+      const data = insertEmployeeSchema.parse(body);
       
       const userRole = await storage.getUserRole(userId, data.organizationId);
       if (!userRole) {
@@ -2115,7 +2123,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/payroll-runs', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const data = insertPayrollRunSchema.parse(req.body);
+      
+      // Convert date strings to Date objects before validation
+      const body = {
+        ...req.body,
+        payPeriodStart: req.body.payPeriodStart ? new Date(req.body.payPeriodStart) : undefined,
+        payPeriodEnd: req.body.payPeriodEnd ? new Date(req.body.payPeriodEnd) : undefined,
+        payDate: req.body.payDate ? new Date(req.body.payDate) : undefined,
+      };
+      
+      const data = insertPayrollRunSchema.parse(body);
       
       const userRole = await storage.getUserRole(userId, data.organizationId);
       if (!userRole) {

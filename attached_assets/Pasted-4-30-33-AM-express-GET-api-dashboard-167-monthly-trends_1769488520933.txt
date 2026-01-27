@@ -1,0 +1,115 @@
+4:30:33 AM [express] GET /api/dashboard/167/monthly-trends 200 in 900ms :: [{"month":"Aug 2025","inc…
+4:30:37 AM [express] GET /api/employees/167/active 200 in 240ms :: []
+4:30:37 AM [express] GET /api/payroll-runs/167 200 in 245ms :: []
+4:30:37 AM [express] GET /api/finch/connection/167 200 in 241ms :: []
+4:30:37 AM [express] GET /api/deductions/167/active 200 in 438ms :: []
+[Finch] Creating connect session for org: 167
+[Finch] Session created, session_id: 1240ba46...
+4:30:41 AM [express] POST /api/finch/create-session/167 200 in 309ms :: {"connectUrl":"https://conne…
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+[Finch] Exchanging code for token...
+[Finch] Token exchange successful
+[Finch] connection_id: 1c29256d-ddd7-47bd-83b4-01d56c180398
+[Finch] company_id: 4688dcb1-a062-493a-9f6b-1d78483d9c8b
+[Finch] provider_id: wave
+[Finch] Created new connection
+4:34:02 AM [express] GET /api/finch/callback 302 in 2170ms
+4:34:04 AM [express] GET /api/auth/user 304 in 180ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+4:34:05 AM [express] GET /api/organizations 304 in 308ms :: [{"id":168,"name":"C Cubed Training","ty…
+4:34:05 AM [express] GET /api/security/mfa/status 304 in 491ms :: {"mfaEnabled":true,"mfaRequired":t…
+4:34:05 AM [express] GET /api/notifications/167/unread-count 304 in 265ms :: {"count":"0"}
+4:34:05 AM [express] GET /api/payroll-runs/167 304 in 260ms :: []
+4:34:05 AM [express] GET /api/finch/connection/167 200 in 441ms :: [{"id":1,"connectionId":"1c29256d…
+4:34:05 AM [express] GET /api/deductions/167/active 304 in 605ms :: []
+4:34:05 AM [express] GET /api/employees/167/active 304 in 607ms :: []
+Error creating payroll run: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "date",
+    "received": "string",
+    "path": [
+      "payPeriodStart"
+    ],
+    "message": "Expected date, received string"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "date",
+    "received": "string",
+    "path": [
+      "payPeriodEnd"
+    ],
+    "message": "Expected date, received string"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "date",
+    "received": "string",
+    "path": [
+      "payDate"
+    ],
+    "message": "Expected date, received string"
+  }
+]
+    at get error (file:///opt/render/project/src/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///opt/render/project/src/node_modules/zod/v3/types.js:114:22)
+    at file:///opt/render/project/src/dist/index.js:12524:43
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/node_modules/express/lib/router/route.js:149:13)
+    at isAuthenticated (file:///opt/render/project/src/dist/index.js:9541:12)
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/opt/render/project/src/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [Array],
+      message: 'Expected date, received string'
+    },
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [Array],
+      message: 'Expected date, received string'
+    },
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [Array],
+      message: 'Expected date, received string'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [Array],
+      message: 'Expected date, received string'
+Menu
+    },
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [Array],
+      message: 'Expected date, received string'
+    },
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [Array],
+      message: 'Expected date, received string'
+    }
+  ]
+}
+4:34:45 AM [express] POST /api/payroll-runs 400 in 486ms :: {"message":"Failed to create payroll run…
