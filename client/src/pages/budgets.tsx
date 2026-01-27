@@ -39,6 +39,7 @@ export default function Budgets() {
   const [isAddIncomeOpen, setIsAddIncomeOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<number | null>(null);
+  const [showBudgetSuggestions, setShowBudgetSuggestions] = useState(false);
 
   const organizationId = parseInt(localStorage.getItem("currentOrganizationId") || "0");
   if (!organizationId) {
@@ -309,6 +310,99 @@ export default function Budgets() {
         }
       }
     }
+  };
+
+  // Calculate suggested budget items from bills and recurring transactions for the selected date range
+  const getBudgetSuggestionsForDateRange = (startDate: Date, endDate: Date) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const months = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+    
+    // Track uncategorized bill expenses
+    let uncategorizedBillExpenses = 0;
+    const billSources: string[] = [];
+    
+    // Add bills that fall within the date range or are recurring
+    bills.forEach(bill => {
+      const dueDate = new Date(bill.dueDate);
+      const isInRange = dueDate >= start && dueDate <= end;
+      const isRecurring = bill.isRecurring && bill.recurringFrequency;
+      
+      if (isInRange || isRecurring) {
+        // Calculate amount based on frequency
+        let multiplier = 1;
+        if (isRecurring && bill.recurringFrequency) {
+          if (bill.recurringFrequency === 'monthly') multiplier = months;
+          else if (bill.recurringFrequency === 'quarterly') multiplier = Math.ceil(months / 3);
+          else if (bill.recurringFrequency === 'yearly') multiplier = months >= 12 ? 1 : 0;
+          else if (bill.recurringFrequency === 'weekly') multiplier = months * 4;
+        }
+        
+        const billAmount = Number(bill.totalAmount) * multiplier;
+        uncategorizedBillExpenses += billAmount;
+        billSources.push(`Bill #${bill.billNumber}`);
+      }
+    });
+    
+    // Group expense suggestions by category from recurring transactions
+    const expenseSuggestions: Map<number, { categoryId: number; categoryName: string; amount: number; sources: string[] }> = new Map();
+    
+    // Add recurring expense transactions
+    recurringTransactions.filter(rt => rt.type === 'expense' && rt.categoryId).forEach(rt => {
+      const category = categories.find(c => c.id === rt.categoryId);
+      const existing = expenseSuggestions.get(rt.categoryId!) || {
+        categoryId: rt.categoryId!,
+        categoryName: category?.name || 'Unknown',
+        amount: 0,
+        sources: []
+      };
+      
+      let multiplier = 1;
+      if (rt.frequency === 'monthly') multiplier = months;
+      else if (rt.frequency === 'quarterly') multiplier = Math.ceil(months / 3);
+      else if (rt.frequency === 'yearly') multiplier = months >= 12 ? 1 : 0;
+      else if (rt.frequency === 'weekly') multiplier = months * 4;
+      
+      const amount = Number(rt.amount) * multiplier;
+      existing.amount += amount;
+      existing.sources.push(rt.description || 'Recurring expense');
+      expenseSuggestions.set(rt.categoryId!, existing);
+    });
+    
+    // If we have uncategorized bill expenses, add them as a separate entry
+    if (uncategorizedBillExpenses > 0) {
+      expenseSuggestions.set(-1, {
+        categoryId: -1,
+        categoryName: 'Bills',
+        amount: uncategorizedBillExpenses,
+        sources: billSources.slice(0, 3)
+      });
+    }
+    
+    // Calculate income suggestions from recurring income
+    const incomeSuggestions: Array<{ sourceName: string; amount: number; frequency: string }> = [];
+    
+    recurringTransactions.filter(rt => rt.type === 'income').forEach(rt => {
+      let multiplier = 1;
+      if (rt.frequency === 'monthly') multiplier = months;
+      else if (rt.frequency === 'quarterly') multiplier = Math.ceil(months / 3);
+      else if (rt.frequency === 'yearly') multiplier = months >= 12 ? 1 : 0;
+      else if (rt.frequency === 'weekly') multiplier = months * 4;
+      
+      const amount = Number(rt.amount) * multiplier;
+      incomeSuggestions.push({
+        sourceName: rt.description || 'Recurring income',
+        amount,
+        frequency: rt.frequency
+      });
+    });
+    
+    return {
+      expenses: Array.from(expenseSuggestions.values()),
+      income: incomeSuggestions,
+      totalExpenses: Array.from(expenseSuggestions.values()).reduce((sum, e) => sum + e.amount, 0),
+      totalIncome: incomeSuggestions.reduce((sum, i) => sum + i.amount, 0)
+    };
   };
 
   const handleDeleteBudget = (id: number) => {
@@ -712,7 +806,91 @@ export default function Budgets() {
                     )}
                   />
                 </div>
-                {budgetForm.watch("grantId") && (
+                
+                {/* Budget Suggestions from Bills/Recurring - Show for all orgs */}
+                {!editingBudget && budgetForm.watch("startDate") && budgetForm.watch("endDate") && (
+                  (() => {
+                    const suggestions = getBudgetSuggestionsForDateRange(
+                      budgetForm.watch("startDate"),
+                      budgetForm.watch("endDate")
+                    );
+                    const hasSuggestions = suggestions.expenses.length > 0 || suggestions.income.length > 0;
+                    
+                    if (!hasSuggestions) return null;
+                    
+                    return (
+                      <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">Budget Suggestions</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowBudgetSuggestions(!showBudgetSuggestions)}
+                            data-testid="button-toggle-budget-suggestions"
+                          >
+                            {showBudgetSuggestions ? 'Hide' : 'Show'} Details
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Based on your bills and recurring transactions, we suggest:
+                        </p>
+                        <div className="flex gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Est. Expenses:</span>{' '}
+                            <span className="font-medium text-destructive">${suggestions.totalExpenses.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Est. Income:</span>{' '}
+                            <span className="font-medium text-green-600">${suggestions.totalIncome.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        
+                        {showBudgetSuggestions && (
+                          <div className="space-y-2 text-xs border-t pt-2 mt-2">
+                            {suggestions.expenses.length > 0 && (
+                              <div>
+                                <p className="font-medium mb-1">Expense Categories:</p>
+                                <ul className="space-y-1 pl-2">
+                                  {suggestions.expenses.slice(0, 5).map((exp) => (
+                                    <li key={exp.categoryId} className="flex justify-between">
+                                      <span>{exp.categoryName}</span>
+                                      <span className="text-muted-foreground">${exp.amount.toLocaleString()}</span>
+                                    </li>
+                                  ))}
+                                  {suggestions.expenses.length > 5 && (
+                                    <li className="text-muted-foreground">+{suggestions.expenses.length - 5} more categories</li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                            {suggestions.income.length > 0 && (
+                              <div>
+                                <p className="font-medium mb-1">Income Sources:</p>
+                                <ul className="space-y-1 pl-2">
+                                  {suggestions.income.slice(0, 3).map((inc, idx) => (
+                                    <li key={idx} className="flex justify-between">
+                                      <span>{inc.sourceName}</span>
+                                      <span className="text-muted-foreground">${inc.amount.toLocaleString()}</span>
+                                    </li>
+                                  ))}
+                                  {suggestions.income.length > 3 && (
+                                    <li className="text-muted-foreground">+{suggestions.income.length - 3} more sources</li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                            <p className="text-muted-foreground italic pt-1">
+                              These items will be available to add after creating the budget.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+                
+                {isNonprofit && budgetForm.watch("grantId") && (
                   <>
                     <FormField
                       control={budgetForm.control}
