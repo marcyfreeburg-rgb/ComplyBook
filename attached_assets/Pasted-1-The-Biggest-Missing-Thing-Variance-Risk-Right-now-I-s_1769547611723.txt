@@ -1,0 +1,201 @@
+1. The Biggest Missing Thing: Variance & Risk
+
+Right now I see:
+
+$0.00 / $7.00 — 0% used
+
+That’s accounting data.
+What buyers want is decision data.
+
+🔥 Add: Variance Columns (or Badges)
+
+For each budget item, add:
+
+Planned
+
+Actual
+
+Variance ($ and %)
+
+Status badge
+
+Example:
+
+🟢 On Track
+
+🟡 At Risk (≥75%)
+
+🔴 Over Budget
+
+This instantly turns the page into:
+
+“Can I get in trouble?”
+
+Which is exactly what compliance buyers care about.
+
+2. Add Time Awareness (This Is Critical)
+
+Your budget knows:
+
+Start date
+
+End date
+
+But the UI doesn’t use that intelligence yet.
+
+🔥 Add: “Should vs Actual by Date”
+
+For each item:
+
+“You should have spent: $X by today”
+
+“You have spent: $Y”
+
+Then show:
+
+Ahead of schedule
+
+Behind schedule
+
+Over-accelerating
+
+This is huge for:
+
+Grants
+
+Government contracts
+
+Restricted funds
+
+And it’s a massive differentiator.
+
+3. Budget Alerts & Controls (Compliance Gold)
+
+Right now budgets are passive.
+
+They should be protective.
+
+🔥 Add Budget Alerts
+
+Per budget or per line item:
+
+Alert at 50%
+
+Alert at 75%
+
+Alert at 90%
+
+Hard stop (optional)
+
+Surface this as:
+
+“This budget will alert you before you overspend.”
+
+That language sells itself.
+
+4. Tie Budgets to Things, Not Just Categories
+
+This is where ComplyBook can pull ahead.
+
+Add budget assignment options:
+
+Fund
+
+Grant
+
+Program
+
+Contract
+
+Department
+
+Even if technically it’s still category-based underneath, the UI should say:
+
+“This budget applies to Grant XYZ”
+
+This is nonprofit + gov-ready behavior.
+
+5. Add a Budget Summary Header (Exec View)
+
+Right now the page jumps straight into details.
+
+Add a summary strip at the top:
+
+Total Budget
+
+Total Spent
+
+Remaining
+
+Days Remaining
+
+Burn Rate
+
+This turns the page from:
+
+“Accounting screen”
+
+Into:
+
+“Executive dashboard”
+
+PE buyers and CFOs love this.
+
+6. Forecasting: You’re Almost There
+
+You already have:
+
+AI Budget Suggestions
+
+Now finish the story.
+
+🔥 Add:
+
+“Projected end-of-period spend”
+
+“On track / Over / Under forecast”
+
+Even a simple line like:
+
+“At current spend, you will exceed this budget by $312.”
+
+That sentence alone justifies higher pricing.
+
+7. Explain the AI (Trust Issue)
+
+“AI Budget Suggestions” is cool — but vague.
+
+Add a small helper text or modal:
+
+“Based on last 6 months”
+
+“Excludes one-time expenses”
+
+“Uses seasonality where available”
+
+Compliance buyers are skeptical of black boxes.
+Transparency = trust.
+
+8. Tiny UX Wins That Add Polish
+
+These are small, but powerful:
+
+Inline edit for budget amounts
+
+Click progress bar → drill into transactions
+
+Lock icon for “Approved Budget”
+
+Notes field per budget item (auditors LOVE notes)
+
+9. One Strategic Question You Should Answer Here
+
+Right now this page answers:
+
+“What did we plan?”
+
+It should also answer:
+
+“Are we safe?”
+
+Every addition I suggested pushes toward that.
