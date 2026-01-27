@@ -363,6 +363,7 @@ export interface IStorage {
 
   // Reconciliation operations
   getUnreconciledTransactions(organizationId: number, plaidAccountId?: string): Promise<Transaction[]>;
+  getReconciledTransactions(organizationId: number, limit?: number, offset?: number): Promise<Transaction[]>;
   reconcileTransaction(id: number, userId: string): Promise<Transaction>;
   unreconcileTransaction(id: number): Promise<Transaction>;
   bulkReconcileTransactions(ids: number[], userId: string): Promise<number>;
@@ -2292,6 +2293,21 @@ export class DatabaseStorage implements IStorage {
       .from(transactions)
       .where(and(...conditions))
       .orderBy(desc(transactions.date));
+  }
+
+  async getReconciledTransactions(organizationId: number, limit: number = 100, offset: number = 0): Promise<Transaction[]> {
+    return await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.reconciliationStatus, 'reconciled')
+        )
+      )
+      .orderBy(desc(transactions.date), desc(transactions.id))
+      .limit(limit)
+      .offset(offset);
   }
 
   async reconcileTransaction(id: number, userId: string): Promise<Transaction> {

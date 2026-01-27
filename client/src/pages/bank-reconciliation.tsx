@@ -21,6 +21,8 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showReconciled, setShowReconciled] = useState(false);
+  const [reconciledLimit, setReconciledLimit] = useState(100);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Fetch unreconciled transactions
   const { data: unreconciledTransactions = [], isLoading: isLoadingUnreconciled } = useQuery<Transaction[]>({
@@ -28,14 +30,25 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     enabled: !!currentOrganization,
   });
 
-  // Fetch all transactions for reconciled view
-  const { data: allTransactions = [], isLoading: isLoadingAll } = useQuery<Transaction[]>({
-    queryKey: [`/api/transactions/${currentOrganization?.id}`],
+  // Fetch reconciled transactions (paginated for performance)
+  const { data: reconciledTransactions = [], isLoading: isLoadingReconciled } = useQuery<Transaction[]>({
+    queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`, { limit: reconciledLimit }],
+    queryFn: async () => {
+      const response = await fetch(`/api/reconciliation/reconciled/${currentOrganization?.id}?limit=${reconciledLimit}`);
+      if (!response.ok) throw new Error('Failed to fetch reconciled transactions');
+      return response.json();
+    },
     enabled: !!currentOrganization && showReconciled,
   });
 
-  const transactions = showReconciled ? allTransactions : unreconciledTransactions;
-  const isLoading = showReconciled ? isLoadingAll : isLoadingUnreconciled;
+  const transactions = showReconciled ? reconciledTransactions : unreconciledTransactions;
+  const isLoading = showReconciled ? isLoadingReconciled : isLoadingUnreconciled;
+  
+  const handleLoadMoreReconciled = async () => {
+    setLoadingMore(true);
+    setReconciledLimit(prev => prev + 100);
+    setLoadingMore(false);
+  };
 
   // Reconcile single transaction
   const reconcileMutation = useMutation({
@@ -44,7 +57,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
       toast({
         title: "Success",
         description: "Transaction reconciled successfully",
@@ -66,7 +79,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
       toast({
         title: "Success",
         description: "Transaction marked as unreconciled",
@@ -92,7 +105,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
       setSelectedIds([]);
       toast({
         title: "Success",
@@ -116,7 +129,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
       toast({
         title: "Auto-Reconciliation Complete",
         description: `${data.reconciledCount} transactions automatically reconciled`,
@@ -202,7 +215,9 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
             <div>
               <CardTitle>Transactions</CardTitle>
               <CardDescription>
-                {showReconciled ? "All transactions" : `${unreconciledTransactions.length} unreconciled transactions`}
+                {showReconciled 
+                  ? `Showing ${reconciledTransactions.length} reconciled transactions` 
+                  : `${unreconciledTransactions.length} unreconciled transactions`}
               </CardDescription>
             </div>
             {!showReconciled && selectedIds.length > 0 && (
@@ -305,6 +320,18 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
                   ))}
                 </tbody>
               </table>
+              {showReconciled && reconciledTransactions.length >= reconciledLimit && (
+                <div className="flex justify-center py-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleLoadMoreReconciled}
+                    disabled={loadingMore}
+                    data-testid="button-load-more-reconciled"
+                  >
+                    {loadingMore ? "Loading..." : "Load More Reconciled Transactions"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

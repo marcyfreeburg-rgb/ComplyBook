@@ -3991,6 +3991,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get reconciled transactions (with pagination for performance)
+  app.get('/api/reconciliation/reconciled/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      
+      // Check user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const reconciledTransactions = await storage.getReconciledTransactions(organizationId, limit, offset);
+      res.json(reconciledTransactions);
+    } catch (error) {
+      console.error("Error fetching reconciled transactions:", error);
+      res.status(500).json({ message: "Failed to fetch reconciled transactions" });
+    }
+  });
+
   app.post('/api/reconciliation/reconcile/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

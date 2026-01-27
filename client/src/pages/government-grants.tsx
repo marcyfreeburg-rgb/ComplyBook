@@ -128,9 +128,15 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     queryKey: [`/api/employees/${currentOrganization.id}`],
   });
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: [`/api/transactions/${currentOrganization.id}`],
+  const { data: transactionsData } = useQuery<{ transactions: any[]; total: number; hasMore: boolean }>({
+    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: 100 }],
+    queryFn: async () => {
+      const response = await fetch(`/api/transactions/${currentOrganization.id}?limit=100`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      return response.json();
+    },
   });
+  const transactions = transactionsData?.transactions || [];
 
   // Fetch Time/Effort Reports
   const { data: timeEffortReports = [], isLoading: loadingTimeEffort } = useQuery({
@@ -1582,10 +1588,10 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                 </Select>
               </div>
               <div>
-                <Label htmlFor="transactionId">Transaction (optional)</Label>
+                <Label htmlFor="transactionId">Transaction (optional) <span className="text-muted-foreground text-xs">- Recent 100</span></Label>
                 <Select value={costCheckFormData.transactionId} onValueChange={(value) => setCostCheckFormData({...costCheckFormData, transactionId: value})}>
                   <SelectTrigger data-testid="select-transaction">
-                    <SelectValue placeholder="Select transaction" />
+                    <SelectValue placeholder="Select from recent transactions" />
                   </SelectTrigger>
                   <SelectContent>
                     {transactions.map((txn: any) => (
