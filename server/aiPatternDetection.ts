@@ -78,12 +78,15 @@ export async function detectRecurringPatterns(
   lookbackMonths: number = 6
 ): Promise<RecurringPattern[]> {
   try {
-    const transactions = await storage.getTransactions(organizationId);
-    const vendors = await storage.getVendors(organizationId);
-    const categories = await storage.getCategories(organizationId);
+    // Parallel fetch for better performance
+    const [transactions, vendors, categories, linkedIds] = await Promise.all([
+      storage.getTransactions(organizationId),
+      storage.getVendors(organizationId),
+      storage.getCategories(organizationId),
+      storage.getTransactionIdsLinkedToBills(organizationId)
+    ]);
     
-    // Get transaction IDs already linked to bills to filter them out
-    const linkedTransactionIds = new Set(await storage.getTransactionIdsLinkedToBills(organizationId));
+    const linkedTransactionIds = new Set(linkedIds);
     
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths);
@@ -286,16 +289,30 @@ export async function detectRecurringPatterns(
       return detectDeterministicPatterns();
     }
 
-    const patternData = potentialPatterns.slice(0, 20).map(group => ({
-      vendorName: group[0].vendorName,
-      transactionType: group[0].type,
-      transactions: group.map(t => ({
-        id: t.id,
-        date: t.date,
-        amount: t.amount,
-        description: t.description.slice(0, 50)
-      }))
-    }));
+    // Optimize: Pre-filter groups with at least 3 transactions and limit to top 15 groups
+    // Also limit transactions per group to 12 most recent for faster AI processing
+    const sortedPatterns = potentialPatterns
+      .filter(g => g.length >= 3)
+      .sort((a, b) => b.length - a.length)
+      .slice(0, 15);
+    
+    const patternData = sortedPatterns.map(group => {
+      // Sort by date and take most recent 12 transactions
+      const sortedTxs = [...group]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 12);
+      
+      return {
+        vendorName: group[0].vendorName,
+        transactionType: group[0].type,
+        transactions: sortedTxs.map(t => ({
+          id: t.id,
+          date: t.date,
+          amount: t.amount,
+          description: t.description.slice(0, 30) // Shorter descriptions
+        }))
+      };
+    });
 
     const prompt = `Analyze these transaction groups and identify RECURRING patterns.
 Look for transactions that occur regularly (weekly, biweekly, monthly, quarterly, yearly).
@@ -325,13 +342,14 @@ Respond with JSON: {"patterns": [...]}`;
 
     let parsed: AIPatternResponse;
     try {
-      const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
+      // Use faster model for pattern detection - gpt-4o-mini is 10x faster than gpt-4o
+      const modelName = isReplitEnvironment ? "gpt-4o-mini" : "gpt-4o-mini";
       const completion = await openai.chat.completions.create({
         model: modelName,
         messages: [
           { 
             role: "system", 
-            content: "You are a financial pattern detection expert. Analyze transaction history to identify recurring expenses and income. Respond with valid JSON only." 
+            content: "You are a financial pattern detection expert. Analyze transaction history to identify recurring expenses and income. Be concise. Respond with valid JSON only." 
           },
           { 
             role: "user", 
@@ -339,7 +357,7 @@ Respond with JSON: {"patterns": [...]}`;
           }
         ],
         response_format: { type: "json_object" },
-        max_completion_tokens: 4000,
+        max_completion_tokens: 2000,
       });
 
       const responseText = completion.choices[0]?.message?.content;
