@@ -39,7 +39,8 @@ import {
   ArrowDown,
   X
 } from "lucide-react";
-import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant } from "@shared/schema";
+import type { Organization, Transaction, Category, Vendor, Client, Donor, Grant, Fund, Program } from "@shared/schema";
+import { CategoryCombobox } from "@/components/category-combobox";
 import { format } from "date-fns";
 import { formatCurrency, safeFormatDate } from "@/lib/utils";
 
@@ -97,11 +98,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     description: "",
     amount: "",
     type: "expense" as "income" | "expense",
-    categoryId: "",
+    categoryId: "" as string | number | undefined,
     vendorId: "",
     clientId: "",
     donorId: "",
     grantId: "",
+    fundId: "",
+    programId: "",
+    functionalCategory: "" as "" | "program" | "administrative" | "fundraising",
   });
   
   const [suggestingForTransaction, setSuggestingForTransaction] = useState<number | null>(null);
@@ -190,6 +194,18 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     refetchOnWindowFocus: true,
   });
 
+  const { data: funds = [] } = useQuery<Fund[]>({
+    queryKey: ['/api/funds', currentOrganization.id],
+    enabled: currentOrganization.type === 'nonprofit',
+    staleTime: 60000,
+  });
+
+  const { data: programs = [] } = useQuery<Program[]>({
+    queryKey: ['/api/programs', currentOrganization.id],
+    enabled: currentOrganization.type === 'nonprofit',
+    staleTime: 60000,
+  });
+
   // Check if organization has connected bank accounts
   const { data: plaidItems = [] } = useQuery<{ id: number; itemId: string; institutionName: string }[]>({
     queryKey: [`/api/plaid/items/${currentOrganization.id}`],
@@ -234,6 +250,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
       setIsEditDialogOpen(false);
       setEditingTransaction(null);
       toast({
@@ -463,11 +481,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       description: transaction.description,
       amount: transaction.amount,
       type: transaction.type,
-      categoryId: transaction.categoryId?.toString() || "",
+      categoryId: transaction.categoryId || undefined,
       vendorId: transaction.vendorId?.toString() || "",
       clientId: transaction.clientId?.toString() || "",
       donorId: transaction.donorId?.toString() || "",
       grantId: transaction.grantId?.toString() || "",
+      fundId: transaction.fundId?.toString() || "",
+      programId: transaction.programId?.toString() || "",
+      functionalCategory: (transaction.functionalCategory as "" | "program" | "administrative" | "fundraising") || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -501,11 +522,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         description: editForm.description,
         amount: editForm.amount,
         type: editForm.type,
-        categoryId: editForm.categoryId && editForm.categoryId !== "none" ? parseInt(editForm.categoryId) : null,
+        categoryId: typeof editForm.categoryId === 'number' ? editForm.categoryId : null,
         vendorId: editForm.vendorId && editForm.vendorId !== "none" ? parseInt(editForm.vendorId) : null,
         clientId: editForm.clientId && editForm.clientId !== "none" ? parseInt(editForm.clientId) : null,
         donorId: editForm.donorId && editForm.donorId !== "none" ? parseInt(editForm.donorId) : null,
         grantId: editForm.grantId && editForm.grantId !== "none" ? parseInt(editForm.grantId) : null,
+        fundId: editForm.fundId && editForm.fundId !== "none" ? parseInt(editForm.fundId) : null,
+        programId: editForm.programId && editForm.programId !== "none" ? parseInt(editForm.programId) : null,
+        functionalCategory: editForm.functionalCategory || null,
       },
     });
   };
@@ -1229,15 +1253,28 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       </Card>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Transaction</DialogTitle>
             <DialogDescription>
-              Update the transaction details below.
+              Update transaction details for {currentOrganization.name}.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-type">Type</Label>
+              <Select value={editForm.type} onValueChange={(value: "income" | "expense") => setEditForm({ ...editForm, type: value })}>
+                <SelectTrigger id="edit-type" data-testid="select-edit-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="edit-date">Date</Label>
               <Input
                 id="edit-date"
@@ -1247,66 +1284,42 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 data-testid="input-edit-date"
               />
             </div>
-            <div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-amount">Amount</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={editForm.amount}
+                onChange={(e) => handleEditAmountChange(e.target.value)}
+                data-testid="input-edit-amount"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>
               <Textarea
                 id="edit-description"
+                placeholder="What is this transaction for?"
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                rows={2}
                 data-testid="input-edit-description"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-amount">Amount</Label>
-                <Input
-                  id="edit-amount"
-                  type="number"
-                  step="0.01"
-                  value={editForm.amount}
-                  onChange={(e) => handleEditAmountChange(e.target.value)}
-                  data-testid="input-edit-amount"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-type">Type</Label>
-                <Select value={editForm.type} onValueChange={(value: "income" | "expense") => setEditForm({ ...editForm, type: value })}>
-                  <SelectTrigger id="edit-type" data-testid="select-edit-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">Income</SelectItem>
-                    <SelectItem value="expense">Expense</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="edit-category">Category</Label>
-              <Select value={editForm.categoryId || "none"} onValueChange={(value) => setEditForm({ ...editForm, categoryId: value === "none" ? "" : value })}>
-                <SelectTrigger id="edit-category" data-testid="select-edit-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Uncategorized</SelectItem>
-                  {categories.filter(c => c.type === editForm.type).map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {/* Vendor selection for expenses */}
             {editForm.type === "expense" && (
-              <div>
-                <Label htmlFor="edit-vendor">Vendor</Label>
+              <div className="space-y-2">
+                <Label htmlFor="edit-vendor">Vendor (Optional)</Label>
                 <Select value={editForm.vendorId || "none"} onValueChange={(value) => setEditForm({ ...editForm, vendorId: value === "none" ? "" : value })}>
                   <SelectTrigger id="edit-vendor" data-testid="select-edit-vendor">
-                    <SelectValue placeholder="Select vendor" />
+                    <SelectValue placeholder="Select a vendor" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">No vendor</SelectItem>
                     {vendors.map((vendor) => (
                       <SelectItem key={vendor.id} value={vendor.id.toString()}>
                         {vendor.name}
@@ -1316,56 +1329,106 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 </Select>
               </div>
             )}
+
+            {/* Client selection for income */}
             {editForm.type === "income" && (
-              <>
-                <div>
-                  <Label htmlFor="edit-client">Client</Label>
-                  <Select value={editForm.clientId || "none"} onValueChange={(value) => setEditForm({ ...editForm, clientId: value === "none" ? "" : value })}>
-                    <SelectTrigger id="edit-client" data-testid="select-edit-client">
-                      <SelectValue placeholder="Select client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id.toString()}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {currentOrganization.type === 'nonprofit' && (
-                  <div>
-                    <Label htmlFor="edit-donor">Donor</Label>
-                    <Select value={editForm.donorId || "none"} onValueChange={(value) => setEditForm({ ...editForm, donorId: value === "none" ? "" : value })}>
-                      <SelectTrigger id="edit-donor" data-testid="select-edit-donor">
-                        <SelectValue placeholder="Select donor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {donors.map((donor) => (
-                          <SelectItem key={donor.id} value={donor.id.toString()}>
-                            {donor.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </>
-            )}
-            {currentOrganization.type === 'nonprofit' && (
-              <div>
-                <Label htmlFor="edit-grant">Grant / Fund</Label>
-                <Select value={editForm.grantId || "none"} onValueChange={handleEditGrantSelection}>
-                  <SelectTrigger id="edit-grant" data-testid="select-edit-grant">
-                    <SelectValue placeholder="Select grant" />
+              <div className="space-y-2">
+                <Label htmlFor="edit-client">Client (Optional)</Label>
+                <Select value={editForm.clientId || "none"} onValueChange={(value) => setEditForm({ ...editForm, clientId: value === "none" ? "" : value })}>
+                  <SelectTrigger id="edit-client" data-testid="select-edit-client">
+                    <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No Grant (Unrestricted)</SelectItem>
+                    <SelectItem value="none">No client</SelectItem>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Donor selection for income - nonprofits only */}
+            {editForm.type === "income" && currentOrganization.type === 'nonprofit' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-donor">Donor (Optional)</Label>
+                <Select value={editForm.donorId || "none"} onValueChange={(value) => setEditForm({ ...editForm, donorId: value === "none" ? "" : value })}>
+                  <SelectTrigger id="edit-donor" data-testid="select-edit-donor">
+                    <SelectValue placeholder="Select a donor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No donor</SelectItem>
+                    {donors.map((donor) => (
+                      <SelectItem key={donor.id} value={donor.id.toString()}>
+                        {donor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Fund selection - nonprofits only */}
+            {currentOrganization.type === 'nonprofit' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-fund">Fund (Optional)</Label>
+                <Select 
+                  value={editForm.fundId || "none"} 
+                  onValueChange={(value) => setEditForm({ ...editForm, fundId: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger id="edit-fund" data-testid="select-edit-fund">
+                    <SelectValue placeholder="Select a fund" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No fund</SelectItem>
+                    {funds.map((fund) => (
+                      <SelectItem key={fund.id} value={fund.id.toString()}>
+                        {fund.name} ({fund.fundType})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Program selection for expenses - nonprofits only */}
+            {editForm.type === 'expense' && currentOrganization.type === 'nonprofit' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-program">Program (Optional)</Label>
+                <Select 
+                  value={editForm.programId || "none"} 
+                  onValueChange={(value) => setEditForm({ ...editForm, programId: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger id="edit-program" data-testid="select-edit-program">
+                    <SelectValue placeholder="Select a program" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No program</SelectItem>
+                    {programs.map((program) => (
+                      <SelectItem key={program.id} value={program.id.toString()}>
+                        {program.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Grant selection for expenses - nonprofits only */}
+            {editForm.type === 'expense' && currentOrganization.type === 'nonprofit' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-grant">Grant (Optional)</Label>
+                <Select value={editForm.grantId || "none"} onValueChange={handleEditGrantSelection}>
+                  <SelectTrigger id="edit-grant" data-testid="select-edit-grant">
+                    <SelectValue placeholder="Select a grant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No grant</SelectItem>
                     {grants.map((grant) => (
                       <SelectItem key={grant.id} value={grant.id.toString()}>
-                        {grant.name} ({grant.fundType === 'restricted' ? 'Restricted' : 'Unrestricted'}) - {formatCurrency(parseFloat(grant.remainingBalance))} remaining
+                        {grant.name} ({formatCurrency(parseFloat(grant.remainingBalance))} remaining)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1382,6 +1445,44 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 )}
               </div>
             )}
+
+            {/* Functional category for expenses - nonprofits only */}
+            {editForm.type === 'expense' && currentOrganization.type === 'nonprofit' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-functionalCategory">Functional Category (Optional)</Label>
+                <Select 
+                  value={editForm.functionalCategory || "none"} 
+                  onValueChange={(value) => setEditForm({ ...editForm, functionalCategory: value === "none" ? "" : value as "program" | "administrative" | "fundraising" })}
+                >
+                  <SelectTrigger id="edit-functionalCategory" data-testid="select-edit-functional-category">
+                    <SelectValue placeholder="Select functional category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No category</SelectItem>
+                    <SelectItem value="program">Program</SelectItem>
+                    <SelectItem value="administrative">Administrative</SelectItem>
+                    <SelectItem value="fundraising">Fundraising</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Category with alphabetical sorting and grouping */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-category">Category (Optional)</Label>
+              <CategoryCombobox
+                categories={categories}
+                value={typeof editForm.categoryId === 'number' ? editForm.categoryId : undefined}
+                onValueChange={(value) => setEditForm({ ...editForm, categoryId: value === null ? undefined : value })}
+                type={editForm.type}
+                placeholder="Select a category"
+                allowNone={true}
+                noneLabel="Uncategorized"
+                noneSentinel={null}
+                className="w-full"
+                testId="select-edit-category"
+              />
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} data-testid="button-cancel-edit">
