@@ -3193,39 +3193,6 @@ export type InsertVendorPaymentDetails = z.infer<typeof insertVendorPaymentDetai
 export type VendorPaymentDetails = typeof vendorPaymentDetails.$inferSelect;
 
 // ============================================
-// GUSTO PAYROLL INTEGRATION
-// ============================================
-
-export const gustoConnectionStatusEnum = pgEnum('gusto_connection_status', ['active', 'disconnected', 'error']);
-
-export const gustoConnections = pgTable("gusto_connections", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
-  companyUuid: varchar("company_uuid", { length: 255 }).notNull().unique(),
-  companyName: varchar("company_name", { length: 255 }),
-  accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token").notNull(),
-  tokenExpiresAt: timestamp("token_expires_at").notNull(),
-  status: gustoConnectionStatusEnum("status").default("active").notNull(),
-  errorMessage: text("error_message"),
-  lastSyncedAt: timestamp("last_synced_at"),
-  createdBy: varchar("created_by").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_gusto_connections_org_id").on(table.organizationId),
-]);
-
-export const insertGustoConnectionSchema = createInsertSchema(gustoConnections).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertGustoConnection = z.infer<typeof insertGustoConnectionSchema>;
-export type GustoConnection = typeof gustoConnections.$inferSelect;
-
-// ============================================
 // FINCH PAYROLL/HRIS INTEGRATION
 // ============================================
 
