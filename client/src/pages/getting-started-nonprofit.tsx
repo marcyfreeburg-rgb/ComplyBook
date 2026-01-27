@@ -113,13 +113,16 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
     },
     {
       title: "7. Create & Track Budgets",
-      description: "Build annual budgets with multiple funding sources and monitor spending",
+      description: "Build annual budgets with AI suggestions and multiple funding sources",
       icon: TrendingUp,
       color: "text-indigo-600",
       bgColor: "bg-indigo-100 dark:bg-indigo-900/30",
       steps: [
         { text: "Create budgets linked to grants (including pending grants for applications)", link: "/budgets" },
         { text: "Add multiple income sources: matching funds, cost share, donations, and in-kind", link: "/budgets" },
+        { text: "Use AI Budget Suggestions to get recommended amounts based on your spending history", link: "/budgets" },
+        { text: "Add AI suggestions directly to your budgets with one click", link: "/budgets" },
+        { text: "View budget suggestions from bills and recurring transactions when creating a budget", link: "/budgets" },
         { text: "Set category-level budget allocations", link: "/budgets" },
         { text: "Track budget vs actual spending in real-time", link: "/budgets" },
       ],
@@ -132,13 +135,14 @@ export default function GettingStartedNonprofit({ currentOrganization }: Getting
       bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
       steps: [
         { text: "Use Transaction Log or Expenses for day-to-day entries with running balances", link: "/transaction-log" },
-        { text: "Sync transactions automatically from connected bank accounts", link: "/bank-accounts" },
+        { text: "Sync transactions from connected bank accounts using the 'Sync Bank Account' button on Expenses page", link: "/transactions" },
         { text: "Import transactions from QuickBooks, Wave, or CSV files", link: "/accounting-imports" },
         { text: "When adding an EXPENSE: Select Type 'Expense', then choose Category, Grant, Fund, Program, and Functional Category (Program/Administrative/Fundraising)", link: "/transactions" },
         { text: "When adding INCOME: Select Type 'Income', choose Category, and optionally link to a Donor or Client", link: "/transactions" },
         { text: "To assign a Grant to an expense, select the Grant from the 'Grant (Optional)' dropdown - expenses will automatically roll up to the grant's spent total", link: "/grants" },
         { text: "Split transactions into multiple categories/grants for accurate fund allocation", link: "/transaction-log" },
         { text: "Use AI categorization to automatically classify transactions in bulk", link: "/transaction-log" },
+        { text: "Let AI detect recurring patterns in your transactions for better expense tracking", link: "/transactions" },
       ],
     },
     {
