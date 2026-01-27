@@ -6953,6 +6953,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
+            // Also check for ANY matching transaction (including previously imported Plaid transactions)
+            // This prevents duplicates when the same transaction comes in with slightly different data
+            const anyMatchingTx = await storage.findAnyMatchingTransaction(
+              organizationId,
+              transactionDate,
+              amount.toString(),
+              plaidTx.name,
+              isIncome ? 'income' : 'expense'
+            );
+
+            if (anyMatchingTx) {
+              // Transaction already exists (either manual or from previous import), skip
+              console.log(`[Plaid Sync] Skipping duplicate - transaction ${anyMatchingTx.id} already exists with same date/amount/description`);
+              continue;
+            }
+
             // Look up the internal bank account ID for this Plaid account
             const plaidAccount = await storage.getPlaidAccountByAccountId(plaidTx.account_id);
             
