@@ -948,7 +948,7 @@ export default function Budgets() {
       </div>
 
       {/* AI Budget Suggestions */}
-      <BudgetSuggestionPanel organizationId={organizationId} />
+      <BudgetSuggestionPanel organizationId={organizationId} budgets={budgets} />
 
       {budgetsLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading budgets...</div>

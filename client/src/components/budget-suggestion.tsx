@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,9 @@ import {
   ChevronUp,
   RefreshCw,
   PiggyBank,
-  Info
+  Info,
+  Plus,
+  Check
 } from "lucide-react";
 import {
   Collapsible,
@@ -33,6 +35,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Budget } from "@shared/schema";
 
 interface BudgetSuggestion {
   categoryId: number;
@@ -48,11 +61,17 @@ interface BudgetSuggestion {
 
 interface BudgetSuggestionPanelProps {
   organizationId: number;
+  budgets?: Budget[];
 }
 
-export function BudgetSuggestionPanel({ organizationId }: BudgetSuggestionPanelProps) {
+export function BudgetSuggestionPanel({ organizationId, budgets = [] }: BudgetSuggestionPanelProps) {
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [lookbackMonths, setLookbackMonths] = useState("6");
+  const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
+  const [pendingSuggestion, setPendingSuggestion] = useState<BudgetSuggestion | null>(null);
+  const [isBudgetSelectDialogOpen, setIsBudgetSelectDialogOpen] = useState(false);
+  const [addedSuggestions, setAddedSuggestions] = useState<Set<string>>(new Set());
 
   const { data: suggestions, isLoading, refetch, isFetching } = useQuery<BudgetSuggestion[]>({
     queryKey: ['/api/ai/suggest-budget', organizationId, lookbackMonths],
@@ -76,6 +95,63 @@ export function BudgetSuggestionPanel({ organizationId }: BudgetSuggestionPanelP
   const totalSuggestedIncome = incomeSuggestions.reduce((sum, s) => sum + s.suggestedMonthlyAmount, 0);
   const totalSuggestedExpenses = expenseSuggestions.reduce((sum, s) => sum + s.suggestedMonthlyAmount, 0);
   const projectedSavings = totalSuggestedIncome - totalSuggestedExpenses;
+
+  // Mutation to add a budget item
+  const addBudgetItemMutation = useMutation({
+    mutationFn: async ({ budgetId, suggestion }: { budgetId: number; suggestion: BudgetSuggestion }) => {
+      const response = await apiRequest('POST', `/api/budgets/${budgetId}/items`, {
+        categoryId: suggestion.categoryId,
+        amount: suggestion.suggestedMonthlyAmount.toFixed(2),
+        notes: `AI suggestion: ${suggestion.reasoning}`,
+      });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/budgets/${variables.budgetId}/items`] });
+      const key = `${variables.budgetId}-${variables.suggestion.categoryId}`;
+      setAddedSuggestions(prev => new Set(prev).add(key));
+      toast({
+        title: "Added to budget",
+        description: `${variables.suggestion.categoryName} ($${variables.suggestion.suggestedMonthlyAmount.toFixed(2)}) added to budget.`,
+      });
+      setIsBudgetSelectDialogOpen(false);
+      setPendingSuggestion(null);
+      setSelectedBudgetId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add",
+        description: error.message || "Could not add suggestion to budget.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToBudget = (suggestion: BudgetSuggestion) => {
+    if (budgets.length === 0) {
+      toast({
+        title: "No budgets available",
+        description: "Create a budget first before adding suggestions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (budgets.length === 1) {
+      // Only one budget, add directly
+      addBudgetItemMutation.mutate({ budgetId: budgets[0].id, suggestion });
+    } else {
+      // Multiple budgets, show selection dialog
+      setPendingSuggestion(suggestion);
+      setIsBudgetSelectDialogOpen(true);
+    }
+  };
+
+  const confirmAddToBudget = () => {
+    if (selectedBudgetId && pendingSuggestion) {
+      addBudgetItemMutation.mutate({ budgetId: selectedBudgetId, suggestion: pendingSuggestion });
+    }
+  };
 
   return (
     <Card className="mb-6">
@@ -194,7 +270,14 @@ export function BudgetSuggestionPanel({ organizationId }: BudgetSuggestionPanelP
                     </h3>
                     <div className="space-y-2">
                       {incomeSuggestions.map((suggestion) => (
-                        <SuggestionRow key={suggestion.categoryId} suggestion={suggestion} />
+                        <SuggestionRow 
+                          key={suggestion.categoryId} 
+                          suggestion={suggestion}
+                          onAdd={handleAddToBudget}
+                          isAdding={addBudgetItemMutation.isPending && pendingSuggestion?.categoryId === suggestion.categoryId}
+                          isAdded={Array.from(addedSuggestions).some(key => key.endsWith(`-${suggestion.categoryId}`))}
+                          hasBudgets={budgets.length > 0}
+                        />
                       ))}
                     </div>
                   </div>
@@ -209,7 +292,14 @@ export function BudgetSuggestionPanel({ organizationId }: BudgetSuggestionPanelP
                     </h3>
                     <div className="space-y-2">
                       {expenseSuggestions.map((suggestion) => (
-                        <SuggestionRow key={suggestion.categoryId} suggestion={suggestion} />
+                        <SuggestionRow 
+                          key={suggestion.categoryId} 
+                          suggestion={suggestion}
+                          onAdd={handleAddToBudget}
+                          isAdding={addBudgetItemMutation.isPending && pendingSuggestion?.categoryId === suggestion.categoryId}
+                          isAdded={Array.from(addedSuggestions).some(key => key.endsWith(`-${suggestion.categoryId}`))}
+                          hasBudgets={budgets.length > 0}
+                        />
                       ))}
                     </div>
                   </div>
@@ -219,15 +309,60 @@ export function BudgetSuggestionPanel({ organizationId }: BudgetSuggestionPanelP
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Budget Selection Dialog */}
+      <Dialog open={isBudgetSelectDialogOpen} onOpenChange={setIsBudgetSelectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Budget</DialogTitle>
+            <DialogDescription>
+              Choose which budget to add "{pendingSuggestion?.categoryName}" (${pendingSuggestion?.suggestedMonthlyAmount.toFixed(2)}) to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select 
+              value={selectedBudgetId?.toString() || ""} 
+              onValueChange={(value) => setSelectedBudgetId(parseInt(value))}
+            >
+              <SelectTrigger data-testid="select-budget-for-suggestion">
+                <SelectValue placeholder="Select a budget..." />
+              </SelectTrigger>
+              <SelectContent>
+                {budgets.map((budget) => (
+                  <SelectItem key={budget.id} value={budget.id.toString()}>
+                    {budget.name} ({new Date(budget.startDate).toLocaleDateString()} - {new Date(budget.endDate).toLocaleDateString()})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBudgetSelectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmAddToBudget} 
+              disabled={!selectedBudgetId || addBudgetItemMutation.isPending}
+              data-testid="button-confirm-add-to-budget"
+            >
+              {addBudgetItemMutation.isPending ? "Adding..." : "Add to Budget"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
 
 interface SuggestionRowProps {
   suggestion: BudgetSuggestion;
+  onAdd?: (suggestion: BudgetSuggestion) => void;
+  isAdding?: boolean;
+  isAdded?: boolean;
+  hasBudgets?: boolean;
 }
 
-function SuggestionRow({ suggestion }: SuggestionRowProps) {
+function SuggestionRow({ suggestion, onAdd, isAdding, isAdded, hasBudgets }: SuggestionRowProps) {
   const isIncome = suggestion.type === 'income';
   
   return (
@@ -252,9 +387,38 @@ function SuggestionRow({ suggestion }: SuggestionRowProps) {
             </TooltipContent>
           </Tooltip>
         </div>
-        <span className={`text-lg font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-          ${suggestion.suggestedMonthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-lg font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+            ${suggestion.suggestedMonthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+          {onAdd && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isAdded ? "secondary" : "outline"}
+                  onClick={() => onAdd(suggestion)}
+                  disabled={isAdding || isAdded || !hasBudgets}
+                  data-testid={`button-add-suggestion-${suggestion.categoryId}`}
+                >
+                  {isAdded ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {!hasBudgets 
+                  ? "Create a budget first" 
+                  : isAdded 
+                    ? "Added to budget" 
+                    : "Add to budget"
+                }
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
