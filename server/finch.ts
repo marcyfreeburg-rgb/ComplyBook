@@ -8,7 +8,9 @@ const router = Router();
 const FINCH_CLIENT_ID = process.env.FINCH_CLIENT_ID;
 const FINCH_CLIENT_SECRET = process.env.FINCH_CLIENT_SECRET;
 const FINCH_API_BASE = 'https://api.tryfinch.com';
-const FINCH_SANDBOX = process.env.NODE_ENV === 'production' ? undefined : 'finch';
+// Use FINCH_SANDBOX env var to explicitly control sandbox mode
+// Set to 'finch' for sandbox, or leave undefined for production
+const FINCH_SANDBOX = process.env.FINCH_SANDBOX || (process.env.NODE_ENV === 'production' ? undefined : 'finch');
 
 const PROVIDER_NAMES: Record<string, string> = {
   'adp_workforce_now': 'ADP Workforce Now',
