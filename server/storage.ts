@@ -516,6 +516,7 @@ export interface IStorage {
   createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem>;
   deletePlaidItem(id: number): Promise<void>;
   updatePlaidItemStatus(id: number, updates: { status?: 'active' | 'login_required' | 'error' | 'pending'; errorCode?: string | null; errorMessage?: string | null; lastSyncedAt?: Date }): Promise<void>;
+  updatePlaidItemCursor(id: number, cursor: string): Promise<void>;
   getPlaidAccounts(plaidItemId: number): Promise<PlaidAccount[]>;
   getAllPlaidAccounts(organizationId: number): Promise<Array<PlaidAccount & { institutionName: string | null; itemId: string }>>;
   createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
@@ -3196,52 +3197,53 @@ export class DatabaseStorage implements IStorage {
     expenses: string;
     netIncome: string;
   }>> {
-    const results = [];
     const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
     
+    // Single optimized query that aggregates all months at once
+    const monthlyData = await db
+      .select({
+        yearMonth: sql<string>`TO_CHAR(${transactions.date}, 'YYYY-MM')`,
+        type: transactions.type,
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          gte(transactions.date, startDate),
+          sql`${transactions.type} IN ('income', 'expense')`
+        )
+      )
+      .groupBy(sql`TO_CHAR(${transactions.date}, 'YYYY-MM')`, transactions.type);
+    
+    // Build a map for quick lookup
+    const dataMap = new Map<string, { income: string; expenses: string }>();
+    for (const row of monthlyData) {
+      const key = row.yearMonth;
+      if (!dataMap.has(key)) {
+        dataMap.set(key, { income: '0', expenses: '0' });
+      }
+      const entry = dataMap.get(key)!;
+      if (row.type === 'income') {
+        entry.income = row.total;
+      } else if (row.type === 'expense') {
+        entry.expenses = row.total;
+      }
+    }
+    
+    // Build results array for each month
+    const results = [];
     for (let i = months - 1; i >= 0; i--) {
       const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-      const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
-      
-      // Get income for this month
-      const [incomeResult] = await db
-        .select({
-          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
-        })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.organizationId, organizationId),
-            eq(transactions.type, 'income'),
-            gte(transactions.date, startOfMonth),
-            lte(transactions.date, endOfMonth)
-          )
-        );
-      
-      // Get expenses for this month
-      const [expenseResult] = await db
-        .select({
-          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
-        })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.organizationId, organizationId),
-            eq(transactions.type, 'expense'),
-            gte(transactions.date, startOfMonth),
-            lte(transactions.date, endOfMonth)
-          )
-        );
-      
-      const income = incomeResult?.total || '0';
-      const expenses = expenseResult?.total || '0';
-      const netIncome = (parseFloat(income) - parseFloat(expenses)).toFixed(2);
+      const yearMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+      const data = dataMap.get(yearMonth) || { income: '0', expenses: '0' };
+      const netIncome = (parseFloat(data.income) - parseFloat(data.expenses)).toFixed(2);
       
       results.push({
         month: targetDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        income,
-        expenses,
+        income: data.income,
+        expenses: data.expenses,
         netIncome,
       });
     }
@@ -4199,6 +4201,17 @@ export class DatabaseStorage implements IStorage {
       .update(plaidItems)
       .set({
         ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(plaidItems.id, id));
+  }
+
+  async updatePlaidItemCursor(id: number, cursor: string): Promise<void> {
+    await db
+      .update(plaidItems)
+      .set({
+        cursor,
+        lastSyncedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(plaidItems.id, id));

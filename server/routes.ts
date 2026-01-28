@@ -6891,70 +6891,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let totalImported = 0;
-      const errors = [];
+      const errors: Array<{ institution: string; error: string }> = [];
 
-      // Sync transactions for each plaid item
+      // Sync transactions for each plaid item using cursor-based incremental sync
       for (const plaidItem of plaidItems) {
         try {
-          // Get transactions from last 24 months (730 days)
-          const endDate = new Date();
-          const startDate = new Date();
-          startDate.setDate(startDate.getDate() - 730);
+          let cursor = plaidItem.cursor || undefined;
+          let hasMore = true;
+          let addedTransactions: any[] = [];
+          let modifiedTransactions: any[] = [];
+          let removedTransactionIds: string[] = [];
+          let accounts: any[] = [];
 
-          // Fetch all transactions with pagination (Plaid returns max 500 per request)
-          let allTransactions: any[] = [];
-          let allAccounts: any[] = [];
-          let offset = 0;
-          const count = 500;
-          let totalTransactions = 0;
-
-          do {
-            const transactionsResponse = await plaidClient.transactionsGet({
+          // Use transactionsSync for incremental updates (much faster than transactionsGet)
+          while (hasMore) {
+            const syncResponse = await plaidClient.transactionsSync({
               access_token: plaidItem.accessToken,
-              start_date: startDate.toISOString().split('T')[0],
-              end_date: endDate.toISOString().split('T')[0],
-              options: {
-                count,
-                offset,
-              },
+              cursor: cursor,
+              count: 500,
             });
 
-            allTransactions = allTransactions.concat(transactionsResponse.data.transactions);
-            if (offset === 0) {
-              allAccounts = transactionsResponse.data.accounts;
-              totalTransactions = transactionsResponse.data.total_transactions;
+            const data = syncResponse.data;
+            addedTransactions = addedTransactions.concat(data.added);
+            modifiedTransactions = modifiedTransactions.concat(data.modified);
+            removedTransactionIds = removedTransactionIds.concat(data.removed.map((r: any) => r.transaction_id));
+            if (data.accounts && data.accounts.length > 0) {
+              accounts = data.accounts;
             }
-            offset += count;
-          } while (offset < totalTransactions);
+            
+            hasMore = data.has_more;
+            cursor = data.next_cursor;
+          }
 
-          // Log for troubleshooting (Plaid recommended identifiers)
-          console.log(`[Plaid] Transactions fetched - item_id: ${plaidItem.itemId}, total_count: ${allTransactions.length}`);
+          // Save the cursor for next incremental sync
+          if (cursor) {
+            await storage.updatePlaidItemCursor(plaidItem.id, cursor);
+          }
 
-          // Update account balances
-          for (const account of allAccounts) {
-            await storage.updatePlaidAccountBalances(
+          // Log for troubleshooting
+          console.log(`[Plaid Sync] item_id: ${plaidItem.itemId}, added: ${addedTransactions.length}, modified: ${modifiedTransactions.length}, removed: ${removedTransactionIds.length}`);
+
+          // Update account balances (batch operation)
+          const balanceUpdates = accounts.map(account => 
+            storage.updatePlaidAccountBalances(
               account.account_id,
               account.balances.current?.toString() || '0',
               account.balances.available?.toString() || '0'
-            );
+            )
+          );
+          await Promise.all(balanceUpdates);
+
+          // Pre-fetch all plaid accounts for this item to avoid repeated lookups
+          const plaidAccountsMap = new Map<string, any>();
+          const allPlaidAccounts = await storage.getPlaidAccounts(plaidItem.id);
+          for (const acc of allPlaidAccounts) {
+            plaidAccountsMap.set(acc.accountId, acc);
           }
 
-          // Import transactions - use Plaid's unique transaction_id for deduplication
-          for (const plaidTx of allTransactions) {
-            // Check if this exact Plaid transaction was already imported (by externalId)
+          // Process new transactions
+          for (const plaidTx of addedTransactions) {
+            // Check if already imported
             const existingTx = await storage.getTransactionByExternalId(organizationId, plaidTx.transaction_id);
-            if (existingTx) {
-              continue; // Skip - already imported
-            }
+            if (existingTx) continue;
 
-            // Determine transaction type (income vs expense)
-            // Plaid amounts are positive for money spent, negative for money received
             const isIncome = plaidTx.amount < 0;
             const amount = Math.abs(plaidTx.amount);
             const transactionDate = new Date(plaidTx.date);
 
-            // Check for matching manual transaction (same date, amount, similar description)
-            // This prevents duplicates when users manually entered transactions before connecting Plaid
+            // Check for matching manual transaction
             const matchingManualTx = await storage.findMatchingManualTransaction(
               organizationId,
               transactionDate,
@@ -6963,11 +6967,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isIncome ? 'income' : 'expense'
             );
 
+            const plaidAccount = plaidAccountsMap.get(plaidTx.account_id);
+
             if (matchingManualTx) {
-              // Look up the internal bank account ID for this Plaid account
-              const plaidAccount = await storage.getPlaidAccountByAccountId(plaidTx.account_id);
-              
-              // Update the existing manual transaction with Plaid's externalId, source, and bank account
               await storage.updateTransaction(matchingManualTx.id, {
                 externalId: plaidTx.transaction_id,
                 source: 'plaid',
@@ -6978,8 +6980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
-            // Also check for ANY matching transaction (including previously imported Plaid transactions)
-            // This prevents duplicates when the same transaction comes in with slightly different data
+            // Check for any matching transaction
             const anyMatchingTx = await storage.findAnyMatchingTransaction(
               organizationId,
               transactionDate,
@@ -6988,16 +6989,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isIncome ? 'income' : 'expense'
             );
 
-            if (anyMatchingTx) {
-              // Transaction already exists (either manual or from previous import), skip
-              console.log(`[Plaid Sync] Skipping duplicate - transaction ${anyMatchingTx.id} already exists with same date/amount/description`);
-              continue;
-            }
+            if (anyMatchingTx) continue;
 
-            // Look up the internal bank account ID for this Plaid account
-            const plaidAccount = await storage.getPlaidAccountByAccountId(plaidTx.account_id);
-            
-            // Create new transaction with Plaid's transaction_id stored in externalId
+            // Create new transaction
             await storage.createTransaction({
               organizationId,
               date: transactionDate,
@@ -7013,6 +7007,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             totalImported++;
+          }
+
+          // Handle removed transactions (mark as deleted or update status)
+          for (const removedId of removedTransactionIds) {
+            const existingTx = await storage.getTransactionByExternalId(organizationId, removedId);
+            if (existingTx) {
+              // Mark transaction as removed by Plaid (could delete or flag)
+              console.log(`[Plaid Sync] Transaction ${removedId} was removed from Plaid`);
+            }
           }
         } catch (error) {
           console.error(`Error syncing transactions for item ${plaidItem.itemId}:`, error);
