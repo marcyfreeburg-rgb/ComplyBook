@@ -2634,28 +2634,28 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(bankStatementEntries.id, statementEntryId));
 
-      // Audit log
-      await tx.insert(auditLogs).values({
-        organizationId: transaction.organizationId,
-        userId,
-        action: 'create',
-        entityType: 'reconciliation_match',
-        entityId: transactionId,
-        details: JSON.stringify({
-          reconciliationId,
-          statementEntryId,
-          transactionDescription: transaction.description,
-          statementDescription: statementEntry.description,
-          amount: transaction.amount,
-        }),
-        timestamp: new Date(),
-        ipAddress: '',
-        previousHash: '',
-        currentHash: '',
-      });
-
-      return match;
+      return { match, transaction, statementEntry };
     });
+
+    // Audit log with proper chain hash (outside transaction to use createAuditLog)
+    await this.createAuditLog({
+      organizationId: result.transaction.organizationId,
+      userId,
+      action: 'create',
+      entityType: 'reconciliation_match',
+      entityId: transactionId,
+      details: JSON.stringify({
+        reconciliationId,
+        statementEntryId,
+        transactionDescription: result.transaction.description,
+        statementDescription: result.statementEntry.description,
+        amount: result.transaction.amount,
+      }),
+      timestamp: new Date(),
+      ipAddress: '',
+    });
+
+    return result.match;
   }
 
   async unmatchTransaction(matchId: number): Promise<void> {
@@ -2698,29 +2698,30 @@ export class DatabaseStorage implements IStorage {
         .delete(reconciliationMatches)
         .where(eq(reconciliationMatches.id, matchId));
 
-      // Audit log
+      // Get transaction for audit log
       const transaction = match.transactionId 
         ? (await tx.select().from(transactions).where(eq(transactions.id, match.transactionId)))[0]
         : null;
 
-      if (transaction) {
-        await tx.insert(auditLogs).values({
-          organizationId: transaction.organizationId,
-          userId: match.matchedBy || 'system',
-          action: 'reconciliation_unmatch',
-          entityType: 'transaction',
-          entityId: match.transactionId!,
-          details: JSON.stringify({
-            reconciliationId: match.reconciliationId,
-            statementEntryId: match.statementEntryId,
-          }),
-          timestamp: new Date(),
-          ipAddress: '',
-          previousHash: '',
-          currentHash: '',
-        });
-      }
+      return { match, transaction };
     });
+
+    // Audit log with proper chain hash (outside transaction to use createAuditLog)
+    if (result.transaction) {
+      await this.createAuditLog({
+        organizationId: result.transaction.organizationId,
+        userId: result.match.matchedBy || 'system',
+        action: 'delete',
+        entityType: 'reconciliation_match',
+        entityId: result.match.transactionId!.toString(),
+        details: JSON.stringify({
+          reconciliationId: result.match.reconciliationId,
+          statementEntryId: result.match.statementEntryId,
+        }),
+        timestamp: new Date(),
+        ipAddress: '',
+      });
+    }
   }
 
   async bulkDeleteMatches(matchIds: number[]): Promise<number> {
