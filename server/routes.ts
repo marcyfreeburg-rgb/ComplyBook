@@ -9577,7 +9577,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to repair audit chain" });
       }
       
+      console.log(`[Audit Chain Repair] Starting repair for org ${organizationId}...`);
       const result = await storage.repairAuditLogChain(organizationId);
+      console.log(`[Audit Chain Repair] Completed: ${result.repaired} entries repaired`);
       
       // Log the repair action itself
       await storage.logAuditTrail({
@@ -9586,13 +9588,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: 'audit_chain',
         entityId: organizationId.toString(),
         action: 'update',
-        newValues: { repaired: result.repaired, action: 'chain_repair' },
+        newValues: { 
+          repaired: result.repaired, 
+          nullHashesFixed: result.nullHashesFixed,
+          brokenLinksFixed: result.brokenLinksFixed,
+          action: 'chain_repair' 
+        },
       });
       
       res.json(result);
-    } catch (error) {
-      console.error("Error repairing audit chain:", error);
-      res.status(500).json({ message: "Failed to repair audit chain" });
+    } catch (error: any) {
+      console.error("[Audit Chain Repair] Error:", error?.message || error);
+      res.status(500).json({ message: "Failed to repair audit chain", error: error?.message });
     }
   });
 

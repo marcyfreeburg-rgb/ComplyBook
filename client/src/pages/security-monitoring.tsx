@@ -116,17 +116,18 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
 
   const repairChainMutation = useMutation({
     mutationFn: () => apiRequest(`/api/security/audit-chain/repair/${organizationId}`, 'POST', {}),
-    onSuccess: (data: { repaired: number; message: string }) => {
+    onSuccess: (data: { repaired: number; nullHashesFixed?: number; brokenLinksFixed?: number; message: string }) => {
       toast({
         title: "Chain Repaired",
         description: data.message,
       });
       queryClient.invalidateQueries({ queryKey: [`/api/security/metrics/${organizationId}`] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || "Unknown error occurred";
       toast({
         title: "Repair Failed",
-        description: "Failed to repair audit log chain. Please try again.",
+        description: `Failed to repair audit log chain: ${errorMessage}`,
         variant: "destructive",
       });
     },

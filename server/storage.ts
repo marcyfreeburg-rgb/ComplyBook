@@ -5980,14 +5980,23 @@ export class DatabaseStorage implements IStorage {
     const nullHashesFixed = repairs.filter(r => r.repairType === 'null_hash').length;
     const brokenLinksFixed = repairs.filter(r => r.repairType === 'broken_link').length;
     
-    for (const repair of repairs) {
-      await db
-        .update(auditLogs)
-        .set({
-          previousHash: repair.previousHash,
-          chainHash: repair.chainHash,
-        })
-        .where(eq(auditLogs.id, repair.log.id));
+    // Batch updates in chunks of 100 for better performance
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < repairs.length; i += BATCH_SIZE) {
+      const batch = repairs.slice(i, i + BATCH_SIZE);
+      
+      // Run batch in parallel within each chunk
+      await Promise.all(
+        batch.map(repair =>
+          db
+            .update(auditLogs)
+            .set({
+              previousHash: repair.previousHash,
+              chainHash: repair.chainHash,
+            })
+            .where(eq(auditLogs.id, repair.log.id))
+        )
+      );
     }
     
     return {
