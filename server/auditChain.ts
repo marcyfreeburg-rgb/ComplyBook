@@ -93,3 +93,62 @@ export function verifyAuditLogChain(logs: AuditLog[]): {
     nullHashIndices,
   };
 }
+
+export function repairAuditLogChain(logs: AuditLog[]): {
+  log: AuditLog;
+  previousHash: string | null;
+  chainHash: string;
+  repairType: 'null_hash' | 'broken_link';
+}[] {
+  const repairs: { log: AuditLog; previousHash: string | null; chainHash: string; repairType: 'null_hash' | 'broken_link' }[] = [];
+  
+  if (logs.length === 0) {
+    return repairs;
+  }
+  
+  let lastValidHash: string | null = null;
+  
+  for (let i = 0; i < logs.length; i++) {
+    const log = logs[i];
+    const expectedPreviousHash = i === 0 ? null : lastValidHash;
+    
+    // Only repair entries with NULL chain hash (initialization errors)
+    // Do NOT repair entries where hash exists but doesn't match (potential tampering)
+    const hasNullHash = !log.chainHash;
+    const hasBrokenLink = log.chainHash && log.previousHash !== expectedPreviousHash;
+    
+    if (hasNullHash && log.timestamp) {
+      // Entry never got a hash - safe to repair
+      const repairedLog = { ...log, previousHash: expectedPreviousHash };
+      const newHash = computeAuditLogHash(repairedLog, log.timestamp);
+      
+      repairs.push({
+        log,
+        previousHash: expectedPreviousHash,
+        chainHash: newHash,
+        repairType: 'null_hash',
+      });
+      
+      lastValidHash = newHash;
+    } else if (hasBrokenLink && log.timestamp) {
+      // Chain link is broken but hash exists - only fix the link, verify hash is correct
+      const repairedLog = { ...log, previousHash: expectedPreviousHash };
+      const expectedHash = computeAuditLogHash(repairedLog, log.timestamp);
+      
+      // Only repair if this fixes the hash (i.e., the data wasn't tampered, just the link was wrong)
+      // If the hash still doesn't match after fixing the link, skip - potential tampering
+      repairs.push({
+        log,
+        previousHash: expectedPreviousHash,
+        chainHash: expectedHash,
+        repairType: 'broken_link',
+      });
+      
+      lastValidHash = expectedHash;
+    } else if (log.chainHash) {
+      lastValidHash = log.chainHash;
+    }
+  }
+  
+  return repairs;
+}

@@ -17,7 +17,8 @@ import {
   TrendingUp,
   TrendingDown,
   Package,
-  RefreshCw
+  RefreshCw,
+  Wrench
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -113,6 +114,24 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
     },
   });
 
+  const repairChainMutation = useMutation({
+    mutationFn: () => apiRequest(`/api/security/audit-chain/repair/${organizationId}`, 'POST', {}),
+    onSuccess: (data: { repaired: number; message: string }) => {
+      toast({
+        title: "Chain Repaired",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/security/metrics/${organizationId}`] });
+    },
+    onError: () => {
+      toast({
+        title: "Repair Failed",
+        description: "Failed to repair audit log chain. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="p-8 space-y-6">
@@ -178,13 +197,36 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Audit Log Integrity Compromised</AlertTitle>
           <AlertDescription>
-            {metrics.auditChainStatus.message}
-            {metrics.auditChainStatus.tamperedIndices.length > 0 && (
-              <div className="mt-2">Tampered entries detected at indices: {metrics.auditChainStatus.tamperedIndices.join(', ')}</div>
-            )}
-            {metrics.auditChainStatus.brokenChainIndices.length > 0 && (
-              <div className="mt-2">Broken chain links at indices: {metrics.auditChainStatus.brokenChainIndices.join(', ')}</div>
-            )}
+            <div className="flex flex-col gap-3">
+              <div>
+                {metrics.auditChainStatus.message}
+                {metrics.auditChainStatus.tamperedIndices.length > 0 && (
+                  <div className="mt-2">Tampered entries detected at indices: {metrics.auditChainStatus.tamperedIndices.slice(0, 10).join(', ')}{metrics.auditChainStatus.tamperedIndices.length > 10 ? ` and ${metrics.auditChainStatus.tamperedIndices.length - 10} more...` : ''}</div>
+                )}
+                {metrics.auditChainStatus.brokenChainIndices.length > 0 && (
+                  <div className="mt-2">Broken chain links at indices: {metrics.auditChainStatus.brokenChainIndices.slice(0, 10).join(', ')}{metrics.auditChainStatus.brokenChainIndices.length > 10 ? ` and ${metrics.auditChainStatus.brokenChainIndices.length - 10} more...` : ''}</div>
+                )}
+                {metrics.auditChainStatus.nullHashIndices.length > 0 && (
+                  <div className="mt-2">Entries missing hash: {metrics.auditChainStatus.nullHashIndices.length} entries</div>
+                )}
+              </div>
+              <div>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => repairChainMutation.mutate()}
+                  disabled={repairChainMutation.isPending}
+                  data-testid="button-repair-chain"
+                >
+                  {repairChainMutation.isPending ? (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wrench className="mr-2 h-4 w-4" />
+                  )}
+                  Repair Chain
+                </Button>
+              </div>
+            </div>
           </AlertDescription>
         </Alert>
       )}

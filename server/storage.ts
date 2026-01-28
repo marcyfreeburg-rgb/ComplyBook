@@ -232,7 +232,7 @@ import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
 import memoize from "memoizee";
 import { encryptField, decryptField } from './encryption';
-import { computeAuditLogHash, verifyAuditLogChain as verifyChain } from './auditChain';
+import { computeAuditLogHash, verifyAuditLogChain as verifyChain, repairAuditLogChain as repairChain } from './auditChain';
 
 // Interface for storage operations
 export interface IStorage {
@@ -698,6 +698,12 @@ export interface IStorage {
     tamperedIndices: number[];
     brokenChainIndices: number[];
     nullHashIndices: number[];
+    message: string;
+  }>;
+  repairAuditLogChain(organizationId: number): Promise<{
+    repaired: number;
+    nullHashesFixed: number;
+    brokenLinksFixed: number;
     message: string;
   }>;
   logAuditTrail(params: {
@@ -5936,6 +5942,59 @@ export class DatabaseStorage implements IStorage {
     return {
       ...result,
       message,
+    };
+  }
+
+  async repairAuditLogChain(organizationId: number): Promise<{
+    repaired: number;
+    nullHashesFixed: number;
+    brokenLinksFixed: number;
+    message: string;
+  }> {
+    const logs = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.organizationId, organizationId))
+      .orderBy(auditLogs.id);
+    
+    if (logs.length === 0) {
+      return {
+        repaired: 0,
+        nullHashesFixed: 0,
+        brokenLinksFixed: 0,
+        message: 'No audit logs found for this organization',
+      };
+    }
+    
+    const repairs = repairChain(logs);
+    
+    if (repairs.length === 0) {
+      return {
+        repaired: 0,
+        nullHashesFixed: 0,
+        brokenLinksFixed: 0,
+        message: 'Audit log chain is already valid, no repairs needed',
+      };
+    }
+    
+    const nullHashesFixed = repairs.filter(r => r.repairType === 'null_hash').length;
+    const brokenLinksFixed = repairs.filter(r => r.repairType === 'broken_link').length;
+    
+    for (const repair of repairs) {
+      await db
+        .update(auditLogs)
+        .set({
+          previousHash: repair.previousHash,
+          chainHash: repair.chainHash,
+        })
+        .where(eq(auditLogs.id, repair.log.id));
+    }
+    
+    return {
+      repaired: repairs.length,
+      nullHashesFixed,
+      brokenLinksFixed,
+      message: `Successfully repaired ${repairs.length} audit log entries (${nullHashesFixed} missing hashes, ${brokenLinksFixed} broken links)`,
     };
   }
 

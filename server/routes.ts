@@ -9560,6 +9560,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Repair audit log chain (NIST 800-53 AU-10 - fix chain integrity issues)
+  app.post('/api/security/audit-chain/repair/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      // Check user has access to this organization and is admin/owner
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      // Only admin and owner can repair audit chain
+      if (userRole.role !== 'admin' && userRole.role !== 'owner') {
+        return res.status(403).json({ message: "You don't have permission to repair audit chain" });
+      }
+      
+      const result = await storage.repairAuditLogChain(organizationId);
+      
+      // Log the repair action itself
+      await storage.logAuditTrail({
+        organizationId,
+        userId,
+        entityType: 'audit_chain',
+        entityId: organizationId.toString(),
+        action: 'update',
+        newValues: { repaired: result.repaired, action: 'chain_repair' },
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error repairing audit chain:", error);
+      res.status(500).json({ message: "Failed to repair audit chain" });
+    }
+  });
+
   // Vulnerability scanning routes (NIST 800-53 RA-5, SI-2)
   // Trigger manual vulnerability scan (admin/owner only)
   app.post('/api/security/vulnerability-scan', isAuthenticated, async (req: any, res) => {
