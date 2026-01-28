@@ -6923,11 +6923,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cursor = data.next_cursor;
           }
 
-          // Save the cursor for next incremental sync
-          if (cursor) {
-            await storage.updatePlaidItemCursor(plaidItem.id, cursor);
-          }
-
           // Log for troubleshooting
           console.log(`[Plaid Sync] item_id: ${plaidItem.itemId}, added: ${addedTransactions.length}, modified: ${modifiedTransactions.length}, removed: ${removedTransactionIds.length}`);
 
@@ -7009,13 +7004,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalImported++;
           }
 
-          // Handle removed transactions (mark as deleted or update status)
+          // Handle modified transactions (update existing by externalId)
+          let totalModified = 0;
+          for (const plaidTx of modifiedTransactions) {
+            const existingTx = await storage.getTransactionByExternalId(organizationId, plaidTx.transaction_id);
+            if (existingTx) {
+              const isIncome = plaidTx.amount < 0;
+              const amount = Math.abs(plaidTx.amount);
+              const transactionDate = new Date(plaidTx.date);
+              
+              await storage.updateTransaction(existingTx.id, {
+                description: plaidTx.name,
+                amount: amount.toString(),
+                type: isIncome ? 'income' : 'expense',
+                date: transactionDate,
+              });
+              console.log(`[Plaid Sync] Updated transaction ${existingTx.id} from Plaid ${plaidTx.transaction_id}`);
+              totalModified++;
+            }
+          }
+
+          // Handle removed transactions (soft delete - mark with special status)
+          let totalRemoved = 0;
           for (const removedId of removedTransactionIds) {
             const existingTx = await storage.getTransactionByExternalId(organizationId, removedId);
             if (existingTx) {
-              // Mark transaction as removed by Plaid (could delete or flag)
-              console.log(`[Plaid Sync] Transaction ${removedId} was removed from Plaid`);
+              // Mark as removed by adding a note to description - preserves audit trail
+              await storage.updateTransaction(existingTx.id, {
+                description: `[REMOVED BY BANK] ${existingTx.description}`,
+                reconciliationStatus: 'excluded',
+              });
+              console.log(`[Plaid Sync] Marked transaction ${existingTx.id} as removed (Plaid: ${removedId})`);
+              totalRemoved++;
             }
+          }
+
+          if (totalModified > 0 || totalRemoved > 0) {
+            console.log(`[Plaid Sync] item_id: ${plaidItem.itemId}, modified: ${totalModified}, removed: ${totalRemoved}`);
+          }
+
+          // Save cursor only after all processing is complete (data integrity)
+          if (cursor) {
+            await storage.updatePlaidItemCursor(plaidItem.id, cursor);
           }
         } catch (error) {
           console.error(`Error syncing transactions for item ${plaidItem.itemId}:`, error);

@@ -963,6 +963,7 @@ export const transactions = pgTable("transactions", {
   index("idx_transactions_date").on(table.date),
   index("idx_transactions_external_id").on(table.organizationId, table.externalId),
   index("idx_transactions_duplicate_check").on(table.organizationId, table.date, table.amount, table.type),
+  index("idx_transactions_monthly_trends").on(table.organizationId, table.type, table.date),
 ]);
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
