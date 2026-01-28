@@ -115,7 +115,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
   });
 
   const repairChainMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/security/audit-chain/repair/${organizationId}`, 'POST', {}),
+    mutationFn: () => apiRequest('POST', `/api/security/audit-chain/repair/${organizationId}`, {}),
     onSuccess: (data: { repaired: number; nullHashesFixed?: number; brokenLinksFixed?: number; message: string }) => {
       toast({
         title: "Chain Repaired",
