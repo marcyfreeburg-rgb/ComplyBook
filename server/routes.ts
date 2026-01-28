@@ -7029,13 +7029,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const removedId of removedTransactionIds) {
             const existingTx = await storage.getTransactionByExternalId(organizationId, removedId);
             if (existingTx) {
-              // Mark as removed by adding a note to description - preserves audit trail
-              await storage.updateTransaction(existingTx.id, {
-                description: `[REMOVED BY BANK] ${existingTx.description}`,
-                reconciliationStatus: 'excluded',
-              });
-              console.log(`[Plaid Sync] Marked transaction ${existingTx.id} as removed (Plaid: ${removedId})`);
-              totalRemoved++;
+              // Guard against repeated prefixing on subsequent syncs
+              const alreadyMarked = existingTx.description?.startsWith('[REMOVED BY BANK]');
+              if (!alreadyMarked) {
+                await storage.updateTransaction(existingTx.id, {
+                  description: `[REMOVED BY BANK] ${existingTx.description}`,
+                  reconciliationStatus: 'excluded',
+                });
+                console.log(`[Plaid Sync] Marked transaction ${existingTx.id} as removed (Plaid: ${removedId})`);
+                totalRemoved++;
+              }
             }
           }
 
