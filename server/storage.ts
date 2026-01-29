@@ -767,13 +767,11 @@ export interface IStorage {
   updateFundBalance(fundId: number, amount: string, isIncrease: boolean): Promise<Fund>;
   getFundTransactions(fundId: number): Promise<Transaction[]>;
   getFundAccountingSummary(organizationId: number): Promise<{
-    restrictedIncome: number;
-    unrestrictedIncome: number;
-    restrictedExpenses: number;
-    unrestrictedExpenses: number;
-    restrictedNet: number;
-    unrestrictedNet: number;
-    totalNet: number;
+    bankBalance: number;
+    grantFunding: number;
+    grantSpending: number;
+    restrictedFunds: number;
+    generalFund: number;
   }>;
 
   // Nonprofit-specific: Program operations
@@ -6475,28 +6473,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFundAccountingSummary(organizationId: number): Promise<{
-    restrictedIncome: number;
-    unrestrictedIncome: number;
-    restrictedExpenses: number;
-    unrestrictedExpenses: number;
-    restrictedNet: number;
-    unrestrictedNet: number;
-    totalNet: number;
+    bankBalance: number;
+    grantFunding: number;
+    grantSpending: number;
+    restrictedFunds: number;
+    generalFund: number;
   }> {
-    // Restricted funds = Grant awarded amounts - expenses against those grants
-    // Unrestricted funds = All non-grant transactions (income - expenses)
+    // Fund Accounting Logic:
+    // 1. Bank Balance = Total of all connected bank account balances
+    // 2. Restricted Funds = Grant amounts - Grant spending (remaining grant funds)
+    // 3. General Fund = Bank Balance - Restricted Funds (what's available for general use)
     
-    // 1. Get total grant amounts (this is the "restricted income" - the funding available)
+    // 1. Get total bank balance from all connected Plaid accounts for this organization
+    const bankBalanceResult = await db.select({
+      totalBalance: sql<string>`COALESCE(SUM(${plaidAccounts.currentBalance}), 0)`,
+    })
+      .from(plaidAccounts)
+      .innerJoin(plaidItems, eq(plaidAccounts.plaidItemId, plaidItems.id))
+      .where(eq(plaidItems.organizationId, organizationId));
+    
+    const bankBalance = parseFloat(bankBalanceResult[0]?.totalBalance || '0');
+
+    // 2. Get total grant amounts (the funding received/awarded)
     const grantTotals = await db.select({
       totalGrantAmount: sql<string>`COALESCE(SUM(${grants.amount}), 0)`,
     })
       .from(grants)
       .where(eq(grants.organizationId, organizationId));
     
-    const restrictedIncome = parseFloat(grantTotals[0]?.totalGrantAmount || '0');
+    const grantFunding = parseFloat(grantTotals[0]?.totalGrantAmount || '0');
 
-    // 2. Get expenses against grants (restricted expenses)
-    const grantExpenses = await db.select({
+    // 3. Get expenses against grants (grant spending)
+    const grantExpenseResult = await db.select({
       totalExpenses: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
     })
       .from(transactions)
@@ -6506,46 +6514,20 @@ export class DatabaseStorage implements IStorage {
         isNotNull(transactions.grantId)
       ));
     
-    const restrictedExpenses = parseFloat(grantExpenses[0]?.totalExpenses || '0');
+    const grantSpending = parseFloat(grantExpenseResult[0]?.totalExpenses || '0');
 
-    // 3. Get unrestricted transactions (not linked to grants)
-    const unrestrictedTxns = await db.select({
-      transactionType: transactions.type,
-      totalAmount: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
-    })
-      .from(transactions)
-      .where(and(
-        eq(transactions.organizationId, organizationId),
-        isNull(transactions.grantId)
-      ))
-      .groupBy(transactions.type);
-
-    let unrestrictedIncome = 0;
-    let unrestrictedExpenses = 0;
-
-    for (const row of unrestrictedTxns) {
-      const amount = parseFloat(row.totalAmount) || 0;
-      if (row.transactionType === 'income') {
-        unrestrictedIncome += amount;
-      } else if (row.transactionType === 'expense') {
-        unrestrictedExpenses += amount;
-      }
-    }
-
-    // Restricted net = Grant amounts - expenses against grants (remaining grant funds)
-    const restrictedNet = restrictedIncome - restrictedExpenses;
-    // Unrestricted net = General income - general expenses
-    const unrestrictedNet = unrestrictedIncome - unrestrictedExpenses;
-    const totalNet = restrictedNet + unrestrictedNet;
+    // Calculate restricted funds = remaining grant funds
+    const restrictedFunds = grantFunding - grantSpending;
+    
+    // Calculate general fund = bank balance - restricted funds
+    const generalFund = bankBalance - restrictedFunds;
 
     return {
-      restrictedIncome,
-      unrestrictedIncome,
-      restrictedExpenses,
-      unrestrictedExpenses,
-      restrictedNet,
-      unrestrictedNet,
-      totalNet,
+      bankBalance,
+      grantFunding,
+      grantSpending,
+      restrictedFunds,
+      generalFund,
     };
   }
 

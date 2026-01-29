@@ -50,15 +50,13 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     enabled: currentOrganization.type === 'nonprofit',
   });
 
-  // Fetch fund accounting summary calculated from transactions based on category fundType
+  // Fetch fund accounting summary - bank balance based with grant restrictions
   interface FundAccountingSummary {
-    restrictedIncome: number;
-    unrestrictedIncome: number;
-    restrictedExpenses: number;
-    unrestrictedExpenses: number;
-    restrictedNet: number;
-    unrestrictedNet: number;
-    totalNet: number;
+    bankBalance: number;
+    grantFunding: number;
+    grantSpending: number;
+    restrictedFunds: number;
+    generalFund: number;
   }
   const { data: fundAccountingSummary } = useQuery<FundAccountingSummary>({
     queryKey: [`/api/fund-accounting/${currentOrganization.id}`],
@@ -202,17 +200,14 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     }
   };
 
-  // Fund accounting totals - calculated from transactions based on category fundType
-  // This is the primary source of truth for restricted/unrestricted rollups
-  const totalUnrestricted = fundAccountingSummary?.unrestrictedNet || 0;
-  const totalRestricted = fundAccountingSummary?.restrictedNet || 0;
-  const totalAllFunds = fundAccountingSummary?.totalNet || 0;
-
-  // Breakdown details for display
-  const unrestrictedIncome = fundAccountingSummary?.unrestrictedIncome || 0;
-  const unrestrictedExpenses = fundAccountingSummary?.unrestrictedExpenses || 0;
-  const restrictedIncome = fundAccountingSummary?.restrictedIncome || 0;
-  const restrictedExpenses = fundAccountingSummary?.restrictedExpenses || 0;
+  // Fund accounting totals - bank balance based with grant restrictions
+  // General Fund = Bank Balance - Restricted Funds
+  // Restricted Funds = Grant Funding - Grant Spending
+  const bankBalance = fundAccountingSummary?.bankBalance || 0;
+  const grantFunding = fundAccountingSummary?.grantFunding || 0;
+  const grantSpending = fundAccountingSummary?.grantSpending || 0;
+  const restrictedFunds = fundAccountingSummary?.restrictedFunds || 0;
+  const generalFund = fundAccountingSummary?.generalFund || 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="page-funds">
@@ -330,14 +325,16 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-unrestricted">
-              {formatCurrency(totalUnrestricted, 'USD')}
+              {formatCurrency(generalFund, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Non-grant income minus expenses
+              Available for general use
             </p>
-            <div className="text-xs text-muted-foreground mt-2 space-y-1">
-              <div className="text-green-600">Income: {formatCurrency(unrestrictedIncome, 'USD')}</div>
-              <div className="text-red-600">Expenses: {formatCurrency(unrestrictedExpenses, 'USD')}</div>
+            <div className="text-xs text-muted-foreground mt-3 p-2 bg-muted/50 rounded space-y-1">
+              <div className="font-medium">How this is calculated:</div>
+              <div>Bank Balance: {formatCurrency(bankBalance, 'USD')}</div>
+              <div>- Restricted Funds: {formatCurrency(restrictedFunds, 'USD')}</div>
+              <div className="border-t pt-1 font-medium">= General Fund: {formatCurrency(generalFund, 'USD')}</div>
             </div>
           </CardContent>
         </Card>
@@ -348,29 +345,37 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-restricted">
-              {formatCurrency(totalRestricted, 'USD')}
+              {formatCurrency(restrictedFunds, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Grant amounts minus grant spending
+              Reserved for grant purposes
             </p>
-            <div className="text-xs text-muted-foreground mt-2 space-y-1">
-              <div className="text-green-600">Grant Funding: {formatCurrency(restrictedIncome, 'USD')}</div>
-              <div className="text-red-600">Grant Spending: {formatCurrency(restrictedExpenses, 'USD')}</div>
+            <div className="text-xs text-muted-foreground mt-3 p-2 bg-muted/50 rounded space-y-1">
+              <div className="font-medium">How this is calculated:</div>
+              <div className="text-green-600">Grant Funding: {formatCurrency(grantFunding, 'USD')}</div>
+              <div className="text-red-600">- Grant Spending: {formatCurrency(grantSpending, 'USD')}</div>
+              <div className="border-t pt-1 font-medium">= Remaining: {formatCurrency(restrictedFunds, 'USD')}</div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Total Net Assets</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Bank Balance</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-all-funds">
-              {formatCurrency(totalAllFunds, 'USD')}
+              {formatCurrency(bankBalance, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Combined net (income - expenses)
+              Combined from all connected accounts
             </p>
+            <div className="text-xs text-muted-foreground mt-3 p-2 bg-muted/50 rounded space-y-1">
+              <div className="font-medium">Breakdown:</div>
+              <div>General Fund: {formatCurrency(generalFund, 'USD')}</div>
+              <div>+ Restricted Funds: {formatCurrency(restrictedFunds, 'USD')}</div>
+              <div className="border-t pt-1 font-medium">= Bank Balance: {formatCurrency(bankBalance, 'USD')}</div>
+            </div>
           </CardContent>
         </Card>
       </div>
