@@ -6943,51 +6943,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
             plaidAccountsMap.set(acc.accountId, acc);
           }
 
-          // Process new transactions
+          // OPTIMIZATION: Batch fetch all existing external IDs at once
+          const allExternalIds = addedTransactions.map((tx: any) => tx.transaction_id);
+          const existingByExternalId = await storage.getTransactionsByExternalIds(organizationId, allExternalIds);
+
+          // OPTIMIZATION: Batch fetch potential duplicates for date range
+          let minDate: Date | null = null;
+          let maxDate: Date | null = null;
+          for (const tx of addedTransactions) {
+            const d = new Date(tx.date);
+            if (!minDate || d < minDate) minDate = d;
+            if (!maxDate || d > maxDate) maxDate = d;
+          }
+          
+          let potentialDuplicates: any[] = [];
+          if (minDate && maxDate) {
+            // Extend range by 1 day on each side for matching
+            const startDate = new Date(minDate);
+            startDate.setDate(startDate.getDate() - 1);
+            const endDate = new Date(maxDate);
+            endDate.setDate(endDate.getDate() + 1);
+            potentialDuplicates = await storage.findPotentialDuplicateTransactions(organizationId, startDate, endDate);
+          }
+
+          // Build lookup maps for fast duplicate checking
+          const duplicatesByKey = new Map<string, any[]>();
+          for (const tx of potentialDuplicates) {
+            const dateKey = new Date(tx.date).toISOString().split('T')[0];
+            const key = `${dateKey}|${tx.amount}|${tx.type}`;
+            if (!duplicatesByKey.has(key)) duplicatesByKey.set(key, []);
+            duplicatesByKey.get(key)!.push(tx);
+          }
+
+          // Process new transactions with batch-fetched data
+          const transactionsToCreate: any[] = [];
+          const transactionsToUpdate: { id: number; updates: any }[] = [];
+
           for (const plaidTx of addedTransactions) {
-            // Check if already imported
-            const existingTx = await storage.getTransactionByExternalId(organizationId, plaidTx.transaction_id);
-            if (existingTx) continue;
+            // Check if already imported (using batch-fetched map)
+            if (existingByExternalId.has(plaidTx.transaction_id)) continue;
 
             const isIncome = plaidTx.amount < 0;
             const amount = Math.abs(plaidTx.amount);
             const transactionDate = new Date(plaidTx.date);
-
-            // Check for matching manual transaction
-            const matchingManualTx = await storage.findMatchingManualTransaction(
-              organizationId,
-              transactionDate,
-              amount.toString(),
-              plaidTx.name,
-              isIncome ? 'income' : 'expense'
-            );
+            const dateKey = transactionDate.toISOString().split('T')[0];
+            const key = `${dateKey}|${amount.toString()}|${isIncome ? 'income' : 'expense'}`;
 
             const plaidAccount = plaidAccountsMap.get(plaidTx.account_id);
 
-            if (matchingManualTx) {
-              await storage.updateTransaction(matchingManualTx.id, {
-                externalId: plaidTx.transaction_id,
-                source: 'plaid',
-                bankAccountId: plaidAccount?.id ?? null,
+            // Check for matching manual transaction (from batch-fetched data)
+            const candidates = duplicatesByKey.get(key) || [];
+            const manualMatch = candidates.find((tx: any) => 
+              !tx.externalId && (tx.source === 'manual' || !tx.source)
+            );
+
+            if (manualMatch) {
+              transactionsToUpdate.push({
+                id: manualMatch.id,
+                updates: {
+                  externalId: plaidTx.transaction_id,
+                  source: 'plaid',
+                  bankAccountId: plaidAccount?.id ?? null,
+                }
               });
-              console.log(`[Plaid Sync] Linked existing manual transaction ${matchingManualTx.id} to Plaid transaction ${plaidTx.transaction_id}`);
+              console.log(`[Plaid Sync] Linked existing manual transaction ${manualMatch.id} to Plaid transaction ${plaidTx.transaction_id}`);
               totalImported++;
               continue;
             }
 
-            // Check for any matching transaction
-            const anyMatchingTx = await storage.findAnyMatchingTransaction(
-              organizationId,
-              transactionDate,
-              amount.toString(),
-              plaidTx.name,
-              isIncome ? 'income' : 'expense'
-            );
+            // Check for any matching transaction (from batch-fetched data)
+            if (candidates.length > 0) continue;
 
-            if (anyMatchingTx) continue;
-
-            // Create new transaction
-            await storage.createTransaction({
+            // Queue new transaction for batch creation
+            transactionsToCreate.push({
               organizationId,
               date: transactionDate,
               description: plaidTx.name,
@@ -7004,42 +7032,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalImported++;
           }
 
-          // Handle modified transactions (update existing by externalId)
-          let totalModified = 0;
-          for (const plaidTx of modifiedTransactions) {
-            const existingTx = await storage.getTransactionByExternalId(organizationId, plaidTx.transaction_id);
-            if (existingTx) {
-              const isIncome = plaidTx.amount < 0;
-              const amount = Math.abs(plaidTx.amount);
-              const transactionDate = new Date(plaidTx.date);
-              
-              await storage.updateTransaction(existingTx.id, {
-                description: plaidTx.name,
-                amount: amount.toString(),
-                type: isIncome ? 'income' : 'expense',
-                date: transactionDate,
-              });
-              console.log(`[Plaid Sync] Updated transaction ${existingTx.id} from Plaid ${plaidTx.transaction_id}`);
-              totalModified++;
-            }
+          // Execute batch updates
+          await Promise.all(transactionsToUpdate.map(({ id, updates }) => 
+            storage.updateTransaction(id, updates)
+          ));
+
+          // Execute batch creates (parallel chunks of 50)
+          const BATCH_SIZE = 50;
+          for (let i = 0; i < transactionsToCreate.length; i += BATCH_SIZE) {
+            const batch = transactionsToCreate.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map(tx => storage.createTransaction(tx)));
           }
 
-          // Handle removed transactions (soft delete - mark with special status)
-          let totalRemoved = 0;
-          for (const removedId of removedTransactionIds) {
-            const existingTx = await storage.getTransactionByExternalId(organizationId, removedId);
-            if (existingTx) {
-              // Guard against repeated prefixing on subsequent syncs
-              const alreadyMarked = existingTx.description?.startsWith('[REMOVED BY BANK]');
-              if (!alreadyMarked) {
-                await storage.updateTransaction(existingTx.id, {
-                  description: `[REMOVED BY BANK] ${existingTx.description}`,
-                  reconciliationStatus: 'excluded',
+          // Handle modified transactions (batch lookup + parallel updates)
+          let totalModified = 0;
+          if (modifiedTransactions.length > 0) {
+            const modifiedIds = modifiedTransactions.map((tx: any) => tx.transaction_id);
+            const existingModified = await storage.getTransactionsByExternalIds(organizationId, modifiedIds);
+            
+            const modifyUpdates = modifiedTransactions
+              .filter((plaidTx: any) => existingModified.has(plaidTx.transaction_id))
+              .map((plaidTx: any) => {
+                const existingTx = existingModified.get(plaidTx.transaction_id)!;
+                const isIncome = plaidTx.amount < 0;
+                const amount = Math.abs(plaidTx.amount);
+                const transactionDate = new Date(plaidTx.date);
+                
+                console.log(`[Plaid Sync] Updated transaction ${existingTx.id} from Plaid ${plaidTx.transaction_id}`);
+                totalModified++;
+                
+                return storage.updateTransaction(existingTx.id, {
+                  description: plaidTx.name,
+                  amount: amount.toString(),
+                  type: isIncome ? 'income' : 'expense',
+                  date: transactionDate,
                 });
-                console.log(`[Plaid Sync] Marked transaction ${existingTx.id} as removed (Plaid: ${removedId})`);
-                totalRemoved++;
-              }
-            }
+              });
+            
+            await Promise.all(modifyUpdates);
+          }
+
+          // Handle removed transactions (batch lookup + parallel updates)
+          let totalRemoved = 0;
+          if (removedTransactionIds.length > 0) {
+            const existingRemoved = await storage.getTransactionsByExternalIds(organizationId, removedTransactionIds);
+            
+            const removeUpdates = removedTransactionIds
+              .filter((removedId: string) => existingRemoved.has(removedId))
+              .map((removedId: string) => {
+                const existingTx = existingRemoved.get(removedId)!;
+                // Guard against repeated prefixing on subsequent syncs
+                const alreadyMarked = existingTx.description?.startsWith('[REMOVED BY BANK]');
+                if (!alreadyMarked) {
+                  console.log(`[Plaid Sync] Marked transaction ${existingTx.id} as removed (Plaid: ${removedId})`);
+                  totalRemoved++;
+                  return storage.updateTransaction(existingTx.id, {
+                    description: `[REMOVED BY BANK] ${existingTx.description}`,
+                    reconciliationStatus: 'excluded',
+                  });
+                }
+                return Promise.resolve();
+              });
+            
+            await Promise.all(removeUpdates);
           }
 
           if (totalModified > 0 || totalRemoved > 0) {

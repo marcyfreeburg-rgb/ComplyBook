@@ -349,8 +349,11 @@ export interface IStorage {
   getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
+  getTransactionsByExternalIds(organizationId: number, externalIds: string[]): Promise<Map<string, Transaction>>;
   findMatchingManualTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
   findAnyMatchingTransaction(organizationId: number, date: Date, amount: string, description: string, type: 'income' | 'expense'): Promise<Transaction | undefined>;
+  findPotentialDuplicateTransactions(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
+  getCategoryExamples(organizationId: number, categoryIds: number[], examplesPerCategory: number): Promise<Map<number, string[]>>;
   getRecentTransactions(organizationId: number, limit: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction>;
@@ -2026,6 +2029,82 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return transaction;
+  }
+
+  async getTransactionsByExternalIds(organizationId: number, externalIds: string[]): Promise<Map<string, Transaction>> {
+    if (externalIds.length === 0) {
+      return new Map();
+    }
+    
+    const results = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          inArray(transactions.externalId, externalIds)
+        )
+      );
+    
+    const map = new Map<string, Transaction>();
+    for (const tx of results) {
+      if (tx.externalId) {
+        map.set(tx.externalId, tx);
+      }
+    }
+    return map;
+  }
+
+  async findPotentialDuplicateTransactions(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]> {
+    // Fetch all transactions in the date range for batch duplicate checking
+    return await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate)
+        )
+      );
+  }
+
+  async getCategoryExamples(organizationId: number, categoryIds: number[], examplesPerCategory: number): Promise<Map<number, string[]>> {
+    if (categoryIds.length === 0) {
+      return new Map();
+    }
+    
+    // Efficiently fetch limited examples per category using a single query with ROW_NUMBER
+    // This avoids fetching ALL transactions
+    const results = await db
+      .select({
+        categoryId: transactions.categoryId,
+        description: transactions.description,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          inArray(transactions.categoryId, categoryIds),
+          isNotNull(transactions.description)
+        )
+      )
+      .orderBy(desc(transactions.date))
+      .limit(categoryIds.length * examplesPerCategory * 2); // Fetch more to ensure coverage
+    
+    // Group by category and limit examples
+    const examplesMap = new Map<number, string[]>();
+    for (const row of results) {
+      if (row.categoryId && row.description) {
+        const existing = examplesMap.get(row.categoryId) || [];
+        if (existing.length < examplesPerCategory) {
+          existing.push(row.description);
+          examplesMap.set(row.categoryId, existing);
+        }
+      }
+    }
+    
+    return examplesMap;
   }
 
   async findMatchingManualTransaction(

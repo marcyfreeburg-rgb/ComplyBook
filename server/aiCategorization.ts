@@ -20,6 +20,28 @@ const openai = isReplitEnvironment
       })
     : null;
 
+// Cache for category examples (5 minute TTL)
+const categoryExamplesCache = new Map<string, { data: Map<number, string[]>; timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedCategoryExamples(
+  organizationId: number,
+  categoryIds: number[]
+): Promise<Map<number, string[]>> {
+  const cacheKey = `${organizationId}:${categoryIds.sort().join(',')}`;
+  const cached = categoryExamplesCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  
+  // Fetch from database
+  const examples = await storage.getCategoryExamples(organizationId, categoryIds, 5);
+  categoryExamplesCache.set(cacheKey, { data: examples, timestamp: Date.now() });
+  
+  return examples;
+}
+
 export interface CategorySuggestion {
   categoryId: number;
   categoryName: string;
@@ -65,18 +87,9 @@ export async function suggestCategory(
     }
 
     // Get existing categorized transactions to learn from (up to 5 examples per category)
-    const existingTransactions = await storage.getTransactions(organizationId);
-    const categorizedExamples: Map<number, string[]> = new Map();
-    
-    for (const cat of relevantCategories) {
-      const catTransactions = existingTransactions
-        .filter(t => t.categoryId === cat.id && t.description)
-        .slice(0, 5)
-        .map(t => t.description);
-      if (catTransactions.length > 0) {
-        categorizedExamples.set(cat.id, catTransactions);
-      }
-    }
+    // OPTIMIZATION: Use cached efficient query instead of fetching ALL transactions
+    const categoryIds = relevantCategories.map(cat => cat.id);
+    const categorizedExamples = await getCachedCategoryExamples(organizationId, categoryIds);
 
     // Build the prompt for AI with learning examples
     const categoryList = relevantCategories.map(cat => {
@@ -203,18 +216,17 @@ export async function suggestCategoryBulk(
       return suggestions;
     }
 
-    // Get existing transactions for learning examples
-    const existingTransactions = await storage.getTransactions(organizationId);
+    // OPTIMIZATION: Use cached efficient query instead of fetching ALL transactions
+    const allCategoryIds = categories.map(cat => cat.id);
+    const categorizedExamples = await getCachedCategoryExamples(organizationId, allCategoryIds);
     
     // Build category info with examples for both income and expense
     const buildCategoryList = (type: 'income' | 'expense') => {
       const relevantCategories = categories.filter(cat => cat.type === type);
       return relevantCategories.map(cat => {
-        const examples = existingTransactions
-          .filter(t => t.categoryId === cat.id && t.description)
-          .slice(0, 2) // Reduced to 2 examples to save tokens
-          .map(t => t.description);
-        const examplesText = examples.length > 0 ? ` Ex: ${examples.map(e => `"${e.slice(0, 30)}"`).join(', ')}` : '';
+        const examples = categorizedExamples.get(cat.id) || [];
+        const limitedExamples = examples.slice(0, 2); // Reduced to 2 examples to save tokens
+        const examplesText = limitedExamples.length > 0 ? ` Ex: ${limitedExamples.map(e => `"${e.slice(0, 30)}"`).join(', ')}` : '';
         return `  - ID: ${cat.id}, Name: "${cat.name}"${examplesText}`;
       }).join('\n');
     };
