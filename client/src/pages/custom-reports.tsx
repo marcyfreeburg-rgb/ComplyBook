@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X, Mail, Clock, Calendar, FileTemplate, Copy } from "lucide-react";
+import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X, Mail, Clock, Calendar, LayoutTemplate, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -583,7 +583,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setTemplateDialogOpen(true)} data-testid="button-use-template">
-            <FileTemplate className="mr-2 h-4 w-4" />
+            <LayoutTemplate className="mr-2 h-4 w-4" />
             Use Template
           </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -871,6 +871,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
           </DialogContent>
         </Dialog>
       </div>
+      </div>
 
       {isLoading ? (
         <div className="text-center py-8">Loading reports...</div>
@@ -1141,7 +1142,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileTemplate className="h-5 w-5" />
+              <LayoutTemplate className="h-5 w-5" />
               Report Templates
             </DialogTitle>
             <DialogDescription>
