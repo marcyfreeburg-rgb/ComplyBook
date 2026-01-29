@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X, Mail, Clock, Calendar, FileTemplate, Copy } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,84 @@ type CustomReport = {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  isTemplate?: boolean;
+  schedule?: ReportSchedule | null;
 };
+
+type ReportSchedule = {
+  enabled: boolean;
+  frequency: "daily" | "weekly" | "monthly";
+  dayOfWeek?: number; // 0-6 for weekly
+  dayOfMonth?: number; // 1-31 for monthly
+  time: string; // HH:MM format
+  recipients: string[];
+  lastRun?: string;
+  nextRun?: string;
+};
+
+type ReportTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  dataSource: string;
+  selectedFields: string[];
+  filters: any;
+  sortBy: string | null;
+  sortOrder: string | null;
+};
+
+const PRESET_TEMPLATES: ReportTemplate[] = [
+  {
+    id: "monthly-expenses",
+    name: "Monthly Expense Summary",
+    description: "Overview of all expenses grouped by category for the month",
+    dataSource: "transactions",
+    selectedFields: ["date", "description", "amount", "categoryId", "notes"],
+    filters: { type: "expense" },
+    sortBy: "date",
+    sortOrder: "desc",
+  },
+  {
+    id: "income-report",
+    name: "Income Report",
+    description: "All income transactions with client and grant details",
+    dataSource: "transactions",
+    selectedFields: ["date", "description", "amount", "clientId", "grantId", "notes"],
+    filters: { type: "income" },
+    sortBy: "date",
+    sortOrder: "desc",
+  },
+  {
+    id: "outstanding-invoices",
+    name: "Outstanding Invoices",
+    description: "All unpaid and overdue invoices",
+    dataSource: "invoices",
+    selectedFields: ["invoiceNumber", "clientId", "issueDate", "dueDate", "status", "total"],
+    filters: { status: "pending" },
+    sortBy: "dueDate",
+    sortOrder: "asc",
+  },
+  {
+    id: "pending-bills",
+    name: "Pending Bills",
+    description: "All unpaid bills requiring attention",
+    dataSource: "bills",
+    selectedFields: ["billNumber", "vendorId", "issueDate", "dueDate", "status", "total"],
+    filters: { status: "pending" },
+    sortBy: "dueDate",
+    sortOrder: "asc",
+  },
+  {
+    id: "grant-status",
+    name: "Grant Status Report",
+    description: "Overview of all grants with amounts and dates",
+    dataSource: "grants",
+    selectedFields: ["name", "grantNumber", "funder", "amount", "startDate", "endDate", "status"],
+    filters: {},
+    sortBy: "endDate",
+    sortOrder: "asc",
+  },
+];
 
 const DATA_SOURCE_OPTIONS = [
   { value: "transactions", label: "Transactions" },
@@ -101,6 +179,20 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [executingReport, setExecutingReport] = useState<CustomReport | null>(null);
   const [reportResults, setReportResults] = useState<any[] | null>(null);
+  
+  // Template state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
+  
+  // Scheduling state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [schedulingReport, setSchedulingReport] = useState<CustomReport | null>(null);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleFrequency, setScheduleFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState(1); // Monday
+  const [scheduleDayOfMonth, setScheduleDayOfMonth] = useState(1);
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduleRecipients, setScheduleRecipients] = useState("");
 
   // Form state
   const [reportName, setReportName] = useState("");
@@ -362,6 +454,126 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     }
   };
 
+  // Template functions
+  const handleUseTemplate = (template: ReportTemplate) => {
+    setSelectedTemplate(template);
+    setReportName(template.name);
+    setReportDescription(template.description);
+    setDataSource(template.dataSource);
+    setSelectedFields([...template.selectedFields]);
+    const filters = template.filters || {};
+    setFilterType(filters.type || "all");
+    setFilterStatus(filters.status || "all");
+    setFilterCategoryIds(filters.categoryIds || []);
+    setFilterMinAmount(filters.minAmount || "");
+    setFilterMaxAmount(filters.maxAmount || "");
+    setSortBy(template.sortBy || "none");
+    setSortOrder(template.sortOrder || "desc");
+    setTemplateDialogOpen(false);
+    setDialogOpen(true);
+    toast({ title: `Template "${template.name}" loaded` });
+  };
+
+  const handleDuplicateReport = (report: CustomReport) => {
+    setReportName(`${report.name} (Copy)`);
+    setReportDescription(report.description || "");
+    setDataSource(report.dataSource);
+    setSelectedFields([...report.selectedFields]);
+    const filters = report.filters || {};
+    setFilterType(filters.type || "all");
+    setFilterStatus(filters.status || "all");
+    if (filters.categoryIds) {
+      setFilterCategoryIds(filters.categoryIds);
+    } else if (filters.categoryId) {
+      setFilterCategoryIds([parseInt(filters.categoryId)]);
+    } else {
+      setFilterCategoryIds([]);
+    }
+    setFilterMinAmount(filters.minAmount || "");
+    setFilterMaxAmount(filters.maxAmount || "");
+    setSortBy(report.sortBy || "none");
+    setSortOrder(report.sortOrder || "desc");
+    setEditingReport(null);
+    setDialogOpen(true);
+    toast({ title: "Report duplicated - modify and save as new" });
+  };
+
+  // Scheduling functions
+  const handleOpenSchedule = (report: CustomReport) => {
+    setSchedulingReport(report);
+    if (report.schedule) {
+      setScheduleEnabled(report.schedule.enabled);
+      setScheduleFrequency(report.schedule.frequency);
+      setScheduleDayOfWeek(report.schedule.dayOfWeek || 1);
+      setScheduleDayOfMonth(report.schedule.dayOfMonth || 1);
+      setScheduleTime(report.schedule.time || "09:00");
+      setScheduleRecipients((report.schedule.recipients || []).join(", "));
+    } else {
+      setScheduleEnabled(false);
+      setScheduleFrequency("weekly");
+      setScheduleDayOfWeek(1);
+      setScheduleDayOfMonth(1);
+      setScheduleTime("09:00");
+      setScheduleRecipients("");
+    }
+    setScheduleDialogOpen(true);
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!schedulingReport) return;
+    
+    const recipients = scheduleRecipients
+      .split(",")
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+
+    if (scheduleEnabled && recipients.length === 0) {
+      toast({ title: "Please add at least one recipient email", variant: "destructive" });
+      return;
+    }
+
+    const schedule: ReportSchedule = {
+      enabled: scheduleEnabled,
+      frequency: scheduleFrequency,
+      dayOfWeek: scheduleFrequency === "weekly" ? scheduleDayOfWeek : undefined,
+      dayOfMonth: scheduleFrequency === "monthly" ? scheduleDayOfMonth : undefined,
+      time: scheduleTime,
+      recipients,
+    };
+
+    try {
+      await updateMutation.mutateAsync({
+        id: schedulingReport.id,
+        data: { schedule },
+      });
+      setScheduleDialogOpen(false);
+      toast({ 
+        title: scheduleEnabled 
+          ? `Schedule saved - Report will be emailed ${scheduleFrequency}` 
+          : "Schedule disabled"
+      });
+    } catch {
+      toast({ title: "Failed to save schedule", variant: "destructive" });
+    }
+  };
+
+  const getScheduleDescription = (schedule: ReportSchedule | null | undefined): string => {
+    if (!schedule?.enabled) return "Not scheduled";
+    
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    switch (schedule.frequency) {
+      case "daily":
+        return `Daily at ${schedule.time}`;
+      case "weekly":
+        return `Every ${dayNames[schedule.dayOfWeek || 0]} at ${schedule.time}`;
+      case "monthly":
+        return `Monthly on day ${schedule.dayOfMonth} at ${schedule.time}`;
+      default:
+        return "Scheduled";
+    }
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -369,13 +581,18 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
           <h1 className="text-3xl font-bold tracking-tight">Custom Reports</h1>
           <p className="text-muted-foreground">Create and run custom financial reports</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-report">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Report
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTemplateDialogOpen(true)} data-testid="button-use-template">
+            <FileTemplate className="mr-2 h-4 w-4" />
+            Use Template
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-report">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Report
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingReport ? "Edit Report" : "Create New Report"}</DialogTitle>
@@ -679,6 +896,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                     size="sm"
                     variant="outline"
                     onClick={() => handleEdit(report)}
+                    title="Edit report"
                     data-testid={`button-edit-${report.id}`}
                   >
                     <Edit className="h-4 w-4" />
@@ -686,7 +904,26 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => handleDuplicateReport(report)}
+                    title="Duplicate report"
+                    data-testid={`button-duplicate-${report.id}`}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenSchedule(report)}
+                    title="Schedule email"
+                    data-testid={`button-schedule-${report.id}`}
+                  >
+                    <Mail className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => handleExecute(report)}
+                    title="Run report"
                     data-testid={`button-execute-${report.id}`}
                   >
                     <Play className="h-4 w-4" />
@@ -695,6 +932,7 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                     size="sm"
                     variant="outline"
                     onClick={() => deleteMutation.mutate(report.id)}
+                    title="Delete report"
                     data-testid={`button-delete-${report.id}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -705,7 +943,17 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                 <div className="text-sm text-muted-foreground">
                   <p>Data Source: <span className="font-medium text-foreground">{report.dataSource}</span></p>
                   <p>Fields: <span className="font-medium text-foreground">{report.selectedFields.join(", ")}</span></p>
-                  <p className="text-xs mt-2">Created {format(new Date(report.createdAt), "PPP")}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs">Created {format(new Date(report.createdAt), "PPP")}</p>
+                    {report.schedule?.enabled ? (
+                      <Badge variant="secondary" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {getScheduleDescription(report.schedule)}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Not scheduled</span>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -885,6 +1133,185 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
               );
             })()}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Selection Dialog */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileTemplate className="h-5 w-5" />
+              Report Templates
+            </DialogTitle>
+            <DialogDescription>
+              Choose a pre-built template to quickly create a new report
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 mt-4">
+            {PRESET_TEMPLATES.map((template) => (
+              <Card 
+                key={template.id} 
+                className="cursor-pointer hover-elevate transition-all"
+                onClick={() => handleUseTemplate(template)}
+                data-testid={`card-template-${template.id}`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium">{template.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="secondary">{template.dataSource}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {template.selectedFields.length} fields
+                        </span>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUseTemplate(template);
+                      }}
+                      data-testid={`button-use-template-${template.id}`}
+                    >
+                      Use
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Scheduling Dialog */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Schedule Report Email
+            </DialogTitle>
+            <DialogDescription>
+              {schedulingReport && `Configure automatic email delivery for "${schedulingReport.name}"`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="schedule-enabled" className="text-base">Enable Scheduled Emails</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically run and email this report on a schedule
+                </p>
+              </div>
+              <Switch
+                id="schedule-enabled"
+                checked={scheduleEnabled}
+                onCheckedChange={setScheduleEnabled}
+                data-testid="switch-schedule-enabled"
+              />
+            </div>
+
+            {scheduleEnabled && (
+              <>
+                <div>
+                  <Label htmlFor="schedule-frequency">Frequency</Label>
+                  <Select value={scheduleFrequency} onValueChange={(v) => setScheduleFrequency(v as any)}>
+                    <SelectTrigger id="schedule-frequency" data-testid="select-schedule-frequency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {scheduleFrequency === "weekly" && (
+                  <div>
+                    <Label htmlFor="schedule-day-of-week">Day of Week</Label>
+                    <Select 
+                      value={String(scheduleDayOfWeek)} 
+                      onValueChange={(v) => setScheduleDayOfWeek(parseInt(v))}
+                    >
+                      <SelectTrigger id="schedule-day-of-week" data-testid="select-schedule-day-of-week">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Sunday</SelectItem>
+                        <SelectItem value="1">Monday</SelectItem>
+                        <SelectItem value="2">Tuesday</SelectItem>
+                        <SelectItem value="3">Wednesday</SelectItem>
+                        <SelectItem value="4">Thursday</SelectItem>
+                        <SelectItem value="5">Friday</SelectItem>
+                        <SelectItem value="6">Saturday</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {scheduleFrequency === "monthly" && (
+                  <div>
+                    <Label htmlFor="schedule-day-of-month">Day of Month</Label>
+                    <Select 
+                      value={String(scheduleDayOfMonth)} 
+                      onValueChange={(v) => setScheduleDayOfMonth(parseInt(v))}
+                    >
+                      <SelectTrigger id="schedule-day-of-month" data-testid="select-schedule-day-of-month">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                          <SelectItem key={day} value={String(day)}>
+                            {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="schedule-time">Time</Label>
+                  <Input
+                    id="schedule-time"
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    data-testid="input-schedule-time"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="schedule-recipients">Recipients (comma-separated emails)</Label>
+                  <Input
+                    id="schedule-recipients"
+                    type="text"
+                    placeholder="email1@example.com, email2@example.com"
+                    value={scheduleRecipients}
+                    onChange={(e) => setScheduleRecipients(e.target.value)}
+                    data-testid="input-schedule-recipients"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Report will be exported as CSV and sent to these email addresses
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)} data-testid="button-cancel-schedule">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveSchedule} data-testid="button-save-schedule">
+              <Save className="mr-2 h-4 w-4" />
+              Save Schedule
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
