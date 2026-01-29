@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
     endDate: new Date(currentYear, 11, 31).toISOString().split('T')[0],
   });
 
-  const { data: reportData, isLoading, error } = useQuery<FunctionalExpenseData>({
+  const { data: reportData, isLoading, error, refetch } = useQuery<FunctionalExpenseData>({
     queryKey: [`/api/reports/functional-expenses`, dateRange],
     enabled: !!dateRange.startDate && !!dateRange.endDate,
   });
@@ -204,7 +205,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => window.location.reload()}
+                onClick={() => refetch()}
                 data-testid="button-retry-report"
               >
                 <AlertCircle className="mr-2 h-4 w-4" />
@@ -229,27 +230,27 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
         <>
           {/* Feedback Banner */}
           {feedback && (
-            <Card className={`border-l-4 ${
-              feedback.variant === 'success' ? 'border-l-green-500' :
-              feedback.variant === 'warning' ? 'border-l-yellow-500' :
-              'border-l-red-500'
+            <div className={`p-4 rounded-md ${
+              feedback.variant === 'success' ? 'bg-green-50 dark:bg-green-900/20' :
+              feedback.variant === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20' :
+              'bg-red-50 dark:bg-red-900/20'
             }`}>
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className={`h-5 w-5 mt-0.5 ${
-                    feedback.variant === 'success' ? 'text-green-600' :
-                    feedback.variant === 'warning' ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`} />
-                  <div>
-                    <p className="font-medium">{feedback.message}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Recommended: 70%+ Program, 20% or less Administrative, 15% or less Fundraising
-                    </p>
-                  </div>
+              <div className="flex items-start gap-3">
+                <Badge variant={
+                  feedback.variant === 'success' ? 'default' :
+                  feedback.variant === 'warning' ? 'secondary' :
+                  'destructive'
+                }>
+                  {feedback.variant === 'success' ? 'Good' : feedback.variant === 'warning' ? 'Warning' : 'Needs Attention'}
+                </Badge>
+                <div className="flex-1">
+                  <p className="font-medium">{feedback.message}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Recommended: 70%+ Program, 20% or less Administrative, 15% or less Fundraising
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Summary Cards */}

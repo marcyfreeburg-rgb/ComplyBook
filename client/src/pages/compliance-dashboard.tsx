@@ -20,7 +20,8 @@ import {
   Calendar,
   AlertTriangle,
   Download,
-  FileBarChart
+  FileBarChart,
+  Loader2
 } from "lucide-react";
 import { format, differenceInDays, isBefore, parseISO } from "date-fns";
 import type { Organization, Grant } from "@shared/schema";
@@ -87,7 +88,7 @@ export default function ComplianceDashboard({ currentOrganization }: ComplianceD
     answers: Record<string, any>;
   }
 
-  const { data: surveyResponses = [] } = useQuery<SurveyResponse[]>({
+  const { data: surveyResponses = [], isLoading: surveysLoading, error: surveysError } = useQuery<SurveyResponse[]>({
     queryKey: [`/api/forms/${currentOrganization.id}/recent-responses`],
   });
 
@@ -590,7 +591,18 @@ export default function ComplianceDashboard({ currentOrganization }: ComplianceD
           </div>
         </CardHeader>
         <CardContent>
-          {surveyResponses.length === 0 ? (
+          {surveysLoading ? (
+            <div className="text-center py-6">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+              <p className="text-muted-foreground">Loading survey responses...</p>
+            </div>
+          ) : surveysError ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+              <p>Failed to load survey responses</p>
+              <p className="text-sm mt-1 text-muted-foreground">Please try again later</p>
+            </div>
+          ) : surveyResponses.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <FileBarChart className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No survey responses available</p>

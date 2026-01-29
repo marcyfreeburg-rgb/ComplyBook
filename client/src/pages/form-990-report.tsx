@@ -65,7 +65,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
   });
   const [customContext, setCustomContext] = useState("");
 
-  const { data: reportData, isLoading, error } = useQuery<Form990Data>({
+  const { data: reportData, isLoading, error, refetch } = useQuery<Form990Data>({
     queryKey: [`/api/reports/form-990`, { taxYear }],
   });
 
@@ -514,7 +514,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
               <div className="flex gap-2 justify-center">
                 <Button 
                   variant="outline" 
-                  onClick={() => window.location.reload()}
+                  onClick={() => refetch()}
                   data-testid="button-retry-report"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
