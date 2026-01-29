@@ -70,14 +70,14 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
   });
 
   const generateNarrativeMutation = useMutation({
-    mutationFn: async ({ narrativeType, context }: { narrativeType: NarrativeType; context?: string }) => {
+    mutationFn: async ({ narrativeType, context }: { narrativeType: NarrativeType; context?: string }): Promise<{ narrative: string; narrativeType: NarrativeType }> => {
       const response = await apiRequest("POST", "/api/form-990/generate-narrative", {
         organizationId: currentOrganization.id,
         narrativeType,
         taxYear,
         customContext: context,
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data: { narrative: string; narrativeType: NarrativeType }) => {
       setNarratives(prev => ({
@@ -485,17 +485,60 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
       </Card>
 
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Generating Form 990 report...</p>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+              <p className="text-muted-foreground">Generating Form 990 report...</p>
+              <p className="text-xs text-muted-foreground mt-2">Compiling financial data for tax year {taxYear}</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : error ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
               <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Error Loading Report</h3>
+              <h3 className="text-lg font-semibold mb-2">Error Loading Form 990 Report</h3>
+              <p className="text-muted-foreground mb-4">
+                Failed to generate the Form 990 report data. This may occur if there are no transactions for the selected tax year.
+              </p>
+              <div className="bg-muted rounded-md p-3 mb-4 max-w-md mx-auto text-left">
+                <p className="text-xs font-mono text-muted-foreground">
+                  Error: {(error as Error)?.message || "Unknown error"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tax year: {taxYear}
+                </p>
+              </div>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.reload()}
+                  data-testid="button-retry-report"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setTaxYear(new Date().getFullYear() - 1)}
+                  data-testid="button-reset-year"
+                >
+                  Reset to Previous Year
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : !reportData ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Financial Data</h3>
               <p className="text-muted-foreground">
-                Failed to load the Form 990 report. Please try again.
+                No financial data found for tax year {taxYear}. Try selecting a different year.
               </p>
             </div>
           </CardContent>
@@ -517,19 +560,19 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                   <div>
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-total-revenue">
-                      {formatCurrency(parseFloat(reportData.totalRevenue), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(reportData.totalRevenue))}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Expenses</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-total-expenses">
-                      {formatCurrency(parseFloat(reportData.totalExpenses), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(reportData.totalExpenses))}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Net Income/Loss</p>
                     <p className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-net-income">
-                      {formatCurrency(netIncome, currentOrganization.currency)}
+                      {formatCurrency(netIncome)}
                     </p>
                   </div>
                 </div>
@@ -552,19 +595,19 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                   <div>
                     <p className="text-sm text-muted-foreground">Total Assets</p>
                     <p className="text-2xl font-bold" data-testid="text-total-assets">
-                      {formatCurrency(parseFloat(reportData.totalAssets), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(reportData.totalAssets))}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Liabilities</p>
                     <p className="text-2xl font-bold" data-testid="text-total-liabilities">
-                      {formatCurrency(parseFloat(reportData.totalLiabilities), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(reportData.totalLiabilities))}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Net Assets</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-net-assets">
-                      {formatCurrency(parseFloat(reportData.netAssets), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(reportData.netAssets))}
                     </p>
                   </div>
                 </div>
@@ -583,26 +626,26 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                 <div className="flex justify-between items-center" data-testid="row-program-expenses">
                   <span className="font-medium">Program Service Expenses</span>
                   <span className="font-bold text-lg" data-testid="text-program-service-expenses">
-                    {formatCurrency(parseFloat(reportData.programServiceExpenses), currentOrganization.currency)}
+                    {formatCurrency(parseFloat(reportData.programServiceExpenses))}
                   </span>
                 </div>
                 <div className="flex justify-between items-center" data-testid="row-management-expenses">
                   <span className="font-medium">Management & General Expenses</span>
                   <span className="font-bold text-lg" data-testid="text-management-expenses">
-                    {formatCurrency(parseFloat(reportData.managementExpenses), currentOrganization.currency)}
+                    {formatCurrency(parseFloat(reportData.managementExpenses))}
                   </span>
                 </div>
                 <div className="flex justify-between items-center" data-testid="row-fundraising-expenses">
                   <span className="font-medium">Fundraising Expenses</span>
                   <span className="font-bold text-lg" data-testid="text-fundraising-expenses">
-                    {formatCurrency(parseFloat(reportData.fundraisingExpenses), currentOrganization.currency)}
+                    {formatCurrency(parseFloat(reportData.fundraisingExpenses))}
                   </span>
                 </div>
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-bold">Total Functional Expenses</span>
                     <span className="font-bold text-xl">
-                      {formatCurrency(parseFloat(reportData.totalExpenses), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(reportData.totalExpenses))}
                     </span>
                   </div>
                 </div>
@@ -625,7 +668,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                         {item.source}
                       </span>
                       <span className="font-bold" data-testid={`revenue-source-amount-${index}`}>
-                        {formatCurrency(parseFloat(item.amount), currentOrganization.currency)}
+                        {formatCurrency(parseFloat(item.amount))}
                       </span>
                     </div>
                   ))}
@@ -661,7 +704,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                             {grant.purpose}
                           </td>
                           <td className="p-2 text-right font-bold" data-testid={`grant-amount-${index}`}>
-                            {formatCurrency(parseFloat(grant.amount), currentOrganization.currency)}
+                            {formatCurrency(parseFloat(grant.amount))}
                           </td>
                         </tr>
                       ))}
@@ -671,6 +714,139 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
               </CardContent>
             </Card>
           )}
+
+          {/* E-File Guidance */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                E-File Guidance & Next Steps
+              </CardTitle>
+              <CardDescription>Requirements for electronically filing your Form 990</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <h4 className="font-medium">Filing Deadline</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Form 990 is due on the 15th day of the 5th month after your fiscal year ends. 
+                    For calendar year filers (Jan-Dec), this is typically May 15.
+                  </p>
+                  <Badge variant="outline" className="mt-1">
+                    Tax Year {taxYear}: Due May 15, {taxYear + 1}
+                  </Badge>
+                </div>
+                <div className="space-y-3">
+                  <h4 className="font-medium">Extension Available</h4>
+                  <p className="text-sm text-muted-foreground">
+                    File Form 8868 to request an automatic 6-month extension. No reason required.
+                    With extension, Form 990 is due November 15.
+                  </p>
+                  <Badge variant="secondary">Extended Deadline: Nov 15, {taxYear + 1}</Badge>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">E-Filing Requirements</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                    Organizations with total assets of $10 million or more must e-file
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                    Use IRS-authorized e-file providers for electronic submission
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                    Ensure all required schedules are attached before filing
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-green-600 mt-0.5" />
+                    Keep records for at least 3 years after filing date
+                  </li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* CPA Export Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                CPA & Professional Export
+              </CardTitle>
+              <CardDescription>Export data in formats suitable for your tax professional</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleExportCSV} data-testid="button-export-cpa-csv">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV (Excel Compatible)
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const jsonData = JSON.stringify({
+                      organization: currentOrganization.name,
+                      taxYear,
+                      generatedAt: new Date().toISOString(),
+                      financialSummary: {
+                        totalRevenue: reportData.totalRevenue,
+                        totalExpenses: reportData.totalExpenses,
+                        netAssets: reportData.netAssets,
+                        programServiceExpenses: reportData.programServiceExpenses,
+                        managementExpenses: reportData.managementExpenses,
+                        fundraisingExpenses: reportData.fundraisingExpenses,
+                      },
+                      revenueBySource: reportData.revenueBySource,
+                      expensesByFunction: reportData.expensesByFunction,
+                      grants: reportData.grants,
+                      narratives,
+                    }, null, 2);
+                    const blob = new Blob([jsonData], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `form-990-data-${taxYear}.json`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    toast({
+                      title: "JSON Data Exported",
+                      description: "Complete Form 990 data package has been downloaded for your CPA.",
+                    });
+                  }}
+                  data-testid="button-export-json"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export JSON (Full Data Package)
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify({
+                      taxYear,
+                      revenue: reportData.totalRevenue,
+                      expenses: reportData.totalExpenses,
+                      netAssets: reportData.netAssets,
+                    }));
+                    toast({
+                      title: "Summary Copied",
+                      description: "Financial summary has been copied to clipboard.",
+                    });
+                  }}
+                  data-testid="button-copy-summary"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy Summary
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-4">
+                Tip: Share the JSON export with your CPA for a complete data package including all narratives and breakdowns.
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Note */}
           <Card className="bg-muted">

@@ -176,17 +176,51 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
       </Card>
 
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Generating report...</p>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+              <p className="text-muted-foreground">Generating functional expense report...</p>
+              <p className="text-xs text-muted-foreground mt-2">Analyzing expense categories and allocations</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : error ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
               <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
               <h3 className="text-lg font-semibold mb-2">Error Loading Report</h3>
+              <p className="text-muted-foreground mb-4">
+                Failed to load the functional expense report. This may occur if there are no transactions in the selected date range.
+              </p>
+              <div className="bg-muted rounded-md p-3 mb-4 max-w-md mx-auto text-left">
+                <p className="text-xs font-mono text-muted-foreground">
+                  Error: {(error as Error)?.message || "Unknown error"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Date range: {dateRange.startDate} to {dateRange.endDate}
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.reload()}
+                data-testid="button-retry-report"
+              >
+                <AlertCircle className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : !reportData ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Expense Data</h3>
               <p className="text-muted-foreground">
-                Failed to load the functional expense report. Please try again.
+                No expenses found for the selected date range. Try adjusting the date filters.
               </p>
             </div>
           </CardContent>
@@ -227,7 +261,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-expenses">
-                  {formatCurrency(parseFloat(reportData.totalExpenses), currentOrganization.currency)}
+                  {formatCurrency(parseFloat(reportData.totalExpenses))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(dateRange.startDate).toLocaleDateString()} - {new Date(dateRange.endDate).toLocaleDateString()}
@@ -242,7 +276,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-program-expenses">
-                  {formatCurrency(parseFloat(reportData.programExpenses), currentOrganization.currency)}
+                  {formatCurrency(parseFloat(reportData.programExpenses))}
                 </div>
                 <p className={`text-xs font-semibold mt-1 ${calculateColor(reportData.programPercentage, 'program')}`}>
                   {reportData.programPercentage.toFixed(2)}% of total
@@ -257,7 +291,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-admin-expenses">
-                  {formatCurrency(parseFloat(reportData.administrativeExpenses), currentOrganization.currency)}
+                  {formatCurrency(parseFloat(reportData.administrativeExpenses))}
                 </div>
                 <p className={`text-xs font-semibold mt-1 ${calculateColor(reportData.administrativePercentage, 'administrative')}`}>
                   {reportData.administrativePercentage.toFixed(2)}% of total
@@ -272,7 +306,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-fundraising-expenses">
-                  {formatCurrency(parseFloat(reportData.fundraisingExpenses), currentOrganization.currency)}
+                  {formatCurrency(parseFloat(reportData.fundraisingExpenses))}
                 </div>
                 <p className={`text-xs font-semibold mt-1 ${calculateColor(reportData.fundraisingPercentage, 'fundraising')}`}>
                   {reportData.fundraisingPercentage.toFixed(2)}% of total
@@ -355,7 +389,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
                         {program.programName}
                       </span>
                       <span className="font-bold" data-testid={`program-amount-${index}`}>
-                        {formatCurrency(parseFloat(program.amount), currentOrganization.currency)}
+                        {formatCurrency(parseFloat(program.amount))}
                       </span>
                     </div>
                   ))}
@@ -391,7 +425,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
                             {item.categoryName}
                           </td>
                           <td className="p-2 text-right font-medium" data-testid={`category-amount-${index}`}>
-                            {formatCurrency(parseFloat(item.amount), currentOrganization.currency)}
+                            {formatCurrency(parseFloat(item.amount))}
                           </td>
                         </tr>
                       ))}
