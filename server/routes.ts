@@ -462,7 +462,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'logoUrl', 'companyName', 'companyAddress', 'companyPhone', 
         'companyEmail', 'companyWebsite', 'taxId', 'invoicePrefix', 'invoiceNotes',
         'invoicePrimaryColor', 'invoiceAccentColor', 'invoiceFontFamily', 'invoiceTemplate',
-        'invoicePaymentTerms', 'invoicePaymentMethods', 'invoiceFooter'
+        'invoicePaymentTerms', 'invoicePaymentMethods', 'invoiceFooter',
+        'venmoUsername', 'paypalEmail', 'cashappUsername', 'stripeEnabled'
       ] as const;
       
       // SECURITY NOTE: This bracket notation is safe because 'field' is derived from the

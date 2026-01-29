@@ -530,6 +530,11 @@ export const organizations = pgTable("organizations", {
   invoicePaymentTerms: text("invoice_payment_terms"),
   invoicePaymentMethods: text("invoice_payment_methods"),
   invoiceFooter: text("invoice_footer"),
+  // Payment gateway settings
+  venmoUsername: varchar("venmo_username", { length: 100 }),
+  paypalEmail: varchar("paypal_email", { length: 255 }),
+  cashappUsername: varchar("cashapp_username", { length: 100 }),
+  stripeEnabled: boolean("stripe_enabled").default(false),
   invoiceCustomFields: jsonb("invoice_custom_fields"),
   fiscalYearStartMonth: integer("fiscal_year_start_month").default(1),
   fiscalYearStartDay: integer("fiscal_year_start_day").default(1),
@@ -3564,6 +3569,7 @@ export type FinchConnection = typeof finchConnections.$inferSelect;
 // ============================================
 
 export const formTypeEnum = pgEnum('form_type', ['survey', 'form']);
+export const formCategoryEnum = pgEnum('form_category', ['fundraising', 'registration', 'event', 'volunteer', 'feedback', 'other']);
 export const questionTypeEnum = pgEnum('question_type', [
   'short_text',
   'long_text',
@@ -3583,6 +3589,7 @@ export const forms = pgTable("forms", {
   id: serial("id").primaryKey(),
   organizationId: integer("organization_id").references(() => organizations.id).notNull(),
   formType: formTypeEnum("form_type").notNull(),
+  category: formCategoryEnum("category").default('other'),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   status: formStatusEnum("status").default('draft').notNull(),
@@ -3608,6 +3615,28 @@ export const forms = pgTable("forms", {
     enableDonorPrefill?: boolean;
     embedEnabled?: boolean;
   }>().default({}),
+  paymentSettings: jsonb("payment_settings").$type<{
+    enablePayments?: boolean;
+    paymentRequired?: boolean;
+    suggestedAmounts?: number[];
+    customAmountEnabled?: boolean;
+    minimumAmount?: number;
+    maximumAmount?: number;
+    paymentDescription?: string;
+    stripeEnabled?: boolean;
+    venmoEnabled?: boolean;
+    paypalEnabled?: boolean;
+    cashappEnabled?: boolean;
+  }>().default({}),
+  contentBlocks: jsonb("content_blocks").$type<Array<{
+    id: string;
+    type: 'text' | 'image' | 'divider' | 'heading' | 'spacer';
+    content?: string;
+    imageUrl?: string;
+    alignment?: 'left' | 'center' | 'right';
+    size?: 'small' | 'medium' | 'large';
+    orderIndex: number;
+  }>>().default([]),
   branding: jsonb("branding").$type<{
     useBranding?: boolean;
     primaryColor?: string;
@@ -3615,7 +3644,9 @@ export const forms = pgTable("forms", {
     fontFamily?: string;
     logoUrl?: string;
     headerImage?: string;
+    bannerImage?: string;
     theme?: string;
+    customCss?: string;
   }>().default({ useBranding: true }),
   responseCount: integer("response_count").default(0).notNull(),
   createdBy: varchar("created_by", { length: 255 }).notNull(),

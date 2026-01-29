@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Upload, Building2, Save, Palette, CreditCard, FileText, Eye } from "lucide-react";
+import { Upload, Building2, Save, Palette, CreditCard, FileText, Eye, DollarSign, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Organization } from "@shared/schema";
 
@@ -37,6 +38,10 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
     invoicePaymentTerms: currentOrganization.invoicePaymentTerms || "",
     invoicePaymentMethods: currentOrganization.invoicePaymentMethods || "",
     invoiceFooter: currentOrganization.invoiceFooter || "",
+    venmoUsername: currentOrganization.venmoUsername || "",
+    paypalEmail: currentOrganization.paypalEmail || "",
+    cashappUsername: currentOrganization.cashappUsername || "",
+    stripeEnabled: currentOrganization.stripeEnabled || false,
   });
 
   // Fetch current organization data to stay up-to-date
@@ -71,6 +76,10 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
             invoicePaymentTerms: organization.invoicePaymentTerms || "",
             invoicePaymentMethods: organization.invoicePaymentMethods || "",
             invoiceFooter: organization.invoiceFooter || "",
+            venmoUsername: organization.venmoUsername || "",
+            paypalEmail: organization.paypalEmail || "",
+            cashappUsername: organization.cashappUsername || "",
+            stripeEnabled: organization.stripeEnabled || false,
           };
         }
         return prev;
@@ -663,12 +672,12 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="invoicePaymentMethods">Accepted Payment Methods</Label>
+              <Label htmlFor="invoicePaymentMethods">Additional Payment Instructions</Label>
               <Textarea
                 id="invoicePaymentMethods"
                 value={formData.invoicePaymentMethods}
                 onChange={(e) => setFormData({ ...formData, invoicePaymentMethods: e.target.value })}
-                placeholder="e.g., Check, ACH Transfer, Credit Card&#10;Bank: ABC Bank, Account: 1234567890&#10;PayPal: payments@company.com"
+                placeholder="e.g., Check payable to: Company Name&#10;Bank: ABC Bank, Account: 1234567890&#10;Routing: 987654321"
                 rows={4}
                 data-testid="input-payment-methods"
               />
@@ -682,6 +691,135 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
               >
                 <Save className="w-4 h-4 mr-2" />
                 {updateSettingsMutation.isPending ? "Saving..." : "Save Payment Settings"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Digital Payment Methods */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            <CardTitle>Digital Payment Methods</CardTitle>
+          </div>
+          <CardDescription>
+            Configure Venmo, PayPal, CashApp, and Stripe for quick digital payments. These will appear on invoices when available.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="venmoUsername">Venmo Username</Label>
+                <div className="flex gap-2 items-center">
+                  <span className="text-muted-foreground">@</span>
+                  <Input
+                    id="venmoUsername"
+                    value={formData.venmoUsername}
+                    onChange={(e) => setFormData({ ...formData, venmoUsername: e.target.value })}
+                    placeholder="YourVenmoHandle"
+                    data-testid="input-venmo-username"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Customers can pay via venmo.com/YourVenmoHandle
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paypalEmail">PayPal Email</Label>
+                <Input
+                  id="paypalEmail"
+                  type="email"
+                  value={formData.paypalEmail}
+                  onChange={(e) => setFormData({ ...formData, paypalEmail: e.target.value })}
+                  placeholder="payments@company.com"
+                  data-testid="input-paypal-email"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Customers can pay via PayPal.me or send to this email
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cashappUsername">Cash App Username</Label>
+                <div className="flex gap-2 items-center">
+                  <span className="text-muted-foreground">$</span>
+                  <Input
+                    id="cashappUsername"
+                    value={formData.cashappUsername}
+                    onChange={(e) => setFormData({ ...formData, cashappUsername: e.target.value })}
+                    placeholder="YourCashTag"
+                    data-testid="input-cashapp-username"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Customers can pay via cash.app/$YourCashTag
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Stripe Payments</Label>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Checkbox
+                    id="stripeEnabled"
+                    checked={formData.stripeEnabled}
+                    onCheckedChange={(checked) => setFormData({ ...formData, stripeEnabled: checked === true })}
+                    data-testid="checkbox-stripe-enabled"
+                  />
+                  <label
+                    htmlFor="stripeEnabled"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Enable Stripe online payments
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Accept credit cards and bank transfers via Stripe
+                </p>
+              </div>
+            </div>
+
+            {/* Payment Methods Preview */}
+            {(formData.venmoUsername || formData.paypalEmail || formData.cashappUsername || formData.stripeEnabled) && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg border">
+                <h4 className="font-medium mb-2 text-sm">Payment options that will appear on invoices:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {formData.stripeEnabled && (
+                    <div className="flex items-center gap-1 px-3 py-1 bg-background rounded-md border text-sm" data-testid="preview-stripe">
+                      <CreditCard className="w-4 h-4" />
+                      Pay with Card
+                    </div>
+                  )}
+                  {formData.venmoUsername && (
+                    <div className="flex items-center gap-1 px-3 py-1 bg-[#008CFF] text-white rounded-md text-sm" data-testid="preview-venmo">
+                      Venmo @{formData.venmoUsername}
+                    </div>
+                  )}
+                  {formData.paypalEmail && (
+                    <div className="flex items-center gap-1 px-3 py-1 bg-[#003087] text-white rounded-md text-sm" data-testid="preview-paypal">
+                      PayPal
+                    </div>
+                  )}
+                  {formData.cashappUsername && (
+                    <div className="flex items-center gap-1 px-3 py-1 bg-[#00D632] text-white rounded-md text-sm" data-testid="preview-cashapp">
+                      Cash App ${formData.cashappUsername}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4">
+              <Button
+                type="submit"
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-save-digital-payments"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateSettingsMutation.isPending ? "Saving..." : "Save Payment Methods"}
               </Button>
             </div>
           </form>

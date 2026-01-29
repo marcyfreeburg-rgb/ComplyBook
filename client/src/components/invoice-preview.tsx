@@ -1,6 +1,7 @@
 import { format } from "date-fns";
-import { Building2 } from "lucide-react";
+import { Building2, CreditCard, ExternalLink } from "lucide-react";
 import type { Invoice, InvoiceLineItem, Organization } from "@shared/schema";
+import { Button } from "@/components/ui/button";
 
 interface InvoicePreviewProps {
   invoice: Invoice & { clientName: string | null };
@@ -192,6 +193,84 @@ export function InvoicePreview({ invoice, lineItems, organization }: InvoicePrev
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Digital Payment Options */}
+      {(organization.stripeEnabled || organization.venmoUsername || organization.paypalEmail || organization.cashappUsername) && (
+        <div className="space-y-4 pt-4 border-t">
+          <h3 className="text-sm font-medium" style={{ color: accentColor }}>PAY ONLINE:</h3>
+          <div className="flex flex-wrap gap-2">
+            {organization.stripeEnabled && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                data-testid="button-pay-stripe"
+              >
+                <CreditCard className="w-4 h-4" />
+                Pay with Card
+                <ExternalLink className="w-3 h-3" />
+              </Button>
+            )}
+            {organization.venmoUsername && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                asChild
+              >
+                <a
+                  href={`https://venmo.com/${organization.venmoUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="button-pay-venmo"
+                >
+                  Venmo @{organization.venmoUsername}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Button>
+            )}
+            {organization.paypalEmail && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                asChild
+              >
+                <a
+                  href={`https://www.paypal.com/paypalme/${organization.paypalEmail}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="button-pay-paypal"
+                >
+                  PayPal
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Button>
+            )}
+            {organization.cashappUsername && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                asChild
+              >
+                <a
+                  href={`https://cash.app/$${organization.cashappUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="button-pay-cashapp"
+                >
+                  Cash App ${organization.cashappUsername}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Click any button to open the payment link in a new tab
+          </p>
         </div>
       )}
 

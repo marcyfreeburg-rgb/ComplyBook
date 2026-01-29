@@ -56,6 +56,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    category: "other" as 'fundraising' | 'registration' | 'event' | 'volunteer' | 'feedback' | 'other',
     settings: {
       collectEmail: true,
       collectName: true,
@@ -66,6 +67,20 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
       useBranding: true,
       primaryColor: "",
       accentColor: "",
+      logoUrl: "",
+      headerImage: "",
+    },
+    paymentSettings: {
+      enablePayments: false,
+      paymentRequired: false,
+      suggestedAmounts: [25, 50, 100, 250] as number[],
+      customAmountEnabled: true,
+      minimumAmount: 5,
+      paymentDescription: "",
+      stripeEnabled: false,
+      venmoEnabled: false,
+      paypalEnabled: false,
+      cashappEnabled: false,
     },
   });
 
@@ -247,6 +262,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
     setFormData({
       title: "",
       description: "",
+      category: "other",
       settings: {
         collectEmail: true,
         collectName: true,
@@ -257,6 +273,20 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
         useBranding: true,
         primaryColor: "",
         accentColor: "",
+        logoUrl: "",
+        headerImage: "",
+      },
+      paymentSettings: {
+        enablePayments: false,
+        paymentRequired: false,
+        suggestedAmounts: [25, 50, 100, 250],
+        customAmountEnabled: true,
+        minimumAmount: 5,
+        paymentDescription: "",
+        stripeEnabled: false,
+        venmoEnabled: false,
+        paypalEnabled: false,
+        cashappEnabled: false,
       },
     });
   };
@@ -266,6 +296,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
     setFormData({
       title: form.title,
       description: form.description || "",
+      category: (form.category as any) || "other",
       settings: (form.settings as any) || {
         collectEmail: true,
         collectName: true,
@@ -276,6 +307,20 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
         useBranding: true,
         primaryColor: "",
         accentColor: "",
+        logoUrl: "",
+        headerImage: "",
+      },
+      paymentSettings: (form.paymentSettings as any) || {
+        enablePayments: false,
+        paymentRequired: false,
+        suggestedAmounts: [25, 50, 100, 250],
+        customAmountEnabled: true,
+        minimumAmount: 5,
+        paymentDescription: "",
+        stripeEnabled: false,
+        venmoEnabled: false,
+        paypalEnabled: false,
+        cashappEnabled: false,
       },
     });
     setIsEditDialogOpen(true);
@@ -418,6 +463,30 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
                   data-testid="input-form-description"
                 />
               </div>
+              {organization.type === 'nonprofit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="form-category">Form Category</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value: any) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger data-testid="select-form-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fundraising">Fundraising</SelectItem>
+                      <SelectItem value="registration">Registration</SelectItem>
+                      <SelectItem value="event">Event</SelectItem>
+                      <SelectItem value="volunteer">Volunteer</SelectItem>
+                      <SelectItem value="feedback">Feedback</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Categorize your form for better organization
+                  </p>
+                </div>
+              )}
               <div className="space-y-4 border-t pt-4">
                 <h3 className="font-medium">Settings</h3>
                 <div className="flex items-center justify-between">
@@ -488,6 +557,190 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
                     data-testid="switch-use-branding"
                   />
                 </div>
+                {!formData.branding.useBranding && (
+                  <div className="space-y-3 pl-4 border-l-2 border-muted">
+                    <div className="space-y-2">
+                      <Label htmlFor="logo-url">Custom Logo URL</Label>
+                      <Input
+                        id="logo-url"
+                        placeholder="https://..."
+                        value={formData.branding.logoUrl}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          branding: { ...formData.branding, logoUrl: e.target.value }
+                        })}
+                        data-testid="input-logo-url"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="header-image">Header Image URL</Label>
+                      <Input
+                        id="header-image"
+                        placeholder="https://..."
+                        value={formData.branding.headerImage}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          branding: { ...formData.branding, headerImage: e.target.value }
+                        })}
+                        data-testid="input-header-image"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="primary-color">Primary Color</Label>
+                        <Input
+                          id="primary-color"
+                          type="color"
+                          value={formData.branding.primaryColor || "#3b82f6"}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            branding: { ...formData.branding, primaryColor: e.target.value }
+                          })}
+                          data-testid="input-primary-color"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="accent-color">Accent Color</Label>
+                        <Input
+                          id="accent-color"
+                          type="color"
+                          value={formData.branding.accentColor || "#1e40af"}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            branding: { ...formData.branding, accentColor: e.target.value }
+                          })}
+                          data-testid="input-accent-color"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Settings */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">Enable Payments</h3>
+                    <p className="text-sm text-muted-foreground">Collect payments with this form</p>
+                  </div>
+                  <Switch
+                    checked={formData.paymentSettings.enablePayments}
+                    onCheckedChange={(checked) => setFormData({
+                      ...formData,
+                      paymentSettings: { ...formData.paymentSettings, enablePayments: checked }
+                    })}
+                    data-testid="switch-enable-payments"
+                  />
+                </div>
+                {formData.paymentSettings.enablePayments && (
+                  <div className="space-y-4 pl-4 border-l-2 border-muted">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Payment Required</Label>
+                        <p className="text-xs text-muted-foreground">Require payment to submit</p>
+                      </div>
+                      <Switch
+                        checked={formData.paymentSettings.paymentRequired}
+                        onCheckedChange={(checked) => setFormData({
+                          ...formData,
+                          paymentSettings: { ...formData.paymentSettings, paymentRequired: checked }
+                        })}
+                        data-testid="switch-payment-required"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-description">Payment Description</Label>
+                      <Input
+                        id="payment-description"
+                        placeholder="e.g., Donation, Registration Fee"
+                        value={formData.paymentSettings.paymentDescription}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          paymentSettings: { ...formData.paymentSettings, paymentDescription: e.target.value }
+                        })}
+                        data-testid="input-payment-description"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Allow Custom Amount</Label>
+                        <p className="text-xs text-muted-foreground">Let donors enter any amount</p>
+                      </div>
+                      <Switch
+                        checked={formData.paymentSettings.customAmountEnabled}
+                        onCheckedChange={(checked) => setFormData({
+                          ...formData,
+                          paymentSettings: { ...formData.paymentSettings, customAmountEnabled: checked }
+                        })}
+                        data-testid="switch-custom-amount"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Methods</Label>
+                      <p className="text-xs text-muted-foreground mb-2">Select which payment methods to enable (configure in Brand Settings)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {organization.stripeEnabled && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={formData.paymentSettings.stripeEnabled}
+                              onCheckedChange={(checked) => setFormData({
+                                ...formData,
+                                paymentSettings: { ...formData.paymentSettings, stripeEnabled: checked }
+                              })}
+                              data-testid="switch-stripe"
+                            />
+                            <Label className="text-sm">Credit Card (Stripe)</Label>
+                          </div>
+                        )}
+                        {organization.venmoUsername && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={formData.paymentSettings.venmoEnabled}
+                              onCheckedChange={(checked) => setFormData({
+                                ...formData,
+                                paymentSettings: { ...formData.paymentSettings, venmoEnabled: checked }
+                              })}
+                              data-testid="switch-venmo"
+                            />
+                            <Label className="text-sm">Venmo</Label>
+                          </div>
+                        )}
+                        {organization.paypalEmail && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={formData.paymentSettings.paypalEnabled}
+                              onCheckedChange={(checked) => setFormData({
+                                ...formData,
+                                paymentSettings: { ...formData.paymentSettings, paypalEnabled: checked }
+                              })}
+                              data-testid="switch-paypal"
+                            />
+                            <Label className="text-sm">PayPal</Label>
+                          </div>
+                        )}
+                        {organization.cashappUsername && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={formData.paymentSettings.cashappEnabled}
+                              onCheckedChange={(checked) => setFormData({
+                                ...formData,
+                                paymentSettings: { ...formData.paymentSettings, cashappEnabled: checked }
+                              })}
+                              data-testid="switch-cashapp"
+                            />
+                            <Label className="text-sm">Cash App</Label>
+                          </div>
+                        )}
+                      </div>
+                      {!organization.stripeEnabled && !organization.venmoUsername && !organization.paypalEmail && !organization.cashappUsername && (
+                        <p className="text-xs text-amber-600">
+                          No payment methods configured. Set up payment methods in Brand Settings first.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter className="mt-6">
