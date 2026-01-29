@@ -53,6 +53,8 @@ import BankReconciliation from "@/pages/bank-reconciliation";
 import ReconciliationHub from "@/pages/reconciliation-hub";
 import FundraisingHub from "@/pages/fundraising-hub";
 import GovernmentContractsHub from "@/pages/government-contracts-hub";
+import CommercialContractsHub from "@/pages/commercial-contracts-hub";
+import CRM from "@/pages/crm";
 import OperationsHub from "@/pages/operations-hub";
 import SecurityMonitoring from "@/pages/security-monitoring";
 import AccountingImports from "@/pages/accounting-imports";
@@ -470,6 +472,22 @@ function AuthenticatedApp() {
               {currentOrganization.type === 'forprofit' && (
                 <Route path="/government-contracts-hub">
                   <GovernmentContractsHub 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'forprofit' && (
+                <Route path="/commercial-contracts-hub">
+                  <CommercialContractsHub 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'forprofit' && (
+                <Route path="/crm">
+                  <CRM 
                     currentOrganization={currentOrganization}
                     userId={user?.id || ''}
                   />

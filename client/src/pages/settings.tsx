@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check, Lock } from "lucide-react";
+import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check, Lock, Upload, Download, FileText, X } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User, Organization, Category, InsertCategory } from "@shared/schema";
@@ -83,6 +84,12 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [authMode, setAuthMode] = useState<"replit" | "local" | null>(null);
+  
+  // CSV Import state
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvPreviewData, setCsvPreviewData] = useState<Array<{ name: string; type: "income" | "expense" }>>([]);
+  const [csvParseError, setCsvParseError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -474,6 +481,147 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
   const openEditDialog = (category: Category) => {
     setEditingCategory({ ...category });
     setIsEditCategoryOpen(true);
+  };
+
+  const handleCsvFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setCsvFile(file);
+    setCsvParseError(null);
+    setCsvPreviewData([]);
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          setCsvParseError("CSV file must have a header row and at least one data row.");
+          return;
+        }
+        
+        const headerLine = lines[0].toLowerCase();
+        const headers = headerLine.split(',').map(h => h.trim());
+        
+        const nameIndex = headers.findIndex(h => h === 'name');
+        const typeIndex = headers.findIndex(h => h === 'type');
+        
+        if (nameIndex === -1 || typeIndex === -1) {
+          setCsvParseError("CSV must have 'name' and 'type' columns.");
+          return;
+        }
+        
+        const parsed: Array<{ name: string; type: "income" | "expense" }> = [];
+        const errors: string[] = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+          const name = values[nameIndex]?.trim();
+          const type = values[typeIndex]?.trim().toLowerCase();
+          
+          if (!name) {
+            errors.push(`Row ${i + 1}: Missing name`);
+            continue;
+          }
+          
+          if (type !== 'income' && type !== 'expense') {
+            errors.push(`Row ${i + 1}: Invalid type "${type}" (must be 'income' or 'expense')`);
+            continue;
+          }
+          
+          parsed.push({ name, type: type as "income" | "expense" });
+        }
+        
+        if (errors.length > 0 && parsed.length === 0) {
+          setCsvParseError(errors.join('\n'));
+          return;
+        }
+        
+        if (errors.length > 0) {
+          toast({
+            title: "Warning",
+            description: `${errors.length} row(s) skipped due to errors. ${parsed.length} valid row(s) found.`,
+            variant: "default",
+          });
+        }
+        
+        setCsvPreviewData(parsed);
+      } catch (err) {
+        setCsvParseError("Failed to parse CSV file. Please check the format.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCsvImport = async () => {
+    if (csvPreviewData.length === 0) return;
+    
+    setIsImporting(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    try {
+      for (const category of csvPreviewData) {
+        try {
+          await apiRequest('POST', '/api/categories', {
+            organizationId: currentOrganization.id,
+            name: category.name,
+            type: category.type,
+          });
+          successCount++;
+        } catch {
+          errorCount++;
+        }
+      }
+      
+      queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      
+      if (errorCount === 0) {
+        toast({
+          title: "Import successful",
+          description: `Successfully imported ${successCount} categories.`,
+        });
+      } else {
+        toast({
+          title: "Import completed with errors",
+          description: `Imported ${successCount} categories. ${errorCount} failed (may already exist).`,
+          variant: "default",
+        });
+      }
+      
+      handleCancelCsvImport();
+    } catch {
+      toast({
+        title: "Import failed",
+        description: "An error occurred during import. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCancelCsvImport = () => {
+    setCsvFile(null);
+    setCsvPreviewData([]);
+    setCsvParseError(null);
+    const fileInput = document.getElementById('csv-file-input') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
+  const downloadCsvTemplate = () => {
+    const template = 'name,type\nOffice Supplies,expense\nDonations,income\nTravel Expenses,expense\nGrant Revenue,income';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'category_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -1152,6 +1300,126 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bulk Category Import */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Bulk Category Import
+              </CardTitle>
+              <CardDescription>
+                Import multiple categories at once from a CSV file
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadCsvTemplate}
+              data-testid="button-download-csv-template"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Template
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="csv-file-input">Select CSV File</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="csv-file-input"
+                type="file"
+                accept=".csv"
+                onChange={handleCsvFileChange}
+                className="flex-1"
+                data-testid="input-csv-file"
+              />
+              {csvFile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCancelCsvImport}
+                  data-testid="button-clear-csv"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              CSV format: name, type (income/expense)
+            </p>
+          </div>
+
+          {csvParseError && (
+            <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm" data-testid="csv-parse-error">
+              <p className="font-medium">Error parsing CSV:</p>
+              <pre className="mt-1 whitespace-pre-wrap text-xs">{csvParseError}</pre>
+            </div>
+          )}
+
+          {csvPreviewData.length > 0 && (
+            <div className="space-y-4" data-testid="csv-preview-section">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Preview ({csvPreviewData.length} categories)</span>
+                </div>
+              </div>
+              <div className="border rounded-md max-h-64 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {csvPreviewData.map((row, index) => (
+                      <TableRow key={index} data-testid={`csv-preview-row-${index}`}>
+                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={row.type === 'income' ? 'default' : 'secondary'}>
+                            {row.type}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelCsvImport}
+                  disabled={isImporting}
+                  data-testid="button-cancel-csv-import"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCsvImport}
+                  disabled={isImporting}
+                  data-testid="button-import-csv"
+                >
+                  {isImporting ? "Importing..." : `Import ${csvPreviewData.length} Categories`}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!csvFile && !csvPreviewData.length && (
+            <div className="text-center py-6 border border-dashed rounded-md" data-testid="csv-empty-state">
+              <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+              <p className="text-sm text-muted-foreground">
+                Select a CSV file to preview and import categories
+              </p>
             </div>
           )}
         </CardContent>

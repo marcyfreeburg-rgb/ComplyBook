@@ -193,8 +193,16 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Invoices", url: "/invoices", icon: File },
         { title: "Clients", url: "/clients", icon: Users },
         { title: "Recurring Income", url: "/recurring-transactions", icon: Clock },
-        { title: "Government Contracts", url: "/government-contracts", icon: Briefcase },
-        { title: "Contracts Hub", url: "/government-contracts-hub", icon: Sparkles },
+        { title: "CRM", url: "/crm", icon: Heart },
+      ],
+    },
+    {
+      title: "Contracts",
+      icon: Briefcase,
+      items: [
+        { title: "Commercial Contracts", url: "/commercial-contracts-hub", icon: Sparkles },
+        { title: "Government Contracts", url: "/government-contracts", icon: Award },
+        { title: "Gov Contracts Hub", url: "/government-contracts-hub", icon: ShieldCheck },
       ],
     },
     {

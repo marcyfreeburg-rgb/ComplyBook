@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Upload, Building2, Save, Palette, CreditCard, FileText } from "lucide-react";
+import { Upload, Building2, Save, Palette, CreditCard, FileText, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Organization } from "@shared/schema";
 
@@ -51,25 +51,32 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
   });
 
   // Update form data when organization data loads
-  if (organization && formData.companyName === "" && organization.companyName) {
-    setFormData({
-      companyName: organization.companyName || "",
-      companyAddress: organization.companyAddress || "",
-      companyPhone: organization.companyPhone || "",
-      companyEmail: organization.companyEmail || "",
-      companyWebsite: organization.companyWebsite || "",
-      taxId: organization.taxId || "",
-      invoicePrefix: organization.invoicePrefix || "INV-",
-      invoiceNotes: organization.invoiceNotes || "",
-      invoicePrimaryColor: organization.invoicePrimaryColor || "#3b82f6",
-      invoiceAccentColor: organization.invoiceAccentColor || "#1e40af",
-      invoiceFontFamily: organization.invoiceFontFamily || "Inter",
-      invoiceTemplate: organization.invoiceTemplate || "classic",
-      invoicePaymentTerms: organization.invoicePaymentTerms || "",
-      invoicePaymentMethods: organization.invoicePaymentMethods || "",
-      invoiceFooter: organization.invoiceFooter || "",
-    });
-  }
+  useEffect(() => {
+    if (organization) {
+      setFormData(prev => {
+        if (prev.companyName === "" && organization.companyName) {
+          return {
+            companyName: organization.companyName || "",
+            companyAddress: organization.companyAddress || "",
+            companyPhone: organization.companyPhone || "",
+            companyEmail: organization.companyEmail || "",
+            companyWebsite: organization.companyWebsite || "",
+            taxId: organization.taxId || "",
+            invoicePrefix: organization.invoicePrefix || "INV-",
+            invoiceNotes: organization.invoiceNotes || "",
+            invoicePrimaryColor: organization.invoicePrimaryColor || "#3b82f6",
+            invoiceAccentColor: organization.invoiceAccentColor || "#1e40af",
+            invoiceFontFamily: organization.invoiceFontFamily || "Inter",
+            invoiceTemplate: organization.invoiceTemplate || "classic",
+            invoicePaymentTerms: organization.invoicePaymentTerms || "",
+            invoicePaymentMethods: organization.invoicePaymentMethods || "",
+            invoiceFooter: organization.invoiceFooter || "",
+          };
+        }
+        return prev;
+      });
+    }
+  }, [organization]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -446,6 +453,187 @@ export default function BrandSettings({ currentOrganization }: BrandSettingsProp
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Live Preview */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            <CardTitle>Live Preview</CardTitle>
+          </div>
+          <CardDescription>
+            See how your invoice/report will look with the current settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div 
+            className="border rounded-lg p-6 bg-white dark:bg-gray-900 shadow-sm"
+            style={{ fontFamily: formData.invoiceFontFamily }}
+            data-testid="invoice-preview-container"
+          >
+            {/* Invoice Header */}
+            <div className="flex justify-between items-start mb-6" data-testid="invoice-preview-header">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 border rounded flex items-center justify-center bg-muted overflow-hidden">
+                  {(logoPreview || currentLogoUrl) ? (
+                    <img
+                      src={logoPreview || currentLogoUrl || ""}
+                      alt="Company logo"
+                      className="w-full h-full object-contain"
+                      data-testid="preview-logo"
+                    />
+                  ) : (
+                    <Building2 className="w-8 h-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <h2 
+                    className="text-xl font-bold"
+                    style={{ color: formData.invoicePrimaryColor }}
+                    data-testid="preview-company-name"
+                  >
+                    {formData.companyName || "Your Company Name"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {formData.companyAddress ? formData.companyAddress.split('\n')[0] : "123 Business Street"}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <h3 
+                  className="text-lg font-semibold"
+                  style={{ color: formData.invoicePrimaryColor }}
+                  data-testid="preview-invoice-title"
+                >
+                  INVOICE
+                </h3>
+                <p 
+                  className="text-sm font-medium"
+                  style={{ color: formData.invoiceAccentColor }}
+                  data-testid="preview-invoice-number"
+                >
+                  {formData.invoicePrefix}0001
+                </p>
+                <p className="text-xs text-muted-foreground">Date: {new Date().toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {/* Bill To Section */}
+            <div className="mb-6">
+              <h4 
+                className="text-sm font-semibold mb-1"
+                style={{ color: formData.invoiceAccentColor }}
+              >
+                Bill To:
+              </h4>
+              <p className="text-sm">Sample Client</p>
+              <p className="text-sm text-muted-foreground">456 Client Avenue, City, State 12345</p>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="mb-6" data-testid="preview-line-items">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr 
+                    className="border-b"
+                    style={{ borderColor: formData.invoiceAccentColor }}
+                  >
+                    <th 
+                      className="text-left py-2 font-semibold"
+                      style={{ color: formData.invoicePrimaryColor }}
+                    >
+                      Description
+                    </th>
+                    <th 
+                      className="text-center py-2 font-semibold"
+                      style={{ color: formData.invoicePrimaryColor }}
+                    >
+                      Qty
+                    </th>
+                    <th 
+                      className="text-right py-2 font-semibold"
+                      style={{ color: formData.invoicePrimaryColor }}
+                    >
+                      Rate
+                    </th>
+                    <th 
+                      className="text-right py-2 font-semibold"
+                      style={{ color: formData.invoicePrimaryColor }}
+                    >
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-muted">
+                    <td className="py-2">Consulting Services</td>
+                    <td className="text-center py-2">10</td>
+                    <td className="text-right py-2">$150.00</td>
+                    <td className="text-right py-2">$1,500.00</td>
+                  </tr>
+                  <tr className="border-b border-muted">
+                    <td className="py-2">Project Management</td>
+                    <td className="text-center py-2">5</td>
+                    <td className="text-right py-2">$100.00</td>
+                    <td className="text-right py-2">$500.00</td>
+                  </tr>
+                  <tr className="border-b border-muted">
+                    <td className="py-2">Training Session</td>
+                    <td className="text-center py-2">2</td>
+                    <td className="text-right py-2">$250.00</td>
+                    <td className="text-right py-2">$500.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals */}
+            <div className="flex justify-end mb-6" data-testid="preview-totals">
+              <div className="w-48">
+                <div className="flex justify-between py-1 text-sm">
+                  <span>Subtotal:</span>
+                  <span>$2,500.00</span>
+                </div>
+                <div className="flex justify-between py-1 text-sm text-muted-foreground">
+                  <span>Tax (0%):</span>
+                  <span>$0.00</span>
+                </div>
+                <div 
+                  className="flex justify-between py-2 font-bold border-t"
+                  style={{ 
+                    borderColor: formData.invoiceAccentColor,
+                    color: formData.invoicePrimaryColor 
+                  }}
+                  data-testid="preview-total"
+                >
+                  <span>Total:</span>
+                  <span>$2,500.00</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            {formData.invoiceFooter && (
+              <div 
+                className="pt-4 border-t text-sm text-center text-muted-foreground"
+                style={{ borderColor: formData.invoiceAccentColor }}
+                data-testid="preview-footer"
+              >
+                {formData.invoiceFooter}
+              </div>
+            )}
+            {!formData.invoiceFooter && (
+              <div 
+                className="pt-4 border-t text-sm text-center text-muted-foreground italic"
+                style={{ borderColor: formData.invoiceAccentColor }}
+                data-testid="preview-footer-placeholder"
+              >
+                Footer text will appear here
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
