@@ -227,6 +227,19 @@ import {
   dismissedPatterns,
   type DismissedPattern,
   type InsertDismissedPattern,
+  // Mileage and Per Diem
+  mileageRates,
+  type MileageRate,
+  type InsertMileageRate,
+  mileageExpenses,
+  type MileageExpense,
+  type InsertMileageExpense,
+  perDiemRates,
+  type PerDiemRate,
+  type InsertPerDiemRate,
+  perDiemExpenses,
+  type PerDiemExpense,
+  type InsertPerDiemExpense,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -781,6 +794,47 @@ export interface IStorage {
   updateProgram(id: number, updates: Partial<InsertProgram>): Promise<Program>;
   deleteProgram(id: number): Promise<void>;
   getProgramExpenses(programId: number, startDate?: Date, endDate?: Date): Promise<Array<Transaction & { totalAmount: string }>>;
+  getProgramBudgetVsActual(organizationId: number, startDate?: Date, endDate?: Date): Promise<Array<{
+    programId: number;
+    programName: string;
+    budget: string;
+    actual: string;
+    variance: string;
+    percentUsed: number;
+    status: 'under_budget' | 'on_track' | 'over_budget';
+  }>>;
+
+  // Mileage tracking operations
+  getMileageRates(organizationId: number): Promise<MileageRate[]>;
+  getMileageRate(id: number): Promise<MileageRate | undefined>;
+  createMileageRate(rate: InsertMileageRate): Promise<MileageRate>;
+  updateMileageRate(id: number, updates: Partial<InsertMileageRate>): Promise<MileageRate>;
+  deleteMileageRate(id: number): Promise<void>;
+  getDefaultMileageRate(organizationId: number, rateType?: string): Promise<MileageRate | undefined>;
+
+  getMileageExpenses(organizationId: number, filters?: { userId?: string; status?: string; startDate?: Date; endDate?: Date }): Promise<MileageExpense[]>;
+  getMileageExpense(id: number): Promise<MileageExpense | undefined>;
+  createMileageExpense(expense: InsertMileageExpense): Promise<MileageExpense>;
+  updateMileageExpense(id: number, updates: Partial<InsertMileageExpense>): Promise<MileageExpense>;
+  deleteMileageExpense(id: number): Promise<void>;
+  approveMileageExpense(id: number, approvedBy: string): Promise<MileageExpense>;
+  rejectMileageExpense(id: number, approvedBy: string, notes?: string): Promise<MileageExpense>;
+
+  // Per diem operations
+  getPerDiemRates(organizationId: number): Promise<PerDiemRate[]>;
+  getPerDiemRate(id: number): Promise<PerDiemRate | undefined>;
+  createPerDiemRate(rate: InsertPerDiemRate): Promise<PerDiemRate>;
+  updatePerDiemRate(id: number, updates: Partial<InsertPerDiemRate>): Promise<PerDiemRate>;
+  deletePerDiemRate(id: number): Promise<void>;
+  getPerDiemRateByLocation(organizationId: number, location: string): Promise<PerDiemRate | undefined>;
+
+  getPerDiemExpenses(organizationId: number, filters?: { userId?: string; status?: string; startDate?: Date; endDate?: Date }): Promise<PerDiemExpense[]>;
+  getPerDiemExpense(id: number): Promise<PerDiemExpense | undefined>;
+  createPerDiemExpense(expense: InsertPerDiemExpense): Promise<PerDiemExpense>;
+  updatePerDiemExpense(id: number, updates: Partial<InsertPerDiemExpense>): Promise<PerDiemExpense>;
+  deletePerDiemExpense(id: number): Promise<void>;
+  approvePerDiemExpense(id: number, approvedBy: string): Promise<PerDiemExpense>;
+  rejectPerDiemExpense(id: number, approvedBy: string, notes?: string): Promise<PerDiemExpense>;
 
   // Nonprofit-specific: Pledge operations
   getPledges(organizationId: number): Promise<Array<Pledge & { donorName: string }>>;
@@ -6581,6 +6635,295 @@ export class DatabaseStorage implements IStorage {
       ...exp,
       totalAmount: total.toFixed(2)
     }));
+  }
+
+  // Program Budget vs Actual analysis
+  async getProgramBudgetVsActual(organizationId: number, startDate?: Date, endDate?: Date): Promise<Array<{
+    programId: number;
+    programName: string;
+    budget: string;
+    actual: string;
+    variance: string;
+    percentUsed: number;
+    status: 'under_budget' | 'on_track' | 'over_budget';
+  }>> {
+    // Get all programs for organization
+    const programList = await db.select().from(programs)
+      .where(eq(programs.organizationId, organizationId));
+
+    const results = await Promise.all(programList.map(async (program) => {
+      // Get actual spending for this program
+      let query = db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.programId, program.id),
+          eq(transactions.type, 'expense')
+        ));
+
+      if (startDate && endDate) {
+        query = query.where(and(
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate)
+        ));
+      }
+
+      const [actualResult] = await query;
+      const actual = parseFloat(actualResult?.total || '0');
+      const budget = parseFloat(program.budget || '0');
+      const variance = budget - actual;
+      const percentUsed = budget > 0 ? (actual / budget) * 100 : 0;
+
+      let status: 'under_budget' | 'on_track' | 'over_budget';
+      if (percentUsed > 100) {
+        status = 'over_budget';
+      } else if (percentUsed >= 80) {
+        status = 'on_track';
+      } else {
+        status = 'under_budget';
+      }
+
+      return {
+        programId: program.id,
+        programName: program.name,
+        budget: budget.toFixed(2),
+        actual: actual.toFixed(2),
+        variance: variance.toFixed(2),
+        percentUsed: Math.round(percentUsed * 100) / 100,
+        status,
+      };
+    }));
+
+    return results;
+  }
+
+  // Mileage Rate operations
+  async getMileageRates(organizationId: number): Promise<MileageRate[]> {
+    return await db.select().from(mileageRates)
+      .where(eq(mileageRates.organizationId, organizationId))
+      .orderBy(desc(mileageRates.effectiveDate));
+  }
+
+  async getMileageRate(id: number): Promise<MileageRate | undefined> {
+    const [rate] = await db.select().from(mileageRates).where(eq(mileageRates.id, id));
+    return rate;
+  }
+
+  async createMileageRate(rate: InsertMileageRate): Promise<MileageRate> {
+    const [newRate] = await db.insert(mileageRates).values(rate).returning();
+    return newRate;
+  }
+
+  async updateMileageRate(id: number, updates: Partial<InsertMileageRate>): Promise<MileageRate> {
+    const [updated] = await db.update(mileageRates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(mileageRates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMileageRate(id: number): Promise<void> {
+    await db.delete(mileageRates).where(eq(mileageRates.id, id));
+  }
+
+  async getDefaultMileageRate(organizationId: number, rateType: string = 'business'): Promise<MileageRate | undefined> {
+    const [rate] = await db.select().from(mileageRates)
+      .where(and(
+        eq(mileageRates.organizationId, organizationId),
+        eq(mileageRates.isDefault, true),
+        eq(mileageRates.rateType, rateType)
+      ))
+      .limit(1);
+    return rate;
+  }
+
+  // Mileage Expense operations
+  async getMileageExpenses(organizationId: number, filters?: { userId?: string; status?: string; startDate?: Date; endDate?: Date }): Promise<MileageExpense[]> {
+    let conditions = [eq(mileageExpenses.organizationId, organizationId)];
+    
+    if (filters?.userId) {
+      conditions.push(eq(mileageExpenses.userId, filters.userId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(mileageExpenses.status, filters.status));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(mileageExpenses.tripDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(mileageExpenses.tripDate, filters.endDate));
+    }
+
+    return await db.select().from(mileageExpenses)
+      .where(and(...conditions))
+      .orderBy(desc(mileageExpenses.tripDate));
+  }
+
+  async getMileageExpense(id: number): Promise<MileageExpense | undefined> {
+    const [expense] = await db.select().from(mileageExpenses).where(eq(mileageExpenses.id, id));
+    return expense;
+  }
+
+  async createMileageExpense(expense: InsertMileageExpense): Promise<MileageExpense> {
+    // Calculate total amount
+    const miles = parseFloat(expense.miles as string);
+    const rate = parseFloat(expense.rateApplied as string);
+    const multiplier = expense.roundTrip ? 2 : 1;
+    const totalAmount = (miles * rate * multiplier).toFixed(2);
+
+    const [newExpense] = await db.insert(mileageExpenses).values({
+      ...expense,
+      totalAmount,
+    }).returning();
+    return newExpense;
+  }
+
+  async updateMileageExpense(id: number, updates: Partial<InsertMileageExpense>): Promise<MileageExpense> {
+    const [updated] = await db.update(mileageExpenses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(mileageExpenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMileageExpense(id: number): Promise<void> {
+    await db.delete(mileageExpenses).where(eq(mileageExpenses.id, id));
+  }
+
+  async approveMileageExpense(id: number, approvedBy: string): Promise<MileageExpense> {
+    const [updated] = await db.update(mileageExpenses)
+      .set({
+        status: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(mileageExpenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectMileageExpense(id: number, approvedBy: string, notes?: string): Promise<MileageExpense> {
+    const [updated] = await db.update(mileageExpenses)
+      .set({
+        status: 'rejected',
+        approvedBy,
+        approvedAt: new Date(),
+        notes: notes || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(mileageExpenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Per Diem Rate operations
+  async getPerDiemRates(organizationId: number): Promise<PerDiemRate[]> {
+    return await db.select().from(perDiemRates)
+      .where(eq(perDiemRates.organizationId, organizationId))
+      .orderBy(perDiemRates.location);
+  }
+
+  async getPerDiemRate(id: number): Promise<PerDiemRate | undefined> {
+    const [rate] = await db.select().from(perDiemRates).where(eq(perDiemRates.id, id));
+    return rate;
+  }
+
+  async createPerDiemRate(rate: InsertPerDiemRate): Promise<PerDiemRate> {
+    const [newRate] = await db.insert(perDiemRates).values(rate).returning();
+    return newRate;
+  }
+
+  async updatePerDiemRate(id: number, updates: Partial<InsertPerDiemRate>): Promise<PerDiemRate> {
+    const [updated] = await db.update(perDiemRates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(perDiemRates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePerDiemRate(id: number): Promise<void> {
+    await db.delete(perDiemRates).where(eq(perDiemRates.id, id));
+  }
+
+  async getPerDiemRateByLocation(organizationId: number, location: string): Promise<PerDiemRate | undefined> {
+    const [rate] = await db.select().from(perDiemRates)
+      .where(and(
+        eq(perDiemRates.organizationId, organizationId),
+        sql`LOWER(${perDiemRates.location}) LIKE LOWER(${'%' + location + '%'})`
+      ))
+      .limit(1);
+    return rate;
+  }
+
+  // Per Diem Expense operations
+  async getPerDiemExpenses(organizationId: number, filters?: { userId?: string; status?: string; startDate?: Date; endDate?: Date }): Promise<PerDiemExpense[]> {
+    let conditions = [eq(perDiemExpenses.organizationId, organizationId)];
+    
+    if (filters?.userId) {
+      conditions.push(eq(perDiemExpenses.userId, filters.userId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(perDiemExpenses.status, filters.status));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(perDiemExpenses.travelDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(perDiemExpenses.travelDate, filters.endDate));
+    }
+
+    return await db.select().from(perDiemExpenses)
+      .where(and(...conditions))
+      .orderBy(desc(perDiemExpenses.travelDate));
+  }
+
+  async getPerDiemExpense(id: number): Promise<PerDiemExpense | undefined> {
+    const [expense] = await db.select().from(perDiemExpenses).where(eq(perDiemExpenses.id, id));
+    return expense;
+  }
+
+  async createPerDiemExpense(expense: InsertPerDiemExpense): Promise<PerDiemExpense> {
+    const [newExpense] = await db.insert(perDiemExpenses).values(expense).returning();
+    return newExpense;
+  }
+
+  async updatePerDiemExpense(id: number, updates: Partial<InsertPerDiemExpense>): Promise<PerDiemExpense> {
+    const [updated] = await db.update(perDiemExpenses)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(perDiemExpenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePerDiemExpense(id: number): Promise<void> {
+    await db.delete(perDiemExpenses).where(eq(perDiemExpenses.id, id));
+  }
+
+  async approvePerDiemExpense(id: number, approvedBy: string): Promise<PerDiemExpense> {
+    const [updated] = await db.update(perDiemExpenses)
+      .set({
+        status: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(perDiemExpenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async rejectPerDiemExpense(id: number, approvedBy: string, notes?: string): Promise<PerDiemExpense> {
+    const [updated] = await db.update(perDiemExpenses)
+      .set({
+        status: 'rejected',
+        approvedBy,
+        approvedAt: new Date(),
+        notes: notes || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(perDiemExpenses.id, id))
+      .returning();
+    return updated;
   }
 
   // Pledge operations

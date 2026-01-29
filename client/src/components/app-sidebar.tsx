@@ -90,6 +90,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: ArrowUpCircle,
       items: [
         { title: "Programs", url: "/programs", icon: Folder },
+        { title: "Program Budget Report", url: "/program-expense-report", icon: BarChart3 },
         { title: "Expenses", url: "/transactions", icon: Receipt },
         { title: "Vendors", url: "/vendors", icon: Truck },
         { title: "Bills", url: "/bills", icon: FileX },

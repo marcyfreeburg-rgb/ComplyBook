@@ -1816,6 +1816,183 @@ export const insertProgramSchema = createInsertSchema(programs).omit({
 export type InsertProgram = z.infer<typeof insertProgramSchema>;
 export type Program = typeof programs.$inferSelect;
 
+// ============================================
+// MILEAGE TRACKING
+// ============================================
+
+// Mileage rates table (IRS rates by year)
+export const mileageRates = pgTable("mileage_rates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "IRS Standard Rate 2024", "Custom Rate"
+  ratePerMile: numeric("rate_per_mile", { precision: 6, scale: 4 }).notNull(), // e.g., 0.6700 for $0.67/mile
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  isDefault: boolean("is_default").notNull().default(false),
+  rateType: varchar("rate_type", { length: 50 }).notNull().default('business'), // business, medical, charity
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_mileage_rates_org_id").on(table.organizationId),
+]);
+
+export const insertMileageRateSchema = createInsertSchema(mileageRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  ratePerMile: z.string().or(z.number()).transform(val => String(val)),
+  effectiveDate: z.coerce.date(),
+  expirationDate: z.coerce.date().optional().nullable(),
+});
+
+export type InsertMileageRate = z.infer<typeof insertMileageRateSchema>;
+export type MileageRate = typeof mileageRates.$inferSelect;
+
+// Mileage expenses table
+export const mileageExpenses = pgTable("mileage_expenses", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  mileageRateId: integer("mileage_rate_id").references(() => mileageRates.id, { onDelete: 'set null' }),
+  programId: integer("program_id").references(() => programs.id, { onDelete: 'set null' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  tripDate: timestamp("trip_date").notNull(),
+  startLocation: varchar("start_location", { length: 255 }).notNull(),
+  endLocation: varchar("end_location", { length: 255 }).notNull(),
+  roundTrip: boolean("round_trip").notNull().default(false),
+  miles: numeric("miles", { precision: 8, scale: 2 }).notNull(),
+  rateApplied: numeric("rate_applied", { precision: 6, scale: 4 }).notNull(),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+  purpose: text("purpose").notNull(),
+  vehicleInfo: varchar("vehicle_info", { length: 255 }), // Optional vehicle info
+  status: varchar("status", { length: 50 }).notNull().default('pending'), // pending, approved, rejected, reimbursed
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_mileage_expenses_org_id").on(table.organizationId),
+  index("idx_mileage_expenses_user_id").on(table.userId),
+  index("idx_mileage_expenses_program_id").on(table.programId),
+  index("idx_mileage_expenses_status").on(table.status),
+]);
+
+export const insertMileageExpenseSchema = createInsertSchema(mileageExpenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalAmount: true,
+  approvedBy: true,
+  approvedAt: true,
+}).extend({
+  tripDate: z.coerce.date(),
+  miles: z.string().or(z.number()).transform(val => String(val)),
+  rateApplied: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertMileageExpense = z.infer<typeof insertMileageExpenseSchema>;
+export type MileageExpense = typeof mileageExpenses.$inferSelect;
+
+// ============================================
+// PER DIEM RULES
+// ============================================
+
+// Per diem rates by location
+export const perDiemRates = pgTable("per_diem_rates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 255 }).notNull(), // e.g., "GSA Rate - Washington DC"
+  location: varchar("location", { length: 255 }).notNull(), // City, State or region
+  lodgingRate: numeric("lodging_rate", { precision: 10, scale: 2 }).notNull(),
+  mieRate: numeric("mie_rate", { precision: 10, scale: 2 }).notNull(), // Meals & Incidental Expenses
+  breakfastRate: numeric("breakfast_rate", { precision: 10, scale: 2 }),
+  lunchRate: numeric("lunch_rate", { precision: 10, scale: 2 }),
+  dinnerRate: numeric("dinner_rate", { precision: 10, scale: 2 }),
+  incidentalsRate: numeric("incidentals_rate", { precision: 10, scale: 2 }),
+  effectiveDate: timestamp("effective_date").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  isDefault: boolean("is_default").notNull().default(false),
+  fiscalYear: integer("fiscal_year"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_per_diem_rates_org_id").on(table.organizationId),
+  index("idx_per_diem_rates_location").on(table.location),
+]);
+
+export const insertPerDiemRateSchema = createInsertSchema(perDiemRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  lodgingRate: z.string().or(z.number()).transform(val => String(val)),
+  mieRate: z.string().or(z.number()).transform(val => String(val)),
+  breakfastRate: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  lunchRate: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  dinnerRate: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  incidentalsRate: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  effectiveDate: z.coerce.date(),
+  expirationDate: z.coerce.date().optional().nullable(),
+});
+
+export type InsertPerDiemRate = z.infer<typeof insertPerDiemRateSchema>;
+export type PerDiemRate = typeof perDiemRates.$inferSelect;
+
+// Per diem expense claims
+export const perDiemExpenses = pgTable("per_diem_expenses", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  perDiemRateId: integer("per_diem_rate_id").references(() => perDiemRates.id, { onDelete: 'set null' }),
+  programId: integer("program_id").references(() => programs.id, { onDelete: 'set null' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  travelDate: timestamp("travel_date").notNull(),
+  location: varchar("location", { length: 255 }).notNull(),
+  tripPurpose: text("trip_purpose").notNull(),
+  // Day type affects rates (first/last day get 75%, full days get 100%)
+  dayType: varchar("day_type", { length: 50 }).notNull().default('full'), // first, last, full, single
+  // Claimed amounts (may be less than max allowed)
+  lodgingClaimed: numeric("lodging_claimed", { precision: 10, scale: 2 }).default('0'),
+  mealsClaimed: numeric("meals_claimed", { precision: 10, scale: 2 }).default('0'),
+  incidentalsClaimed: numeric("incidentals_claimed", { precision: 10, scale: 2 }).default('0'),
+  totalClaimed: numeric("total_claimed", { precision: 12, scale: 2 }).notNull(),
+  // Meals provided by others (reduce claim)
+  breakfastProvided: boolean("breakfast_provided").notNull().default(false),
+  lunchProvided: boolean("lunch_provided").notNull().default(false),
+  dinnerProvided: boolean("dinner_provided").notNull().default(false),
+  status: varchar("status", { length: 50 }).notNull().default('pending'), // pending, approved, rejected, reimbursed
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_per_diem_expenses_org_id").on(table.organizationId),
+  index("idx_per_diem_expenses_user_id").on(table.userId),
+  index("idx_per_diem_expenses_program_id").on(table.programId),
+  index("idx_per_diem_expenses_status").on(table.status),
+]);
+
+export const insertPerDiemExpenseSchema = createInsertSchema(perDiemExpenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedBy: true,
+  approvedAt: true,
+}).extend({
+  travelDate: z.coerce.date(),
+  lodgingClaimed: z.string().or(z.number()).transform(val => String(val)).optional(),
+  mealsClaimed: z.string().or(z.number()).transform(val => String(val)).optional(),
+  incidentalsClaimed: z.string().or(z.number()).transform(val => String(val)).optional(),
+  totalClaimed: z.string().or(z.number()).transform(val => String(val)),
+});
+
+export type InsertPerDiemExpense = z.infer<typeof insertPerDiemExpenseSchema>;
+export type PerDiemExpense = typeof perDiemExpenses.$inferSelect;
+
 // PLEDGES (Donor commitments)
 export const pledges = pgTable("pledges", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

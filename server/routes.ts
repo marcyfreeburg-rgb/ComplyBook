@@ -10810,6 +10810,538 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Program Budget vs Actual report
+  app.get("/api/programs/budget-vs-actual/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { startDate, endDate } = req.query;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Require make_reports permission for budget vs actual analysis
+      if (!hasPermission(userRole.role, userRole.permissions, 'make_reports')) {
+        return res.status(403).json({ message: "You don't have permission to view reports" });
+      }
+
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const report = await storage.getProgramBudgetVsActual(organizationId, start, end);
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching program budget vs actual:", error);
+      res.status(500).json({ message: "Failed to fetch budget vs actual report" });
+    }
+  });
+
+  // ============================================
+  // MILEAGE TRACKING ROUTES
+  // ============================================
+
+  // Mileage rates
+  app.get("/api/mileage-rates/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rates = await storage.getMileageRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching mileage rates:", error);
+      res.status(500).json({ message: "Failed to fetch mileage rates" });
+    }
+  });
+
+  app.post("/api/mileage-rates", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...rateData } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rate = await storage.createMileageRate({ organizationId, ...rateData });
+      res.status(201).json(rate);
+    } catch (error) {
+      console.error("Error creating mileage rate:", error);
+      res.status(500).json({ message: "Failed to create mileage rate" });
+    }
+  });
+
+  app.put("/api/mileage-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const rate = await storage.getMileageRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Mileage rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updated = await storage.updateMileageRate(rateId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating mileage rate:", error);
+      res.status(500).json({ message: "Failed to update mileage rate" });
+    }
+  });
+
+  app.delete("/api/mileage-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+
+      const rate = await storage.getMileageRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Mileage rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteMileageRate(rateId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting mileage rate:", error);
+      res.status(500).json({ message: "Failed to delete mileage rate" });
+    }
+  });
+
+  // Mileage expenses
+  app.get("/api/mileage-expenses/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { status, startDate, endDate, userFilter } = req.query;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const filters: any = {};
+      if (status) filters.status = status;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      // Viewers can only see their own expenses
+      if (userRole.role === 'viewer') {
+        filters.userId = userId;
+      } else if (userFilter) {
+        filters.userId = userFilter;
+      }
+
+      const expenses = await storage.getMileageExpenses(organizationId, filters);
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching mileage expenses:", error);
+      res.status(500).json({ message: "Failed to fetch mileage expenses" });
+    }
+  });
+
+  app.post("/api/mileage-expenses", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...expenseData } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const expense = await storage.createMileageExpense({
+        organizationId,
+        userId,
+        ...expenseData,
+      });
+      res.status(201).json(expense);
+    } catch (error) {
+      console.error("Error creating mileage expense:", error);
+      res.status(500).json({ message: "Failed to create mileage expense" });
+    }
+  });
+
+  app.put("/api/mileage-expenses/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const expense = await storage.getMileageExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Mileage expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only allow editing own pending expenses or admin can edit any
+      if (expense.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Can only edit your own expenses" });
+      }
+
+      if (expense.status !== 'pending' && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(400).json({ message: "Can only edit pending expenses" });
+      }
+
+      const updated = await storage.updateMileageExpense(expenseId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating mileage expense:", error);
+      res.status(500).json({ message: "Failed to update mileage expense" });
+    }
+  });
+
+  app.delete("/api/mileage-expenses/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+
+      const expense = await storage.getMileageExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Mileage expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only owner/admin can delete, or user can delete own pending
+      if (expense.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (expense.status !== 'pending' && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(400).json({ message: "Can only delete pending expenses" });
+      }
+
+      await storage.deleteMileageExpense(expenseId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting mileage expense:", error);
+      res.status(500).json({ message: "Failed to delete mileage expense" });
+    }
+  });
+
+  app.post("/api/mileage-expenses/:id/approve", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+
+      const expense = await storage.getMileageExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Mileage expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const approved = await storage.approveMileageExpense(expenseId, userId);
+      res.json(approved);
+    } catch (error) {
+      console.error("Error approving mileage expense:", error);
+      res.status(500).json({ message: "Failed to approve mileage expense" });
+    }
+  });
+
+  app.post("/api/mileage-expenses/:id/reject", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+      const { notes } = req.body;
+
+      const expense = await storage.getMileageExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Mileage expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rejected = await storage.rejectMileageExpense(expenseId, userId, notes);
+      res.json(rejected);
+    } catch (error) {
+      console.error("Error rejecting mileage expense:", error);
+      res.status(500).json({ message: "Failed to reject mileage expense" });
+    }
+  });
+
+  // ============================================
+  // PER DIEM ROUTES
+  // ============================================
+
+  // Per diem rates
+  app.get("/api/per-diem-rates/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rates = await storage.getPerDiemRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching per diem rates:", error);
+      res.status(500).json({ message: "Failed to fetch per diem rates" });
+    }
+  });
+
+  app.post("/api/per-diem-rates", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...rateData } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rate = await storage.createPerDiemRate({ organizationId, ...rateData });
+      res.status(201).json(rate);
+    } catch (error) {
+      console.error("Error creating per diem rate:", error);
+      res.status(500).json({ message: "Failed to create per diem rate" });
+    }
+  });
+
+  app.put("/api/per-diem-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const rate = await storage.getPerDiemRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Per diem rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updated = await storage.updatePerDiemRate(rateId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating per diem rate:", error);
+      res.status(500).json({ message: "Failed to update per diem rate" });
+    }
+  });
+
+  app.delete("/api/per-diem-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+
+      const rate = await storage.getPerDiemRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Per diem rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deletePerDiemRate(rateId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting per diem rate:", error);
+      res.status(500).json({ message: "Failed to delete per diem rate" });
+    }
+  });
+
+  // Per diem expenses
+  app.get("/api/per-diem-expenses/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { status, startDate, endDate, userFilter } = req.query;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const filters: any = {};
+      if (status) filters.status = status;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      // Viewers can only see their own expenses
+      if (userRole.role === 'viewer') {
+        filters.userId = userId;
+      } else if (userFilter) {
+        filters.userId = userFilter;
+      }
+
+      const expenses = await storage.getPerDiemExpenses(organizationId, filters);
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching per diem expenses:", error);
+      res.status(500).json({ message: "Failed to fetch per diem expenses" });
+    }
+  });
+
+  app.post("/api/per-diem-expenses", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...expenseData } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const expense = await storage.createPerDiemExpense({
+        organizationId,
+        userId,
+        ...expenseData,
+      });
+      res.status(201).json(expense);
+    } catch (error) {
+      console.error("Error creating per diem expense:", error);
+      res.status(500).json({ message: "Failed to create per diem expense" });
+    }
+  });
+
+  app.put("/api/per-diem-expenses/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const expense = await storage.getPerDiemExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Per diem expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (expense.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Can only edit your own expenses" });
+      }
+
+      if (expense.status !== 'pending' && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(400).json({ message: "Can only edit pending expenses" });
+      }
+
+      const updated = await storage.updatePerDiemExpense(expenseId, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating per diem expense:", error);
+      res.status(500).json({ message: "Failed to update per diem expense" });
+    }
+  });
+
+  app.delete("/api/per-diem-expenses/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+
+      const expense = await storage.getPerDiemExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Per diem expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (expense.userId !== userId && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (expense.status !== 'pending' && userRole.role !== 'owner' && userRole.role !== 'admin') {
+        return res.status(400).json({ message: "Can only delete pending expenses" });
+      }
+
+      await storage.deletePerDiemExpense(expenseId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting per diem expense:", error);
+      res.status(500).json({ message: "Failed to delete per diem expense" });
+    }
+  });
+
+  app.post("/api/per-diem-expenses/:id/approve", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+
+      const expense = await storage.getPerDiemExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Per diem expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const approved = await storage.approvePerDiemExpense(expenseId, userId);
+      res.json(approved);
+    } catch (error) {
+      console.error("Error approving per diem expense:", error);
+      res.status(500).json({ message: "Failed to approve per diem expense" });
+    }
+  });
+
+  app.post("/api/per-diem-expenses/:id/reject", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expenseId = parseInt(req.params.id);
+      const { notes } = req.body;
+
+      const expense = await storage.getPerDiemExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Per diem expense not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, expense.organizationId);
+      if (!userRole || !hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rejected = await storage.rejectPerDiemExpense(expenseId, userId, notes);
+      res.json(rejected);
+    } catch (error) {
+      console.error("Error rejecting per diem expense:", error);
+      res.status(500).json({ message: "Failed to reject per diem expense" });
+    }
+  });
+
   // Pledge routes
   app.get("/api/pledges/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {

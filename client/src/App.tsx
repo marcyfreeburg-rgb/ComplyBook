@@ -34,6 +34,7 @@ import BankAccounts from "@/pages/bank-accounts";
 import Funds from "@/pages/funds";
 import Pledges from "@/pages/pledges";
 import Programs from "@/pages/programs";
+import ProgramExpenseReport from "@/pages/program-expense-report";
 import FunctionalExpenseReport from "@/pages/functional-expense-report";
 import Form990Report from "@/pages/form-990-report";
 import GovernmentGrants from "@/pages/government-grants";
@@ -360,6 +361,14 @@ function AuthenticatedApp() {
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/programs">
                   <Programs 
+                    currentOrganization={currentOrganization}
+                    userId={user?.id || ''}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/program-expense-report">
+                  <ProgramExpenseReport 
                     currentOrganization={currentOrganization}
                     userId={user?.id || ''}
                   />
