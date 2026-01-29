@@ -325,7 +325,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Net Unrestricted</CardTitle>
+            <CardTitle className="text-sm font-medium">General Fund (Unrestricted)</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -333,7 +333,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
               {formatCurrency(totalUnrestricted, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Available for general use
+              Transactions not linked to grants
             </p>
             <div className="text-xs text-muted-foreground mt-2 space-y-1">
               <div className="text-green-600">Income: {formatCurrency(unrestrictedIncome, 'USD')}</div>
@@ -343,7 +343,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Net Restricted</CardTitle>
+            <CardTitle className="text-sm font-medium">Grant Funds (Restricted)</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -351,7 +351,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
               {formatCurrency(totalRestricted, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              With donor restrictions
+              Transactions linked to grants
             </p>
             <div className="text-xs text-muted-foreground mt-2 space-y-1">
               <div className="text-green-600">Income: {formatCurrency(restrictedIncome, 'USD')}</div>

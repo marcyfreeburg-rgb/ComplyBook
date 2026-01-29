@@ -6483,17 +6483,16 @@ export class DatabaseStorage implements IStorage {
     unrestrictedNet: number;
     totalNet: number;
   }> {
-    // Join transactions with categories to get fund type, then sum by type
-    // Use COALESCE to default uncategorized transactions to 'unrestricted'
+    // Transactions linked to a grant are considered "restricted"
+    // Transactions not linked to a grant are "unrestricted" (General Fund)
     const result = await db.select({
-      categoryFundType: sql<string>`COALESCE(${categories.fundType}, 'unrestricted')`,
+      hasGrant: sql<boolean>`${transactions.grantId} IS NOT NULL`,
       transactionType: transactions.type,
       totalAmount: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
     })
       .from(transactions)
-      .leftJoin(categories, eq(transactions.categoryId, categories.id))
       .where(eq(transactions.organizationId, organizationId))
-      .groupBy(sql`COALESCE(${categories.fundType}, 'unrestricted')`, transactions.type);
+      .groupBy(sql`${transactions.grantId} IS NOT NULL`, transactions.type);
 
     let restrictedIncome = 0;
     let unrestrictedIncome = 0;
@@ -6502,8 +6501,8 @@ export class DatabaseStorage implements IStorage {
 
     for (const row of result) {
       const amount = parseFloat(row.totalAmount) || 0;
-      // Treat anything not explicitly 'unrestricted' as restricted (except default from COALESCE)
-      const isRestricted = row.categoryFundType !== 'unrestricted';
+      // Transactions with a grantId are restricted
+      const isRestricted = row.hasGrant === true;
       
       if (row.transactionType === 'income') {
         if (isRestricted) {
