@@ -6483,43 +6483,58 @@ export class DatabaseStorage implements IStorage {
     unrestrictedNet: number;
     totalNet: number;
   }> {
-    // Transactions linked to a grant are considered "restricted"
-    // Transactions not linked to a grant are "unrestricted" (General Fund)
-    const result = await db.select({
-      hasGrant: sql<boolean>`${transactions.grantId} IS NOT NULL`,
+    // Restricted funds = Grant awarded amounts - expenses against those grants
+    // Unrestricted funds = All non-grant transactions (income - expenses)
+    
+    // 1. Get total grant amounts (this is the "restricted income" - the funding available)
+    const grantTotals = await db.select({
+      totalGrantAmount: sql<string>`COALESCE(SUM(${grants.amount}), 0)`,
+    })
+      .from(grants)
+      .where(eq(grants.organizationId, organizationId));
+    
+    const restrictedIncome = parseFloat(grantTotals[0]?.totalGrantAmount || '0');
+
+    // 2. Get expenses against grants (restricted expenses)
+    const grantExpenses = await db.select({
+      totalExpenses: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        eq(transactions.type, 'expense'),
+        isNotNull(transactions.grantId)
+      ));
+    
+    const restrictedExpenses = parseFloat(grantExpenses[0]?.totalExpenses || '0');
+
+    // 3. Get unrestricted transactions (not linked to grants)
+    const unrestrictedTxns = await db.select({
       transactionType: transactions.type,
       totalAmount: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
     })
       .from(transactions)
-      .where(eq(transactions.organizationId, organizationId))
-      .groupBy(sql`${transactions.grantId} IS NOT NULL`, transactions.type);
+      .where(and(
+        eq(transactions.organizationId, organizationId),
+        isNull(transactions.grantId)
+      ))
+      .groupBy(transactions.type);
 
-    let restrictedIncome = 0;
     let unrestrictedIncome = 0;
-    let restrictedExpenses = 0;
     let unrestrictedExpenses = 0;
 
-    for (const row of result) {
+    for (const row of unrestrictedTxns) {
       const amount = parseFloat(row.totalAmount) || 0;
-      // Transactions with a grantId are restricted
-      const isRestricted = row.hasGrant === true;
-      
       if (row.transactionType === 'income') {
-        if (isRestricted) {
-          restrictedIncome += amount;
-        } else {
-          unrestrictedIncome += amount;
-        }
+        unrestrictedIncome += amount;
       } else if (row.transactionType === 'expense') {
-        if (isRestricted) {
-          restrictedExpenses += amount;
-        } else {
-          unrestrictedExpenses += amount;
-        }
+        unrestrictedExpenses += amount;
       }
     }
 
+    // Restricted net = Grant amounts - expenses against grants (remaining grant funds)
     const restrictedNet = restrictedIncome - restrictedExpenses;
+    // Unrestricted net = General income - general expenses
     const unrestrictedNet = unrestrictedIncome - unrestrictedExpenses;
     const totalNet = restrictedNet + unrestrictedNet;
 

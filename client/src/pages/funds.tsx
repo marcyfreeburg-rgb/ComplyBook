@@ -333,7 +333,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
               {formatCurrency(totalUnrestricted, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Transactions not linked to grants
+              Non-grant income minus expenses
             </p>
             <div className="text-xs text-muted-foreground mt-2 space-y-1">
               <div className="text-green-600">Income: {formatCurrency(unrestrictedIncome, 'USD')}</div>
@@ -351,11 +351,11 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
               {formatCurrency(totalRestricted, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Transactions linked to grants
+              Grant amounts minus grant spending
             </p>
             <div className="text-xs text-muted-foreground mt-2 space-y-1">
-              <div className="text-green-600">Income: {formatCurrency(restrictedIncome, 'USD')}</div>
-              <div className="text-red-600">Expenses: {formatCurrency(restrictedExpenses, 'USD')}</div>
+              <div className="text-green-600">Grant Funding: {formatCurrency(restrictedIncome, 'USD')}</div>
+              <div className="text-red-600">Grant Spending: {formatCurrency(restrictedExpenses, 'USD')}</div>
             </div>
           </CardContent>
         </Card>
