@@ -244,6 +244,13 @@ import {
   budgetAlerts,
   type BudgetAlert,
   type InsertBudgetAlert,
+  // Reconciliation Audit Logs and Alerts
+  reconciliationAuditLogs,
+  type ReconciliationAuditLog,
+  type InsertReconciliationAuditLog,
+  reconciliationAlerts,
+  type ReconciliationAlert,
+  type InsertReconciliationAlert,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -3867,6 +3874,179 @@ export class DatabaseStorage implements IStorage {
     ].join(','));
 
     return [headers.join(','), ...rows].join('\n');
+  }
+
+  // Reconciliation Audit Log operations
+  async recordReconciliationAction(log: InsertReconciliationAuditLog): Promise<ReconciliationAuditLog> {
+    const [created] = await db.insert(reconciliationAuditLogs).values(log).returning();
+    return created;
+  }
+
+  async getReconciliationAuditLogs(
+    organizationId: number,
+    filters?: {
+      transactionId?: number;
+      bankAccountId?: number;
+      action?: string;
+      startDate?: Date;
+      endDate?: Date;
+      limit?: number;
+    }
+  ): Promise<ReconciliationAuditLog[]> {
+    const conditions = [eq(reconciliationAuditLogs.organizationId, organizationId)];
+    
+    if (filters?.transactionId) {
+      conditions.push(eq(reconciliationAuditLogs.transactionId, filters.transactionId));
+    }
+    if (filters?.bankAccountId) {
+      conditions.push(eq(reconciliationAuditLogs.bankAccountId, filters.bankAccountId));
+    }
+    if (filters?.action) {
+      conditions.push(eq(reconciliationAuditLogs.action, filters.action as any));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(reconciliationAuditLogs.performedAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(reconciliationAuditLogs.performedAt, filters.endDate));
+    }
+
+    const query = db
+      .select()
+      .from(reconciliationAuditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(reconciliationAuditLogs.performedAt));
+
+    if (filters?.limit) {
+      return query.limit(filters.limit);
+    }
+    return query;
+  }
+
+  async exportReconciliationAuditLogs(organizationId: number, format: 'csv' | 'json' = 'csv'): Promise<string> {
+    const logs = await this.getReconciliationAuditLogs(organizationId);
+    
+    if (format === 'json') {
+      return JSON.stringify(logs, null, 2);
+    }
+
+    const headers = ['ID', 'Transaction ID', 'Bank Account ID', 'Action', 'Previous Status', 'New Status', 'Previous Balance', 'New Balance', 'Difference', 'Notes', 'Performed By', 'Performed At', 'IP Address'];
+    const rows = logs.map(log => [
+      log.id,
+      log.transactionId || '',
+      log.bankAccountId || '',
+      log.action,
+      log.previousStatus || '',
+      log.newStatus || '',
+      log.previousBalance || '',
+      log.newBalance || '',
+      log.difference || '',
+      `"${(log.notes || '').replace(/"/g, '""')}"`,
+      log.performedBy,
+      log.performedAt.toISOString(),
+      log.ipAddress || ''
+    ].join(','));
+
+    return [headers.join(','), ...rows].join('\n');
+  }
+
+  // Reconciliation Alert operations
+  async checkAndSendReconciliationAlerts(organizationId: number): Promise<{ alertsSent: number }> {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    let alertsSent = 0;
+
+    // Check for stale unreconciled items (>30 days)
+    const staleTransactions = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          or(
+            eq(transactions.reconciliationStatus, 'pending'),
+            isNull(transactions.reconciliationStatus)
+          ),
+          lt(transactions.createdAt, thirtyDaysAgo)
+        )
+      );
+
+    for (const tx of staleTransactions) {
+      const daysSince = Math.floor((Date.now() - tx.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Check if we already sent an alert for this transaction recently
+      const existing = await db
+        .select()
+        .from(reconciliationAlerts)
+        .where(
+          and(
+            eq(reconciliationAlerts.transactionId, tx.id),
+            eq(reconciliationAlerts.alertType, 'stale_unreconciled'),
+            gte(reconciliationAlerts.sentAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // Within last 7 days
+          )
+        )
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(reconciliationAlerts).values({
+          organizationId,
+          transactionId: tx.id,
+          alertType: 'stale_unreconciled',
+          daysSinceCreation: daysSince,
+          description: `Transaction "${tx.description}" has been unreconciled for ${daysSince} days`,
+          sentTo: 'owner',
+        });
+        alertsSent++;
+      }
+    }
+
+    return { alertsSent };
+  }
+
+  async getReconciliationAlerts(organizationId: number, acknowledged?: boolean): Promise<ReconciliationAlert[]> {
+    const conditions = [eq(reconciliationAlerts.organizationId, organizationId)];
+    
+    if (acknowledged !== undefined) {
+      conditions.push(eq(reconciliationAlerts.acknowledged, acknowledged));
+    }
+
+    return db
+      .select()
+      .from(reconciliationAlerts)
+      .where(and(...conditions))
+      .orderBy(desc(reconciliationAlerts.sentAt));
+  }
+
+  async acknowledgeReconciliationAlert(id: number, userId: string): Promise<ReconciliationAlert> {
+    const [updated] = await db
+      .update(reconciliationAlerts)
+      .set({
+        acknowledged: true,
+        acknowledgedAt: new Date(),
+        acknowledgedBy: userId,
+      })
+      .where(eq(reconciliationAlerts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getStaleUnreconciledCount(organizationId: number, daysSinceThreshold: number = 30): Promise<number> {
+    const thresholdDate = new Date(Date.now() - daysSinceThreshold * 24 * 60 * 60 * 1000);
+    
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          or(
+            eq(transactions.reconciliationStatus, 'pending'),
+            isNull(transactions.reconciliationStatus)
+          ),
+          lt(transactions.createdAt, thresholdDate)
+        )
+      );
+
+    return result?.count || 0;
   }
 
   // Dashboard/Report operations

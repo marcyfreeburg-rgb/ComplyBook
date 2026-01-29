@@ -325,3 +325,198 @@ Respond with JSON: {"suggestions": [{"transactionId": <id>, "categoryId": <id>, 
     return suggestions;
   }
 }
+
+// Enhanced AI matching for grants, programs, and funds
+export interface EnhancedMatchingSuggestion {
+  categoryId?: number;
+  categoryName?: string;
+  grantId?: number;
+  grantName?: string;
+  programId?: number;
+  programName?: string;
+  fundId?: number;
+  fundName?: string;
+  confidence: number;
+  reasoning: string;
+  vendorPattern?: string;
+}
+
+export async function suggestEnhancedMatching(
+  organizationId: number,
+  transactionDescription: string,
+  transactionAmount: number,
+  transactionType: 'income' | 'expense',
+  vendorName?: string
+): Promise<EnhancedMatchingSuggestion | null> {
+  if (!openai) {
+    console.log('[AI Enhanced Matching] AI not available - no API key configured');
+    return null;
+  }
+
+  try {
+    // Fetch categories, grants, programs, and funds for this organization
+    const [categories, grants, programs, funds] = await Promise.all([
+      storage.getCategories(organizationId),
+      storage.getGrants(organizationId),
+      storage.getPrograms(organizationId),
+      storage.getFunds(organizationId)
+    ]);
+
+    // Build lists for AI prompt
+    const relevantCategories = categories.filter(cat => cat.type === transactionType);
+    const categoryList = relevantCategories.map(cat => 
+      `  - ID: ${cat.id}, Name: "${cat.name}"`
+    ).join('\n');
+
+    const grantList = grants.filter(g => g.status === 'active').map(g => 
+      `  - ID: ${g.id}, Name: "${g.name}", Contact: "${g.grantorContact || 'Unknown'}"`
+    ).join('\n');
+
+    const programList = programs.map(p => 
+      `  - ID: ${p.id}, Name: "${p.name}", Description: "${p.description || 'No description'}"`
+    ).join('\n');
+
+    const fundList = funds.map(f => 
+      `  - ID: ${f.id}, Name: "${f.name}", Type: "${f.fundType}"`
+    ).join('\n');
+
+    // Build vendor pattern context
+    const vendorContext = vendorName 
+      ? `\nVendor/Payee: "${vendorName}"` 
+      : '';
+
+    // Common vendor patterns for reference
+    const vendorPatterns = `
+Common Vendor Patterns:
+- Gas stations (SHELL, CHEVRON, BP, EXXON) -> Usually Vehicle/Fuel expenses
+- SAM'S CLUB, COSTCO, WALMART -> Office Supplies or Program Supplies
+- AMAZON -> Office Supplies, Equipment, or Program Supplies
+- STAPLES, OFFICE DEPOT -> Office Supplies
+- USPS, UPS, FEDEX -> Postage/Shipping
+- Hotel/Lodging -> Travel expenses
+- Airlines (DELTA, UNITED, AMERICAN) -> Travel expenses
+- Utility companies -> Utilities expense
+- Phone/Internet providers -> Telecommunications
+`;
+
+    const prompt = `You are a nonprofit/organization financial expert. Analyze this transaction and suggest the best matches for category, grant, program, and fund.
+
+Transaction Details:
+- Description: "${transactionDescription}"${vendorContext}
+- Amount: $${transactionAmount}
+- Type: ${transactionType}
+
+${vendorPatterns}
+
+Available Categories (${transactionType}):
+${categoryList || '  No categories available'}
+
+Active Grants:
+${grantList || '  No grants available'}
+
+Programs:
+${programList || '  No programs available'}
+
+Funds:
+${fundList || '  No funds available'}
+
+Instructions:
+1. Suggest the MOST appropriate category based on description and vendor patterns
+2. If applicable, suggest which grant this expense/income should be linked to
+3. If applicable, suggest which program this relates to
+4. If applicable, suggest which fund should be used
+5. Identify any vendor pattern that helped with matching
+6. Provide confidence (0-100) and brief reasoning
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "categoryId": <number or null>,
+  "categoryName": "<string or null>",
+  "grantId": <number or null>,
+  "grantName": "<string or null>",
+  "programId": <number or null>,
+  "programName": "<string or null>",
+  "fundId": <number or null>,
+  "fundName": "<string or null>",
+  "confidence": <number 0-100>,
+  "reasoning": "<brief explanation>",
+  "vendorPattern": "<detected vendor pattern or null>"
+}`;
+
+    const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
+    const completion = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a nonprofit financial expert. Always respond with valid JSON. Match transactions to appropriate categories, grants, programs, and funds." 
+        },
+        { 
+          role: "user", 
+          content: prompt 
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 800,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+    if (!responseText) {
+      console.error('[AI Enhanced Matching] No response from AI');
+      return null;
+    }
+
+    console.log(`[AI Enhanced Matching] Raw AI response for "${transactionDescription}": ${responseText}`);
+    
+    const suggestion = JSON.parse(responseText) as EnhancedMatchingSuggestion;
+    
+    // Validate suggestions against actual data
+    if (suggestion.categoryId) {
+      const categoryExists = relevantCategories.find(cat => cat.id === suggestion.categoryId);
+      if (!categoryExists) {
+        // Try to find by name
+        const byName = relevantCategories.find(cat => 
+          cat.name.toLowerCase() === suggestion.categoryName?.toLowerCase()
+        );
+        if (byName) {
+          suggestion.categoryId = byName.id;
+          suggestion.categoryName = byName.name;
+        } else {
+          suggestion.categoryId = undefined;
+          suggestion.categoryName = undefined;
+        }
+      }
+    }
+
+    if (suggestion.grantId) {
+      const grantExists = grants.find(g => g.id === suggestion.grantId);
+      if (!grantExists) {
+        suggestion.grantId = undefined;
+        suggestion.grantName = undefined;
+      }
+    }
+
+    if (suggestion.programId) {
+      const programExists = programs.find(p => p.id === suggestion.programId);
+      if (!programExists) {
+        suggestion.programId = undefined;
+        suggestion.programName = undefined;
+      }
+    }
+
+    if (suggestion.fundId) {
+      const fundExists = funds.find(f => f.id === suggestion.fundId);
+      if (!fundExists) {
+        suggestion.fundId = undefined;
+        suggestion.fundName = undefined;
+      }
+    }
+
+    console.log(`[AI Enhanced Matching] Suggestions: Cat=${suggestion.categoryName}, Grant=${suggestion.grantName}, Program=${suggestion.programName}, Fund=${suggestion.fundName}, Confidence=${suggestion.confidence}%`);
+    
+    return suggestion;
+  } catch (error) {
+    console.error('[AI Enhanced Matching] Error:', error);
+    return null;
+  }
+}

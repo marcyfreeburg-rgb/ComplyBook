@@ -4,12 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Sparkles, RefreshCw } from "lucide-react";
-import type { Organization, Transaction } from "@shared/schema";
+import { CheckCircle2, XCircle, Sparkles, RefreshCw, AlertTriangle, Download, History, Building2 } from "lucide-react";
+import type { Organization, Transaction, ReconciliationAlert, ReconciliationAuditLog } from "@shared/schema";
 import { format } from "date-fns";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
@@ -23,6 +32,8 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
   const [showReconciled, setShowReconciled] = useState(false);
   const [reconciledLimit, setReconciledLimit] = useState(100);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<string>("all");
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   // Fetch unreconciled transactions
   const { data: unreconciledTransactions = [], isLoading: isLoadingUnreconciled } = useQuery<Transaction[]>({
@@ -41,7 +52,40 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     enabled: !!currentOrganization && showReconciled,
   });
 
-  const transactions = showReconciled ? reconciledTransactions : unreconciledTransactions;
+  // Fetch stale unreconciled count (>30 days)
+  const { data: staleCount } = useQuery<{ count: number; daysSinceThreshold: number }>({
+    queryKey: [`/api/reconciliation/stale-count/${currentOrganization?.id}`],
+    enabled: !!currentOrganization,
+  });
+
+  // Fetch reconciliation alerts
+  const { data: alerts = [] } = useQuery<ReconciliationAlert[]>({
+    queryKey: [`/api/reconciliation/alerts/${currentOrganization?.id}`, { acknowledged: false }],
+    queryFn: async () => {
+      const response = await fetch(`/api/reconciliation/alerts/${currentOrganization?.id}?acknowledged=false`);
+      if (!response.ok) throw new Error('Failed to fetch alerts');
+      return response.json();
+    },
+    enabled: !!currentOrganization,
+  });
+
+  // Fetch audit logs
+  const { data: auditLogs = [] } = useQuery<ReconciliationAuditLog[]>({
+    queryKey: [`/api/reconciliation/audit-logs/${currentOrganization?.id}`],
+    enabled: !!currentOrganization && showAuditLog,
+  });
+
+  // Get unique accounts from transactions for multi-account filter
+  const uniqueAccounts = Array.from(new Set(unreconciledTransactions.map(t => t.bankAccountId).filter(Boolean)));
+
+  // Filter transactions by selected account
+  const filteredUnreconciled = selectedAccount === "all" 
+    ? unreconciledTransactions 
+    : unreconciledTransactions.filter(t => 
+        selectedAccount === "manual" ? !t.bankAccountId : t.bankAccountId?.toString() === selectedAccount
+      );
+
+  const transactions = showReconciled ? reconciledTransactions : filteredUnreconciled;
   const isLoading = showReconciled ? isLoadingReconciled : isLoadingUnreconciled;
   
   const handleLoadMoreReconciled = async () => {
@@ -145,10 +189,10 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
   });
 
   const handleSelectAll = () => {
-    if (selectedIds.length === unreconciledTransactions.length) {
+    if (selectedIds.length === filteredUnreconciled.length && filteredUnreconciled.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(unreconciledTransactions.map(t => t.id));
+      setSelectedIds(filteredUnreconciled.map(t => t.id));
     }
   };
 
@@ -181,14 +225,27 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     );
   }
 
+  const handleExportAuditLog = async () => {
+    if (!currentOrganization) return;
+    const response = await fetch(`/api/reconciliation/audit-logs/${currentOrganization.id}/export?format=csv`);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'reconciliation-audit-log.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast({ title: "Audit log exported successfully" });
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="heading-reconciliation">Bank Reconciliation</h1>
-          <p className="text-muted-foreground">Match transactions with your bank statements</p>
+          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="heading-reconciliation">Bank Reconciliation</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Match transactions with your bank statements</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => autoReconcileMutation.mutate()}
             disabled={autoReconcileMutation.isPending}
@@ -204,10 +261,93 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
             data-testid="button-toggle-view"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            {showReconciled ? "Show Unreconciled" : "Show All"}
+            {showReconciled ? "Unreconciled" : "Show All"}
           </Button>
+          <Dialog open={showAuditLog} onOpenChange={setShowAuditLog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-audit-log">
+                <History className="h-4 w-4 mr-2" />
+                Audit Log
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Reconciliation Audit Log</DialogTitle>
+                <DialogDescription>History of reconciliation actions</DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end mb-4">
+                <Button size="sm" variant="outline" onClick={handleExportAuditLog} data-testid="button-export-audit">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-3">Date</th>
+                      <th className="text-left py-2 px-3">Action</th>
+                      <th className="text-left py-2 px-3">User</th>
+                      <th className="text-left py-2 px-3">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log) => (
+                      <tr key={log.id} className="border-b">
+                        <td className="py-2 px-3">{safeFormatDate(log.performedAt, 'MMM dd, yyyy HH:mm')}</td>
+                        <td className="py-2 px-3">
+                          <Badge variant="outline">{log.action}</Badge>
+                        </td>
+                        <td className="py-2 px-3 truncate max-w-[150px]">{log.performedBy}</td>
+                        <td className="py-2 px-3 truncate max-w-[200px]">{log.notes || '-'}</td>
+                      </tr>
+                    ))}
+                    {auditLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-center text-muted-foreground">No audit logs found</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
+
+      {/* Stale Items Alert */}
+      {staleCount && staleCount.count > 0 && (
+        <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20" data-testid="card-stale-alert">
+          <CardContent className="py-3 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
+            <p className="text-sm text-orange-800 dark:text-orange-200">
+              <strong>{staleCount.count}</strong> transactions have been unreconciled for more than {staleCount.daysSinceThreshold} days
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Multi-Account Filter */}
+      {uniqueAccounts.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Filter by account:</span>
+          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+            <SelectTrigger className="w-[200px]" data-testid="select-account-filter">
+              <SelectValue placeholder="All Accounts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Accounts</SelectItem>
+              <SelectItem value="manual">Manual Entries</SelectItem>
+              {uniqueAccounts.map(accountId => (
+                <SelectItem key={accountId} value={accountId!.toString()}>
+                  Account {accountId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -247,7 +387,7 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
                     {!showReconciled && (
                       <th className="text-left py-3 px-4">
                         <Checkbox
-                          checked={selectedIds.length === unreconciledTransactions.length && unreconciledTransactions.length > 0}
+                          checked={selectedIds.length === filteredUnreconciled.length && filteredUnreconciled.length > 0}
                           onCheckedChange={handleSelectAll}
                           data-testid="checkbox-select-all"
                         />

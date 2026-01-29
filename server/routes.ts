@@ -10,7 +10,7 @@ import { storage } from "./storage";
 const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
-import { suggestCategory, suggestCategoryBulk } from "./aiCategorization";
+import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching } from "./aiCategorization";
 import { detectRecurringPatterns, suggestBudget, createBillFromPattern } from "./aiPatternDetection";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
@@ -4091,10 +4091,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const count = await storage.bulkReconcileTransactions(transactionIds, userId);
+      
+      // Record audit log for bulk reconciliation
+      await storage.recordReconciliationAction({
+        organizationId,
+        action: 'bulk_reconciled',
+        previousStatus: 'pending',
+        newStatus: 'reconciled',
+        notes: `Bulk reconciled ${count} transactions`,
+        performedBy: userId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+      
       res.json({ count });
     } catch (error) {
       console.error("Error bulk reconciling transactions:", error);
       res.status(500).json({ message: "Failed to reconcile transactions" });
+    }
+  });
+
+  // Reconciliation Audit Log routes
+  app.get('/api/reconciliation/audit-logs/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getReconciliationAuditLogs(organizationId, {
+        transactionId: req.query.transactionId ? parseInt(req.query.transactionId as string) : undefined,
+        bankAccountId: req.query.bankAccountId ? parseInt(req.query.bankAccountId as string) : undefined,
+        action: req.query.action as string,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
+      });
+
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching reconciliation audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.get('/api/reconciliation/audit-logs/:organizationId/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const format = (req.query.format as 'csv' | 'json') || 'csv';
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const exportData = await storage.exportReconciliationAuditLogs(organizationId, format);
+
+      if (format === 'csv') {
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=reconciliation-audit-logs.csv');
+      } else {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename=reconciliation-audit-logs.json');
+      }
+
+      res.send(exportData);
+    } catch (error) {
+      console.error("Error exporting reconciliation audit logs:", error);
+      res.status(500).json({ message: "Failed to export audit logs" });
+    }
+  });
+
+  // Reconciliation Alerts routes
+  app.get('/api/reconciliation/alerts/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const acknowledged = req.query.acknowledged === 'true' ? true : req.query.acknowledged === 'false' ? false : undefined;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const alerts = await storage.getReconciliationAlerts(organizationId, acknowledged);
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching reconciliation alerts:", error);
+      res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  app.post('/api/reconciliation/alerts/:organizationId/check', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const result = await storage.checkAndSendReconciliationAlerts(organizationId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking reconciliation alerts:", error);
+      res.status(500).json({ message: "Failed to check alerts" });
+    }
+  });
+
+  app.post('/api/reconciliation/alerts/:id/acknowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const alertId = parseInt(req.params.id);
+
+      const alert = await storage.acknowledgeReconciliationAlert(alertId, userId);
+      res.json(alert);
+    } catch (error) {
+      console.error("Error acknowledging reconciliation alert:", error);
+      res.status(500).json({ message: "Failed to acknowledge alert" });
+    }
+  });
+
+  app.get('/api/reconciliation/stale-count/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const days = req.query.days ? parseInt(req.query.days as string) : 30;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const count = await storage.getStaleUnreconciledCount(organizationId, days);
+      res.json({ count, daysSinceThreshold: days });
+    } catch (error) {
+      console.error("Error getting stale unreconciled count:", error);
+      res.status(500).json({ message: "Failed to get stale count" });
+    }
+  });
+
+  // Multi-account reconciliation
+  app.get('/api/reconciliation/by-account/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const accountIds = req.query.accountIds ? (req.query.accountIds as string).split(',').map(Number) : undefined;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get all transactions grouped by bank account
+      const allTransactions = await storage.getUnreconciledTransactions(organizationId);
+      
+      // Group by plaidAccountId
+      const byAccount = new Map<number | null, any[]>();
+      for (const tx of allTransactions) {
+        const accountId = tx.plaidAccountId || null;
+        if (accountIds && accountId && !accountIds.includes(accountId)) continue;
+        
+        if (!byAccount.has(accountId)) {
+          byAccount.set(accountId, []);
+        }
+        byAccount.get(accountId)!.push(tx);
+      }
+
+      const result: Array<{ accountId: number | null; accountName: string; transactions: any[]; count: number }> = [];
+      for (const [accountId, txs] of byAccount.entries()) {
+        result.push({
+          accountId,
+          accountName: accountId ? `Account ${accountId}` : 'Manual Entries',
+          transactions: txs,
+          count: txs.length,
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching multi-account reconciliation:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation by account" });
     }
   });
 
@@ -5318,6 +5498,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error suggesting category:", error);
       res.status(500).json({ message: "Failed to suggest category" });
+    }
+  });
+
+  // Enhanced AI matching - suggests category, grant, program, and fund
+  app.post('/api/ai/enhanced-matching/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { description, amount, type, vendorName } = req.body;
+
+      // Check user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check rate limit
+      if (!checkAiRateLimit(userId, organizationId)) {
+        return res.status(429).json({ message: "Too many AI requests. Please try again in a minute." });
+      }
+
+      // Validate inputs
+      if (!description || !amount || !type) {
+        return res.status(400).json({ message: "Missing required fields: description, amount, type" });
+      }
+
+      if (type !== 'income' && type !== 'expense') {
+        return res.status(400).json({ message: "Type must be 'income' or 'expense'" });
+      }
+
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount < 0) {
+        return res.status(400).json({ message: "Amount must be a valid positive number" });
+      }
+
+      const suggestion = await suggestEnhancedMatching(
+        organizationId,
+        description,
+        parsedAmount,
+        type,
+        vendorName
+      );
+
+      if (!suggestion) {
+        return res.status(404).json({ message: "No suitable matches found" });
+      }
+
+      res.json(suggestion);
+    } catch (error) {
+      console.error("Error with enhanced matching:", error);
+      res.status(500).json({ message: "Failed to get enhanced matching suggestions" });
     }
   });
 

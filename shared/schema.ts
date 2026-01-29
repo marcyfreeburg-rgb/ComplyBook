@@ -1211,6 +1211,88 @@ export type InsertBudgetAlert = z.infer<typeof insertBudgetAlertSchema>;
 export type BudgetAlert = typeof budgetAlerts.$inferSelect;
 
 // ============================================
+// RECONCILIATION AUDIT LOGS
+// ============================================
+
+export const reconciliationActionEnum = pgEnum("reconciliation_action", [
+  "reconciled",
+  "unreconciled",
+  "balance_adjusted",
+  "difference_noted",
+  "bulk_reconciled"
+]);
+
+export const reconciliationAuditLogs = pgTable("reconciliation_audit_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
+  bankAccountId: integer("bank_account_id").references(() => plaidAccounts.id, { onDelete: 'set null' }),
+  action: reconciliationActionEnum("action").notNull(),
+  previousStatus: varchar("previous_status", { length: 50 }),
+  newStatus: varchar("new_status", { length: 50 }),
+  previousBalance: numeric("previous_balance", { precision: 12, scale: 2 }),
+  newBalance: numeric("new_balance", { precision: 12, scale: 2 }),
+  difference: numeric("difference", { precision: 12, scale: 2 }),
+  notes: text("notes"),
+  performedBy: varchar("performed_by").notNull().references(() => users.id),
+  performedAt: timestamp("performed_at").defaultNow().notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+}, (table) => ({
+  idx_recon_audit_org: index("idx_recon_audit_org").on(table.organizationId),
+  idx_recon_audit_tx: index("idx_recon_audit_tx").on(table.transactionId),
+  idx_recon_audit_account: index("idx_recon_audit_account").on(table.bankAccountId),
+  idx_recon_audit_date: index("idx_recon_audit_date").on(table.performedAt),
+}));
+
+export const insertReconciliationAuditLogSchema = createInsertSchema(reconciliationAuditLogs).omit({
+  id: true,
+  performedAt: true,
+});
+
+export type InsertReconciliationAuditLog = z.infer<typeof insertReconciliationAuditLogSchema>;
+export type ReconciliationAuditLog = typeof reconciliationAuditLogs.$inferSelect;
+
+// ============================================
+// RECONCILIATION ALERTS
+// ============================================
+
+export const reconciliationAlertTypeEnum = pgEnum("reconciliation_alert_type", [
+  "stale_unreconciled",     // Items unreconciled > 30 days
+  "balance_difference",      // Non-zero balance difference
+  "large_difference",        // Large variance (configurable threshold)
+  "missing_transactions"     // Bank transactions not matched
+]);
+
+export const reconciliationAlerts = pgTable("reconciliation_alerts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  bankAccountId: integer("bank_account_id").references(() => plaidAccounts.id, { onDelete: 'cascade' }),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'cascade' }),
+  alertType: reconciliationAlertTypeEnum("alert_type").notNull(),
+  daysSinceCreation: integer("days_since_creation"),
+  differenceAmount: numeric("difference_amount", { precision: 12, scale: 2 }),
+  description: text("description").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  sentTo: text("sent_to").notNull(),
+  acknowledged: boolean("acknowledged").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+}, (table) => ({
+  idx_recon_alerts_org: index("idx_recon_alerts_org").on(table.organizationId),
+  idx_recon_alerts_type: index("idx_recon_alerts_type").on(table.alertType),
+  idx_recon_alerts_account: index("idx_recon_alerts_account").on(table.bankAccountId),
+}));
+
+export const insertReconciliationAlertSchema = createInsertSchema(reconciliationAlerts).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type InsertReconciliationAlert = z.infer<typeof insertReconciliationAlertSchema>;
+export type ReconciliationAlert = typeof reconciliationAlerts.$inferSelect;
+
+// ============================================
 // PLAID INTEGRATIONS
 // ============================================
 
