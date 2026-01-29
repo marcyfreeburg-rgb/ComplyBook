@@ -61,7 +61,7 @@ export async function sendSecurityAlertIfNeeded(
               )
             );
           
-          orgAdmins.forEach(admin => {
+          orgAdmins.forEach((admin: { email: string | null }) => {
             if (admin.email) recipientEmails.add(admin.email);
           });
         } catch (err) {
@@ -83,7 +83,7 @@ export async function sendSecurityAlertIfNeeded(
     }
     
     // Send alerts to all recipients
-    for (const email of recipientEmails) {
+    for (const email of Array.from(recipientEmails)) {
       try {
         await sendSecurityAlertEmail({
           to: email,
