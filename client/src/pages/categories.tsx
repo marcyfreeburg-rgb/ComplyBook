@@ -25,15 +25,20 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
   const [newCategoryTaxDeductible, setNewCategoryTaxDeductible] = useState(true);
+  const [newCategoryFundType, setNewCategoryFundType] = useState<"unrestricted" | "restricted">("unrestricted");
   
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCategoryName, setEditCategoryName] = useState("");
   const [editCategoryType, setEditCategoryType] = useState<"income" | "expense">("expense");
   const [editParentCategoryId, setEditParentCategoryId] = useState<number | null>(null);
   const [editCategoryTaxDeductible, setEditCategoryTaxDeductible] = useState(true);
+  const [editCategoryFundType, setEditCategoryFundType] = useState<"unrestricted" | "restricted">("unrestricted");
   
   const [creatingSubcategoryFor, setCreatingSubcategoryFor] = useState<Category | null>(null);
   const [subcategoryName, setSubcategoryName] = useState("");
+  const [subcategoryFundType, setSubcategoryFundType] = useState<"unrestricted" | "restricted">("unrestricted");
+  
+  const isNonprofit = currentOrganization.type === 'nonprofit';
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
@@ -49,11 +54,13 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
         name: newCategoryName.trim(),
         type: newCategoryType,
         taxDeductible: newCategoryTaxDeductible,
+        fundType: isNonprofit ? newCategoryFundType : 'unrestricted',
         createdBy: userId,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/fund-accounting/${currentOrganization.id}`] });
       toast({
         title: "Category created",
         description: `${newCategoryName} has been added successfully.`,
@@ -62,6 +69,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       setNewCategoryName("");
       setNewCategoryType("expense");
       setNewCategoryTaxDeductible(true);
+      setNewCategoryFundType("unrestricted");
     },
     onError: (error: any) => {
       toast({
@@ -102,10 +110,12 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
         type: editCategoryType,
         parentCategoryId: editParentCategoryId,
         taxDeductible: editCategoryTaxDeductible,
+        fundType: isNonprofit ? editCategoryFundType : 'unrestricted',
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/fund-accounting/${currentOrganization.id}`] });
       toast({
         title: "Category updated",
         description: `${editCategoryName} has been updated successfully.`,
@@ -115,6 +125,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
       setEditCategoryType("expense");
       setEditParentCategoryId(null);
       setEditCategoryTaxDeductible(true);
+      setEditCategoryFundType("unrestricted");
     },
     onError: (error: any) => {
       toast({
@@ -135,17 +146,20 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
         name: subcategoryName.trim(),
         type: creatingSubcategoryFor.type,
         parentCategoryId: creatingSubcategoryFor.id,
+        fundType: isNonprofit ? subcategoryFundType : 'unrestricted',
         createdBy: userId,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/categories/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/fund-accounting/${currentOrganization.id}`] });
       toast({
         title: "Subcategory created",
         description: `${subcategoryName} has been added successfully.`,
       });
       setCreatingSubcategoryFor(null);
       setSubcategoryName("");
+      setSubcategoryFundType("unrestricted");
     },
     onError: (error: any) => {
       toast({
@@ -162,6 +176,7 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
     setEditCategoryType(category.type);
     setEditParentCategoryId(category.parentCategoryId ?? null);
     setEditCategoryTaxDeductible(category.taxDeductible);
+    setEditCategoryFundType((category as any).fundType || 'unrestricted');
   };
 
   // Separate parent and child categories, sorted alphabetically
@@ -246,6 +261,26 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                   </Label>
                 </div>
               )}
+              {isNonprofit && (
+                <div className="space-y-2">
+                  <Label htmlFor="category-fund-type">Fund Type (for fund accounting)</Label>
+                  <Select
+                    value={newCategoryFundType}
+                    onValueChange={(value: "unrestricted" | "restricted") => setNewCategoryFundType(value)}
+                  >
+                    <SelectTrigger id="category-fund-type" data-testid="select-category-fund-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unrestricted">Unrestricted</SelectItem>
+                      <SelectItem value="restricted">Restricted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Determines how transactions in this category roll up in fund accounting
+                  </p>
+                </div>
+              )}
               <Button
                 onClick={() => createCategoryMutation.mutate()}
                 disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
@@ -305,6 +340,26 @@ export default function Categories({ currentOrganization, userId }: CategoriesPr
                 <Label htmlFor="edit-category-tax-deductible" className="text-sm font-normal cursor-pointer">
                   Tax deductible expense
                 </Label>
+              </div>
+            )}
+            {isNonprofit && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-category-fund-type">Fund Type (for fund accounting)</Label>
+                <Select
+                  value={editCategoryFundType}
+                  onValueChange={(value: "unrestricted" | "restricted") => setEditCategoryFundType(value)}
+                >
+                  <SelectTrigger id="edit-category-fund-type" data-testid="select-edit-category-fund-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unrestricted">Unrestricted</SelectItem>
+                    <SelectItem value="restricted">Restricted</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Determines how transactions in this category roll up in fund accounting
+                </p>
               </div>
             )}
             <div className="space-y-2">

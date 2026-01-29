@@ -606,6 +606,7 @@ export const categories = pgTable("categories", {
   description: text("description"),
   parentCategoryId: integer("parent_category_id").references((): any => categories.id, { onDelete: 'set null' }),
   taxDeductible: boolean("tax_deductible").default(true).notNull(), // Whether expenses in this category are tax deductible
+  fundType: fundTypeEnum("fund_type").default('unrestricted'), // For nonprofit fund accounting - determines if transactions roll up to restricted or unrestricted
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

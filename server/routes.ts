@@ -10656,6 +10656,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fund accounting summary - calculates restricted/unrestricted totals from transactions based on category fundType
+  app.get("/api/fund-accounting/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const summary = await storage.getFundAccountingSummary(organizationId);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching fund accounting summary:", error);
+      res.status(500).json({ message: "Failed to fetch fund accounting summary" });
+    }
+  });
+
   // Program routes
   app.get("/api/programs/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {

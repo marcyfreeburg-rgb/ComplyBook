@@ -766,6 +766,15 @@ export interface IStorage {
   deleteFund(id: number): Promise<void>;
   updateFundBalance(fundId: number, amount: string, isIncrease: boolean): Promise<Fund>;
   getFundTransactions(fundId: number): Promise<Transaction[]>;
+  getFundAccountingSummary(organizationId: number): Promise<{
+    restrictedIncome: number;
+    unrestrictedIncome: number;
+    restrictedExpenses: number;
+    unrestrictedExpenses: number;
+    restrictedNet: number;
+    unrestrictedNet: number;
+    totalNet: number;
+  }>;
 
   // Nonprofit-specific: Program operations
   getPrograms(organizationId: number): Promise<Program[]>;
@@ -6463,6 +6472,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.fundId, fundId))
       .orderBy(desc(transactions.date));
     return txns;
+  }
+
+  async getFundAccountingSummary(organizationId: number): Promise<{
+    restrictedIncome: number;
+    unrestrictedIncome: number;
+    restrictedExpenses: number;
+    unrestrictedExpenses: number;
+    restrictedNet: number;
+    unrestrictedNet: number;
+    totalNet: number;
+  }> {
+    // Join transactions with categories to get fund type, then sum by type
+    // Use COALESCE to default uncategorized transactions to 'unrestricted'
+    const result = await db.select({
+      categoryFundType: sql<string>`COALESCE(${categories.fundType}, 'unrestricted')`,
+      transactionType: transactions.type,
+      totalAmount: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(eq(transactions.organizationId, organizationId))
+      .groupBy(sql`COALESCE(${categories.fundType}, 'unrestricted')`, transactions.type);
+
+    let restrictedIncome = 0;
+    let unrestrictedIncome = 0;
+    let restrictedExpenses = 0;
+    let unrestrictedExpenses = 0;
+
+    for (const row of result) {
+      const amount = parseFloat(row.totalAmount) || 0;
+      // Treat anything not explicitly 'unrestricted' as restricted (except default from COALESCE)
+      const isRestricted = row.categoryFundType !== 'unrestricted';
+      
+      if (row.transactionType === 'income') {
+        if (isRestricted) {
+          restrictedIncome += amount;
+        } else {
+          unrestrictedIncome += amount;
+        }
+      } else if (row.transactionType === 'expense') {
+        if (isRestricted) {
+          restrictedExpenses += amount;
+        } else {
+          unrestrictedExpenses += amount;
+        }
+      }
+    }
+
+    const restrictedNet = restrictedIncome - restrictedExpenses;
+    const unrestrictedNet = unrestrictedIncome - unrestrictedExpenses;
+    const totalNet = restrictedNet + unrestrictedNet;
+
+    return {
+      restrictedIncome,
+      unrestrictedIncome,
+      restrictedExpenses,
+      unrestrictedExpenses,
+      restrictedNet,
+      unrestrictedNet,
+      totalNet,
+    };
   }
 
   // Program operations

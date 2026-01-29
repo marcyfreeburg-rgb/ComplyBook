@@ -50,6 +50,21 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     enabled: currentOrganization.type === 'nonprofit',
   });
 
+  // Fetch fund accounting summary calculated from transactions based on category fundType
+  interface FundAccountingSummary {
+    restrictedIncome: number;
+    unrestrictedIncome: number;
+    restrictedExpenses: number;
+    unrestrictedExpenses: number;
+    restrictedNet: number;
+    unrestrictedNet: number;
+    totalNet: number;
+  }
+  const { data: fundAccountingSummary } = useQuery<FundAccountingSummary>({
+    queryKey: [`/api/fund-accounting/${currentOrganization.id}`],
+    enabled: currentOrganization.type === 'nonprofit',
+  });
+
   const { data: fundTransactions = [], isLoading: isLoadingTransactions } = useQuery<Transaction[]>({
     queryKey: [`/api/funds/${viewingFundId}/transactions`],
     enabled: !!viewingFundId && isTransactionsDialogOpen,
@@ -187,34 +202,17 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     }
   };
 
-  // Calculate totals by fund type (including grants)
-  const fundsUnrestricted = funds
-    .filter(f => f.fundType === "unrestricted")
-    .reduce((sum, f) => sum + parseFloat(f.currentBalance), 0);
+  // Fund accounting totals - calculated from transactions based on category fundType
+  // This is the primary source of truth for restricted/unrestricted rollups
+  const totalUnrestricted = fundAccountingSummary?.unrestrictedNet || 0;
+  const totalRestricted = fundAccountingSummary?.restrictedNet || 0;
+  const totalAllFunds = fundAccountingSummary?.totalNet || 0;
 
-  const fundsRestricted = funds
-    .filter(f => f.fundType !== "unrestricted")
-    .reduce((sum, f) => sum + parseFloat(f.currentBalance), 0);
-
-  // Calculate grant balances by fund type using the remainingBalance from the API
-  // remainingBalance already includes: grant amount + income - expenses
-  const getGrantRemaining = (g: GrantWithBalances) => {
-    return parseFloat(g.remainingBalance) || 0;
-  };
-
-  const grantsUnrestricted = grants
-    .filter(g => g.fundType === "unrestricted")
-    .reduce((sum, g) => sum + getGrantRemaining(g), 0);
-
-  // Match funds logic: anything not unrestricted counts as restricted
-  const grantsRestricted = grants
-    .filter(g => g.fundType !== "unrestricted")
-    .reduce((sum, g) => sum + getGrantRemaining(g), 0);
-
-  // Combined totals
-  const totalUnrestricted = fundsUnrestricted + grantsUnrestricted;
-  const totalRestricted = fundsRestricted + grantsRestricted;
-  const totalAllFunds = totalUnrestricted + totalRestricted;
+  // Breakdown details for display
+  const unrestrictedIncome = fundAccountingSummary?.unrestrictedIncome || 0;
+  const unrestrictedExpenses = fundAccountingSummary?.unrestrictedExpenses || 0;
+  const restrictedIncome = fundAccountingSummary?.restrictedIncome || 0;
+  const restrictedExpenses = fundAccountingSummary?.restrictedExpenses || 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="page-funds">
@@ -327,42 +325,38 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Total Unrestricted</CardTitle>
+            <CardTitle className="text-sm font-medium">Net Unrestricted</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-unrestricted">
-              {formatCurrency(totalUnrestricted, currentOrganization.currency)}
+              {formatCurrency(totalUnrestricted, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
               Available for general use
             </p>
-            {(grantsUnrestricted > 0 || fundsUnrestricted > 0) && (
-              <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                {fundsUnrestricted > 0 && <div>Funds: {formatCurrency(fundsUnrestricted, currentOrganization.currency)}</div>}
-                {grantsUnrestricted > 0 && <div>Grants: {formatCurrency(grantsUnrestricted, currentOrganization.currency)}</div>}
-              </div>
-            )}
+            <div className="text-xs text-muted-foreground mt-2 space-y-1">
+              <div className="text-green-600">Income: {formatCurrency(unrestrictedIncome, 'USD')}</div>
+              <div className="text-red-600">Expenses: {formatCurrency(unrestrictedExpenses, 'USD')}</div>
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">Total Restricted</CardTitle>
+            <CardTitle className="text-sm font-medium">Net Restricted</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-restricted">
-              {formatCurrency(totalRestricted, currentOrganization.currency)}
+              {formatCurrency(totalRestricted, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
               With donor restrictions
             </p>
-            {(grantsRestricted > 0 || fundsRestricted > 0) && (
-              <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                {fundsRestricted > 0 && <div>Funds: {formatCurrency(fundsRestricted, currentOrganization.currency)}</div>}
-                {grantsRestricted > 0 && <div>Grants: {formatCurrency(grantsRestricted, currentOrganization.currency)}</div>}
-              </div>
-            )}
+            <div className="text-xs text-muted-foreground mt-2 space-y-1">
+              <div className="text-green-600">Income: {formatCurrency(restrictedIncome, 'USD')}</div>
+              <div className="text-red-600">Expenses: {formatCurrency(restrictedExpenses, 'USD')}</div>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -372,10 +366,10 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-all-funds">
-              {formatCurrency(totalAllFunds, currentOrganization.currency)}
+              {formatCurrency(totalAllFunds, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
-              All funds and grants combined
+              Combined net (income - expenses)
             </p>
           </CardContent>
         </Card>
@@ -428,7 +422,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
                   <div>
                     <p className="text-sm text-muted-foreground">Current Balance</p>
                     <p className="text-2xl font-bold" data-testid={`text-fund-balance-${fund.id}`}>
-                      {formatCurrency(parseFloat(fund.currentBalance), currentOrganization.currency)}
+                      {formatCurrency(parseFloat(fund.currentBalance), 'USD')}
                     </p>
                   </div>
                   {fund.restrictions && (
@@ -595,7 +589,7 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
                       <div className="text-right">
                         <p className={`font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} data-testid={`transaction-amount-${transaction.id}`}>
                           {transaction.type === 'income' ? '+' : '-'}
-                          {formatCurrency(parseFloat(transaction.amount), currentOrganization.currency)}
+                          {formatCurrency(parseFloat(transaction.amount), 'USD')}
                         </p>
                         <Badge variant="outline" data-testid={`transaction-type-${transaction.id}`}>
                           {transaction.type}
