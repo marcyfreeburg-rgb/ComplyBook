@@ -531,6 +531,9 @@ export const organizations = pgTable("organizations", {
   invoicePaymentMethods: text("invoice_payment_methods"),
   invoiceFooter: text("invoice_footer"),
   invoiceCustomFields: jsonb("invoice_custom_fields"),
+  fiscalYearStartMonth: integer("fiscal_year_start_month").default(1),
+  fiscalYearStartDay: integer("fiscal_year_start_day").default(1),
+  defaultBudgetView: varchar("default_budget_view", { length: 50 }).default('current_year'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1173,6 +1176,41 @@ export type InsertBudgetIncomeItem = z.infer<typeof insertBudgetIncomeItemSchema
 export type BudgetIncomeItem = typeof budgetIncomeItems.$inferSelect;
 
 // ============================================
+// BUDGET ALERTS
+// ============================================
+
+export const budgetAlertTypeEnum = pgEnum("budget_alert_type", ["threshold_50", "threshold_75", "threshold_90", "over_budget", "burn_rate"]);
+
+export const budgetAlerts = pgTable("budget_alerts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  budgetId: integer("budget_id").notNull().references(() => budgets.id, { onDelete: 'cascade' }),
+  budgetItemId: integer("budget_item_id").references(() => budgetItems.id, { onDelete: 'cascade' }),
+  alertType: budgetAlertTypeEnum("alert_type").notNull(),
+  percentUsed: numeric("percent_used", { precision: 6, scale: 2 }).notNull(),
+  projectedOverage: numeric("projected_overage", { precision: 12, scale: 2 }),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  sentTo: text("sent_to").notNull(),
+  acknowledged: boolean("acknowledged").default(false),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+}, (table) => ({
+  idx_budget_alerts_budget: index("idx_budget_alerts_budget").on(table.budgetId),
+  idx_budget_alerts_item: index("idx_budget_alerts_item").on(table.budgetItemId),
+  idx_budget_alerts_type: index("idx_budget_alerts_type").on(table.alertType),
+}));
+
+export const insertBudgetAlertSchema = createInsertSchema(budgetAlerts).omit({
+  id: true,
+  sentAt: true,
+}).extend({
+  percentUsed: z.string().or(z.number()).transform(val => String(val)),
+  projectedOverage: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+});
+
+export type InsertBudgetAlert = z.infer<typeof insertBudgetAlertSchema>;
+export type BudgetAlert = typeof budgetAlerts.$inferSelect;
+
+// ============================================
 // PLAID INTEGRATIONS
 // ============================================
 
@@ -1382,6 +1420,10 @@ export const cashFlowScenarios = pgTable("cash_flow_scenarios", {
   description: text("description"),
   incomeGrowthRate: numeric("income_growth_rate", { precision: 5, scale: 2 }).default('0'),
   expenseGrowthRate: numeric("expense_growth_rate", { precision: 5, scale: 2 }).default('0'),
+  donationGrowthRate: numeric("donation_growth_rate", { precision: 5, scale: 2 }).default('0'),
+  grantGrowthRate: numeric("grant_growth_rate", { precision: 5, scale: 2 }).default('0'),
+  seasonalAdjustments: jsonb("seasonal_adjustments"),
+  assumptions: text("assumptions"),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   createdBy: varchar("created_by").notNull().references(() => users.id),

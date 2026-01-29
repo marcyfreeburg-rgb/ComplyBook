@@ -240,6 +240,10 @@ import {
   perDiemExpenses,
   type PerDiemExpense,
   type InsertPerDiemExpense,
+  // Budget Alerts
+  budgetAlerts,
+  type BudgetAlert,
+  type InsertBudgetAlert,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -443,6 +447,68 @@ export interface IStorage {
     difference: string;
     percentUsed: number;
   }>>;
+
+  // Budget Alert operations
+  getBudgetAlerts(budgetId: number): Promise<BudgetAlert[]>;
+  getRecentBudgetAlerts(budgetId: number, alertType: string): Promise<BudgetAlert | null>;
+  createBudgetAlert(alert: InsertBudgetAlert): Promise<BudgetAlert>;
+  acknowledgeBudgetAlert(id: number, userId: string): Promise<BudgetAlert>;
+  checkAndSendBudgetAlerts(organizationId: number): Promise<{ alertsSent: number; budgetsChecked: number }>;
+
+  // Program-level budget operations with roll-up
+  getProgramBudgetSummary(organizationId: number): Promise<Array<{
+    programId: number | null;
+    programName: string;
+    budgetCount: number;
+    totalBudgeted: string;
+    totalActual: string;
+    variance: string;
+    percentUsed: number;
+    status: 'under_budget' | 'on_track' | 'over_budget';
+  }>>;
+  getOrganizationBudgetRollup(organizationId: number): Promise<{
+    totalBudgeted: string;
+    totalActual: string;
+    variance: string;
+    percentUsed: number;
+    programBreakdown: Array<{
+      programId: number | null;
+      programName: string;
+      budgeted: string;
+      actual: string;
+      percentOfTotal: number;
+    }>;
+  }>;
+
+  // Multi-year budget operations
+  getMultiYearBudgetSummary(organizationId: number, years?: number[]): Promise<Array<{
+    year: number;
+    fiscalYear: string;
+    totalBudgeted: string;
+    totalActual: string;
+    variance: string;
+    percentUsed: number;
+    budgetCount: number;
+  }>>;
+  getBudgetsByFiscalYear(organizationId: number, fiscalYear: string): Promise<Budget[]>;
+  getRollingForecast(organizationId: number, months: number): Promise<Array<{
+    month: string;
+    projectedIncome: string;
+    projectedExpenses: string;
+    projectedBalance: string;
+    isHistorical: boolean;
+  }>>;
+
+  // Enhanced cash flow operations
+  generateCashFlowProjection(scenarioId: number): Promise<Array<{
+    month: string;
+    projectedIncome: string;
+    projectedExpenses: string;
+    projectedBalance: string;
+    seasonalFactor: number;
+    notes: string;
+  }>>;
+  exportCashFlowProjections(organizationId: number, scenarioId?: number, format?: 'csv' | 'json'): Promise<string>;
 
   // Dashboard/Report operations
   getDashboardStats(organizationId: number): Promise<{
@@ -3267,6 +3333,540 @@ export class DatabaseStorage implements IStorage {
     }
 
     return results;
+  }
+
+  // Budget Alert operations
+  async getBudgetAlerts(budgetId: number): Promise<BudgetAlert[]> {
+    return await db
+      .select()
+      .from(budgetAlerts)
+      .where(eq(budgetAlerts.budgetId, budgetId))
+      .orderBy(desc(budgetAlerts.sentAt));
+  }
+
+  async getRecentBudgetAlerts(budgetId: number, alertType: string): Promise<BudgetAlert | null> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [alert] = await db
+      .select()
+      .from(budgetAlerts)
+      .where(
+        and(
+          eq(budgetAlerts.budgetId, budgetId),
+          eq(budgetAlerts.alertType, alertType as any),
+          gte(budgetAlerts.sentAt, oneDayAgo)
+        )
+      )
+      .orderBy(desc(budgetAlerts.sentAt))
+      .limit(1);
+    return alert || null;
+  }
+
+  async createBudgetAlert(alert: InsertBudgetAlert): Promise<BudgetAlert> {
+    const [created] = await db.insert(budgetAlerts).values(alert).returning();
+    return created;
+  }
+
+  async acknowledgeBudgetAlert(id: number, userId: string): Promise<BudgetAlert> {
+    const [updated] = await db
+      .update(budgetAlerts)
+      .set({ 
+        acknowledged: true, 
+        acknowledgedAt: new Date(), 
+        acknowledgedBy: userId 
+      })
+      .where(eq(budgetAlerts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async checkAndSendBudgetAlerts(organizationId: number): Promise<{ alertsSent: number; budgetsChecked: number }> {
+    const orgBudgets = await this.getBudgets(organizationId);
+    let alertsSent = 0;
+    const budgetsChecked = orgBudgets.length;
+
+    for (const budget of orgBudgets) {
+      const now = new Date();
+      const startDate = new Date(budget.startDate);
+      const endDate = new Date(budget.endDate);
+      
+      if (now < startDate || now > endDate) continue;
+
+      const budgetVsActual = await this.getBudgetVsActual(budget.id);
+      const totalBudgeted = budgetVsActual.reduce((sum, item) => sum + parseFloat(item.budgeted), 0);
+      const totalActual = budgetVsActual.reduce((sum, item) => sum + parseFloat(item.actual), 0);
+      
+      if (totalBudgeted === 0) continue;
+
+      const percentUsed = (totalActual / totalBudgeted) * 100;
+      
+      const elapsedDays = Math.max(1, (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const remainingDays = Math.max(0, (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const dailyBurnRate = totalActual / elapsedDays;
+      const projectedEndSpend = totalActual + (dailyBurnRate * remainingDays);
+      const projectedOverage = projectedEndSpend > totalBudgeted ? projectedEndSpend - totalBudgeted : 0;
+
+      const alertsToCheck: Array<{type: string; threshold: number; enabled: boolean}> = [
+        { type: 'threshold_50', threshold: 50, enabled: budget.alertAt50 ?? false },
+        { type: 'threshold_75', threshold: 75, enabled: budget.alertAt75 ?? true },
+        { type: 'threshold_90', threshold: 90, enabled: budget.alertAt90 ?? true },
+        { type: 'over_budget', threshold: 100, enabled: true },
+      ];
+
+      if (projectedOverage > 0 && percentUsed < 100) {
+        alertsToCheck.push({ type: 'burn_rate', threshold: 0, enabled: true });
+      }
+
+      for (const alertConfig of alertsToCheck) {
+        if (!alertConfig.enabled) continue;
+        if (alertConfig.type !== 'burn_rate' && percentUsed < alertConfig.threshold) continue;
+
+        const recentAlert = await this.getRecentBudgetAlerts(budget.id, alertConfig.type);
+        if (recentAlert) continue;
+
+        const org = await this.getOrganization(organizationId);
+        const ownerRole = await this.getOrganizationOwner(organizationId);
+        if (!ownerRole || !org) continue;
+
+        const owner = await this.getUser(ownerRole.userId);
+        if (!owner?.email) continue;
+
+        await this.createBudgetAlert({
+          budgetId: budget.id,
+          alertType: alertConfig.type as any,
+          percentUsed: percentUsed.toString(),
+          projectedOverage: projectedOverage > 0 ? projectedOverage.toString() : null,
+          sentTo: owner.email,
+        });
+        alertsSent++;
+      }
+    }
+
+    return { alertsSent, budgetsChecked };
+  }
+
+  // Program-level budget operations with roll-up
+  async getProgramBudgetSummary(organizationId: number): Promise<Array<{
+    programId: number | null;
+    programName: string;
+    budgetCount: number;
+    totalBudgeted: string;
+    totalActual: string;
+    variance: string;
+    percentUsed: number;
+    status: 'under_budget' | 'on_track' | 'over_budget';
+  }>> {
+    const allBudgets = await this.getBudgets(organizationId);
+    const allPrograms = await this.getPrograms(organizationId);
+    const programMap = new Map(allPrograms.map(p => [p.id, p.name]));
+
+    const programSummaries = new Map<number | null, {
+      budgetCount: number;
+      totalBudgeted: number;
+      totalActual: number;
+    }>();
+
+    for (const budget of allBudgets) {
+      const programId = budget.programId;
+      const budgetVsActual = await this.getBudgetVsActual(budget.id);
+      const totalBudgeted = budgetVsActual.reduce((sum, item) => sum + parseFloat(item.budgeted), 0);
+      const totalActual = budgetVsActual.reduce((sum, item) => sum + parseFloat(item.actual), 0);
+
+      const existing = programSummaries.get(programId) || { budgetCount: 0, totalBudgeted: 0, totalActual: 0 };
+      programSummaries.set(programId, {
+        budgetCount: existing.budgetCount + 1,
+        totalBudgeted: existing.totalBudgeted + totalBudgeted,
+        totalActual: existing.totalActual + totalActual,
+      });
+    }
+
+    const results: Array<{
+      programId: number | null;
+      programName: string;
+      budgetCount: number;
+      totalBudgeted: string;
+      totalActual: string;
+      variance: string;
+      percentUsed: number;
+      status: 'under_budget' | 'on_track' | 'over_budget';
+    }> = [];
+
+    for (const [programId, data] of programSummaries.entries()) {
+      const variance = data.totalBudgeted - data.totalActual;
+      const percentUsed = data.totalBudgeted > 0 ? (data.totalActual / data.totalBudgeted) * 100 : 0;
+      
+      let status: 'under_budget' | 'on_track' | 'over_budget';
+      if (percentUsed > 100) {
+        status = 'over_budget';
+      } else if (percentUsed >= 80) {
+        status = 'on_track';
+      } else {
+        status = 'under_budget';
+      }
+
+      results.push({
+        programId,
+        programName: programId ? (programMap.get(programId) || 'Unknown Program') : 'Unassigned',
+        budgetCount: data.budgetCount,
+        totalBudgeted: data.totalBudgeted.toFixed(2),
+        totalActual: data.totalActual.toFixed(2),
+        variance: variance.toFixed(2),
+        percentUsed: Math.round(percentUsed * 10) / 10,
+        status,
+      });
+    }
+
+    return results.sort((a, b) => parseFloat(b.totalBudgeted) - parseFloat(a.totalBudgeted));
+  }
+
+  async getOrganizationBudgetRollup(organizationId: number): Promise<{
+    totalBudgeted: string;
+    totalActual: string;
+    variance: string;
+    percentUsed: number;
+    programBreakdown: Array<{
+      programId: number | null;
+      programName: string;
+      budgeted: string;
+      actual: string;
+      percentOfTotal: number;
+    }>;
+  }> {
+    const programSummary = await this.getProgramBudgetSummary(organizationId);
+    
+    const totalBudgeted = programSummary.reduce((sum, p) => sum + parseFloat(p.totalBudgeted), 0);
+    const totalActual = programSummary.reduce((sum, p) => sum + parseFloat(p.totalActual), 0);
+    const variance = totalBudgeted - totalActual;
+    const percentUsed = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
+
+    const programBreakdown = programSummary.map(p => ({
+      programId: p.programId,
+      programName: p.programName,
+      budgeted: p.totalBudgeted,
+      actual: p.totalActual,
+      percentOfTotal: totalBudgeted > 0 ? (parseFloat(p.totalBudgeted) / totalBudgeted) * 100 : 0,
+    }));
+
+    return {
+      totalBudgeted: totalBudgeted.toFixed(2),
+      totalActual: totalActual.toFixed(2),
+      variance: variance.toFixed(2),
+      percentUsed: Math.round(percentUsed * 10) / 10,
+      programBreakdown,
+    };
+  }
+
+  // Multi-year budget operations
+  async getMultiYearBudgetSummary(organizationId: number, years?: number[]): Promise<Array<{
+    year: number;
+    fiscalYear: string;
+    totalBudgeted: string;
+    totalActual: string;
+    variance: string;
+    percentUsed: number;
+    budgetCount: number;
+  }>> {
+    const org = await this.getOrganization(organizationId);
+    const fiscalYearStartMonth = org?.fiscalYearStartMonth || 1;
+    
+    const allBudgets = await this.getBudgets(organizationId);
+    const yearSummaries = new Map<number, {
+      totalBudgeted: number;
+      totalActual: number;
+      budgetCount: number;
+    }>();
+
+    for (const budget of allBudgets) {
+      const startDate = new Date(budget.startDate);
+      let fiscalYear = startDate.getFullYear();
+      if (fiscalYearStartMonth > 1 && startDate.getMonth() + 1 >= fiscalYearStartMonth) {
+        fiscalYear += 1;
+      }
+
+      if (years && !years.includes(fiscalYear)) continue;
+
+      const budgetVsActual = await this.getBudgetVsActual(budget.id);
+      const totalBudgeted = budgetVsActual.reduce((sum, item) => sum + parseFloat(item.budgeted), 0);
+      const totalActual = budgetVsActual.reduce((sum, item) => sum + parseFloat(item.actual), 0);
+
+      const existing = yearSummaries.get(fiscalYear) || { totalBudgeted: 0, totalActual: 0, budgetCount: 0 };
+      yearSummaries.set(fiscalYear, {
+        totalBudgeted: existing.totalBudgeted + totalBudgeted,
+        totalActual: existing.totalActual + totalActual,
+        budgetCount: existing.budgetCount + 1,
+      });
+    }
+
+    const results: Array<{
+      year: number;
+      fiscalYear: string;
+      totalBudgeted: string;
+      totalActual: string;
+      variance: string;
+      percentUsed: number;
+      budgetCount: number;
+    }> = [];
+
+    for (const [year, data] of yearSummaries.entries()) {
+      const variance = data.totalBudgeted - data.totalActual;
+      const percentUsed = data.totalBudgeted > 0 ? (data.totalActual / data.totalBudgeted) * 100 : 0;
+      
+      const fyLabel = fiscalYearStartMonth === 1 
+        ? `${year}` 
+        : `FY${year} (${fiscalYearStartMonth > 6 ? year - 1 : year}/${fiscalYearStartMonth > 6 ? year : year + 1})`;
+
+      results.push({
+        year,
+        fiscalYear: fyLabel,
+        totalBudgeted: data.totalBudgeted.toFixed(2),
+        totalActual: data.totalActual.toFixed(2),
+        variance: variance.toFixed(2),
+        percentUsed: Math.round(percentUsed * 10) / 10,
+        budgetCount: data.budgetCount,
+      });
+    }
+
+    return results.sort((a, b) => b.year - a.year);
+  }
+
+  async getBudgetsByFiscalYear(organizationId: number, fiscalYear: string): Promise<Budget[]> {
+    const org = await this.getOrganization(organizationId);
+    const fiscalYearStartMonth = org?.fiscalYearStartMonth || 1;
+    const fyNumber = parseInt(fiscalYear.replace(/\D/g, ''));
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (fiscalYearStartMonth === 1) {
+      startDate = new Date(fyNumber, 0, 1);
+      endDate = new Date(fyNumber, 11, 31, 23, 59, 59);
+    } else {
+      startDate = new Date(fyNumber - 1, fiscalYearStartMonth - 1, 1);
+      endDate = new Date(fyNumber, fiscalYearStartMonth - 1, 0, 23, 59, 59);
+    }
+
+    return await db
+      .select()
+      .from(budgets)
+      .where(
+        and(
+          eq(budgets.organizationId, organizationId),
+          gte(budgets.startDate, startDate),
+          lte(budgets.endDate, endDate)
+        )
+      )
+      .orderBy(desc(budgets.startDate));
+  }
+
+  async getRollingForecast(organizationId: number, months: number = 12): Promise<Array<{
+    month: string;
+    projectedIncome: string;
+    projectedExpenses: string;
+    projectedBalance: string;
+    isHistorical: boolean;
+  }>> {
+    const now = new Date();
+    const results: Array<{
+      month: string;
+      projectedIncome: string;
+      projectedExpenses: string;
+      projectedBalance: string;
+      isHistorical: boolean;
+    }> = [];
+
+    const historicalMonths = 6;
+    let runningBalance = 0;
+
+    for (let i = -historicalMonths; i <= months; i++) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      const monthEnd = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59);
+
+      const isHistorical = i < 0;
+      const monthLabel = targetDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+
+      if (isHistorical || i === 0) {
+        const [incomeResult] = await db
+          .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+          .from(transactions)
+          .where(and(
+            eq(transactions.organizationId, organizationId),
+            eq(transactions.type, 'income'),
+            gte(transactions.date, monthStart),
+            lte(transactions.date, monthEnd)
+          ));
+
+        const [expenseResult] = await db
+          .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+          .from(transactions)
+          .where(and(
+            eq(transactions.organizationId, organizationId),
+            eq(transactions.type, 'expense'),
+            gte(transactions.date, monthStart),
+            lte(transactions.date, monthEnd)
+          ));
+
+        const income = parseFloat(incomeResult?.total || '0');
+        const expenses = parseFloat(expenseResult?.total || '0');
+        runningBalance += income - expenses;
+
+        results.push({
+          month: monthLabel,
+          projectedIncome: income.toFixed(2),
+          projectedExpenses: expenses.toFixed(2),
+          projectedBalance: runningBalance.toFixed(2),
+          isHistorical: true,
+        });
+      } else {
+        const avgIncome = results.length > 0 
+          ? results.filter(r => r.isHistorical).reduce((sum, r) => sum + parseFloat(r.projectedIncome), 0) / historicalMonths
+          : 0;
+        const avgExpenses = results.length > 0 
+          ? results.filter(r => r.isHistorical).reduce((sum, r) => sum + parseFloat(r.projectedExpenses), 0) / historicalMonths
+          : 0;
+
+        runningBalance += avgIncome - avgExpenses;
+
+        results.push({
+          month: monthLabel,
+          projectedIncome: avgIncome.toFixed(2),
+          projectedExpenses: avgExpenses.toFixed(2),
+          projectedBalance: runningBalance.toFixed(2),
+          isHistorical: false,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  // Enhanced cash flow operations
+  async generateCashFlowProjection(scenarioId: number): Promise<Array<{
+    month: string;
+    projectedIncome: string;
+    projectedExpenses: string;
+    projectedBalance: string;
+    seasonalFactor: number;
+    notes: string;
+  }>> {
+    const [scenario] = await db.select().from(cashFlowScenarios).where(eq(cashFlowScenarios.id, scenarioId));
+    if (!scenario) {
+      throw new Error('Scenario not found');
+    }
+
+    const seasonalAdjustments = (scenario.seasonalAdjustments as Record<string, number>) || {};
+    const defaultSeasonalFactors: Record<string, number> = {
+      '1': 0.8, '2': 0.9, '3': 1.0, '4': 1.0, '5': 1.0, '6': 0.9,
+      '7': 0.85, '8': 0.85, '9': 1.0, '10': 1.1, '11': 1.2, '12': 1.3
+    };
+
+    const incomeGrowthRate = parseFloat(scenario.incomeGrowthRate || '0') / 100;
+    const expenseGrowthRate = parseFloat(scenario.expenseGrowthRate || '0') / 100;
+
+    const historicalIncome = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`, month: sql<string>`TO_CHAR(${transactions.date}, 'YYYY-MM')` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, scenario.organizationId),
+        eq(transactions.type, 'income'),
+        gte(transactions.date, new Date(Date.now() - 365 * 24 * 60 * 60 * 1000))
+      ))
+      .groupBy(sql`TO_CHAR(${transactions.date}, 'YYYY-MM')`);
+
+    const historicalExpenses = await db
+      .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`, month: sql<string>`TO_CHAR(${transactions.date}, 'YYYY-MM')` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.organizationId, scenario.organizationId),
+        eq(transactions.type, 'expense'),
+        gte(transactions.date, new Date(Date.now() - 365 * 24 * 60 * 60 * 1000))
+      ))
+      .groupBy(sql`TO_CHAR(${transactions.date}, 'YYYY-MM')`);
+
+    const avgMonthlyIncome = historicalIncome.length > 0 
+      ? historicalIncome.reduce((sum, r) => sum + parseFloat(r.total), 0) / historicalIncome.length
+      : 0;
+    const avgMonthlyExpenses = historicalExpenses.length > 0
+      ? historicalExpenses.reduce((sum, r) => sum + parseFloat(r.total), 0) / historicalExpenses.length
+      : 0;
+
+    const results: Array<{
+      month: string;
+      projectedIncome: string;
+      projectedExpenses: string;
+      projectedBalance: string;
+      seasonalFactor: number;
+      notes: string;
+    }> = [];
+
+    const startDate = new Date(scenario.startDate);
+    const endDate = new Date(scenario.endDate);
+    let runningBalance = 0;
+    let monthIndex = 0;
+
+    for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
+      const monthNum = (d.getMonth() + 1).toString();
+      const seasonalFactor = seasonalAdjustments[monthNum] || defaultSeasonalFactors[monthNum] || 1;
+      const growthFactor = Math.pow(1 + incomeGrowthRate, monthIndex / 12);
+      const expenseGrowthFactor = Math.pow(1 + expenseGrowthRate, monthIndex / 12);
+
+      const projectedIncome = avgMonthlyIncome * seasonalFactor * growthFactor;
+      const projectedExpenses = avgMonthlyExpenses * expenseGrowthFactor;
+      runningBalance += projectedIncome - projectedExpenses;
+
+      const monthLabel = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      const notes = seasonalFactor !== 1 
+        ? `Seasonal adjustment: ${(seasonalFactor * 100).toFixed(0)}%` 
+        : '';
+
+      results.push({
+        month: monthLabel,
+        projectedIncome: projectedIncome.toFixed(2),
+        projectedExpenses: projectedExpenses.toFixed(2),
+        projectedBalance: runningBalance.toFixed(2),
+        seasonalFactor,
+        notes,
+      });
+
+      monthIndex++;
+    }
+
+    return results;
+  }
+
+  async exportCashFlowProjections(organizationId: number, scenarioId?: number, format: 'csv' | 'json' = 'csv'): Promise<string> {
+    let projections: Array<{
+      month: string;
+      projectedIncome: string;
+      projectedExpenses: string;
+      projectedBalance: string;
+      seasonalFactor: number;
+      notes: string;
+    }> = [];
+
+    if (scenarioId) {
+      projections = await this.generateCashFlowProjection(scenarioId);
+    } else {
+      const scenarios = await db.select().from(cashFlowScenarios).where(eq(cashFlowScenarios.organizationId, organizationId)).limit(1);
+      if (scenarios.length > 0) {
+        projections = await this.generateCashFlowProjection(scenarios[0].id);
+      }
+    }
+
+    if (format === 'json') {
+      return JSON.stringify(projections, null, 2);
+    }
+
+    const headers = ['Month', 'Projected Income', 'Projected Expenses', 'Projected Balance', 'Seasonal Factor', 'Notes'];
+    const rows = projections.map(p => [
+      p.month,
+      p.projectedIncome,
+      p.projectedExpenses,
+      p.projectedBalance,
+      p.seasonalFactor.toString(),
+      `"${p.notes}"`
+    ].join(','));
+
+    return [headers.join(','), ...rows].join('\n');
   }
 
   // Dashboard/Report operations

@@ -856,3 +856,186 @@ ${organizationName}
   await client.send(msg);
   console.log(`Donation letter email sent to ${to} for donor ${donorName}`);
 }
+
+// ============================================
+// BUDGET ALERT EMAILS
+// ============================================
+
+interface BudgetAlertEmailParams {
+  to: string;
+  budgetName: string;
+  organizationName: string;
+  alertType: 'threshold_50' | 'threshold_75' | 'threshold_90' | 'over_budget' | 'burn_rate';
+  percentUsed: number;
+  budgetedAmount: number;
+  actualSpent: number;
+  categoryName?: string;
+  daysRemaining?: number;
+  projectedOverage?: number;
+  dashboardUrl: string;
+  branding?: {
+    primaryColor?: string;
+    logoUrl?: string;
+  };
+}
+
+export async function sendBudgetAlertEmail({
+  to,
+  budgetName,
+  organizationName,
+  alertType,
+  percentUsed,
+  budgetedAmount,
+  actualSpent,
+  categoryName,
+  daysRemaining,
+  projectedOverage,
+  dashboardUrl,
+  branding
+}: BudgetAlertEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const primaryColor = branding?.primaryColor || '#0070f3';
+  const logoHtml = branding?.logoUrl 
+    ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 150px; height: auto;" /></div>`
+    : '';
+
+  let alertTitle: string;
+  let alertColor: string;
+  let alertIcon: string;
+  let alertDescription: string;
+
+  switch (alertType) {
+    case 'threshold_50':
+      alertTitle = '50% Budget Threshold Reached';
+      alertColor = '#3b82f6';
+      alertIcon = '[INFO]';
+      alertDescription = `Your budget "${budgetName}" has reached 50% utilization.`;
+      break;
+    case 'threshold_75':
+      alertTitle = '75% Budget Threshold - Attention Required';
+      alertColor = '#f59e0b';
+      alertIcon = '[WARNING]';
+      alertDescription = `Your budget "${budgetName}" has reached 75% utilization. Consider reviewing upcoming expenses.`;
+      break;
+    case 'threshold_90':
+      alertTitle = '90% Budget Threshold - Critical';
+      alertColor = '#ef4444';
+      alertIcon = '[CRITICAL]';
+      alertDescription = `Your budget "${budgetName}" has reached 90% utilization. Immediate attention required.`;
+      break;
+    case 'over_budget':
+      alertTitle = 'Budget Exceeded';
+      alertColor = '#dc2626';
+      alertIcon = '[ALERT]';
+      alertDescription = `Your budget "${budgetName}" has exceeded the allocated amount.`;
+      break;
+    case 'burn_rate':
+      alertTitle = 'High Burn Rate Alert';
+      alertColor = '#ea580c';
+      alertIcon = '[BURN RATE]';
+      alertDescription = `Your budget "${budgetName}" is being spent faster than expected and may exceed the allocated amount.`;
+      break;
+    default:
+      alertTitle = 'Budget Alert';
+      alertColor = '#3b82f6';
+      alertIcon = '[INFO]';
+      alertDescription = `An alert has been triggered for budget "${budgetName}".`;
+  }
+
+  const remaining = budgetedAmount - actualSpent;
+  const categoryLine = categoryName ? `<p style="margin: 0 0 10px 0;"><strong>Category:</strong> ${categoryName}</p>` : '';
+  const daysLine = daysRemaining !== undefined ? `<p style="margin: 0 0 10px 0;"><strong>Days Remaining:</strong> ${daysRemaining} days</p>` : '';
+  const projectedLine = projectedOverage && projectedOverage > 0 
+    ? `<p style="margin: 0 0 10px 0; color: #dc2626;"><strong>Projected Overage:</strong> $${projectedOverage.toFixed(2)}</p>` 
+    : '';
+
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `${alertIcon} ${alertTitle} - ${budgetName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="background-color: ${alertColor}; padding: 20px; text-align: center;">
+              ${logoHtml}
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px;">${alertTitle}</h1>
+            </div>
+            <div style="padding: 30px;">
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #374151;">
+                ${alertDescription}
+              </p>
+              
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; color: #1f2937;">Budget Details</h3>
+                <p style="margin: 0 0 10px 0;"><strong>Budget Name:</strong> ${budgetName}</p>
+                ${categoryLine}
+                <p style="margin: 0 0 10px 0;"><strong>Budgeted Amount:</strong> $${budgetedAmount.toFixed(2)}</p>
+                <p style="margin: 0 0 10px 0;"><strong>Amount Spent:</strong> $${actualSpent.toFixed(2)}</p>
+                <p style="margin: 0 0 10px 0;"><strong>Remaining:</strong> $${remaining.toFixed(2)}</p>
+                <p style="margin: 0 0 10px 0;"><strong>Utilization:</strong> ${percentUsed.toFixed(1)}%</p>
+                ${daysLine}
+                ${projectedLine}
+              </div>
+
+              <div style="background-color: ${alertColor}15; border-left: 4px solid ${alertColor}; padding: 15px; margin-bottom: 20px;">
+                <p style="margin: 0; color: ${alertColor}; font-weight: 600;">
+                  ${percentUsed >= 100 
+                    ? 'This budget has exceeded its allocated amount. Please review and take appropriate action.'
+                    : percentUsed >= 90 
+                      ? 'This budget is critically low. Please review spending and consider adjustments.'
+                      : percentUsed >= 75
+                        ? 'This budget is approaching its limit. Monitor closely to avoid overspending.'
+                        : 'This is a notification to help you track your budget progress.'
+                  }
+                </p>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${dashboardUrl}" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600;">
+                  View Budget Dashboard
+                </a>
+              </div>
+            </div>
+            <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                This alert was sent by ${organizationName} via ComplyBook.
+              </p>
+              <p style="margin: 10px 0 0 0; color: #9ca3af; font-size: 12px;">
+                To manage your alert preferences, visit the budget settings in your dashboard.
+              </p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+${alertTitle}
+
+${alertDescription}
+
+Budget Details:
+- Budget Name: ${budgetName}
+${categoryName ? `- Category: ${categoryName}\n` : ''}- Budgeted Amount: $${budgetedAmount.toFixed(2)}
+- Amount Spent: $${actualSpent.toFixed(2)}
+- Remaining: $${remaining.toFixed(2)}
+- Utilization: ${percentUsed.toFixed(1)}%
+${daysRemaining !== undefined ? `- Days Remaining: ${daysRemaining} days\n` : ''}${projectedOverage && projectedOverage > 0 ? `- Projected Overage: $${projectedOverage.toFixed(2)}\n` : ''}
+
+View your budget dashboard: ${dashboardUrl}
+
+This alert was sent by ${organizationName} via ComplyBook.
+    `.trim()
+  };
+
+  await client.send(msg);
+  console.log(`Budget alert email sent to ${to} for budget "${budgetName}" (${alertType})`);
+}

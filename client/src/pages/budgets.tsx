@@ -1274,7 +1274,7 @@ export default function Budgets() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                         <div>
                           <p className="text-sm text-muted-foreground">Grant Amount</p>
                           <p className="text-xl font-semibold text-primary" data-testid="text-grant-amount">
@@ -1353,7 +1353,7 @@ export default function Budgets() {
                 return (
                   <Card className="mb-4" data-testid="card-executive-summary">
                     <CardContent className="pt-4">
-                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                         <div className="text-center">
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Budget</p>
                           <p className="text-xl font-bold" data-testid="text-exec-total-budget">
@@ -1808,7 +1808,7 @@ export default function Budgets() {
                             </div>
                             
                             {/* Variance Table */}
-                            <div className="grid grid-cols-5 gap-2 text-sm mb-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-3">
                               <div>
                                 <p className="text-xs text-muted-foreground">Planned</p>
                                 <p className="font-medium" data-testid={`text-planned-${item.categoryId}`}>${budgeted.toLocaleString()}</p>

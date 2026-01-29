@@ -5890,6 +5890,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Budget Alert Routes
+  app.get('/api/budgets/:budgetId/alerts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const alerts = await storage.getBudgetAlerts(budgetId);
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching budget alerts:", error);
+      res.status(500).json({ message: "Failed to fetch budget alerts" });
+    }
+  });
+
+  app.post('/api/budgets/:budgetId/alerts/:alertId/acknowledge', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const budgetId = parseInt(req.params.budgetId);
+      const alertId = parseInt(req.params.alertId);
+
+      const budget = await storage.getBudget(budgetId);
+      if (!budget) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, budget.organizationId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant')) {
+        return res.status(403).json({ message: "Access denied - only managers can acknowledge alerts" });
+      }
+
+      const acknowledged = await storage.acknowledgeBudgetAlert(alertId, userId);
+      res.json(acknowledged);
+    } catch (error) {
+      console.error("Error acknowledging budget alert:", error);
+      res.status(500).json({ message: "Failed to acknowledge alert" });
+    }
+  });
+
+  app.post('/api/organizations/:orgId/check-budget-alerts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole || (userRole.role !== 'owner' && userRole.role !== 'admin')) {
+        return res.status(403).json({ message: "Access denied - only owners and admins can trigger alert checks" });
+      }
+
+      const result = await storage.checkAndSendBudgetAlerts(orgId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking budget alerts:", error);
+      res.status(500).json({ message: "Failed to check budget alerts" });
+    }
+  });
+
+  // Multi-year budget routes
+  app.get('/api/organizations/:orgId/multi-year-budgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+      const years = req.query.years ? (req.query.years as string).split(',').map(Number) : undefined;
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const summary = await storage.getMultiYearBudgetSummary(orgId, years);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching multi-year budget summary:", error);
+      res.status(500).json({ message: "Failed to fetch multi-year budget summary" });
+    }
+  });
+
+  app.get('/api/organizations/:orgId/budgets/fiscal-year/:fiscalYear', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+      const fiscalYear = req.params.fiscalYear;
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const budgets = await storage.getBudgetsByFiscalYear(orgId, fiscalYear);
+      res.json(budgets);
+    } catch (error) {
+      console.error("Error fetching budgets by fiscal year:", error);
+      res.status(500).json({ message: "Failed to fetch budgets by fiscal year" });
+    }
+  });
+
+  app.get('/api/organizations/:orgId/rolling-forecast', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+      const months = req.query.months ? parseInt(req.query.months as string) : 12;
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const forecast = await storage.getRollingForecast(orgId, months);
+      res.json(forecast);
+    } catch (error) {
+      console.error("Error fetching rolling forecast:", error);
+      res.status(500).json({ message: "Failed to fetch rolling forecast" });
+    }
+  });
+
+  // Program-level budget routes with roll-up
+  app.get('/api/organizations/:orgId/program-budget-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const summary = await storage.getProgramBudgetSummary(orgId);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching program budget summary:", error);
+      res.status(500).json({ message: "Failed to fetch program budget summary" });
+    }
+  });
+
+  app.get('/api/organizations/:orgId/budget-rollup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const rollup = await storage.getOrganizationBudgetRollup(orgId);
+      res.json(rollup);
+    } catch (error) {
+      console.error("Error fetching budget rollup:", error);
+      res.status(500).json({ message: "Failed to fetch budget rollup" });
+    }
+  });
+
+  // Enhanced cash flow projection routes
+  app.get('/api/cash-flow/scenario/:scenarioId/projection', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scenarioId = parseInt(req.params.scenarioId);
+
+      // Verify user has access to the scenario's organization
+      const scenario = await storage.getCashFlowScenario(scenarioId);
+      if (!scenario) {
+        return res.status(404).json({ message: "Scenario not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, scenario.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const projection = await storage.generateCashFlowProjection(scenarioId);
+      res.json(projection);
+    } catch (error) {
+      console.error("Error generating cash flow projection:", error);
+      res.status(500).json({ message: "Failed to generate cash flow projection" });
+    }
+  });
+
+  app.get('/api/organizations/:orgId/cash-flow/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = parseInt(req.params.orgId);
+      const scenarioId = req.query.scenarioId ? parseInt(req.query.scenarioId as string) : undefined;
+      const format = (req.query.format as 'csv' | 'json') || 'csv';
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const exportData = await storage.exportCashFlowProjections(orgId, scenarioId, format);
+      
+      if (format === 'csv') {
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=cash-flow-projections.csv');
+      } else {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename=cash-flow-projections.json');
+      }
+      
+      res.send(exportData);
+    } catch (error) {
+      console.error("Error exporting cash flow projections:", error);
+      res.status(500).json({ message: "Failed to export cash flow projections" });
+    }
+  });
+
   app.post('/api/budgets', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
