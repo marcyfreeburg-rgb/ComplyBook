@@ -3598,6 +3598,15 @@ export const forms = pgTable("forms", {
     shuffleQuestions?: boolean;
     notifyOnSubmission?: boolean;
     notificationEmail?: string;
+    requireConsent?: boolean;
+    consentText?: string;
+    autoThankYou?: boolean;
+    thankYouEmailSubject?: string;
+    thankYouEmailBody?: string;
+    isTemplate?: boolean;
+    templateCategory?: string;
+    enableDonorPrefill?: boolean;
+    embedEnabled?: boolean;
   }>().default({}),
   branding: jsonb("branding").$type<{
     useBranding?: boolean;
@@ -3606,6 +3615,7 @@ export const forms = pgTable("forms", {
     fontFamily?: string;
     logoUrl?: string;
     headerImage?: string;
+    theme?: string;
   }>().default({ useBranding: true }),
   responseCount: integer("response_count").default(0).notNull(),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
@@ -3657,11 +3667,16 @@ export const formResponses = pgTable("form_responses", {
   formId: integer("form_id").references(() => forms.id, { onDelete: 'cascade' }).notNull(),
   respondentEmail: varchar("respondent_email", { length: 255 }),
   respondentName: varchar("respondent_name", { length: 255 }),
+  donorId: integer("donor_id").references(() => donors.id, { onDelete: 'set null' }),
+  programId: integer("program_id").references(() => programs.id, { onDelete: 'set null' }),
   answers: jsonb("answers").$type<Record<number, any>>().notNull(),
   metadata: jsonb("metadata").$type<{
     userAgent?: string;
     ipAddress?: string;
     referrer?: string;
+    consentGiven?: boolean;
+    consentTimestamp?: string;
+    tags?: string[];
   }>(),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });

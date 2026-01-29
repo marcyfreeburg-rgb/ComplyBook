@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Organization } from "@shared/schema";
+import type { Organization, Donor, Program, FormResponse } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,11 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, MoreHorizontal, Edit2, Trash2, Copy, Eye, QrCode, Link2, ClipboardCheck, BarChart3, ExternalLink, GripVertical, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, MoreHorizontal, Edit2, Trash2, Copy, Eye, QrCode, Link2, ClipboardCheck, BarChart3, ExternalLink, GripVertical, X, ChevronUp, ChevronDown, Download, Filter, Code2, Search, TrendingUp, Shield, Tag, Palette } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { Form, FormQuestion } from "@shared/schema";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 
 type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'multiple_choice' | 'dropdown' | 'rating' | 'date' | 'email' | 'phone' | 'number' | 'file_upload';
 
@@ -52,7 +54,11 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [isQRDialogOpen, setIsQRDialogOpen] = useState(false);
   const [isResponsesOpen, setIsResponsesOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isEmbedDialogOpen, setIsEmbedDialogOpen] = useState(false);
   const [selectedSurvey, setSelectedSurvey] = useState<SurveyWithQuestions | null>(null);
+  const [responseFilter, setResponseFilter] = useState({ search: "", donorId: "", programId: "", dateRange: "all" });
+  const [responseTab, setResponseTab] = useState<"responses" | "analytics">("responses");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -62,11 +68,19 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       showProgressBar: true,
       shuffleQuestions: false,
       confirmationMessage: "Thank you for completing this survey!",
+      requireConsent: false,
+      consentText: "I consent to my data being collected and processed according to the privacy policy.",
+      autoThankYou: false,
+      thankYouEmailSubject: "Thank you for your feedback",
+      thankYouEmailBody: "",
+      enableDonorPrefill: false,
+      embedEnabled: false,
     },
     branding: {
       useBranding: true,
       primaryColor: "",
       accentColor: "",
+      theme: "default",
     },
   });
 
@@ -122,13 +136,112 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       if (!response.ok) throw new Error("Failed to fetch responses");
       return response.json();
     },
-    enabled: !!selectedSurvey?.id && isResponsesOpen,
+    enabled: !!selectedSurvey?.id && (isResponsesOpen || isAnalyticsOpen),
+  });
+
+  const { data: donorsData } = useQuery<{ data: Donor[] }>({
+    queryKey: ["/api/donors", organization?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/donors/${organization?.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch donors");
+      return response.json();
+    },
+    enabled: !!organization?.id,
+  });
+
+  const { data: programsData } = useQuery<{ data: Program[] }>({
+    queryKey: ["/api/programs", organization?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/programs/${organization?.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch programs");
+      return response.json();
+    },
+    enabled: !!organization?.id,
   });
 
   const surveys = surveysResponse?.data || [];
   const surveyDetail = surveyDetailResponse?.data;
   const questions = surveyDetail?.questions || [];
   const responses = responsesData?.data || [];
+  const donors = donorsData?.data || [];
+  const programs = programsData?.data || [];
+
+  const filteredResponses = useMemo(() => {
+    let filtered = [...responses];
+    if (responseFilter.search) {
+      const search = responseFilter.search.toLowerCase();
+      filtered = filtered.filter(r => 
+        r.respondentEmail?.toLowerCase().includes(search) ||
+        r.respondentName?.toLowerCase().includes(search) ||
+        JSON.stringify(r.answers).toLowerCase().includes(search)
+      );
+    }
+    if (responseFilter.donorId && responseFilter.donorId !== "all") {
+      filtered = filtered.filter(r => r.donorId?.toString() === responseFilter.donorId);
+    }
+    if (responseFilter.programId && responseFilter.programId !== "all") {
+      filtered = filtered.filter(r => r.programId?.toString() === responseFilter.programId);
+    }
+    if (responseFilter.dateRange !== "all") {
+      const now = new Date();
+      const days = responseFilter.dateRange === "7" ? 7 : responseFilter.dateRange === "30" ? 30 : 90;
+      const cutoff = subDays(now, days);
+      filtered = filtered.filter(r => new Date(r.submittedAt) >= cutoff);
+    }
+    return filtered;
+  }, [responses, responseFilter]);
+
+  const analytics = useMemo(() => {
+    if (!responses.length || !questions.length) return null;
+    
+    const ratingQuestions = questions.filter(q => q.questionType === "rating");
+    const choiceQuestions = questions.filter(q => 
+      ["single_choice", "multiple_choice", "dropdown"].includes(q.questionType)
+    );
+    
+    const ratingAverages = ratingQuestions.map(q => {
+      const values = responses
+        .map(r => r.answers[q.id])
+        .filter((v): v is number => typeof v === "number");
+      const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+      return { question: q.question.slice(0, 30) + "...", average: Math.round(avg * 10) / 10 };
+    });
+
+    const choiceBreakdowns = choiceQuestions.map(q => {
+      const counts: Record<string, number> = {};
+      responses.forEach(r => {
+        const answer = r.answers[q.id];
+        if (Array.isArray(answer)) {
+          answer.forEach(a => { counts[a] = (counts[a] || 0) + 1; });
+        } else if (answer) {
+          counts[answer] = (counts[answer] || 0) + 1;
+        }
+      });
+      return {
+        question: q.question,
+        data: Object.entries(counts).map(([name, value]) => ({ name, value }))
+      };
+    });
+
+    const responsesByDay = responses.reduce((acc: Record<string, { date: string; timestamp: number; count: number }>, r) => {
+      const timestamp = new Date(r.submittedAt).getTime();
+      const day = format(new Date(r.submittedAt), "MMM dd");
+      if (!acc[day]) acc[day] = { date: day, timestamp, count: 0 };
+      acc[day].count += 1;
+      return acc;
+    }, {});
+    const trendData = Object.values(responsesByDay)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map(({ date, count }) => ({ date, count }));
+
+    return { ratingAverages, choiceBreakdowns, trendData, totalResponses: responses.length };
+  }, [responses, questions]);
+
+  const CHART_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff7c43", "#a855f7", "#3b82f6"];
 
   useEffect(() => {
     if (surveyDetail && isBuilderOpen) {
@@ -253,11 +366,19 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
         showProgressBar: true,
         shuffleQuestions: false,
         confirmationMessage: "Thank you for completing this survey!",
+        requireConsent: false,
+        consentText: "I consent to my data being collected and processed according to the privacy policy.",
+        autoThankYou: false,
+        thankYouEmailSubject: "Thank you for your feedback",
+        thankYouEmailBody: "",
+        enableDonorPrefill: false,
+        embedEnabled: false,
       },
       branding: {
         useBranding: true,
         primaryColor: "",
         accentColor: "",
+        theme: "default",
       },
     });
   };
@@ -273,10 +394,12 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
         shuffleQuestions: false,
         confirmationMessage: "Thank you for completing this survey!",
       },
-      branding: (survey.branding as any) || {
+      branding: {
         useBranding: true,
         primaryColor: "",
         accentColor: "",
+        theme: "default",
+        ...(survey.branding as any || {}),
       },
     });
     setIsEditDialogOpen(true);
@@ -304,6 +427,42 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   const copyLink = (publicId: string) => {
     navigator.clipboard.writeText(getPublicUrl(publicId));
     toast({ title: "Link copied to clipboard" });
+  };
+
+  const getEmbedCode = (publicId: string) => {
+    return `<iframe src="${getPublicUrl(publicId)}?embed=true" width="100%" height="600" frameborder="0" style="border: 1px solid #e5e7eb; border-radius: 8px;"></iframe>`;
+  };
+
+  const copyEmbedCode = (publicId: string) => {
+    navigator.clipboard.writeText(getEmbedCode(publicId));
+    toast({ title: "Embed code copied to clipboard" });
+  };
+
+  const exportToCSV = () => {
+    if (!filteredResponses.length || !questions.length) {
+      toast({ title: "No responses to export", variant: "destructive" });
+      return;
+    }
+    const headers = ["Response ID", "Submitted At", "Email", "Name", ...questions.map(q => q.question)];
+    const rows = filteredResponses.map(r => [
+      r.id,
+      format(new Date(r.submittedAt), "yyyy-MM-dd HH:mm:ss"),
+      r.respondentEmail || "",
+      r.respondentName || "",
+      ...questions.map(q => {
+        const answer = r.answers[q.id];
+        return Array.isArray(answer) ? answer.join("; ") : (answer ?? "");
+      })
+    ]);
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${selectedSurvey?.title || "survey"}-responses.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Responses exported to CSV" });
   };
 
   const addOption = () => {
@@ -464,6 +623,55 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                 </div>
               </div>
               <div className="space-y-4 border-t pt-4">
+                <h3 className="font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Privacy & Compliance
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Require GDPR Consent</Label>
+                    <p className="text-sm text-muted-foreground">Show privacy consent checkbox before submission</p>
+                  </div>
+                  <Switch
+                    checked={formData.settings.requireConsent}
+                    onCheckedChange={(checked) => setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, requireConsent: checked }
+                    })}
+                    data-testid="switch-require-consent"
+                  />
+                </div>
+                {formData.settings.requireConsent && (
+                  <div className="space-y-2">
+                    <Label htmlFor="consent-text">Consent Text</Label>
+                    <Textarea
+                      id="consent-text"
+                      placeholder="I consent to my data being collected..."
+                      value={formData.settings.consentText}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        settings: { ...formData.settings, consentText: e.target.value }
+                      })}
+                      data-testid="input-consent-text"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable Donor Pre-fill</Label>
+                    <p className="text-sm text-muted-foreground">Auto-populate donor info via URL parameters</p>
+                  </div>
+                  <Switch
+                    checked={formData.settings.enableDonorPrefill}
+                    onCheckedChange={(checked) => setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, enableDonorPrefill: checked }
+                    })}
+                    data-testid="switch-donor-prefill"
+                  />
+                </div>
+              </div>
+              <div className="space-y-4 border-t pt-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">Use Organization Branding</h3>
                   <Switch
@@ -474,6 +682,27 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     })}
                     data-testid="switch-use-branding"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Theme</Label>
+                  <Select
+                    value={formData.branding.theme}
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      branding: { ...formData.branding, theme: value }
+                    })}
+                  >
+                    <SelectTrigger data-testid="select-theme">
+                      <SelectValue placeholder="Select a theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="modern">Modern</SelectItem>
+                      <SelectItem value="classic">Classic</SelectItem>
+                      <SelectItem value="minimal">Minimal</SelectItem>
+                      <SelectItem value="professional">Professional</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -538,6 +767,10 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     <DropdownMenuItem onClick={() => copyLink(survey.publicId)}>
                       <Link2 className="w-4 h-4 mr-2" />
                       Copy Link
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setSelectedSurvey(survey); setIsEmbedDialogOpen(true); }}>
+                      <Code2 className="w-4 h-4 mr-2" />
+                      Embed Code
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => window.open(getPublicUrl(survey.publicId), "_blank")}>
                       <ExternalLink className="w-4 h-4 mr-2" />
@@ -640,6 +873,77 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     settings: { ...formData.settings, confirmationMessage: e.target.value }
                   })}
                 />
+              </div>
+            </div>
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-medium flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Privacy & Compliance
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Require GDPR Consent</Label>
+                  <p className="text-sm text-muted-foreground">Show privacy consent checkbox</p>
+                </div>
+                <Switch
+                  checked={formData.settings.requireConsent}
+                  onCheckedChange={(checked) => setFormData({
+                    ...formData,
+                    settings: { ...formData.settings, requireConsent: checked }
+                  })}
+                />
+              </div>
+              {formData.settings.requireConsent && (
+                <div className="space-y-2">
+                  <Label>Consent Text</Label>
+                  <Textarea
+                    value={formData.settings.consentText}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, consentText: e.target.value }
+                    })}
+                  />
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Enable Donor Pre-fill</Label>
+                  <p className="text-sm text-muted-foreground">Auto-populate donor info</p>
+                </div>
+                <Switch
+                  checked={formData.settings.enableDonorPrefill}
+                  onCheckedChange={(checked) => setFormData({
+                    ...formData,
+                    settings: { ...formData.settings, enableDonorPrefill: checked }
+                  })}
+                />
+              </div>
+            </div>
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-medium flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Branding
+              </h3>
+              <div className="space-y-2">
+                <Label>Theme</Label>
+                <Select
+                  value={formData.branding.theme || "default"}
+                  onValueChange={(value) => setFormData({ 
+                    ...formData, 
+                    branding: { ...formData.branding, theme: value }
+                  })}
+                >
+                  <SelectTrigger data-testid="select-edit-theme">
+                    <SelectValue placeholder="Select theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default</SelectItem>
+                    <SelectItem value="modern">Modern</SelectItem>
+                    <SelectItem value="classic">Classic</SelectItem>
+                    <SelectItem value="minimal">Minimal</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -855,51 +1159,208 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       </Dialog>
 
       <Dialog open={isResponsesOpen} onOpenChange={setIsResponsesOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Responses: {selectedSurvey?.title}</DialogTitle>
-            <DialogDescription>{responses.length} responses received</DialogDescription>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <DialogTitle>Responses: {selectedSurvey?.title}</DialogTitle>
+                <DialogDescription>{responses.length} total responses</DialogDescription>
+              </div>
+              <Button variant="outline" onClick={exportToCSV} data-testid="button-export-csv">
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
           </DialogHeader>
           
-          {responses.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No responses yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4 mt-4">
-              {responses.map((response, index) => (
-                <Card key={response.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">Response #{index + 1}</CardTitle>
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(response.submittedAt).toLocaleString()}
-                      </span>
-                    </div>
-                    {response.respondentEmail && (
-                      <CardDescription>{response.respondentEmail}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {Object.entries(response.answers as Record<string, any>).map(([questionId, answer]) => {
-                        const question = questions.find(q => q.id.toString() === questionId);
-                        return (
-                          <div key={questionId} className="border-b pb-2 last:border-0">
-                            <div className="text-sm font-medium">{question?.question || `Question ${questionId}`}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {Array.isArray(answer) ? answer.join(", ") : String(answer)}
-                            </div>
+          <Tabs value={responseTab} onValueChange={(v) => setResponseTab(v as "responses" | "analytics")}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="responses" data-testid="tab-responses">Responses</TabsTrigger>
+              <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="responses">
+              <div className="flex gap-2 flex-wrap mb-4">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search responses..."
+                    value={responseFilter.search}
+                    onChange={(e) => setResponseFilter({ ...responseFilter, search: e.target.value })}
+                    className="pl-9"
+                    data-testid="input-search-responses"
+                  />
+                </div>
+                <Select value={responseFilter.dateRange} onValueChange={(v) => setResponseFilter({ ...responseFilter, dateRange: v })}>
+                  <SelectTrigger className="w-[150px]" data-testid="select-date-range">
+                    <SelectValue placeholder="Date range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="7">Last 7 days</SelectItem>
+                    <SelectItem value="30">Last 30 days</SelectItem>
+                    <SelectItem value="90">Last 90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+                {donors.length > 0 && (
+                  <Select value={responseFilter.donorId} onValueChange={(v) => setResponseFilter({ ...responseFilter, donorId: v })}>
+                    <SelectTrigger className="w-[180px]" data-testid="select-donor-filter">
+                      <SelectValue placeholder="Filter by donor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All donors</SelectItem>
+                      {donors.map(d => (
+                        <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {programs.length > 0 && (
+                  <Select value={responseFilter.programId} onValueChange={(v) => setResponseFilter({ ...responseFilter, programId: v })}>
+                    <SelectTrigger className="w-[180px]" data-testid="select-program-filter">
+                      <SelectValue placeholder="Filter by program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All programs</SelectItem>
+                      {programs.map(p => (
+                        <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              
+              {filteredResponses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>{responses.length === 0 ? "No responses yet" : "No matching responses"}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Showing {filteredResponses.length} of {responses.length} responses</p>
+                  {filteredResponses.map((response, index) => (
+                    <Card key={response.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <CardTitle className="text-base">Response #{index + 1}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            {response.metadata?.consentGiven && (
+                              <Badge variant="outline"><Shield className="h-3 w-3 mr-1" />Consent</Badge>
+                            )}
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(response.submittedAt).toLocaleString()}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                        </div>
+                        {response.respondentEmail && (
+                          <CardDescription>{response.respondentName ? `${response.respondentName} - ` : ""}{response.respondentEmail}</CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {Object.entries(response.answers as Record<string, any>).map(([questionId, answer]) => {
+                            const question = questions.find(q => q.id.toString() === questionId);
+                            return (
+                              <div key={questionId} className="border-b pb-2 last:border-0">
+                                <div className="text-sm font-medium">{question?.question || `Question ${questionId}`}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {Array.isArray(answer) ? answer.join(", ") : String(answer)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="analytics">
+              {analytics ? (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Response Trend
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={analytics.trendData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" fontSize={12} />
+                            <YAxis fontSize={12} />
+                            <Tooltip />
+                            <Line type="monotone" dataKey="count" stroke="#8884d8" strokeWidth={2} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {analytics.ratingAverages.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Rating Averages</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[200px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={analytics.ratingAverages}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="question" fontSize={10} />
+                              <YAxis domain={[0, 5]} fontSize={12} />
+                              <Tooltip />
+                              <Bar dataKey="average" fill="#82ca9d" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  
+                  {analytics.choiceBreakdowns.map((breakdown, idx) => (
+                    <Card key={idx}>
+                      <CardHeader>
+                        <CardTitle className="text-base">{breakdown.question}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[200px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={breakdown.data}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={70}
+                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                              >
+                                {breakdown.data.map((_, i) => (
+                                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No data available for analytics</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
@@ -1014,6 +1475,36 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               {updateQuestionMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEmbedDialogOpen} onOpenChange={setIsEmbedDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Embed Survey</DialogTitle>
+            <DialogDescription>Copy the embed code to add this survey to your website</DialogDescription>
+          </DialogHeader>
+          {selectedSurvey && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Embed Code</Label>
+                <Textarea
+                  readOnly
+                  value={getEmbedCode(selectedSurvey.publicId)}
+                  className="font-mono text-sm h-32"
+                  data-testid="input-embed-code"
+                />
+              </div>
+              <Button onClick={() => copyEmbedCode(selectedSurvey.publicId)} className="w-full" data-testid="button-copy-embed">
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Embed Code
+              </Button>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>Paste this code into your website's HTML where you want the survey to appear.</p>
+                <p>You can adjust the height value to fit your design.</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
