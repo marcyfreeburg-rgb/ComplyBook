@@ -52,8 +52,8 @@ export const payrollStatusEnum = pgEnum('payroll_status', ['draft', 'processed',
 export const deductionTypeEnum = pgEnum('deduction_type', ['tax', 'insurance', 'retirement', 'garnishment', 'other']);
 export const deductionCalculationTypeEnum = pgEnum('deduction_calculation_type', ['percentage', 'fixed_amount']);
 
-// Nonprofit-specific enums
-export const fundTypeEnum = pgEnum('fund_type', ['restricted', 'unrestricted']);
+// Nonprofit-specific enums - supports FASB nonprofit accounting classifications
+export const fundTypeEnum = pgEnum('fund_type', ['restricted', 'unrestricted', 'temporarily_restricted', 'permanently_restricted']);
 export const pledgeStatusEnum = pgEnum('pledge_status', ['pending', 'partial', 'fulfilled', 'cancelled', 'overdue']);
 export const functionalCategoryEnum = pgEnum('functional_category', ['program', 'administrative', 'fundraising']);
 export const complianceStatusEnum = pgEnum('compliance_status', ['compliant', 'at_risk', 'non_compliant', 'pending_review']);

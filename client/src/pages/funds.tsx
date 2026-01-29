@@ -206,8 +206,9 @@ export default function Funds({ currentOrganization, userId }: FundsProps) {
     .filter(g => g.fundType === "unrestricted")
     .reduce((sum, g) => sum + getGrantRemaining(g), 0);
 
+  // Match funds logic: anything not unrestricted counts as restricted
   const grantsRestricted = grants
-    .filter(g => g.fundType === "restricted")
+    .filter(g => g.fundType !== "unrestricted")
     .reduce((sum, g) => sum + getGrantRemaining(g), 0);
 
   // Combined totals

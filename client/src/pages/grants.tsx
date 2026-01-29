@@ -60,7 +60,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
     organizationId: currentOrganization.id,
     name: '',
     amount: '',
-    fundType: 'unrestricted' as 'restricted' | 'unrestricted',
+    fundType: 'unrestricted' as 'restricted' | 'unrestricted' | 'temporarily_restricted' | 'permanently_restricted',
     restrictions: '',
     status: 'active' as 'active' | 'completed' | 'pending',
     startDate: null as string | null,
@@ -190,7 +190,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
       organizationId: currentOrganization.id,
       name: '',
       amount: '',
-      fundType: 'unrestricted' as 'restricted' | 'unrestricted',
+      fundType: 'unrestricted' as 'restricted' | 'unrestricted' | 'temporarily_restricted' | 'permanently_restricted',
       restrictions: '',
       status: 'active' as 'active' | 'completed' | 'pending',
       startDate: null as string | null,
@@ -278,7 +278,8 @@ export default function Grants({ currentOrganization }: GrantsProps) {
     completedGrants: grants.filter(g => g.status === 'completed').length,
     totalFunding: grants.reduce((sum, g) => sum + parseFloat(g.amount), 0),
     totalSpent: grants.reduce((sum, g) => sum + parseFloat(g.totalSpent), 0),
-    restrictedFunds: grants.filter(g => g.fundType === 'restricted').reduce((sum, g) => sum + parseFloat(g.amount), 0),
+    // Match fund accounting logic: anything not unrestricted counts as restricted
+    restrictedFunds: grants.filter(g => g.fundType !== 'unrestricted').reduce((sum, g) => sum + parseFloat(g.amount), 0),
     unrestrictedFunds: grants.filter(g => g.fundType === 'unrestricted').reduce((sum, g) => sum + parseFloat(g.amount), 0),
   } : null;
 
@@ -426,7 +427,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                   <Label htmlFor="fundType">Fund Type</Label>
                   <Select
                     value={formData.fundType}
-                    onValueChange={(value: 'restricted' | 'unrestricted') => setFormData({ ...formData, fundType: value })}
+                    onValueChange={(value: 'restricted' | 'unrestricted' | 'temporarily_restricted' | 'permanently_restricted') => setFormData({ ...formData, fundType: value })}
                   >
                     <SelectTrigger id="fundType" data-testid="select-grant-fund-type">
                       <SelectValue />
@@ -434,6 +435,8 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                     <SelectContent>
                       <SelectItem value="unrestricted">Unrestricted</SelectItem>
                       <SelectItem value="restricted">Restricted</SelectItem>
+                      <SelectItem value="temporarily_restricted">Temporarily Restricted</SelectItem>
+                      <SelectItem value="permanently_restricted">Permanently Restricted</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -772,8 +775,10 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-lg">{grant.name}</CardTitle>
                     <div className="flex items-center gap-2">
-                      <Badge variant={grant.fundType === 'restricted' ? 'secondary' : 'outline'}>
-                        {grant.fundType === 'restricted' ? 'Restricted' : 'Unrestricted'}
+                      <Badge variant={grant.fundType === 'unrestricted' ? 'outline' : 'secondary'}>
+                        {grant.fundType === 'unrestricted' ? 'Unrestricted' : 
+                         grant.fundType === 'temporarily_restricted' ? 'Temp. Restricted' :
+                         grant.fundType === 'permanently_restricted' ? 'Perm. Restricted' : 'Restricted'}
                       </Badge>
                       <Badge variant={getStatusVariant(grant.status)}>
                         {grant.status}
