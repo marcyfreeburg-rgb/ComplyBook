@@ -451,7 +451,7 @@ export async function createDefaultAdminUser() {
 
   const adminUsers = [
     {
-      email: "admin@complybook.net",
+      email: "tech@jandmsolutions.com",
       password: "comply2025",
       id: "local_admin_default",
       firstName: "Admin",

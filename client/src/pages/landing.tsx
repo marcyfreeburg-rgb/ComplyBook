@@ -657,7 +657,7 @@ export default function Landing() {
             <div>
               <h4 className="font-medium mb-3">Company</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="mailto:support@complybook.net" className="hover:text-foreground transition-colors">Contact</a></li>
+                <li><a href="mailto:tech@jandmsolutions.com" className="hover:text-foreground transition-colors">Contact</a></li>
               </ul>
             </div>
             <div>

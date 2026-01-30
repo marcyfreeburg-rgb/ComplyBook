@@ -345,7 +345,7 @@ export default function PricingPage() {
 
         <div className="text-center mt-16 text-muted-foreground">
           <p className="mb-2">All plans include secure data encryption, regular backups, and 99.9% uptime SLA.</p>
-          <p>Questions? Contact us at <a href="mailto:support@complybook.net" className="text-primary hover:underline">support@complybook.net</a></p>
+          <p>Questions? Contact us at <a href="mailto:tech@jandmsolutions.com" className="text-primary hover:underline">tech@jandmsolutions.com</a></p>
         </div>
       </div>
     </div>

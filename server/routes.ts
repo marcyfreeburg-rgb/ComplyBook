@@ -1425,7 +1425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await sgMail.default.send({
           to: donor.email,
-          from: brandSettings?.primaryEmail || 'noreply@complybook.net',
+          from: brandSettings?.primaryEmail || 'tech@jandmsolutions.com',
           subject: `Your Donor Portal Access - ${orgName}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
