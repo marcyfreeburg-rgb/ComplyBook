@@ -617,7 +617,9 @@ export const categories = pgTable("categories", {
   fundType: fundTypeEnum("fund_type").default('unrestricted'), // For nonprofit fund accounting - determines if transactions roll up to restricted or unrestricted
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_categories_org_id: index("idx_categories_org_id").on(table.organizationId),
+}));
 
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
@@ -643,7 +645,9 @@ export const vendors = pgTable("vendors", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_vendors_org_id: index("idx_vendors_org_id").on(table.organizationId),
+}));
 
 export const insertVendorSchema = createInsertSchema(vendors).omit({
   id: true,
@@ -669,7 +673,9 @@ export const clients = pgTable("clients", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_clients_org_id: index("idx_clients_org_id").on(table.organizationId),
+}));
 
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
@@ -695,7 +701,9 @@ export const donors = pgTable("donors", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_donors_org_id: index("idx_donors_org_id").on(table.organizationId),
+}));
 
 export const insertDonorSchema = createInsertSchema(donors).omit({
   id: true,
@@ -1054,7 +1062,9 @@ export const grants = pgTable("grants", {
   grantorPhone: varchar("grantor_phone", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_grants_org_id: index("idx_grants_org_id").on(table.organizationId),
+}));
 
 export const insertGrantSchema = createInsertSchema(grants).omit({
   id: true,
@@ -1098,7 +1108,9 @@ export const budgets = pgTable("budgets", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_budgets_org_id: index("idx_budgets_org_id").on(table.organizationId),
+}));
 
 export const insertBudgetSchema = createInsertSchema(budgets).omit({
   id: true,
@@ -1318,7 +1330,9 @@ export const plaidItems = pgTable("plaid_items", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_plaid_items_org_id: index("idx_plaid_items_org_id").on(table.organizationId),
+}));
 
 export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
   id: true,
@@ -1355,7 +1369,9 @@ export const plaidAccounts = pgTable("plaid_accounts", {
   initialBalanceDate: date("initial_balance_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  idx_plaid_accounts_item_id: index("idx_plaid_accounts_item_id").on(table.plaidItemId),
+}));
 
 export const insertPlaidAccountSchema = createInsertSchema(plaidAccounts).omit({
   id: true,
