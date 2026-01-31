@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Users, Edit2, Mail, Phone, MapPin, DollarSign, Calendar, CreditCard, Badge, Crown } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -52,6 +53,110 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
   const { data: teams = [] } = useQuery<Team[]>({
     queryKey: [`/api/teams/${currentOrganization.id}`],
   });
+
+  // Team management state
+  const [isCreateTeamDialogOpen, setIsCreateTeamDialogOpen] = useState(false);
+  const [isEditTeamDialogOpen, setIsEditTeamDialogOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [teamFormData, setTeamFormData] = useState({
+    name: "",
+    description: "",
+  });
+
+  const resetTeamForm = () => {
+    setTeamFormData({ name: "", description: "" });
+  };
+
+  const createTeamMutation = useMutation({
+    mutationFn: async () => {
+      if (!teamFormData.name.trim()) {
+        throw new Error("Team name is required");
+      }
+      return await apiRequest('POST', '/api/teams', {
+        organizationId: currentOrganization.id,
+        ...teamFormData,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/teams/${currentOrganization.id}`] });
+      toast({
+        title: "Team created",
+        description: `${teamFormData.name} has been created successfully.`,
+      });
+      setIsCreateTeamDialogOpen(false);
+      resetTeamForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create team. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateTeamMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingTeam) return;
+      return await apiRequest('PATCH', `/api/teams/${editingTeam.id}`, teamFormData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/teams/${currentOrganization.id}`] });
+      toast({
+        title: "Team updated",
+        description: `Team has been updated successfully.`,
+      });
+      setIsEditTeamDialogOpen(false);
+      setEditingTeam(null);
+      resetTeamForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update team. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => {
+      return await apiRequest('DELETE', `/api/teams/${teamId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/teams/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/employees/${currentOrganization.id}`] });
+      toast({
+        title: "Team deleted",
+        description: "Team has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete team. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setTeamFormData({
+      name: team.name,
+      description: team.description || "",
+    });
+    setIsEditTeamDialogOpen(true);
+  };
+
+  const getTeamMemberCount = (teamId: number) => {
+    return employees.filter(e => e.teamId === teamId).length;
+  };
+
+  const getTeamLeader = (teamId: number) => {
+    const leader = employees.find(e => e.teamId === teamId && e.isTeamLeader === 1);
+    return leader ? `${leader.firstName} ${leader.lastName}` : null;
+  };
 
   const resetForm = () => {
     setFormData({
@@ -479,26 +584,9 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">Employees</h1>
-          <p className="text-muted-foreground">Manage employee records and compensation</p>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">Employees & Teams</h1>
+          <p className="text-muted-foreground">Manage employee records, teams, and compensation</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-employee">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Employee
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Employee</DialogTitle>
-              <DialogDescription>
-                Add a new employee to your organization
-              </DialogDescription>
-            </DialogHeader>
-            {renderEmployeeForm()}
-          </DialogContent>
-        </Dialog>
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -513,7 +601,118 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
         </DialogContent>
       </Dialog>
 
-      <Card>
+      {/* Create Team Dialog */}
+      <Dialog open={isCreateTeamDialogOpen} onOpenChange={setIsCreateTeamDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create Team</DialogTitle>
+            <DialogDescription>
+              Create a new team for your organization
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="team-name">Team Name *</Label>
+              <Input
+                id="team-name"
+                placeholder="e.g., Sales Team"
+                value={teamFormData.name}
+                onChange={(e) => setTeamFormData({ ...teamFormData, name: e.target.value })}
+                data-testid="input-team-name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="team-description">Description</Label>
+              <Textarea
+                id="team-description"
+                placeholder="Brief description of the team's purpose"
+                value={teamFormData.description}
+                onChange={(e) => setTeamFormData({ ...teamFormData, description: e.target.value })}
+                data-testid="input-team-description"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsCreateTeamDialogOpen(false); resetTeamForm(); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => createTeamMutation.mutate()} disabled={createTeamMutation.isPending} data-testid="button-submit-team">
+              {createTeamMutation.isPending ? "Creating..." : "Create Team"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Team Dialog */}
+      <Dialog open={isEditTeamDialogOpen} onOpenChange={setIsEditTeamDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Team</DialogTitle>
+            <DialogDescription>
+              Update team information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-team-name">Team Name *</Label>
+              <Input
+                id="edit-team-name"
+                value={teamFormData.name}
+                onChange={(e) => setTeamFormData({ ...teamFormData, name: e.target.value })}
+                data-testid="input-edit-team-name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-team-description">Description</Label>
+              <Textarea
+                id="edit-team-description"
+                value={teamFormData.description}
+                onChange={(e) => setTeamFormData({ ...teamFormData, description: e.target.value })}
+                data-testid="input-edit-team-description"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsEditTeamDialogOpen(false); setEditingTeam(null); resetTeamForm(); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => updateTeamMutation.mutate()} disabled={updateTeamMutation.isPending} data-testid="button-update-team">
+              {updateTeamMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Tabs defaultValue="employees" className="w-full">
+        <TabsList>
+          <TabsTrigger value="employees" data-testid="tab-employees">Employees</TabsTrigger>
+          <TabsTrigger value="teams" data-testid="tab-teams">Teams</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="employees" className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-create-employee">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Employee
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add Employee</DialogTitle>
+                  <DialogDescription>
+                    Add a new employee to your organization
+                  </DialogDescription>
+                </DialogHeader>
+                {renderEmployeeForm()}
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
         <CardHeader>
           <CardTitle>All Employees</CardTitle>
           <CardDescription>
@@ -647,6 +846,106 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setIsCreateTeamDialogOpen(true)} data-testid="button-create-team">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Team
+            </Button>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>All Teams</CardTitle>
+              <CardDescription>
+                Teams in your organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {teams.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground">No teams yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Create your first team to organize your employees
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {teams.map((team) => (
+                    <div
+                      key={team.id}
+                      className="p-4 rounded-md border hover-elevate"
+                      data-testid={`team-${team.id}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="font-semibold text-lg" data-testid={`team-name-${team.id}`}>
+                              {team.name}
+                            </h3>
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                              {getTeamMemberCount(team.id)} members
+                            </span>
+                          </div>
+                          {team.description && (
+                            <p className="text-sm text-muted-foreground">{team.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            {getTeamLeader(team.id) && (
+                              <div className="flex items-center gap-2">
+                                <Crown className="h-4 w-4 text-amber-500" />
+                                <span>Leader: {getTeamLeader(team.id)}</span>
+                              </div>
+                            )}
+                          </div>
+                          {getTeamMemberCount(team.id) > 0 && (
+                            <div className="text-sm text-muted-foreground mt-2">
+                              <p className="font-medium">Team Members:</p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {employees.filter(e => e.teamId === team.id).map(member => (
+                                  <span 
+                                    key={member.id}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                                  >
+                                    {member.isTeamLeader === 1 && <Crown className="h-3 w-3 text-amber-500" />}
+                                    {member.firstName} {member.lastName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditTeam(team)}
+                            data-testid={`button-edit-team-${team.id}`}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteTeamMutation.mutate(team.id)}
+                            disabled={deleteTeamMutation.isPending}
+                            data-testid={`button-delete-team-${team.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
