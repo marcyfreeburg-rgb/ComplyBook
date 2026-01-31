@@ -170,6 +170,59 @@ export class WebhookHandlers {
           console.error('Failed to send payment confirmation email:', emailError);
           // Don't throw - email failure shouldn't break webhook processing
         }
+        
+        // Send invoice payment survey if configured
+        try {
+          if (invoice.clientId) {
+            const forms = await storage.getForms(invoice.organizationId);
+            const invoicePaymentSurvey = forms.find(form => 
+              form.formType === 'survey' && 
+              form.status === 'active' &&
+              (form.settings as any)?.isInvoicePaymentSurvey === true
+            );
+
+            if (invoicePaymentSurvey) {
+              const client = await storage.getClient(invoice.clientId);
+              
+              if (client?.email) {
+                const organization = await storage.getOrganization(invoice.organizationId);
+                
+                if (organization) {
+                  // Build survey URL - use organization's domain or default
+                  const baseUrl = process.env.APP_URL || 'https://complybook.net';
+                  const surveyUrl = `${baseUrl}/s/${invoicePaymentSurvey.publicId}`;
+
+                  const branding = {
+                    primaryColor: organization.invoicePrimaryColor || undefined,
+                    accentColor: organization.invoiceAccentColor || undefined,
+                    fontFamily: organization.invoiceFontFamily || undefined,
+                    logoUrl: organization.logoUrl || undefined,
+                    footer: organization.invoiceFooter || undefined,
+                  };
+
+                  const { sendFormInvitationEmail } = await import('./email');
+                  
+                  await sendFormInvitationEmail({
+                    to: client.email,
+                    recipientName: client.name,
+                    organizationName: organization.name,
+                    formTitle: invoicePaymentSurvey.title,
+                    formDescription: invoicePaymentSurvey.description || `We'd love to hear about your experience with invoice #${invoice.invoiceNumber || invoiceId}`,
+                    formType: 'survey',
+                    formUrl: surveyUrl,
+                    personalMessage: `Thank you for your payment on invoice #${invoice.invoiceNumber || invoiceId}. We would appreciate your feedback about our services.`,
+                    branding,
+                  });
+
+                  console.log(`Invoice payment survey sent to ${client.email} for invoice ${invoiceId}`);
+                }
+              }
+            }
+          }
+        } catch (surveyError) {
+          console.error('Error sending invoice payment survey:', surveyError);
+          // Don't throw - survey failure shouldn't break webhook processing
+        }
       } catch (error) {
         console.error('Error updating invoice payment status:', error);
       }

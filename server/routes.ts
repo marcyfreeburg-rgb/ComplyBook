@@ -8045,7 +8045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const forms = await storage.getForms(existingInvoice.organizationId);
           const invoicePaymentSurvey = forms.find(form => 
             form.formType === 'survey' && 
-            form.status === 'published' &&
+            form.status === 'active' &&
             (form.settings as any)?.isInvoicePaymentSurvey === true
           );
 
@@ -8063,11 +8063,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Get branding
                 const branding = {
-                  primaryColor: organization.primaryColor || undefined,
-                  accentColor: organization.accentColor || undefined,
-                  fontFamily: organization.fontFamily || undefined,
+                  primaryColor: organization.invoicePrimaryColor || undefined,
+                  accentColor: organization.invoiceAccentColor || undefined,
+                  fontFamily: organization.invoiceFontFamily || undefined,
                   logoUrl: organization.logoUrl || undefined,
-                  footer: organization.emailFooter || undefined,
+                  footer: organization.invoiceFooter || undefined,
                 };
 
                 // Send the survey email

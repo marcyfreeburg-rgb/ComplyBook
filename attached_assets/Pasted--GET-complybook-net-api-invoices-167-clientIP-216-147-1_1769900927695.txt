@@ -1,0 +1,34 @@
+[GET]
+complybook.net/api/invoices/167 clientIP="216.147.126.248" requestID="9cc1e79b-6fa0-4114" responseTimeMS=240 responseBytes=1276 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invoices/167/next-number clientIP="216.147.126.248" requestID="f4ff0957-b857-44a0" responseTimeMS=239 responseBytes=1306 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+11:06:26 PM [express] GET /api/invoices/167 200 in 238ms :: []
+11:06:26 PM [express] GET /api/invoices/167/next-number 200 in 238ms :: {"nextInvoiceNumber":"INV-001…
+[POST]
+complybook.net/api/invoices clientIP="216.147.126.248" requestID="617ca731-4d54-4a42" responseTimeMS=1108 responseBytes=1527 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/invoices/50/line-items clientIP="216.147.126.248" requestID="d400db25-21ae-45d4" responseTimeMS=310 responseBytes=1377 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+11:06:45 PM [express] POST /api/invoices 201 in 1106ms :: {"id":50,"organizationId":167,"clientId":29…
+11:06:45 PM [express] POST /api/invoices/50/line-items 201 in 305ms :: {"id":48,"invoiceId":50,"descr…
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="74.220.48.4" requestID="24c18831-3248-4985" responseTimeMS=4 responseBytes=67688 userAgent="node"
+[POST]
+complybook.net/api/invoices/50/send-email clientIP="216.147.126.248" requestID="93e29bc2-b395-47d4" responseTimeMS=1708 responseBytes=1670 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invoices/167 clientIP="216.147.126.248" requestID="54a20880-06d2-4789" responseTimeMS=242 responseBytes=1515 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+11:06:47 PM [express] POST /api/invoices/50/send-email 200 in 1705ms :: {"message":"Invoice sent succ…
+11:06:47 PM [express] GET /api/invoices/167 200 in 240ms :: [{"id":50,"organizationId":167,"clientId"…
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="0b708dd1-14b5-44d8" responseTimeMS=4 responseBytes=67688 userAgent="Mozilla/4.0 (compatible; ms-office; MSOffice 16)"
+Menu
+[POST]
+complybook.net/api/stripe/webhook clientIP="3.18.12.63" requestID="28381d32-a71c-45ee" responseTimeMS=464 responseBytes=292 userAgent="Stripe/1.0 (+https://stripe.com/docs/webhooks)"
+Stripe webhook: processing incoming request...
+Stripe webhook: secret configured: true
+Stripe webhook received: checkout.session.completed - session: cs_live_a1ZaOg5oeJGWfcwzVGYmqO85EFwXrKKvAiGtdt6jUPslbGK6cbKcu4ltqJ
+Processing checkout.session.completed: cs_live_a1ZaOg5oeJGWfcwzVGYmqO85EFwXrKKvAiGtdt6jUPslbGK6cbKcu4ltqJ
+Processing invoice payment: 50
+Invoice 50 marked as paid - amount: $1.00
+Payment confirmation email sent to info@ccubedtraining.com for invoice INV-001
+Payment confirmation email sent for invoice 50
+Stripe webhook: handleEvent completed
