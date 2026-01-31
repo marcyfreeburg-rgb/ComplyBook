@@ -1,0 +1,36 @@
+6:53:45 PM [express] GET /api/auth/user 200 in 416ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="d9526021-172e-47de" responseTimeMS=366 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/change-orders/167 clientIP="216.147.126.248" requestID="00c0c00f-7499-40b4" responseTimeMS=386 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="f1bcdac4-ff7c-4c9c" responseTimeMS=118 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="9c1e1c64-686b-4187" responseTimeMS=264 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/proposals/167 clientIP="216.147.126.248" requestID="0c64bdd5-98b2-452f" responseTimeMS=398 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="08064b55-d74a-4455" responseTimeMS=703 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/contracts/167 clientIP="216.147.126.248" requestID="7948d5b0-285f-459d" responseTimeMS=459 responseBytes=1819 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+6:53:46 PM [express] GET /api/organizations 304 in 365ms :: [{"id":168,"name":"C Cubed Training","ty…
+6:53:46 PM [express] GET /api/security/mfa/status 304 in 682ms :: {"mfaEnabled":true,"mfaRequired":t…
+6:53:46 PM [express] GET /api/notifications/167/unread-count 304 in 263ms :: {"count":"0"}
+6:53:46 PM [express] GET /api/change-orders/167 304 in 384ms :: []
+6:53:46 PM [express] GET /api/proposals/167 304 in 398ms :: [{"id":4,"organizationId":167,"rfpNumber…
+6:53:46 PM [express] GET /api/contracts/167 200 in 452ms :: [{"id":18,"organizationId":167,"proposal…
+[GET]
+complybook.net/api/documents/contract/18 clientIP="216.147.126.248" requestID="4636eac8-be99-4430" responseTimeMS=428 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:53:50 PM [express] GET /api/documents/contract/18 304 in 427ms :: []
+[GET]
+complybook.net/api/documents/proposal/4 clientIP="216.147.126.248" requestID="10d4b072-6474-494b" responseTimeMS=364 responseBytes=1520 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:53:57 PM [express] GET /api/documents/proposal/4 200 in 362ms :: [{"id":2,"organizationId":167,"fi…
+[GET]
+complybook.net/api/documents/proposal/4 clientIP="216.147.126.248" requestID="5a76fbfe-f374-4e59" responseTimeMS=367 responseBytes=1276 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[DELETE]
+complybook.net/api/documents/2 clientIP="216.147.126.248" requestID="6023c6e4-9a28-4cb9" responseTimeMS=307 responseBytes=1311 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:53:59 PM [express] DELETE /api/documents/2 200 in 306ms :: {"message":"Document deleted successful…
+6:53:59 PM [express] GET /api/documents/proposal/4 200 in 359ms :: []
+[POST]
+complybook.net/api/change-orders clientIP="216.147.126.248" requestID="4b345e71-957e-49ec" responseTimeMS=791 responseBytes=1316 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
