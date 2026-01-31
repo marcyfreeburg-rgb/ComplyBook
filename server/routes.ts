@@ -14684,7 +14684,14 @@ Keep the response approximately 100-150 words.`;
   // Create a new change order
   app.post("/api/change-orders", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const changeOrder = await storage.createChangeOrder(req.body);
+      // Convert date strings to Date objects
+      const changeOrderData = {
+        ...req.body,
+        requestDate: req.body.requestDate ? new Date(req.body.requestDate) : null,
+        approvedDate: req.body.approvedDate ? new Date(req.body.approvedDate) : null,
+        implementedDate: req.body.implementedDate ? new Date(req.body.implementedDate) : null,
+      };
+      const changeOrder = await storage.createChangeOrder(changeOrderData);
       res.status(201).json(changeOrder);
     } catch (error: any) {
       console.error("Error creating change order:", error);
@@ -14696,7 +14703,14 @@ Keep the response approximately 100-150 words.`;
   app.put("/api/change-orders/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const changeOrder = await storage.updateChangeOrder(id, req.body);
+      // Convert date strings to Date objects
+      const changeOrderData = {
+        ...req.body,
+        requestDate: req.body.requestDate ? new Date(req.body.requestDate) : null,
+        approvedDate: req.body.approvedDate ? new Date(req.body.approvedDate) : null,
+        implementedDate: req.body.implementedDate ? new Date(req.body.implementedDate) : null,
+      };
+      const changeOrder = await storage.updateChangeOrder(id, changeOrderData);
       res.json(changeOrder);
     } catch (error: any) {
       console.error("Error updating change order:", error);
