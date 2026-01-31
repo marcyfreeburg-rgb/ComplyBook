@@ -573,13 +573,7 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
         </TabsContent>
 
         <TabsContent value="leads" className="space-y-4">
-          <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="text-xl font-semibold">Lead Pipeline</h2>
-            <Button data-testid="button-create-lead">
-              <Plus className="h-4 w-4 mr-2" />
-              New Lead
-            </Button>
-          </div>
+          <h2 className="text-xl font-semibold">Lead Pipeline</h2>
 
           <div className="grid gap-4">
             {leads.map((lead) => (
