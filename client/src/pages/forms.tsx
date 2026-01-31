@@ -172,7 +172,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
       if (!response.ok) throw new Error("Failed to fetch clients");
       return response.json();
     },
-    enabled: !!organization?.id && organization?.type === 'for_profit' && isSendInvitationsOpen,
+    enabled: !!organization?.id && organization?.type === 'forprofit' && isSendInvitationsOpen,
   });
   const clients = clientsResponse?.data || [];
   const clientsWithEmail = clients.filter(c => c.email);

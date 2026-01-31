@@ -156,7 +156,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       if (!response.ok) throw new Error("Failed to fetch donors");
       return response.json();
     },
-    enabled: !!organization?.id && organization?.type === 'nonprofit',
+    enabled: !!organization?.id && organization?.type === 'nonprofit' && isSendInvitationsOpen,
   });
 
   const { data: clientsData } = useQuery<{ data: Client[] }>({
@@ -168,7 +168,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       if (!response.ok) throw new Error("Failed to fetch clients");
       return response.json();
     },
-    enabled: !!organization?.id && organization?.type === 'for_profit',
+    enabled: !!organization?.id && organization?.type === 'forprofit' && isSendInvitationsOpen,
   });
 
   const { data: programsData } = useQuery<{ data: Program[] }>({
@@ -997,6 +997,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     ...formData,
                     settings: { ...formData.settings, enableDonorPrefill: checked }
                   })}
+                  data-testid="switch-edit-donor-prefill"
                 />
               </div>
               <div className="flex items-center justify-between">

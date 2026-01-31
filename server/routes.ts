@@ -8037,6 +8037,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip || null,
         userAgent: req.get('user-agent') || null
       });
+
+      // Check if invoice status changed to 'paid' and send satisfaction survey if configured
+      if (updates.status === 'paid' && existingInvoice.status !== 'paid' && existingInvoice.clientId) {
+        try {
+          // Find invoice payment survey for this organization
+          const forms = await storage.getForms(existingInvoice.organizationId);
+          const invoicePaymentSurvey = forms.find(form => 
+            form.formType === 'survey' && 
+            form.status === 'published' &&
+            (form.settings as any)?.isInvoicePaymentSurvey === true
+          );
+
+          if (invoicePaymentSurvey) {
+            // Get client info
+            const client = await storage.getClient(existingInvoice.clientId);
+            
+            if (client?.email) {
+              const organization = await storage.getOrganization(existingInvoice.organizationId);
+              
+              if (organization) {
+                // Build survey URL
+                const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+                const surveyUrl = `${baseUrl}/s/${invoicePaymentSurvey.publicId}`;
+
+                // Get branding
+                const branding = {
+                  primaryColor: organization.primaryColor || undefined,
+                  accentColor: organization.accentColor || undefined,
+                  fontFamily: organization.fontFamily || undefined,
+                  logoUrl: organization.logoUrl || undefined,
+                  footer: organization.emailFooter || undefined,
+                };
+
+                // Send the survey email
+                const { sendFormInvitationEmail } = await import('./email');
+                
+                await sendFormInvitationEmail({
+                  to: client.email,
+                  recipientName: client.name,
+                  organizationName: organization.name,
+                  formTitle: invoicePaymentSurvey.title,
+                  formDescription: invoicePaymentSurvey.description || `We'd love to hear about your experience with invoice #${existingInvoice.invoiceNumber || invoiceId}`,
+                  formType: 'survey',
+                  formUrl: surveyUrl,
+                  personalMessage: `Thank you for your payment on invoice #${existingInvoice.invoiceNumber || invoiceId}. We would appreciate your feedback about our services.`,
+                  branding,
+                });
+
+                console.log(`Invoice payment survey sent to ${client.email} for invoice ${invoiceId}`);
+              }
+            }
+          }
+        } catch (surveyError) {
+          // Log but don't fail the invoice update if survey sending fails
+          console.error('Error sending invoice payment survey:', surveyError);
+        }
+      }
       
       res.json(updated);
     } catch (error) {
