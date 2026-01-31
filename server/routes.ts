@@ -6,12 +6,8 @@ import fs from "fs";
 import path from "path";
 import { storage } from "./storage";
 
-// Check if we're in a Replit environment (including deployed apps with object storage)
-const isReplitEnvironment = !!(
-  (process.env.REPLIT_DOMAINS && process.env.REPL_ID) || 
-  process.env.PRIVATE_OBJECT_DIR || 
-  process.env.PUBLIC_OBJECT_SEARCH_PATHS
-);
+// Check if object storage is available (works in Replit dev/deploy or any env with proper config)
+const isObjectStorageAvailable = !!(process.env.PRIVATE_OBJECT_DIR && process.env.PUBLIC_OBJECT_SEARCH_PATHS);
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching } from "./aiCategorization";
@@ -267,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Only serves PUBLIC files - private files require authentication
   app.get('/objects/*', async (req, res) => {
     // This route only works on Replit - on other platforms, files are served via /uploads/*
-    if (!isReplitEnvironment) {
+    if (!isObjectStorageAvailable) {
       return res.status(404).json({ message: "Object storage not available on this platform" });
     }
     
@@ -517,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let logoPath = req.body.logoUrl;
       
       // Only normalize path on Replit environment
-      if (isReplitEnvironment) {
+      if (isObjectStorageAvailable) {
         const objectStorageService = new ObjectStorageService();
         logoPath = objectStorageService.normalizeObjectEntityPath(req.body.logoUrl);
       }
@@ -3208,7 +3204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let logoPath: string;
 
-      if (isReplitEnvironment) {
+      if (isObjectStorageAvailable) {
         // Use Replit Object Storage
         const objectStorageService = new ObjectStorageService();
         const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
@@ -5371,7 +5367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/transactions/:transactionId/attachments/upload-url', isAuthenticated, async (req: any, res) => {
     try {
       // Attachment uploads only supported on Replit environment
-      if (!isReplitEnvironment) {
+      if (!isObjectStorageAvailable) {
         return res.status(501).json({ message: "Attachment uploads are not supported in this environment" });
       }
       
@@ -5408,7 +5404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/transactions/:transactionId/attachments', isAuthenticated, async (req: any, res) => {
     try {
       // Attachment uploads only supported on Replit environment
-      if (!isReplitEnvironment) {
+      if (!isObjectStorageAvailable) {
         return res.status(501).json({ message: "Attachment uploads are not supported in this environment" });
       }
       
@@ -5471,7 +5467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/attachments/:id/download', isAuthenticated, async (req: any, res) => {
     try {
       // Attachment downloads only supported on Replit environment
-      if (!isReplitEnvironment) {
+      if (!isObjectStorageAvailable) {
         return res.status(501).json({ message: "Attachment downloads are not supported in this environment" });
       }
       
@@ -5519,7 +5515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/attachments/:id', isAuthenticated, async (req: any, res) => {
     try {
       // Attachment operations only supported on Replit environment
-      if (!isReplitEnvironment) {
+      if (!isObjectStorageAvailable) {
         return res.status(501).json({ message: "Attachment operations are not supported in this environment" });
       }
       
@@ -14791,7 +14787,7 @@ Keep the response approximately 100-150 words.`;
   // Get upload URL for a document
   app.post("/api/documents/upload-url", isAuthenticated, async (req: any, res: Response) => {
     try {
-      if (!isReplitEnvironment) {
+      if (!isObjectStorageAvailable) {
         return res.status(501).json({ message: "Document uploads are not supported in this environment" });
       }
 
@@ -14837,7 +14833,7 @@ Keep the response approximately 100-150 words.`;
   // Create a document record
   app.post("/api/documents", isAuthenticated, async (req: any, res: Response) => {
     try {
-      if (!isReplitEnvironment) {
+      if (!isObjectStorageAvailable) {
         return res.status(501).json({ message: "Document uploads are not supported in this environment" });
       }
 
