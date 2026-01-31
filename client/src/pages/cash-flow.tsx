@@ -12,8 +12,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, TrendingDown, DollarSign, Plus, Trash2, BarChart3 } from "lucide-react";
-import type { Organization, CashFlowScenario, CashFlowProjection, InsertCashFlowScenario } from "@shared/schema";
-import { insertCashFlowScenarioSchema } from "@shared/schema";
+import type { Organization, CashFlowScenario, CashFlowProjection } from "@shared/schema";
+import { z } from "zod";
+
+// Create a form-specific schema for the cash flow scenario form
+const cashFlowFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  type: z.enum(["optimistic", "realistic", "pessimistic", "custom"]),
+  description: z.string().optional(),
+  incomeGrowthRate: z.string().or(z.number()).transform(val => String(val)),
+  expenseGrowthRate: z.string().or(z.number()).transform(val => String(val)),
+  donationGrowthRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  grantGrowthRate: z.string().or(z.number()).transform(val => String(val)).optional(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  assumptions: z.string().optional(),
+});
+type CashFlowFormData = z.infer<typeof cashFlowFormSchema>;
 import { format } from "date-fns";
 import {
   LineChart,
@@ -37,8 +52,8 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<number | null>(null);
 
-  const form = useForm<InsertCashFlowScenario>({
-    resolver: zodResolver(insertCashFlowScenarioSchema.omit({ organizationId: true, createdBy: true })),
+  const form = useForm<CashFlowFormData>({
+    resolver: zodResolver(cashFlowFormSchema),
     defaultValues: {
       name: "",
       type: "realistic",
@@ -62,7 +77,7 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
   });
 
   const createScenarioMutation = useMutation({
-    mutationFn: async (data: InsertCashFlowScenario) => {
+    mutationFn: async (data: CashFlowFormData) => {
       return await apiRequest('POST', `/api/cash-flow-scenarios/${currentOrganization.id}`, data);
     },
     onSuccess: () => {
@@ -105,7 +120,7 @@ export default function CashFlow({ currentOrganization }: CashFlowProps) {
     },
   });
 
-  const onSubmit = (data: InsertCashFlowScenario) => {
+  const onSubmit = (data: CashFlowFormData) => {
     createScenarioMutation.mutate(data);
   };
 
