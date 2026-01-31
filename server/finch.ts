@@ -58,6 +58,30 @@ router.post('/create-session/:organizationId', isAuthenticated, async (req: Requ
       return res.status(404).json({ error: 'Organization not found' });
     }
 
+    // Check if there's an existing Finch connection for this organization
+    // If so, disconnect it on Finch's end first, then delete locally
+    const existingConnections = await storage.getFinchConnectionsByOrganization(parseInt(organizationId));
+    if (existingConnections.length > 0) {
+      console.log('[Finch] Found existing connection(s) for org:', organizationId, '- disconnecting before creating new session');
+      for (const conn of existingConnections) {
+        // Call Finch disconnect API to clear connection on their end
+        try {
+          let accessToken = conn.accessToken;
+          if (isTokenEncrypted(accessToken)) {
+            accessToken = decryptAccessToken(accessToken);
+          }
+          await fetch(`${FINCH_API_BASE}/disconnect`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}` },
+          });
+          console.log('[Finch] Disconnected connection:', conn.connectionId);
+        } catch (e) {
+          console.log('[Finch] Disconnect API call failed (may already be disconnected):', e);
+        }
+        await storage.deleteFinchConnection(conn.id);
+      }
+    }
+
     const sessionPayload: any = {
       customer_id: `org_${organizationId}`,
       customer_name: org.name,
