@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,7 @@ interface Lead {
   value: number;
   status: LeadStatus;
   lastContactDate: string;
-  assignedTo: string;
+  assignedToEmployeeId: number | null;
   source: string;
   createdAt: string;
 }
@@ -56,7 +56,7 @@ interface Opportunity {
   value: number;
   stage: OpportunityStage;
   lastContactDate: string;
-  assignedTo: string;
+  assignedToEmployeeId: number | null;
   probability: number;
   expectedCloseDate: string;
   leadId: number;
@@ -83,19 +83,19 @@ interface Activity {
 }
 
 const initialLeads: Lead[] = [
-  { id: 1, name: "Tech Solutions RFP", company: "Acme Corp", email: "john@acme.com", phone: "555-0101", value: 75000, status: "new", lastContactDate: "2026-01-28", assignedTo: "Sarah Johnson", source: "Website", createdAt: "2026-01-25" },
-  { id: 2, name: "Consulting Engagement", company: "Global Industries", email: "mike@global.com", phone: "555-0102", value: 120000, status: "contacted", lastContactDate: "2026-01-27", assignedTo: "Tom Wilson", source: "Referral", createdAt: "2026-01-20" },
-  { id: 3, name: "Software Integration", company: "StartUp Inc", email: "lisa@startup.com", phone: "555-0103", value: 45000, status: "qualified", lastContactDate: "2026-01-26", assignedTo: "Sarah Johnson", source: "Trade Show", createdAt: "2026-01-15" },
-  { id: 4, name: "Data Migration Project", company: "Legacy Systems", email: "bob@legacy.com", phone: "555-0104", value: 30000, status: "unqualified", lastContactDate: "2026-01-20", assignedTo: "Tom Wilson", source: "Cold Call", createdAt: "2026-01-10" },
-  { id: 5, name: "Cloud Infrastructure", company: "Modern Tech", email: "amy@modern.com", phone: "555-0105", value: 200000, status: "new", lastContactDate: "2026-01-29", assignedTo: "Sarah Johnson", source: "LinkedIn", createdAt: "2026-01-28" },
+  { id: 1, name: "Tech Solutions RFP", company: "Acme Corp", email: "john@acme.com", phone: "555-0101", value: 75000, status: "new", lastContactDate: "2026-01-28", assignedToEmployeeId: null, source: "Website", createdAt: "2026-01-25" },
+  { id: 2, name: "Consulting Engagement", company: "Global Industries", email: "mike@global.com", phone: "555-0102", value: 120000, status: "contacted", lastContactDate: "2026-01-27", assignedToEmployeeId: null, source: "Referral", createdAt: "2026-01-20" },
+  { id: 3, name: "Software Integration", company: "StartUp Inc", email: "lisa@startup.com", phone: "555-0103", value: 45000, status: "qualified", lastContactDate: "2026-01-26", assignedToEmployeeId: null, source: "Trade Show", createdAt: "2026-01-15" },
+  { id: 4, name: "Data Migration Project", company: "Legacy Systems", email: "bob@legacy.com", phone: "555-0104", value: 30000, status: "unqualified", lastContactDate: "2026-01-20", assignedToEmployeeId: null, source: "Cold Call", createdAt: "2026-01-10" },
+  { id: 5, name: "Cloud Infrastructure", company: "Modern Tech", email: "amy@modern.com", phone: "555-0105", value: 200000, status: "new", lastContactDate: "2026-01-29", assignedToEmployeeId: null, source: "LinkedIn", createdAt: "2026-01-28" },
 ];
 
 const initialOpportunities: Opportunity[] = [
-  { id: 1, name: "Enterprise Platform", company: "MegaCorp", value: 500000, stage: "negotiation", lastContactDate: "2026-01-28", assignedTo: "Sarah Johnson", probability: 75, expectedCloseDate: "2026-02-15", leadId: 101 },
-  { id: 2, name: "Security Audit", company: "FinTech Ltd", value: 85000, stage: "proposal", lastContactDate: "2026-01-27", assignedTo: "Tom Wilson", probability: 50, expectedCloseDate: "2026-03-01", leadId: 102 },
-  { id: 3, name: "Custom Development", company: "Retail Plus", value: 150000, stage: "discovery", lastContactDate: "2026-01-25", assignedTo: "Sarah Johnson", probability: 25, expectedCloseDate: "2026-04-01", leadId: 103 },
-  { id: 4, name: "Annual Support Contract", company: "HealthCare Inc", value: 60000, stage: "closed-won", lastContactDate: "2026-01-20", assignedTo: "Tom Wilson", probability: 100, expectedCloseDate: "2026-01-20", leadId: 104 },
-  { id: 5, name: "Mobile App Development", company: "Quick Services", value: 95000, stage: "closed-lost", lastContactDate: "2026-01-15", assignedTo: "Sarah Johnson", probability: 0, expectedCloseDate: "2026-01-15", leadId: 105 },
+  { id: 1, name: "Enterprise Platform", company: "MegaCorp", value: 500000, stage: "negotiation", lastContactDate: "2026-01-28", assignedToEmployeeId: null, probability: 75, expectedCloseDate: "2026-02-15", leadId: 101 },
+  { id: 2, name: "Security Audit", company: "FinTech Ltd", value: 85000, stage: "proposal", lastContactDate: "2026-01-27", assignedToEmployeeId: null, probability: 50, expectedCloseDate: "2026-03-01", leadId: 102 },
+  { id: 3, name: "Custom Development", company: "Retail Plus", value: 150000, stage: "discovery", lastContactDate: "2026-01-25", assignedToEmployeeId: null, probability: 25, expectedCloseDate: "2026-04-01", leadId: 103 },
+  { id: 4, name: "Annual Support Contract", company: "HealthCare Inc", value: 60000, stage: "closed-won", lastContactDate: "2026-01-20", assignedToEmployeeId: null, probability: 100, expectedCloseDate: "2026-01-20", leadId: 104 },
+  { id: 5, name: "Mobile App Development", company: "Quick Services", value: 95000, stage: "closed-lost", lastContactDate: "2026-01-15", assignedToEmployeeId: null, probability: 0, expectedCloseDate: "2026-01-15", leadId: 105 },
 ];
 
 const contacts: ContactPerson[] = [
@@ -134,6 +134,55 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
   const getTeamMembers = (teamId: number) => {
     return employees.filter(e => e.teamId === teamId);
   };
+
+  // Helper: Organize employees by team, sorted alphabetically within each team
+  const getEmployeesGroupedByTeam = () => {
+    // Sort teams alphabetically by name
+    const sortedTeams = [...realTeams].sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Group employees by team, sorted alphabetically within each team
+    const grouped: { team: Team | null; employees: Employee[] }[] = [];
+    
+    // Add employees with teams
+    for (const team of sortedTeams) {
+      const teamEmployees = employees
+        .filter(e => e.teamId === team.id)
+        .sort((a, b) => {
+          const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+          const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+      if (teamEmployees.length > 0) {
+        grouped.push({ team, employees: teamEmployees });
+      }
+    }
+    
+    // Add employees without a team (unassigned to any team)
+    const unassignedEmployees = employees
+      .filter(e => !e.teamId)
+      .sort((a, b) => {
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    if (unassignedEmployees.length > 0) {
+      grouped.push({ team: null, employees: unassignedEmployees });
+    }
+    
+    return grouped;
+  };
+
+  // Helper: Get employee display name with team info
+  const getEmployeeDisplayInfo = (employeeId: number | null) => {
+    if (!employeeId) return { name: "Unassigned", team: null };
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee) return { name: "Unassigned", team: null };
+    const team = realTeams.find(t => t.id === employee.teamId);
+    return {
+      name: `${employee.firstName} ${employee.lastName}`,
+      team: team?.name || null
+    };
+  };
   const [showViewLeadDialog, setShowViewLeadDialog] = useState(false);
   const [showEditLeadDialog, setShowEditLeadDialog] = useState(false);
   const [showAddOpportunityDialog, setShowAddOpportunityDialog] = useState(false);
@@ -154,7 +203,8 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     email: "",
     phone: "",
     value: "",
-    source: "Website"
+    source: "Website",
+    assignedToEmployeeId: null as number | null
   });
   const [newOpportunity, setNewOpportunity] = useState({
     name: "",
@@ -162,7 +212,8 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     value: "",
     stage: "discovery" as OpportunityStage,
     probability: "25",
-    expectedCloseDate: ""
+    expectedCloseDate: "",
+    assignedToEmployeeId: null as number | null
   });
   const { toast } = useToast();
 
@@ -268,13 +319,13 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
       value: parseFloat(newLead.value) || 0,
       status: "new",
       lastContactDate: new Date().toISOString().split('T')[0],
-      assignedTo: "Unassigned",
+      assignedToEmployeeId: newLead.assignedToEmployeeId,
       source: newLead.source,
       createdAt: new Date().toISOString().split('T')[0]
     };
 
     setLeads([lead, ...leads]);
-    setNewLead({ name: "", company: "", email: "", phone: "", value: "", source: "Website" });
+    setNewLead({ name: "", company: "", email: "", phone: "", value: "", source: "Website", assignedToEmployeeId: null });
     setShowAddLeadDialog(false);
     setActiveTab("leads");
     toast({
@@ -320,14 +371,14 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
       value: parseFloat(newOpportunity.value) || 0,
       stage: newOpportunity.stage,
       lastContactDate: new Date().toISOString().split('T')[0],
-      assignedTo: "Unassigned",
+      assignedToEmployeeId: newOpportunity.assignedToEmployeeId,
       probability: parseInt(newOpportunity.probability) || 25,
       expectedCloseDate: newOpportunity.expectedCloseDate || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
       leadId: 0
     };
 
     setOpportunities([opp, ...opportunities]);
-    setNewOpportunity({ name: "", company: "", value: "", stage: "discovery", probability: "25", expectedCloseDate: "" });
+    setNewOpportunity({ name: "", company: "", value: "", stage: "discovery", probability: "25", expectedCloseDate: "", assignedToEmployeeId: null });
     setShowAddOpportunityDialog(false);
     toast({
       title: "Opportunity created",
@@ -596,31 +647,35 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                       No teams created yet. Create teams in the Employees & Teams section.
                     </div>
                   ) : (
-                    realTeams.map((team: Team) => {
-                      const teamMembers = getTeamMembers(team.id);
-                      const memberNames = teamMembers.map(m => `${m.firstName} ${m.lastName}`);
-                      // Filter leads/opps by team member names
-                      const teamLeads = leads.filter(l => memberNames.includes(l.assignedTo));
-                      const teamOpps = opportunities.filter(o => memberNames.includes(o.assignedTo));
-                      const teamWon = teamOpps.filter(o => o.stage === "closed-won");
-                      const totalValue = teamWon.reduce((sum, o) => sum + o.value, 0);
-                      return (
-                        <div key={team.id} className="p-3 rounded-md border space-y-2" data-testid={`team-performance-${team.id}`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <UsersRound className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{team.name}</span>
+                    realTeams.filter((team: Team) => getTeamMembers(team.id).length > 0).length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        No teams with members. Assign employees to teams to see team performance.
+                      </div>
+                    ) : (
+                      realTeams.filter((team: Team) => getTeamMembers(team.id).length > 0).map((team: Team) => {
+                        const teamMembers = getTeamMembers(team.id);
+                        const memberIds = teamMembers.map(m => m.id);
+                        // Filter leads/opps by team member IDs
+                        const teamLeads = leads.filter(l => l.assignedToEmployeeId && memberIds.includes(l.assignedToEmployeeId));
+                        const teamOpps = opportunities.filter(o => o.assignedToEmployeeId && memberIds.includes(o.assignedToEmployeeId));
+                        const teamWon = teamOpps.filter(o => o.stage === "closed-won");
+                        const totalValue = teamWon.reduce((sum, o) => sum + o.value, 0);
+                        return (
+                          <div key={team.id} className="p-3 rounded-md border space-y-2" data-testid={`team-performance-${team.id}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <UsersRound className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">{team.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{teamLeads.length} leads</Badge>
+                                <Badge variant="secondary">{teamWon.length} won</Badge>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{teamLeads.length} leads</Badge>
-                              <Badge variant="secondary">{teamWon.length} won</Badge>
+                            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                              <span>{teamMembers.length} members</span>
+                              <span>${totalValue.toLocaleString()} closed</span>
                             </div>
-                          </div>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>{teamMembers.length} members</span>
-                            <span>${totalValue.toLocaleString()} closed</span>
-                          </div>
-                          {teamMembers.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {teamMembers.map((member: Employee) => (
                                 <span key={member.id} className="px-2 py-0.5 rounded-full bg-muted text-xs">
@@ -628,30 +683,77 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                                 </span>
                               ))}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })
+                          </div>
+                        );
+                      })
+                    )
                   )
                 ) : (
-                  // Individual view
-                  Array.from(new Set([...leads.map(l => l.assignedTo), ...opportunities.map(o => o.assignedTo)])).map(rep => {
-                    const repLeads = leads.filter(l => l.assignedTo === rep);
-                    const repOpps = opportunities.filter(o => o.assignedTo === rep);
-                    const repWon = repOpps.filter(o => o.stage === "closed-won");
-                    return (
-                      <div key={rep} className="flex items-center justify-between" data-testid={`individual-performance-${rep.replace(/\s+/g, '-').toLowerCase()}`}>
+                  // Individual view - group by employee ID
+                  (() => {
+                    // Get all valid employee IDs from the employees list
+                    const validEmployeeIds = new Set(employees.map(e => e.id));
+                    
+                    const allAssignedEmployeeIds = new Set([
+                      ...leads.map(l => l.assignedToEmployeeId),
+                      ...opportunities.map(o => o.assignedToEmployeeId)
+                    ].filter((id): id is number => id !== null && validEmployeeIds.has(id)));
+                    
+                    const performanceData = Array.from(allAssignedEmployeeIds).map(empId => {
+                      const empInfo = getEmployeeDisplayInfo(empId);
+                      const repLeads = leads.filter(l => l.assignedToEmployeeId === empId);
+                      const repOpps = opportunities.filter(o => o.assignedToEmployeeId === empId);
+                      const repWon = repOpps.filter(o => o.stage === "closed-won");
+                      return { empId, empInfo, repLeads, repOpps, repWon };
+                    });
+                    
+                    // Collect unassigned entries (null IDs or IDs for employees who no longer exist)
+                    const unassignedLeads = leads.filter(l => 
+                      l.assignedToEmployeeId === null || !validEmployeeIds.has(l.assignedToEmployeeId)
+                    );
+                    const unassignedOpps = opportunities.filter(o => 
+                      o.assignedToEmployeeId === null || !validEmployeeIds.has(o.assignedToEmployeeId)
+                    );
+                    const unassignedWon = unassignedOpps.filter(o => o.stage === "closed-won");
+                    if (unassignedLeads.length > 0 || unassignedOpps.length > 0) {
+                      performanceData.push({
+                        empId: 0,
+                        empInfo: { name: "Unassigned", team: null },
+                        repLeads: unassignedLeads,
+                        repOpps: unassignedOpps,
+                        repWon: unassignedWon
+                      });
+                    }
+                    
+                    // Sort alphabetically by name
+                    performanceData.sort((a, b) => a.empInfo.name.localeCompare(b.empInfo.name));
+                    
+                    if (performanceData.length === 0) {
+                      return (
+                        <div className="text-center py-4 text-muted-foreground text-sm">
+                          No leads or opportunities assigned yet.
+                        </div>
+                      );
+                    }
+                    
+                    return performanceData.map(({ empId, empInfo, repLeads, repWon }) => (
+                      <div key={empId} className="flex items-center justify-between" data-testid={`individual-performance-${empInfo.name.replace(/\s+/g, '-').toLowerCase()}`}>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{rep}</span>
+                          <span className="text-sm">
+                            {empInfo.name}
+                            {empInfo.team && (
+                              <span className="text-xs text-muted-foreground ml-1">({empInfo.team})</span>
+                            )}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{repLeads.length} leads</Badge>
                           <Badge variant="secondary">{repWon.length} won</Badge>
                         </div>
                       </div>
-                    );
-                  })
+                    ));
+                  })()
                 )}
               </CardContent>
             </Card>
@@ -695,7 +797,12 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                       <p className="text-sm text-muted-foreground">Assigned To</p>
                       <p className="text-sm font-medium flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {lead.assignedTo}
+                        {getEmployeeDisplayInfo(lead.assignedToEmployeeId).name}
+                        {getEmployeeDisplayInfo(lead.assignedToEmployeeId).team && (
+                          <span className="text-xs text-muted-foreground">
+                            ({getEmployeeDisplayInfo(lead.assignedToEmployeeId).team})
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div>
@@ -786,7 +893,12 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                       <p className="text-sm text-muted-foreground">Assigned To</p>
                       <p className="text-sm font-medium flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {opp.assignedTo}
+                        {getEmployeeDisplayInfo(opp.assignedToEmployeeId).name}
+                        {getEmployeeDisplayInfo(opp.assignedToEmployeeId).team && (
+                          <span className="text-xs text-muted-foreground">
+                            ({getEmployeeDisplayInfo(opp.assignedToEmployeeId).team})
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -972,6 +1084,36 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                 </Select>
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-assigned-to">Assign To</Label>
+              <Select 
+                value={newLead.assignedToEmployeeId?.toString() || "unassigned"} 
+                onValueChange={(value) => setNewLead({ ...newLead, assignedToEmployeeId: value === "unassigned" ? null : parseInt(value) })}
+              >
+                <SelectTrigger data-testid="select-lead-assigned-to">
+                  <SelectValue placeholder="Select a team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {employees.length === 0 ? (
+                    <div className="px-2 py-1 text-sm text-muted-foreground">
+                      No employees available. Add employees first.
+                    </div>
+                  ) : (
+                    getEmployeesGroupedByTeam().map((group) => (
+                      <SelectGroup key={group.team?.id || 'no-team'}>
+                        <SelectLabel>{group.team?.name || 'No Team'}</SelectLabel>
+                        {group.employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id.toString()}>
+                            {emp.firstName} {emp.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddLeadDialog(false)} data-testid="button-cancel-lead">
@@ -1030,7 +1172,14 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Assigned To</p>
-                  <p className="font-medium">{selectedLead.assignedTo}</p>
+                  <div className="font-medium">
+                    {getEmployeeDisplayInfo(selectedLead.assignedToEmployeeId).name}
+                    {getEmployeeDisplayInfo(selectedLead.assignedToEmployeeId).team && (
+                      <span className="text-sm text-muted-foreground ml-1">
+                        ({getEmployeeDisplayInfo(selectedLead.assignedToEmployeeId).team})
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Last Contact</p>
@@ -1123,6 +1272,36 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Assign To</Label>
+                <Select 
+                  value={selectedLead.assignedToEmployeeId?.toString() || "unassigned"} 
+                  onValueChange={(value) => setSelectedLead({ ...selectedLead, assignedToEmployeeId: value === "unassigned" ? null : parseInt(value) })}
+                >
+                  <SelectTrigger data-testid="select-edit-lead-assigned-to">
+                    <SelectValue placeholder="Select a team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {employees.length === 0 ? (
+                      <div className="px-2 py-1 text-sm text-muted-foreground">
+                        No employees available. Add employees first.
+                      </div>
+                    ) : (
+                      getEmployeesGroupedByTeam().map((group) => (
+                        <SelectGroup key={group.team?.id || 'no-team'}>
+                          <SelectLabel>{group.team?.name || 'No Team'}</SelectLabel>
+                          {group.employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id.toString()}>
+                              {emp.firstName} {emp.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -1222,6 +1401,36 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                 />
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="opp-assigned-to">Assign To</Label>
+              <Select 
+                value={newOpportunity.assignedToEmployeeId?.toString() || "unassigned"} 
+                onValueChange={(value) => setNewOpportunity({ ...newOpportunity, assignedToEmployeeId: value === "unassigned" ? null : parseInt(value) })}
+              >
+                <SelectTrigger data-testid="select-opportunity-assigned-to">
+                  <SelectValue placeholder="Select a team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {employees.length === 0 ? (
+                    <div className="px-2 py-1 text-sm text-muted-foreground">
+                      No employees available. Add employees first.
+                    </div>
+                  ) : (
+                    getEmployeesGroupedByTeam().map((group) => (
+                      <SelectGroup key={group.team?.id || 'no-team'}>
+                        <SelectLabel>{group.team?.name || 'No Team'}</SelectLabel>
+                        {group.employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id.toString()}>
+                            {emp.firstName} {emp.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddOpportunityDialog(false)}>
@@ -1279,7 +1488,14 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Assigned To</p>
-                <p className="font-medium">{selectedOpportunity.assignedTo}</p>
+                <div className="font-medium">
+                  {getEmployeeDisplayInfo(selectedOpportunity.assignedToEmployeeId).name}
+                  {getEmployeeDisplayInfo(selectedOpportunity.assignedToEmployeeId).team && (
+                    <span className="text-sm text-muted-foreground ml-1">
+                      ({getEmployeeDisplayInfo(selectedOpportunity.assignedToEmployeeId).team})
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1374,6 +1590,36 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                     onChange={(e) => setSelectedOpportunity({ ...selectedOpportunity, expectedCloseDate: e.target.value })}
                   />
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Assign To</Label>
+                <Select 
+                  value={selectedOpportunity.assignedToEmployeeId?.toString() || "unassigned"} 
+                  onValueChange={(value) => setSelectedOpportunity({ ...selectedOpportunity, assignedToEmployeeId: value === "unassigned" ? null : parseInt(value) })}
+                >
+                  <SelectTrigger data-testid="select-edit-opportunity-assigned-to">
+                    <SelectValue placeholder="Select a team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {employees.length === 0 ? (
+                      <div className="px-2 py-1 text-sm text-muted-foreground">
+                        No employees available. Add employees first.
+                      </div>
+                    ) : (
+                      getEmployeesGroupedByTeam().map((group) => (
+                        <SelectGroup key={group.team?.id || 'no-team'}>
+                          <SelectLabel>{group.team?.name || 'No Team'}</SelectLabel>
+                          {group.employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id.toString()}>
+                              {emp.firstName} {emp.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
