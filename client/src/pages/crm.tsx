@@ -122,8 +122,15 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
   const [showAddOpportunityDialog, setShowAddOpportunityDialog] = useState(false);
   const [showViewOpportunityDialog, setShowViewOpportunityDialog] = useState(false);
   const [showEditOpportunityDialog, setShowEditOpportunityDialog] = useState(false);
+  const [showViewContactDialog, setShowViewContactDialog] = useState(false);
+  const [showEditContactDialog, setShowEditContactDialog] = useState(false);
+  const [showEmailContactDialog, setShowEmailContactDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactPerson | null>(null);
+  const [contactsList, setContactsList] = useState<ContactPerson[]>(contacts);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
   const [newLead, setNewLead] = useState({
     name: "",
     company: "",
@@ -329,6 +336,51 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
       title: "Opportunity updated",
       description: `${selectedOpportunity.name} has been updated`
     });
+  };
+
+  const handleViewContact = (contact: ContactPerson) => {
+    setSelectedContact(contact);
+    setShowViewContactDialog(true);
+  };
+
+  const handleEditContact = (contact: ContactPerson) => {
+    setSelectedContact(contact);
+    setShowEditContactDialog(true);
+  };
+
+  const handleSaveEditContact = () => {
+    if (!selectedContact) return;
+    setContactsList(contactsList.map(c => c.id === selectedContact.id ? selectedContact : c));
+    setShowEditContactDialog(false);
+    toast({
+      title: "Contact updated",
+      description: `${selectedContact.name} has been updated`
+    });
+  };
+
+  const handleEmailContact = (contact: ContactPerson) => {
+    setSelectedContact(contact);
+    setEmailSubject("");
+    setEmailBody("");
+    setShowEmailContactDialog(true);
+  };
+
+  const handleSendEmail = () => {
+    if (!selectedContact || !emailSubject) {
+      toast({
+        title: "Missing information",
+        description: "Please enter a subject for your email",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // In a real app, this would send via API
+    toast({
+      title: "Email sent",
+      description: `Email sent to ${selectedContact.email}`
+    });
+    setShowEmailContactDialog(false);
   };
 
   return (
@@ -700,7 +752,7 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
           </div>
 
           <div className="grid gap-4">
-            {contacts.map((contact) => (
+            {contactsList.map((contact) => (
               <Card key={contact.id} data-testid={`card-contact-${contact.id}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between flex-wrap gap-2">
@@ -741,13 +793,13 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                     </div>
                   )}
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" data-testid={`button-view-contact-${contact.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-view-contact-${contact.id}`} onClick={() => handleViewContact(contact)}>
                       View Details
                     </Button>
-                    <Button variant="outline" size="sm" data-testid={`button-edit-contact-${contact.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-edit-contact-${contact.id}`} onClick={() => handleEditContact(contact)}>
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" data-testid={`button-email-contact-${contact.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-email-contact-${contact.id}`} onClick={() => handleEmailContact(contact)}>
                       Send Email
                     </Button>
                   </div>
@@ -1251,6 +1303,194 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
             </Button>
             <Button onClick={handleSaveEditOpportunity} data-testid="button-save-edit-opportunity">
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Contact Dialog */}
+      <Dialog open={showViewContactDialog} onOpenChange={setShowViewContactDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Contact Details</DialogTitle>
+            <DialogDescription>
+              {selectedContact?.company}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedContact && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Name</p>
+                  <p className="font-medium">{selectedContact.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Title</p>
+                  <p className="font-medium">{selectedContact.title}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium">{selectedContact.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-medium">{selectedContact.phone}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Company</p>
+                  <p className="font-medium">{selectedContact.company}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Last Contact</p>
+                  <p className="font-medium">{new Date(selectedContact.lastContactDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+              {selectedContact.notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Notes</p>
+                  <p className="font-medium">{selectedContact.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowViewContactDialog(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowViewContactDialog(false); handleEditContact(selectedContact!); }}>
+              Edit Contact
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Dialog */}
+      <Dialog open={showEditContactDialog} onOpenChange={setShowEditContactDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+            <DialogDescription>
+              Update the contact's information.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedContact && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Name</Label>
+                  <Input
+                    data-testid="input-edit-contact-name"
+                    value={selectedContact.name}
+                    onChange={(e) => setSelectedContact({ ...selectedContact, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Title</Label>
+                  <Input
+                    data-testid="input-edit-contact-title"
+                    value={selectedContact.title}
+                    onChange={(e) => setSelectedContact({ ...selectedContact, title: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Company</Label>
+                <Input
+                  data-testid="input-edit-contact-company"
+                  value={selectedContact.company}
+                  onChange={(e) => setSelectedContact({ ...selectedContact, company: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Email</Label>
+                  <Input
+                    data-testid="input-edit-contact-email"
+                    type="email"
+                    value={selectedContact.email}
+                    onChange={(e) => setSelectedContact({ ...selectedContact, email: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Phone</Label>
+                  <Input
+                    data-testid="input-edit-contact-phone"
+                    value={selectedContact.phone}
+                    onChange={(e) => setSelectedContact({ ...selectedContact, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Notes</Label>
+                <Input
+                  data-testid="input-edit-contact-notes"
+                  value={selectedContact.notes}
+                  onChange={(e) => setSelectedContact({ ...selectedContact, notes: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditContactDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditContact} data-testid="button-save-edit-contact">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Email Dialog */}
+      <Dialog open={showEmailContactDialog} onOpenChange={setShowEmailContactDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Send Email</DialogTitle>
+            <DialogDescription>
+              Compose an email to {selectedContact?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedContact && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>To</Label>
+                <Input
+                  value={selectedContact.email}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Subject *</Label>
+                <Input
+                  data-testid="input-email-subject"
+                  placeholder="Enter email subject"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Message</Label>
+                <textarea
+                  data-testid="input-email-body"
+                  className="min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  placeholder="Write your message here..."
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEmailContactDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendEmail} data-testid="button-send-email">
+              Send Email
             </Button>
           </DialogFooter>
         </DialogContent>
