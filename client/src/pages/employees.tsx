@@ -526,9 +526,10 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
           <Label htmlFor={`${isEdit ? 'edit-' : ''}bank-routing`}>Bank Routing Number</Label>
           <Input
             id={`${isEdit ? 'edit-' : ''}bank-routing`}
-            placeholder="For direct deposit"
+            placeholder="9-digit routing number"
             value={formData.bankRoutingNumber}
             onChange={(e) => setFormData({ ...formData, bankRoutingNumber: e.target.value })}
+            maxLength={20}
             data-testid={`input-${isEdit ? 'edit-' : ''}bank-routing`}
           />
         </div>

@@ -1984,6 +1984,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
+      // Validate field lengths before processing
+      const { bankRoutingNumber, employeeNumber, phone } = req.body;
+      if (bankRoutingNumber && bankRoutingNumber.length > 20) {
+        return res.status(400).json({ message: "Bank routing number must be 20 characters or less" });
+      }
+      if (employeeNumber && employeeNumber.length > 50) {
+        return res.status(400).json({ message: "Employee number must be 50 characters or less" });
+      }
+      if (phone && phone.length > 50) {
+        return res.status(400).json({ message: "Phone number must be 50 characters or less" });
+      }
+      
       // Convert date strings to Date objects before validation
       const body = {
         ...req.body,
@@ -2005,8 +2017,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const employee = await storage.createEmployee(data);
       await storage.logCreate(data.organizationId, userId, 'employee', String(employee.id), employee);
       res.status(201).json(employee);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating employee:", error);
+      // Check for specific database constraint violations
+      if (error.code === '22001') {
+        return res.status(400).json({ message: "One of the fields exceeds the maximum allowed length. Please check your input." });
+      }
       res.status(400).json({ message: "Failed to create employee" });
     }
   });

@@ -1,0 +1,42 @@
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 8256 total (8256 active, 0 archived)
+4:05:13 AM [express] GET /api/auth/user 200 in 180ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+4:05:14 AM [express] GET /api/organizations 200 in 340ms :: [{"id":168,"name":"C Cubed Training","ty…
+4:05:14 AM [express] GET /api/security/mfa/status 304 in 524ms :: {"mfaEnabled":true,"mfaRequired":t…
+4:05:14 AM [express] GET /api/notifications/167/unread-count 200 in 235ms :: {"count":"0"}
+4:05:14 AM [express] GET /api/teams/167 304 in 236ms :: []
+4:05:15 AM [express] GET /api/employees/167 304 in 426ms :: []
+4:06:15 AM [express] GET /api/notifications/167/unread-count 304 in 772ms :: {"count":"0"}
+Error creating employee: error: value too long for type character varying(20)
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.createEmployee (file:///opt/render/project/src/dist/index.js:8256:31)
+Menu
+    at async file:///opt/render/project/src/dist/index.js:14007:24 {
+  length: 98,
+  severity: 'ERROR',
+  code: '22001',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'varchar.c',
+  line: '638',
+  routine: 'varchar'
+}
+4:06:54 AM [express] POST /api/employees 400 in 789ms :: {"message":"Failed to create employee"}
