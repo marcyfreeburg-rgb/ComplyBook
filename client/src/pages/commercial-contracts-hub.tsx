@@ -58,8 +58,10 @@ type ProposalFormData = {
 
 type ChangeOrderFormData = {
   contractId: string;
+  changeOrderNumber: string;
   title: string;
   description: string;
+  requestedBy: string;
   changeAmount: string;
   requestDate: string;
   status: "requested" | "under_review" | "approved" | "rejected" | "implemented";
@@ -103,8 +105,10 @@ const emptyProposalForm: ProposalFormData = {
 
 const emptyChangeOrderForm: ChangeOrderFormData = {
   contractId: "",
+  changeOrderNumber: "",
   title: "",
   description: "",
+  requestedBy: "",
   changeAmount: "",
   requestDate: new Date().toISOString().split("T")[0],
   status: "requested",
@@ -420,8 +424,10 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
       setEditingChangeOrder(changeOrder);
       setChangeOrderForm({
         contractId: String(changeOrder.contractId),
+        changeOrderNumber: changeOrder.changeOrderNumber || "",
         title: changeOrder.title,
         description: changeOrder.description || "",
+        requestedBy: changeOrder.requestedBy || "",
         changeAmount: String(changeOrder.changeAmount || "0"),
         requestDate: changeOrder.requestDate ? new Date(changeOrder.requestDate).toISOString().split("T")[0] : "",
         status: changeOrder.status,
@@ -465,8 +471,8 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
   };
 
   const handleSaveChangeOrder = () => {
-    if (!changeOrderForm.contractId || !changeOrderForm.title) {
-      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
+    if (!changeOrderForm.contractId || !changeOrderForm.changeOrderNumber || !changeOrderForm.title || !changeOrderForm.description || !changeOrderForm.requestedBy || !changeOrderForm.changeAmount) {
+      toast({ title: "Error", description: "Please fill in all required fields (Contract, Change Order Number, Title, Description, Requested By, Change Amount)", variant: "destructive" });
       return;
     }
     if (editingChangeOrder) {
@@ -1221,8 +1227,18 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="coNumber">Change Order Number *</Label>
+                <Input id="coNumber" value={changeOrderForm.changeOrderNumber} onChange={(e) => setChangeOrderForm({ ...changeOrderForm, changeOrderNumber: e.target.value })} placeholder="CO-001" data-testid="input-changeorder-number" />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="coTitle">Title *</Label>
                 <Input id="coTitle" value={changeOrderForm.title} onChange={(e) => setChangeOrderForm({ ...changeOrderForm, title: e.target.value })} placeholder="Additional Scope" data-testid="input-changeorder-title" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="coRequestedBy">Requested By *</Label>
+                <Input id="coRequestedBy" value={changeOrderForm.requestedBy} onChange={(e) => setChangeOrderForm({ ...changeOrderForm, requestedBy: e.target.value })} placeholder="Client Name" data-testid="input-changeorder-requestedby" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="coStatus">Status</Label>
@@ -1240,11 +1256,11 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="changeAmount">Change Amount ($)</Label>
+                <Label htmlFor="changeAmount">Change Amount ($) *</Label>
                 <Input id="changeAmount" type="number" value={changeOrderForm.changeAmount} onChange={(e) => setChangeOrderForm({ ...changeOrderForm, changeAmount: e.target.value })} placeholder="15000" data-testid="input-changeorder-amount" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="requestDate">Request Date</Label>
+                <Label htmlFor="requestDate">Request Date *</Label>
                 <Input id="requestDate" type="date" value={changeOrderForm.requestDate} onChange={(e) => setChangeOrderForm({ ...changeOrderForm, requestDate: e.target.value })} data-testid="input-changeorder-date" />
               </div>
             </div>
