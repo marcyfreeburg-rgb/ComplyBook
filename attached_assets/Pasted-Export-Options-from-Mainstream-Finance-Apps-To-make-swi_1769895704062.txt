@@ -1,0 +1,81 @@
+Export Options from Mainstream Finance Apps
+To make switching to your app (like ComplyBook) seamless for SMBs and nonprofits, focus on supporting imports from common export formats like CSV and Excel, which are widely used across these platforms. These allow users to transfer structured data without much reformatting. Below, I'll break down how Xero, QuickBooks (primarily Online, as it's common for SMBs/nonprofits), and Aplos handle exports for invoices, clients/customers, vendors/suppliers, and other key data. This is based on standard features—users may need add-ons (e.g., SaasAnt for bulk) for advanced scenarios.
+I've included a table for quick comparison, followed by details per app. For migration, prioritize data like chart of accounts, historical balances, and subledgers to ensure continuity. Common pitfalls include data cleaning (e.g., duplicates, formatting), so your app could add validation tools during import to lower the pain point.
+Comparison Table: Export Capabilities by Data Type
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Data TypeXero (Format/Method)QuickBooks Online (Format/Method)Aplos (Format/Method)Invoices/BillsCSV/Excel; From Sales > Invoices > Export (up to 500 per batch; use reports for more) Excel/CSV; From Reports > Invoice List > Customize > Export (includes line items, customizable columns) Excel/CSV/PDF; From Accounts Payable > Bills to Pay > Export (or reports for donation-related invoices) Clients/CustomersCSV; From Contacts > Customers > Export (includes name, address, phone, email) Excel/CSV; From Sales > Customers > Export (or Reports > Customer Contact List > Customize > Export) Excel/CSV; From Reports > Contact Details > Export (includes address, custom fields; donor-focused) Vendors/SuppliersCSV; From Contacts > Suppliers > Export (similar to customers) Excel/CSV; From Expenses > Vendors > Export (or Reports > Vendor Contact List > Customize > Export, add fields like Tax ID) Excel/CSV; From Contacts > Vendors > Export (or Accounts Payable imports imply export symmetry) Other Common DataChart of accounts, items, payments, purchase orders, GL, trial balance (CSV/Excel via Reports or add-ons like SaasAnt/Coupler.io) Employees, items/inventory, chart of accounts, journal entries, reports (Excel/CSV via Settings > Export Data or individual reports) Donations, funds, registers/transactions, reports (CSV/Excel/PDF via Reports or Register > Export) 
+Detailed Export Processes
+Xero
+
+Invoices/Bills: Navigate to Sales > Invoices > Select tab (e.g., Paid) > Search/filter > Export. For bulk or scheduled, use apps like SaasAnt or Coupler.io for automated CSV/Excel pulls.
+Clients/Customers & Vendors/Suppliers: Go to Contacts > Customers/Suppliers > Three dots > Export. Includes basics like name, address, phone; no direct Tax ID export, but customizable via reports.
+Other Data: Export reports (e.g., GL, trial balance) from Accounting > Reports. Items from Inventory > Items > Export. Payments and purchase orders via dedicated reports. For full migration, export historical data like balances from previous software guides.
+Tips for Import: Support CSV imports with fields like ID, date, amount, due date for invoices; name, email, address for contacts.
+
+QuickBooks Online
+
+Invoices/Bills: From Reports > Search "Invoice List" > Customize (add columns like line items, Tax ID) > Run > Export to Excel. For batch, use Settings > Export Data > Reports tab.
+Clients/Customers & Vendors/Suppliers: From Sales > Customers or Expenses > Vendors > Export icon. Or Reports > Customer/Vendor Contact List > Customize (add fields like State, City, Tax ID) > Export.
+Other Data: Bulk via Settings > Export Data (zips reports/lists like chart of accounts, items, employees). Transactions (beyond what you already import) via custom reports. For Desktop, similar but via Excel menu in lists.
+Tips for Import: Excel/CSV files are customizable, so map columns like "Bill to Address" or "Tax ID" during your app's import. Handle splits (multi-line items) carefully.
+
+Aplos (Nonprofit-Focused)
+
+Invoices/Bills: From Accounts Payable > Bills to Pay > Export (for open bills). Donation "invoices" via Donor Management > Donations by Contact > Export.
+Clients/Customers & Vendors/Suppliers: From Reports > Contact Details > Add fields (e.g., address) > Export. Vendors via Accounts Payable > Import/Export symmetry.
+Other Data: Transactions/registers from Register > Filter > Export (CSV/Excel, with splits). Funds, donations, reports via Data Visualizer > Export (CSV/XLSX/PDF). ACH files for payments.
+Tips for Import: Strong on donor/fund data; support fund/tag mapping for nonprofits. Exports often include custom fields.
+
+Additional Data Types for Migration
+To cover comprehensive switches, consider importing these beyond transactions (which you already handle):
+
+Chart of Accounts: Essential for balances; exported as CSV lists from all apps.
+Items/Products/Inventory: CSV from inventory/reports; includes descriptions, prices.
+Journal Entries/GL: Detailed CSV exports for historical accuracy.
+Payments/Receipts: Linked to invoices; CSV with dates, amounts.
+Reports/Balances: Trial balance, AP/AR aging for starting fresh.
+Nonprofit-Specific (e.g., Aplos): Funds, donors, grants—map to your compliance features.
+Other: Employees/payroll (if applicable), budgets, attachments (PDFs).
+
+Best Practices for Low-Pain Switching
+
+Formats: Prioritize CSV/Excel imports—easy to parse, widely supported. Offer templates matching these apps' exports.
+Migration Strategy: Encourage data cleaning pre-import (e.g., remove duplicates). Use phased imports: master lists (customers/vendors) first, then transactional data. Validate with trial balances post-import.
+Tools/Integrations: Integrate with APIs (e.g., Xero/QuickBooks APIs) for direct pulls, reducing manual exports. For nonprofits, emphasize fund accounting migration.
+Security: Ensure encrypted imports; highlight how your app preserves audit trails.
+
+This setup should minimize friction—users can export from their old app and import directly. If you share more on your app's current import logic, I can suggest specific mappings!

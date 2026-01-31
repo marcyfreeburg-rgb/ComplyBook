@@ -57,3 +57,130 @@ PostgreSQL (Neon Serverless) serves as the primary relational database, managed 
 -   **react-plaid-link:** React component for Plaid Link.
 -   **html2pdf.js:** For client-side PDF generation.
 -   **Recharts:** For interactive charts and data visualization.
+
+## Getting Started Guide
+
+### For Nonprofit Organizations
+
+1. **Set Up Your Organization**
+   - Go to Settings to add organization details and EIN
+   - Upload your logo in Brand Settings
+   - Set your fiscal year and invite team members
+
+2. **Connect Bank Accounts**
+   - Navigate to Bank Accounts to connect via Plaid
+   - Select accounts to sync for automatic transaction import
+   - Set starting balances for accurate tracking
+
+3. **Create Categories**
+   - Set up income categories (Donations, Grants, Program Fees)
+   - Add expense categories aligned with Form 990
+   - Mark tax-deductible categories
+
+4. **Set Up Funds & Programs**
+   - Create Funds to track restricted vs unrestricted money
+   - Set up Programs with budgets and timelines
+   - Link transactions to appropriate funds/programs
+
+5. **Manage Donors**
+   - Add donor contact information
+   - Track lifetime giving and generate tax letters
+   - Create and manage pledges
+
+6. **Track Grants**
+   - Create grant records with funding periods
+   - Track expenses against grant budgets
+   - Generate compliance reports (SF-425)
+
+### For For-Profit Organizations
+
+1. **Set Up Your Organization**
+   - Configure company details in Settings
+   - Set up branding and invite team members
+   - Configure tax settings and fiscal year
+
+2. **Connect Bank Accounts**
+   - Link accounts via Plaid for automatic sync
+   - Set starting balances for reconciliation
+
+3. **Manage Clients & Vendors**
+   - Add client information for invoicing
+   - Set up vendor details for bill management
+   - Configure payment terms
+
+4. **Track Projects & Contracts**
+   - Create projects with budgets and timelines
+   - For government contracts, enable DCAA compliance features
+   - Track milestones and deliverables
+
+5. **Invoice & Bill Management**
+   - Create and send invoices to clients
+   - Enter vendor bills and schedule payments
+   - Set up auto-pay rules for recurring expenses
+
+6. **Payroll Integration**
+   - Connect payroll provider via Finch API
+   - Sync employee and compensation data
+   - Track labor costs by project
+
+## Data Import & Migration
+
+### Switching from Other Accounting Software
+
+ComplyBook supports importing data from popular accounting platforms to make switching seamless:
+
+#### Supported Import Sources
+- **QuickBooks Online/Desktop** - Full support for transactions, vendors, customers, chart of accounts
+- **Xero** - Transaction imports, contact lists, account structures
+- **Aplos** (Nonprofit) - Donors, funds, donations, and transactions with fund/tag mapping
+
+#### Supported Data Types
+| Data Type | QuickBooks | Xero | Aplos |
+|-----------|------------|------|-------|
+| Transactions | ✓ | ✓ | ✓ |
+| Vendors/Suppliers | ✓ | ✓ | ✓ |
+| Customers/Clients | ✓ | ✓ | - |
+| Chart of Accounts | ✓ | ✓ | ✓ |
+| Bills/Invoices | ✓ | ✓ | ✓ |
+| Donors | - | - | ✓ |
+| Funds | - | - | ✓ |
+
+#### How to Import
+
+1. **Navigate to Import Page**: Go to Operations Hub → Import from Accounting Software
+2. **Select Data Type**: Choose what you want to import (transactions, vendors, etc.)
+3. **Choose Source**: Select QuickBooks, Xero, or Aplos
+4. **Export from Source App**:
+   - Follow the on-screen instructions for your source application
+   - Export data as CSV file
+5. **Upload & Import**: Upload the CSV file and review import results
+6. **Validate**: Check imported records and resolve any duplicates
+
+#### Best Practices for Migration
+- Import master lists first (vendors, customers, chart of accounts)
+- Then import transactional data (bills, invoices, transactions)
+- Validate with trial balance post-import
+- Use data cleaning before import to remove duplicates
+
+## Bill Payments Workflow
+
+The recommended workflow for managing bill payments follows industry best practices:
+
+1. **Bills as Source**: Enter or upload bills in the Bills page with vendor info, amounts, due dates
+2. **Schedule Payments**: From any bill, click Pay → Schedule Payment to queue future payments
+3. **Auto-Pay Rules**: Set up rules in Bill Payments → Auto-Pay to automatically schedule payments based on vendor, amount, or due date
+4. **Payment Execution**: Process scheduled payments from Bill Payments → Scheduled tab
+5. **Payment History**: View completed payments linked to original bills for full audit trail
+
+This flow ensures:
+- No duplicate data entry
+- Full audit trail and compliance
+- Optimized cash flow management
+- Reduced manual errors
+
+## Recent Changes
+
+- **Bill Payment Scheduling**: Added ability to schedule future payments directly from Bills page
+- **Aplos Import Support**: Added nonprofit-specific import for donors, funds, and transactions from Aplos
+- **Enhanced Data Import**: Extended import to support vendors, customers, chart of accounts, bills, and invoices
+- **Organization Payment Methods**: Added management of ACH, check, wire, and card payment methods per organization
