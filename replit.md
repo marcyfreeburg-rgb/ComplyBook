@@ -180,6 +180,7 @@ This flow ensures:
 
 ## Recent Changes
 
+- **Automated Invoice Payment Surveys**: Surveys marked as "Invoice Payment Survey" are automatically sent to clients when an invoice is marked as paid. Supports both nonprofit (donors) and for-profit (clients) organizations in email invitations.
 - **Bill Payment Scheduling**: Added ability to schedule future payments directly from Bills page
 - **Aplos Import Support**: Added nonprofit-specific import for donors, funds, and transactions from Aplos
 - **Enhanced Data Import**: Extended import to support vendors, customers, chart of accounts, bills, and invoices
