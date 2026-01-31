@@ -254,7 +254,8 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Fetch auth data (account/routing numbers)
   const fetchAuthData = useMutation({
     mutationFn: async () => {
-      return await apiRequest('POST', `/api/plaid/auth/${currentOrganization.id}`, {});
+      const response = await apiRequest('POST', `/api/plaid/auth/${currentOrganization.id}`, {});
+      return await response.json();
     },
     onError: () => {
       toast({
@@ -268,7 +269,8 @@ export default function BankAccounts({ currentOrganization }: BankAccountsProps)
   // Fetch identity data (owner information)
   const fetchIdentityData = useMutation({
     mutationFn: async () => {
-      return await apiRequest('POST', `/api/plaid/identity/${currentOrganization.id}`, {});
+      const response = await apiRequest('POST', `/api/plaid/identity/${currentOrganization.id}`, {});
+      return await response.json();
     },
     onError: () => {
       toast({
