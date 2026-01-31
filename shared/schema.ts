@@ -2304,7 +2304,10 @@ export const insertContractMilestoneSchema = createInsertSchema(contractMileston
 }).extend({
   milestoneAmount: z.string().or(z.number()).transform(val => String(val)),
   dueDate: z.coerce.date(),
-  completedDate: z.coerce.date().optional(),
+  completedDate: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.date().optional().nullable()
+  ),
 });
 
 export type InsertContractMilestone = z.infer<typeof insertContractMilestoneSchema>;
