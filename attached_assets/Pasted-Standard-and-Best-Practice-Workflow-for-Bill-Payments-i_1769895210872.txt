@@ -1,0 +1,49 @@
+Standard and Best-Practice Workflow for Bill Payments in Similar Apps
+Yes, the most logical, user-friendly, and industry-standard approach (seen in tools like QuickBooks Bill Pay, BILL.com, Ramp, Plooto, and others) is to have bill payments pull from / originate from the Bills/Expenses/Invoices section, then flow into scheduling, autopay, history, etc. Here's why and how it typically works:
+
+Bills as the Source
+Bills (vendor invoices) are entered, uploaded, or synced first—often in a dedicated "Bills," "Expenses," or "Money Out" area.
+This includes details like vendor info, amount, due date, line items, attachments, and categorization (e.g., by program, grant, or expense type—important for your compliance-focused setup).
+Once a bill exists, you can mark it as approved (if multi-step approval is needed), then move it to payment processing.
+
+Scheduled Payments
+From an approved/open bill, you create a scheduled payment (one-time or recurring).
+This pulls key details automatically from the bill record (no re-entry needed), sets the payment date (e.g., due date, early for discounts, or aligned with cash flow), and links back to the original bill for tracking and reconciliation.
+
+Auto-Pay Rules
+You set up auto-pay rules based on criteria like vendor, amount thresholds, categories, or recurring bills.
+When a matching bill comes in (or an existing one hits its due date), the system automatically schedules (or even executes) the payment without manual intervention—while still allowing overrides or approvals for higher-risk ones.
+In your screenshot, you already have "1 Active Auto-Pay Rules," which aligns with this: rules are defined centrally and apply to bills as they enter the system.
+
+Payment History
+Once paid (manually or auto), the transaction records in Payment History, linked back to the original bill for full audit trail, reconciliation with bank sync, and reporting (e.g., grant compliance or Form 990 prep).
+This also shows status like "Processing" (your 0 in orange) for any in-flight payments.
+
+Payment Methods
+Stored here (e.g., linked bank accounts via Plaid, ACH details), selected per payment or defaulted via auto-pay rules.
+
+
+Why This Flow (Bills → Schedule/Autopay → History) Makes Sense
+
+Avoids duplication: No re-entering vendor/bill info when scheduling or auto-paying.
+Ensures accuracy & compliance: Everything ties back to the source bill for audit trails, categorization, and reporting—critical in a compliance-heavy tool like ComplyBook.
+Optimizes cash flow: Schedule payments strategically (e.g., batch runs, early discounts) rather than paying reactively.
+Reduces errors: Automation from bills minimizes manual mistakes; approvals can route before scheduling.
+Matches user expectations: Most modern AP tools (BILL, QuickBooks, etc.) follow this exact progression for efficiency.
+
+Your current dashboard setup follows this perfectly:
+
+"Scheduled" tab shows upcoming/pending from bills.
+"Auto-Pay Rules" applies to incoming or existing bills.
+"Payment History" logs completed ones.
+"No scheduled payments" just means none are actively queued yet—likely because you haven't set up any from bills or via auto-pay triggers.
+
+Recommendations for Your Setup
+
+Go to the Bills or Expenses section first to enter/upload vendor bills.
+From there, approve → schedule payment (one-time or recurring) → or apply an auto-pay rule.
+If no bills exist yet, that's why Scheduled shows 0—start by adding bills to populate the flow.
+For recurring vendors (e.g., rent, utilities, subscriptions), set auto-pay rules directly in that tab to auto-schedule when matching bills arrive or due dates hit.
+
+This structure keeps things streamlined, auditable, and compliant—exactly what a tool like ComplyBook aims for with its focus on small orgs and grant/fund tracking.
+If this doesn't match what you're seeing in the app or you want help troubleshooting why scheduled shows 0 despite the active auto-pay rule, feel free to share more details/screenshots!1.5sFast71 sources

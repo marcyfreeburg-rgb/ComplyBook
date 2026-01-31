@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,6 +123,7 @@ const defaultPaymentMethodFormData: PaymentMethodFormData = {
 };
 
 export default function BillPayments({ currentOrganization }: BillPaymentsProps) {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("scheduled");
   const [isAutoPayDialogOpen, setIsAutoPayDialogOpen] = useState(false);
@@ -601,7 +603,25 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
                 <div className="text-center py-12 text-muted-foreground">
                   <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No scheduled payments</p>
-                  <p className="text-sm">Set up auto-pay rules to automatically schedule payments</p>
+                  <p className="text-sm mb-4">Schedule payments from your bills or set up auto-pay rules</p>
+                  <div className="flex gap-3 justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate('/bills')}
+                      data-testid="button-go-to-bills"
+                    >
+                      <DollarSign className="w-4 h-4 mr-2" />
+                      Go to Bills
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveTab("auto-pay")}
+                      data-testid="button-setup-autopay"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Set Up Auto-Pay
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -621,7 +641,13 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
                       {scheduledPayments.map((payment) => (
                         <tr key={payment.id} className="border-b" data-testid={`row-scheduled-${payment.id}`}>
                           <td className="py-3">
-                            <span className="font-medium">{payment.billNumber}</span>
+                            <button
+                              className="font-medium text-foreground hover:underline cursor-pointer bg-transparent border-none p-0"
+                              onClick={() => navigate(`/bills?billId=${payment.billId}`)}
+                              data-testid={`link-bill-${payment.id}`}
+                            >
+                              {payment.billNumber}
+                            </button>
                           </td>
                           <td className="py-3">
                             {payment.vendorName || <span className="text-muted-foreground">-</span>}
