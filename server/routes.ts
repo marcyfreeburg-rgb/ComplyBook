@@ -6,8 +6,12 @@ import fs from "fs";
 import path from "path";
 import { storage } from "./storage";
 
-// Check if we're in a Replit environment
-const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+// Check if we're in a Replit environment (including deployed apps with object storage)
+const isReplitEnvironment = !!(
+  (process.env.REPLIT_DOMAINS && process.env.REPL_ID) || 
+  process.env.PRIVATE_OBJECT_DIR || 
+  process.env.PUBLIC_OBJECT_SEARCH_PATHS
+);
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching } from "./aiCategorization";
