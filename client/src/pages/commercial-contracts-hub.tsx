@@ -1057,6 +1057,14 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
               <Label htmlFor="notes">Notes</Label>
               <Textarea id="notes" value={contractForm.notes} onChange={(e) => setContractForm({ ...contractForm, notes: e.target.value })} placeholder="Additional notes..." data-testid="input-contract-notes" />
             </div>
+            {editingContract && (
+              <EntityDocumentUploader
+                organizationId={currentOrganization.id}
+                entityType="contract"
+                entityId={editingContract.id}
+                documentType="contract"
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setContractDialogOpen(false)}>Cancel</Button>
@@ -1148,6 +1156,14 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
               <Label htmlFor="proposalNotes">Notes</Label>
               <Textarea id="proposalNotes" value={proposalForm.notes} onChange={(e) => setProposalForm({ ...proposalForm, notes: e.target.value })} placeholder="Additional notes..." data-testid="input-proposal-notes" />
             </div>
+            {editingProposal && (
+              <EntityDocumentUploader
+                organizationId={currentOrganization.id}
+                entityType="proposal"
+                entityId={editingProposal.id}
+                documentType="other"
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProposalDialogOpen(false)}>Cancel</Button>
@@ -1216,6 +1232,14 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
               <Label htmlFor="coNotes">Notes</Label>
               <Textarea id="coNotes" value={changeOrderForm.notes} onChange={(e) => setChangeOrderForm({ ...changeOrderForm, notes: e.target.value })} placeholder="Additional notes..." data-testid="input-changeorder-notes" />
             </div>
+            {editingChangeOrder && (
+              <EntityDocumentUploader
+                organizationId={currentOrganization.id}
+                entityType="change_order"
+                entityId={editingChangeOrder.id}
+                documentType="other"
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChangeOrderDialogOpen(false)}>Cancel</Button>
