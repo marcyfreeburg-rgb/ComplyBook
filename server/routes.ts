@@ -15459,6 +15459,30 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // Get form responses (MUST be before /:organizationId/:formId to avoid route collision)
+  app.get("/api/forms/:formId/responses", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const responses = await storage.getFormResponses(formId);
+      res.json({ data: responses });
+    } catch (error: any) {
+      console.error("Error fetching responses:", error);
+      res.status(500).json({ message: "Failed to fetch responses" });
+    }
+  });
+
   // Get a single form with questions
   app.get("/api/forms/:organizationId/:formId", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -15690,30 +15714,6 @@ Keep the response approximately 100-150 words.`;
     } catch (error: any) {
       console.error("Error reordering questions:", error);
       res.status(500).json({ message: "Failed to reorder questions" });
-    }
-  });
-
-  // Get form responses
-  app.get("/api/forms/:formId/responses", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const formId = parseInt(req.params.formId);
-
-      const form = await storage.getForm(formId);
-      if (!form) {
-        return res.status(404).json({ message: "Form not found" });
-      }
-
-      const userRole = await storage.getUserRole(userId, form.organizationId);
-      if (!userRole) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      const responses = await storage.getFormResponses(formId);
-      res.json({ data: responses });
-    } catch (error: any) {
-      console.error("Error fetching responses:", error);
-      res.status(500).json({ message: "Failed to fetch responses" });
     }
   });
 

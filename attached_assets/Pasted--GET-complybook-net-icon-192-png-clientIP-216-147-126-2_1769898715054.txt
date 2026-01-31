@@ -1,0 +1,206 @@
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="dd6a184c-c6c4-47c7" responseTimeMS=118 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.126.248" requestID="4c1bbc37-5fa9-4364" responseTimeMS=61 responseBytes=2243 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[PATCH]
+complybook.net/api/forms/9 clientIP="216.147.126.248" requestID="d8206501-6649-476c" responseTimeMS=862 responseBytes=1791 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/forms/167?type=survey clientIP="216.147.126.248" requestID="8824a601-1c98-48df" responseTimeMS=241 responseBytes=1794 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="49eb21b9-c542-4fb9" responseTimeMS=240 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/forms/167/9 clientIP="216.147.126.248" requestID="caa5e3af-2929-445d" responseTimeMS=851 responseBytes=1979 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/forms/9/responses clientIP="216.147.126.248" requestID="b7431233-c36c-4a09" responseTimeMS=243 responseBytes=1309 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+}
+10:29:36 PM [express] GET /api/forms/9/responses 500 in 240ms :: {"message":"Failed to fetch form"}
+[GET]
+complybook.net/api/forms/167?type=survey clientIP="216.147.126.248" requestID="3c38238d-9cd1-4238" responseTimeMS=244 responseBytes=1795 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[PATCH]
+complybook.net/api/forms/9 clientIP="216.147.126.248" requestID="711936cb-885e-47a7" responseTimeMS=842 responseBytes=1791 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:29:50 PM [express] PATCH /api/forms/9 200 in 839ms :: {"data":{"id":9,"organizationId":167,"formTy…
+10:29:50 PM [express] GET /api/forms/167 200 in 242ms :: {"data":[{"id":9,"organizationId":167,"formT…
+[GET]
+complybook.net/s/79e7f989e45aa2adc6476ea602464c7a clientIP="216.147.126.248" requestID="d81cd640-c56c-441a" responseTimeMS=119 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-Clu91Xbv.css clientIP="216.147.126.248" requestID="99aba95c-d6c7-4803" responseTimeMS=481 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="7c1f06df-4415-4be7" responseTimeMS=178 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="6546f9bd-9ebc-4b92" responseTimeMS=3 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CD0s5p7Y.js clientIP="216.147.126.248" requestID="67c9ac21-7109-4c60" responseTimeMS=122 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:29:57 PM [express] GET /api/auth/user 304 in 178ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="9b2bf2a4-5e5e-45d4" responseTimeMS=118 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/public/forms/79e7f989e45aa2adc6476ea602464c7a clientIP="216.147.126.248" requestID="d4c4e98e-b01f-4add" responseTimeMS=485 responseBytes=1727 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="4e2b667b-8d31-4e25" responseTimeMS=118 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:29:58 PM [express] GET /api/public/forms/79e7f989e45aa2adc6476ea602464c7a 200 in 482ms :: {"data":…
+[GET]
+complybook.net/sw.js clientIP="216.147.126.248" requestID="45ac97c1-fdde-4860" responseTimeMS=118 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/public/forms/79e7f989e45aa2adc6476ea602464c7a/submit clientIP="216.147.126.248" requestID="1466844e-fca4-476b" responseTimeMS=858 responseBytes=1149 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:30:13 PM [express] POST /api/public/forms/79e7f989e45aa2adc6476ea602464c7a/submit 201 in 855ms :: …
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="af1e5a2a-e0d9-436a" responseTimeMS=240 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:30:17 PM [express] GET /api/notifications/167/unread-count 304 in 238ms :: {"count":"0"}
+Error fetching form: error: invalid input syntax for type integer: "NaN"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getForm (file:///opt/render/project/src/dist/index.js:9806:24)
+    at async file:///opt/render/project/src/dist/index.js:24854:20 {
+  length: 146,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '617',
+[GET]
+complybook.net/api/forms/9/responses clientIP="216.147.126.248" requestID="04f44f3f-d239-425b" responseTimeMS=243 responseBytes=1309 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+  routine: 'pg_strtoint32_safe'
+}
+10:30:21 PM [express] GET /api/forms/9/responses 500 in 241ms :: {"message":"Failed to fetch form"}
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+[GET]
+complybook.net/s/79e7f989e45aa2adc6476ea602464c7a clientIP="216.147.126.248" requestID="b1694958-da07-40b8" responseTimeMS=3 responseBytes=2038 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.126.248" requestID="6942a658-051a-4139" responseTimeMS=3 responseBytes=2243 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/assets/index-CD0s5p7Y.js clientIP="216.147.126.248" requestID="e8e447ed-1c9a-4401" responseTimeMS=341 responseBytes=922255 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/assets/index-Clu91Xbv.css clientIP="216.147.126.248" requestID="327d61c7-043b-428a" responseTimeMS=7 responseBytes=17385 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/ clientIP="216.147.126.248" requestID="d142818d-9e59-4f94" responseTimeMS=2 responseBytes=1862 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="ec1b63f0-48bc-477a" responseTimeMS=60 responseBytes=1116 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="0c83ca84-8314-4a1c" responseTimeMS=6 responseBytes=1766 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+10:30:39 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="576ff440-ec19-4bf6" responseTimeMS=74 responseBytes=231776 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/api/public/forms/79e7f989e45aa2adc6476ea602464c7a clientIP="216.147.126.248" requestID="899184e7-fc32-40ed" responseTimeMS=373 responseBytes=1727 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="f5635b46-52f1-44af" responseTimeMS=2 responseBytes=1083 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="0987049a-fe68-46d0" responseTimeMS=1 responseBytes=1083 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="539a0374-9ad9-4c03" responseTimeMS=2 responseBytes=1081 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="999526e1-81e2-4c5c" responseTimeMS=75 responseBytes=231776 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/icon-512.png clientIP="216.147.126.248" requestID="99bea25e-71bb-422d" responseTimeMS=3 responseBytes=231776 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/icon-512.png clientIP="216.147.126.248" requestID="1df33bf9-7480-4f16" responseTimeMS=1 responseBytes=1083 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="7a0b62a3-a770-4d83" responseTimeMS=7 responseBytes=67512 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+10:30:40 PM [express] GET /api/public/forms/79e7f989e45aa2adc6476ea602464c7a 200 in 369ms :: {"data":…
+[POST]
+complybook.net/api/public/forms/79e7f989e45aa2adc6476ea602464c7a/submit clientIP="216.147.126.248" requestID="0e43b985-161d-4e23" responseTimeMS=442 responseBytes=1149 userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36"
+10:30:51 PM [express] POST /api/public/forms/79e7f989e45aa2adc6476ea602464c7a/submit 201 in 438ms :: …
+Error fetching form: error: invalid input syntax for type integer: "NaN"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getForm (file:///opt/render/project/src/dist/index.js:9806:24)
+    at async file:///opt/render/project/src/dist/index.js:24854:20 {
+  length: 146,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '617',
+  routine: 'pg_strtoint32_safe'
+}
+[GET]
+complybook.net/api/forms/9/responses clientIP="216.147.126.248" requestID="51b906cf-27e3-4691" responseTimeMS=607 responseBytes=1309 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:31:01 PM [express] GET /api/forms/9/responses 500 in 603ms :: {"message":"Failed to fetch form"}
+[GET]
+complybook.net/surveys clientIP="216.147.126.248" requestID="99e34032-2f07-4ead" responseTimeMS=62 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-Clu91Xbv.css clientIP="216.147.126.248" requestID="fdf034c4-8bb1-4ada" responseTimeMS=67 responseBytes=17385 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="8c8b8c90-2b8d-4fcd" responseTimeMS=136 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CD0s5p7Y.js clientIP="216.147.126.248" requestID="9bb7ec2c-2ff6-4597" responseTimeMS=598 responseBytes=922255 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="38cbb913-27f0-4989" responseTimeMS=494 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="3545f34b-1def-40fc" responseTimeMS=3 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="abf4eb49-20a6-4cb1" responseTimeMS=300 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="b7902073-ba88-4226" responseTimeMS=136 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="2ffe2a40-e375-41d3" responseTimeMS=499 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="52c581a6-285e-4208" responseTimeMS=372 responseBytes=2248 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:31:09 PM [express] GET /api/auth/user 200 in 369ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+10:31:09 PM [express] GET /api/security/mfa/status 304 in 299ms :: {"mfaEnabled":true,"mfaRequired":t…
+10:31:09 PM [express] GET /api/organizations 304 in 498ms :: [{"id":168,"name":"C Cubed Training","ty…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="3ff5cd61-ef6b-45a9" responseTimeMS=605 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donors/167 clientIP="216.147.126.248" requestID="bb9752f4-8ab6-4433" responseTimeMS=602 responseBytes=1336 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/forms/167?type=survey clientIP="216.147.126.248" requestID="46c1ad33-8790-4f69" responseTimeMS=240 responseBytes=1794 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="b60ccb3a-95fb-4bf5" responseTimeMS=119 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/programs/167 clientIP="216.147.126.248" requestID="eac7691b-ff26-4333" responseTimeMS=239 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:31:10 PM [express] GET /api/programs/167 304 in 238ms :: []
+10:31:10 PM [express] GET /api/forms/167 200 in 238ms :: {"data":[{"id":9,"organizationId":167,"formT…
+10:31:10 PM [express] GET /api/notifications/167/unread-count 304 in 604ms :: {"count":"0"}
+10:31:10 PM [express] GET /api/donors/167 403 in 600ms :: {"message":"Donor tracking is only availabl…
+[GET]
+complybook.net/api/forms/9/responses clientIP="216.147.126.248" requestID="d04622cb-795c-45b9" responseTimeMS=242 responseBytes=1309 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error fetching form: error: invalid input syntax for type integer: "NaN"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Menu
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getForm (file:///opt/render/project/src/dist/index.js:9806:24)
+    at async file:///opt/render/project/src/dist/index.js:24854:20 {
+  length: 146,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '617',
+  routine: 'pg_strtoint32_safe'
+}
+10:31:14 PM [express] GET /api/forms/9/responses 500 in 239ms :: {"message":"Failed to fetch form"}
