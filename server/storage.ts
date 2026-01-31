@@ -108,6 +108,9 @@ import {
   notifications,
   type Notification,
   type InsertNotification,
+  teams,
+  type Team,
+  type InsertTeam,
   employees,
   type Employee,
   type InsertEmployee,
@@ -809,6 +812,13 @@ export interface IStorage {
   logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void>;
   logUpdate(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any, newValues: any): Promise<void>;
   logDelete(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any): Promise<void>;
+
+  // Team operations
+  getTeams(organizationId: number): Promise<Team[]>;
+  getTeam(id: number): Promise<Team | undefined>;
+  createTeam(team: InsertTeam): Promise<Team>;
+  updateTeam(id: number, updates: Partial<InsertTeam>): Promise<Team>;
+  deleteTeam(id: number): Promise<void>;
 
   // Employee operations
   getEmployees(organizationId: number): Promise<Employee[]>;
@@ -7025,6 +7035,33 @@ export class DatabaseStorage implements IStorage {
       oldValues,
       changes: `Deleted ${entityType} #${entityId}`,
     });
+  }
+
+  // Team operations
+  async getTeams(organizationId: number): Promise<Team[]> {
+    return db.select().from(teams).where(eq(teams.organizationId, organizationId)).orderBy(teams.name);
+  }
+
+  async getTeam(id: number): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team;
+  }
+
+  async createTeam(team: InsertTeam): Promise<Team> {
+    const [newTeam] = await db.insert(teams).values(team).returning();
+    return newTeam;
+  }
+
+  async updateTeam(id: number, updates: Partial<InsertTeam>): Promise<Team> {
+    const [updatedTeam] = await db.update(teams)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(teams.id, id))
+      .returning();
+    return updatedTeam;
+  }
+
+  async deleteTeam(id: number): Promise<void> {
+    await db.delete(teams).where(eq(teams.id, id));
   }
 
   // Employee operations
