@@ -6,8 +6,9 @@ import fs from "fs";
 import path from "path";
 import { storage } from "./storage";
 
-// Check if object storage is available (works in Replit dev/deploy or any env with proper config)
-const isObjectStorageAvailable = !!(process.env.PRIVATE_OBJECT_DIR && process.env.PUBLIC_OBJECT_SEARCH_PATHS);
+// Check if any storage is available (Replit object storage or filesystem)
+import { isStorageAvailable, getStorageType, getStorageService, filesystemStorage } from "./storageAdapter";
+const isObjectStorageAvailable = isStorageAvailable();
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching } from "./aiCategorization";
@@ -14788,11 +14789,11 @@ Keep the response approximately 100-150 words.`;
   app.post("/api/documents/upload-url", isAuthenticated, async (req: any, res: Response) => {
     try {
       if (!isObjectStorageAvailable) {
-        return res.status(501).json({ message: "Document uploads are not supported in this environment" });
+        return res.status(501).json({ message: "Document uploads are not supported in this environment. Configure STORAGE_PATH for filesystem storage or PRIVATE_OBJECT_DIR for Replit storage." });
       }
 
       const userId = req.user.claims.sub;
-      const { entityType, entityId } = req.body;
+      const { entityType, entityId, fileName } = req.body;
 
       // Validate entity context (required for authorization)
       if (!entityType || typeof entityType !== 'string') {
@@ -14819,14 +14820,96 @@ Keep the response approximately 100-150 words.`;
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      const { ObjectStorageService } = await import('./objectStorage');
-      const objectStorageService = new ObjectStorageService();
-      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+      const storageType = getStorageType();
       
-      res.json({ uploadUrl });
+      if (storageType === "replit") {
+        const { ObjectStorageService } = await import('./objectStorage');
+        const objectStorageService = new ObjectStorageService();
+        const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+        res.json({ uploadUrl, storageType: "replit" });
+      } else if (storageType === "filesystem") {
+        const storageService = getStorageService();
+        if (!storageService) {
+          return res.status(501).json({ message: "Storage not configured" });
+        }
+        const objectPath = storageService.generateObjectPath(entityOrgId, entityType, parsedEntityId, fileName || "file");
+        res.json({ 
+          uploadUrl: "/api/documents/upload-file",
+          objectPath,
+          storageType: "filesystem",
+          entityType,
+          entityId: parsedEntityId,
+          organizationId: entityOrgId
+        });
+      } else {
+        return res.status(501).json({ message: "No storage configured" });
+      }
     } catch (error: any) {
       console.error("Error getting document upload URL:", error);
       res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Upload file for filesystem storage
+  const uploadMiddleware = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  });
+
+  app.post("/api/documents/upload-file", isAuthenticated, uploadMiddleware.single('file'), async (req: any, res: Response) => {
+    try {
+      if (getStorageType() !== "filesystem") {
+        return res.status(400).json({ message: "This endpoint is only for filesystem storage" });
+      }
+
+      const userId = req.user.claims.sub;
+      const { entityType, entityId } = req.body;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Validate entity context
+      if (!['contract', 'proposal', 'change_order'].includes(entityType)) {
+        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order" });
+      }
+
+      const parsedEntityId = parseInt(entityId);
+      if (isNaN(parsedEntityId) || parsedEntityId <= 0) {
+        return res.status(400).json({ message: "entityId is required and must be a positive integer" });
+      }
+
+      // Derive organizationId from entity
+      const organizationId = await getEntityOrgId(entityType, parsedEntityId);
+      if (!organizationId) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+
+      // Verify user has access
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Upload to filesystem
+      const { objectPath } = await filesystemStorage.uploadFile(
+        organizationId,
+        entityType,
+        parsedEntityId,
+        file.originalname,
+        file.buffer
+      );
+
+      res.json({ 
+        objectPath,
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype
+      });
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
     }
   });
 
@@ -14867,18 +14950,23 @@ Keep the response approximately 100-150 words.`;
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      // Normalize the object path
-      const { ObjectStorageService, ObjectAccessGroupType, ObjectPermission } = await import('./objectStorage');
-      const objectStorageService = new ObjectStorageService();
-      const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
-        visibility: 'private',
-        accessGroups: [{ type: ObjectAccessGroupType.LOGGED_IN, permission: ObjectPermission.READ }]
-      });
+      let finalPath = objectPath;
+      const storageType = getStorageType();
+
+      // For Replit storage, normalize the path with ACL
+      if (storageType === "replit") {
+        const { ObjectStorageService, ObjectAccessGroupType, ObjectPermission } = await import('./objectStorage');
+        const objectStorageService = new ObjectStorageService();
+        finalPath = await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+          visibility: 'private',
+          accessGroups: [{ type: ObjectAccessGroupType.LOGGED_IN, permission: ObjectPermission.READ }]
+        });
+      }
 
       const document = await storage.createDocument({
         organizationId,
         fileName,
-        fileUrl: normalizedPath,
+        fileUrl: finalPath,
         fileSize,
         mimeType,
         documentType,
@@ -14912,18 +15000,33 @@ Keep the response approximately 100-150 words.`;
         return res.status(403).json({ message: "Access denied to this document" });
       }
 
-      const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
-      const objectStorageService = new ObjectStorageService();
-      
-      try {
-        const objectFile = await objectStorageService.getObjectEntityFile(document.fileUrl);
-        res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
-        await objectStorageService.downloadObject(objectFile, res);
-      } catch (err) {
-        if (err instanceof ObjectNotFoundError) {
+      const storageType = getStorageType();
+
+      if (storageType === "filesystem") {
+        try {
+          const fileBuffer = await filesystemStorage.getFile(document.fileUrl);
+          res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+          res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
+          res.send(fileBuffer);
+        } catch (err) {
           return res.status(404).json({ message: "Document file not found in storage" });
         }
-        throw err;
+      } else if (storageType === "replit") {
+        const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
+        const objectStorageService = new ObjectStorageService();
+        
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.fileUrl);
+          res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+          await objectStorageService.downloadObject(objectFile, res);
+        } catch (err) {
+          if (err instanceof ObjectNotFoundError) {
+            return res.status(404).json({ message: "Document file not found in storage" });
+          }
+          throw err;
+        }
+      } else {
+        return res.status(501).json({ message: "No storage configured" });
       }
     } catch (error: any) {
       console.error("Error downloading document:", error);

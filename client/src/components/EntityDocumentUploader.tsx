@@ -196,29 +196,61 @@ export function EntityDocumentUploader({
             organizationId,
             entityType,
             entityId,
+            fileName: selectedFile.file.name,
           }),
         });
         
         if (!uploadUrlResponse.ok) {
-          throw new Error("Failed to get upload URL");
+          const errorData = await uploadUrlResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to get upload URL");
         }
         
         setSelectedFiles(prev => prev.map(f => 
           f.id === selectedFile.id ? { ...f, progress: 30 } : f
         ));
         
-        const { uploadUrl } = await uploadUrlResponse.json();
+        const uploadConfig = await uploadUrlResponse.json();
+        let objectPath: string;
 
-        const uploadResponse = await fetch(uploadUrl, {
-          method: "PUT",
-          body: selectedFile.file,
-          headers: {
-            "Content-Type": selectedFile.file.type || "application/octet-stream",
-          },
-        });
+        if (uploadConfig.storageType === "filesystem") {
+          const formData = new FormData();
+          formData.append("file", selectedFile.file);
+          formData.append("entityType", entityType);
+          formData.append("entityId", String(entityId));
 
-        if (!uploadResponse.ok) {
-          throw new Error("Upload to storage failed");
+          const fsUploadHeaders: Record<string, string> = {};
+          const fsToken = getCsrfToken();
+          if (fsToken) {
+            fsUploadHeaders["x-csrf-token"] = fsToken;
+          }
+
+          const uploadResponse = await fetch(uploadConfig.uploadUrl, {
+            method: "POST",
+            headers: fsUploadHeaders,
+            credentials: "include",
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json().catch(() => ({}));
+            throw new Error(errorData.message || "Upload to storage failed");
+          }
+
+          const uploadResult = await uploadResponse.json();
+          objectPath = uploadResult.objectPath;
+        } else {
+          const uploadResponse = await fetch(uploadConfig.uploadUrl, {
+            method: "PUT",
+            body: selectedFile.file,
+            headers: {
+              "Content-Type": selectedFile.file.type || "application/octet-stream",
+            },
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error("Upload to storage failed");
+          }
+          objectPath = uploadConfig.uploadUrl;
         }
 
         setSelectedFiles(prev => prev.map(f => 
@@ -240,7 +272,7 @@ export function EntityDocumentUploader({
             fileName: selectedFile.file.name,
             fileSize: selectedFile.file.size,
             mimeType: selectedFile.file.type || "application/octet-stream",
-            objectPath: uploadUrl,
+            objectPath,
             documentType,
             relatedEntityType: entityType,
             relatedEntityId: entityId,
