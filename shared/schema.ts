@@ -1767,12 +1767,39 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
 // ============================================
+// TEAMS
+// ============================================
+
+export const teams = pgTable("teams", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_teams_org_id").on(table.organizationId),
+]);
+
+export const insertTeamSchema = createInsertSchema(teams).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type Team = typeof teams.$inferSelect;
+
+// ============================================
 // PAYROLL
 // ============================================
 
 export const employees = pgTable("employees", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  teamId: integer("team_id").references(() => teams.id, { onDelete: 'set null' }),
+  isTeamLeader: integer("is_team_leader").notNull().default(0), // 1 = team leader/manager, 0 = regular member
   employeeNumber: varchar("employee_number", { length: 50 }),
   firstName: varchar("first_name", { length: 100 }).notNull(),
   lastName: varchar("last_name", { length: 100 }).notNull(),
@@ -1795,6 +1822,7 @@ export const employees = pgTable("employees", {
 }, (table) => [
   index("idx_employees_org_id").on(table.organizationId),
   index("idx_employees_active").on(table.isActive),
+  index("idx_employees_team_id").on(table.teamId),
 ]);
 
 export const insertEmployeeSchema = createInsertSchema(employees).omit({
