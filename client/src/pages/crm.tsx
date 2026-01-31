@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -20,10 +21,11 @@ import {
   User,
   Clock,
   ArrowRight,
-  Plus
+  Plus,
+  UsersRound
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Organization } from "@shared/schema";
+import type { Organization, Team, Employee } from "@shared/schema";
 
 interface CRMProps {
   currentOrganization: Organization;
@@ -116,7 +118,22 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
+  const [showTeamView, setShowTeamView] = useState(false);
   const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
+
+  // Fetch real teams and employees data
+  const { data: realTeams = [] } = useQuery<Team[]>({
+    queryKey: [`/api/teams/${currentOrganization.id}`],
+  });
+
+  const { data: employees = [] } = useQuery<Employee[]>({
+    queryKey: [`/api/employees/${currentOrganization.id}`],
+  });
+
+  // Helper function to get team members
+  const getTeamMembers = (teamId: number) => {
+    return employees.filter(e => e.teamId === teamId);
+  };
   const [showViewLeadDialog, setShowViewLeadDialog] = useState(false);
   const [showEditLeadDialog, setShowEditLeadDialog] = useState(false);
   const [showAddOpportunityDialog, setShowAddOpportunityDialog] = useState(false);
@@ -546,27 +563,96 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle>Team Performance</CardTitle>
-                <CardDescription>Sales rep activity</CardDescription>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <CardTitle>{showTeamView ? "Team Performance" : "Individual Performance"}</CardTitle>
+                    <CardDescription>{showTeamView ? "Performance by team" : "Sales rep activity"}</CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowTeamView(!showTeamView)}
+                    data-testid="button-toggle-performance-view"
+                  >
+                    {showTeamView ? (
+                      <>
+                        <User className="h-4 w-4 mr-2" />
+                        Show Individual
+                      </>
+                    ) : (
+                      <>
+                        <UsersRound className="h-4 w-4 mr-2" />
+                        Show Teams
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                {Array.from(new Set([...leads.map(l => l.assignedTo), ...opportunities.map(o => o.assignedTo)])).map(rep => {
-                  const repLeads = leads.filter(l => l.assignedTo === rep);
-                  const repOpps = opportunities.filter(o => o.assignedTo === rep);
-                  const repWon = repOpps.filter(o => o.stage === "closed-won");
-                  return (
-                    <div key={rep} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{rep}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{repLeads.length} leads</Badge>
-                        <Badge variant="secondary">{repWon.length} won</Badge>
-                      </div>
+                {showTeamView ? (
+                  // Team rollup view from real data
+                  realTeams.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground text-sm">
+                      No teams created yet. Create teams in the Employees & Teams section.
                     </div>
-                  );
-                })}
+                  ) : (
+                    realTeams.map((team: Team) => {
+                      const teamMembers = getTeamMembers(team.id);
+                      const memberNames = teamMembers.map(m => `${m.firstName} ${m.lastName}`);
+                      // Filter leads/opps by team member names
+                      const teamLeads = leads.filter(l => memberNames.includes(l.assignedTo));
+                      const teamOpps = opportunities.filter(o => memberNames.includes(o.assignedTo));
+                      const teamWon = teamOpps.filter(o => o.stage === "closed-won");
+                      const totalValue = teamWon.reduce((sum, o) => sum + o.value, 0);
+                      return (
+                        <div key={team.id} className="p-3 rounded-md border space-y-2" data-testid={`team-performance-${team.id}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <UsersRound className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">{team.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{teamLeads.length} leads</Badge>
+                              <Badge variant="secondary">{teamWon.length} won</Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{teamMembers.length} members</span>
+                            <span>${totalValue.toLocaleString()} closed</span>
+                          </div>
+                          {teamMembers.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {teamMembers.map((member: Employee) => (
+                                <span key={member.id} className="px-2 py-0.5 rounded-full bg-muted text-xs">
+                                  {member.firstName} {member.lastName}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )
+                ) : (
+                  // Individual view
+                  Array.from(new Set([...leads.map(l => l.assignedTo), ...opportunities.map(o => o.assignedTo)])).map(rep => {
+                    const repLeads = leads.filter(l => l.assignedTo === rep);
+                    const repOpps = opportunities.filter(o => o.assignedTo === rep);
+                    const repWon = repOpps.filter(o => o.stage === "closed-won");
+                    return (
+                      <div key={rep} className="flex items-center justify-between" data-testid={`individual-performance-${rep.replace(/\s+/g, '-').toLowerCase()}`}>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{rep}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{repLeads.length} leads</Badge>
+                          <Badge variant="secondary">{repWon.length} won</Badge>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           </div>
