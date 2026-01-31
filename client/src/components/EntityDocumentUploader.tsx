@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getCsrfToken } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Download, Trash2, Upload, X, FileIcon, FileSpreadsheet, FileImage, Loader2 } from "lucide-react";
@@ -182,9 +182,15 @@ export function EntityDocumentUploader({
       ));
       
       try {
+        const csrfToken = getCsrfToken();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (csrfToken) {
+          headers["x-csrf-token"] = csrfToken;
+        }
+        
         const uploadUrlResponse = await fetch("/api/documents/upload-url", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           credentials: "include",
           body: JSON.stringify({
             organizationId,
@@ -219,11 +225,15 @@ export function EntityDocumentUploader({
           f.id === selectedFile.id ? { ...f, progress: 70 } : f
         ));
 
+        const saveHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        const saveToken = getCsrfToken();
+        if (saveToken) {
+          saveHeaders["x-csrf-token"] = saveToken;
+        }
+        
         const saveResponse = await fetch("/api/documents", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: saveHeaders,
           credentials: "include",
           body: JSON.stringify({
             organizationId,
