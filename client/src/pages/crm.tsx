@@ -117,6 +117,13 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
   const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
+  const [showViewLeadDialog, setShowViewLeadDialog] = useState(false);
+  const [showEditLeadDialog, setShowEditLeadDialog] = useState(false);
+  const [showAddOpportunityDialog, setShowAddOpportunityDialog] = useState(false);
+  const [showViewOpportunityDialog, setShowViewOpportunityDialog] = useState(false);
+  const [showEditOpportunityDialog, setShowEditOpportunityDialog] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [newLead, setNewLead] = useState({
     name: "",
     company: "",
@@ -124,6 +131,14 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     phone: "",
     value: "",
     source: "Website"
+  });
+  const [newOpportunity, setNewOpportunity] = useState({
+    name: "",
+    company: "",
+    value: "",
+    stage: "discovery" as OpportunityStage,
+    probability: "25",
+    expectedCloseDate: ""
   });
   const { toast } = useToast();
 
@@ -241,6 +256,78 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     toast({
       title: "Lead added",
       description: `${lead.name} has been added to your leads`
+    });
+  };
+
+  const handleViewLead = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowViewLeadDialog(true);
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowEditLeadDialog(true);
+  };
+
+  const handleSaveEditLead = () => {
+    if (!selectedLead) return;
+    setLeads(leads.map(l => l.id === selectedLead.id ? selectedLead : l));
+    setShowEditLeadDialog(false);
+    toast({
+      title: "Lead updated",
+      description: `${selectedLead.name} has been updated`
+    });
+  };
+
+  const handleAddOpportunity = () => {
+    if (!newOpportunity.name || !newOpportunity.company) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in name and company",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const opp: Opportunity = {
+      id: Math.max(...opportunities.map(o => o.id)) + 1,
+      name: newOpportunity.name,
+      company: newOpportunity.company,
+      value: parseFloat(newOpportunity.value) || 0,
+      stage: newOpportunity.stage,
+      lastContactDate: new Date().toISOString().split('T')[0],
+      assignedTo: "Unassigned",
+      probability: parseInt(newOpportunity.probability) || 25,
+      expectedCloseDate: newOpportunity.expectedCloseDate || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      leadId: 0
+    };
+
+    setOpportunities([opp, ...opportunities]);
+    setNewOpportunity({ name: "", company: "", value: "", stage: "discovery", probability: "25", expectedCloseDate: "" });
+    setShowAddOpportunityDialog(false);
+    toast({
+      title: "Opportunity created",
+      description: `${opp.name} has been added to your pipeline`
+    });
+  };
+
+  const handleViewOpportunity = (opp: Opportunity) => {
+    setSelectedOpportunity(opp);
+    setShowViewOpportunityDialog(true);
+  };
+
+  const handleEditOpportunity = (opp: Opportunity) => {
+    setSelectedOpportunity(opp);
+    setShowEditOpportunityDialog(true);
+  };
+
+  const handleSaveEditOpportunity = () => {
+    if (!selectedOpportunity) return;
+    setOpportunities(opportunities.map(o => o.id === selectedOpportunity.id ? selectedOpportunity : o));
+    setShowEditOpportunityDialog(false);
+    toast({
+      title: "Opportunity updated",
+      description: `${selectedOpportunity.name} has been updated`
     });
   };
 
@@ -485,10 +572,10 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap items-center">
-                    <Button variant="outline" size="sm" data-testid={`button-view-lead-${lead.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-view-lead-${lead.id}`} onClick={() => handleViewLead(lead)}>
                       View Details
                     </Button>
-                    <Button variant="outline" size="sm" data-testid={`button-edit-lead-${lead.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-edit-lead-${lead.id}`} onClick={() => handleEditLead(lead)}>
                       Edit
                     </Button>
                     <div className="flex items-center gap-2 ml-auto">
@@ -519,7 +606,7 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
         <TabsContent value="opportunities" className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <h2 className="text-xl font-semibold">Opportunity Pipeline</h2>
-            <Button data-testid="button-create-opportunity">
+            <Button data-testid="button-create-opportunity" onClick={() => setShowAddOpportunityDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Opportunity
             </Button>
@@ -572,10 +659,10 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap items-center">
-                    <Button variant="outline" size="sm" data-testid={`button-view-opportunity-${opp.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-view-opportunity-${opp.id}`} onClick={() => handleViewOpportunity(opp)}>
                       View Details
                     </Button>
-                    <Button variant="outline" size="sm" data-testid={`button-edit-opportunity-${opp.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-edit-opportunity-${opp.id}`} onClick={() => handleEditOpportunity(opp)}>
                       Edit
                     </Button>
                     <div className="flex items-center gap-2 ml-auto">
@@ -760,6 +847,410 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
             </Button>
             <Button onClick={handleAddLead} data-testid="button-save-lead">
               Add Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Lead Dialog */}
+      <Dialog open={showViewLeadDialog} onOpenChange={setShowViewLeadDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Lead Details</DialogTitle>
+            <DialogDescription>
+              {selectedLead?.company}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLead && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Lead Name</p>
+                  <p className="font-medium">{selectedLead.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge variant={getLeadStatusColor(selectedLead.status)} className="capitalize mt-1">
+                    {selectedLead.status}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium">{selectedLead.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-medium">{selectedLead.phone || "N/A"}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Estimated Value</p>
+                  <p className="font-medium">${selectedLead.value.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Source</p>
+                  <p className="font-medium">{selectedLead.source}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Assigned To</p>
+                  <p className="font-medium">{selectedLead.assignedTo}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Last Contact</p>
+                  <p className="font-medium">{new Date(selectedLead.lastContactDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Created</p>
+                <p className="font-medium">{new Date(selectedLead.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowViewLeadDialog(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowViewLeadDialog(false); handleEditLead(selectedLead!); }}>
+              Edit Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Lead Dialog */}
+      <Dialog open={showEditLeadDialog} onOpenChange={setShowEditLeadDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Lead</DialogTitle>
+            <DialogDescription>
+              Update the lead's information.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLead && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Lead Name</Label>
+                <Input
+                  data-testid="input-edit-lead-name"
+                  value={selectedLead.name}
+                  onChange={(e) => setSelectedLead({ ...selectedLead, name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Company</Label>
+                <Input
+                  data-testid="input-edit-lead-company"
+                  value={selectedLead.company}
+                  onChange={(e) => setSelectedLead({ ...selectedLead, company: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Email</Label>
+                  <Input
+                    data-testid="input-edit-lead-email"
+                    type="email"
+                    value={selectedLead.email}
+                    onChange={(e) => setSelectedLead({ ...selectedLead, email: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Phone</Label>
+                  <Input
+                    data-testid="input-edit-lead-phone"
+                    value={selectedLead.phone}
+                    onChange={(e) => setSelectedLead({ ...selectedLead, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Estimated Value ($)</Label>
+                  <Input
+                    data-testid="input-edit-lead-value"
+                    type="number"
+                    value={selectedLead.value}
+                    onChange={(e) => setSelectedLead({ ...selectedLead, value: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select value={selectedLead.status} onValueChange={(value) => setSelectedLead({ ...selectedLead, status: value as LeadStatus })}>
+                    <SelectTrigger data-testid="select-edit-lead-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leadStatuses.map(status => (
+                        <SelectItem key={status} value={status} className="capitalize">{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditLeadDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditLead} data-testid="button-save-edit-lead">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Opportunity Dialog */}
+      <Dialog open={showAddOpportunityDialog} onOpenChange={setShowAddOpportunityDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>New Opportunity</DialogTitle>
+            <DialogDescription>
+              Create a new opportunity in your pipeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="opp-name">Opportunity Name *</Label>
+              <Input
+                id="opp-name"
+                data-testid="input-opportunity-name"
+                placeholder="e.g., Enterprise Platform Deal"
+                value={newOpportunity.name}
+                onChange={(e) => setNewOpportunity({ ...newOpportunity, name: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="opp-company">Company *</Label>
+              <Input
+                id="opp-company"
+                data-testid="input-opportunity-company"
+                placeholder="e.g., Acme Corporation"
+                value={newOpportunity.company}
+                onChange={(e) => setNewOpportunity({ ...newOpportunity, company: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="opp-value">Value ($)</Label>
+                <Input
+                  id="opp-value"
+                  data-testid="input-opportunity-value"
+                  type="number"
+                  placeholder="100000"
+                  value={newOpportunity.value}
+                  onChange={(e) => setNewOpportunity({ ...newOpportunity, value: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="opp-stage">Stage</Label>
+                <Select value={newOpportunity.stage} onValueChange={(value) => {
+                  let prob = "25";
+                  if (value === "proposal") prob = "50";
+                  if (value === "negotiation") prob = "75";
+                  setNewOpportunity({ ...newOpportunity, stage: value as OpportunityStage, probability: prob });
+                }}>
+                  <SelectTrigger data-testid="select-opportunity-stage">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="discovery">Discovery</SelectItem>
+                    <SelectItem value="proposal">Proposal</SelectItem>
+                    <SelectItem value="negotiation">Negotiation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="opp-probability">Probability (%)</Label>
+                <Input
+                  id="opp-probability"
+                  data-testid="input-opportunity-probability"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newOpportunity.probability}
+                  onChange={(e) => setNewOpportunity({ ...newOpportunity, probability: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="opp-close-date">Expected Close Date</Label>
+                <Input
+                  id="opp-close-date"
+                  data-testid="input-opportunity-close-date"
+                  type="date"
+                  value={newOpportunity.expectedCloseDate}
+                  onChange={(e) => setNewOpportunity({ ...newOpportunity, expectedCloseDate: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddOpportunityDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddOpportunity} data-testid="button-save-opportunity">
+              Create Opportunity
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Opportunity Dialog */}
+      <Dialog open={showViewOpportunityDialog} onOpenChange={setShowViewOpportunityDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Opportunity Details</DialogTitle>
+            <DialogDescription>
+              {selectedOpportunity?.company}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOpportunity && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Opportunity Name</p>
+                  <p className="font-medium">{selectedOpportunity.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Stage</p>
+                  <Badge variant={getOpportunityStageColor(selectedOpportunity.stage)} className="capitalize mt-1">
+                    {selectedOpportunity.stage.replace("-", " ")}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Value</p>
+                  <p className="font-medium text-lg">${selectedOpportunity.value.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Probability</p>
+                  <p className="font-medium">{selectedOpportunity.probability}%</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Expected Close</p>
+                  <p className="font-medium">{new Date(selectedOpportunity.expectedCloseDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Last Contact</p>
+                  <p className="font-medium">{new Date(selectedOpportunity.lastContactDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Assigned To</p>
+                <p className="font-medium">{selectedOpportunity.assignedTo}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowViewOpportunityDialog(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowViewOpportunityDialog(false); handleEditOpportunity(selectedOpportunity!); }}>
+              Edit Opportunity
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Opportunity Dialog */}
+      <Dialog open={showEditOpportunityDialog} onOpenChange={setShowEditOpportunityDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Opportunity</DialogTitle>
+            <DialogDescription>
+              Update the opportunity details.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOpportunity && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Opportunity Name</Label>
+                <Input
+                  data-testid="input-edit-opportunity-name"
+                  value={selectedOpportunity.name}
+                  onChange={(e) => setSelectedOpportunity({ ...selectedOpportunity, name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Company</Label>
+                <Input
+                  data-testid="input-edit-opportunity-company"
+                  value={selectedOpportunity.company}
+                  onChange={(e) => setSelectedOpportunity({ ...selectedOpportunity, company: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Value ($)</Label>
+                  <Input
+                    data-testid="input-edit-opportunity-value"
+                    type="number"
+                    value={selectedOpportunity.value}
+                    onChange={(e) => setSelectedOpportunity({ ...selectedOpportunity, value: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Stage</Label>
+                  <Select value={selectedOpportunity.stage} onValueChange={(value) => {
+                    let prob = selectedOpportunity.probability;
+                    if (value === "discovery") prob = 25;
+                    else if (value === "proposal") prob = 50;
+                    else if (value === "negotiation") prob = 75;
+                    else if (value === "closed-won") prob = 100;
+                    else if (value === "closed-lost") prob = 0;
+                    setSelectedOpportunity({ ...selectedOpportunity, stage: value as OpportunityStage, probability: prob });
+                  }}>
+                    <SelectTrigger data-testid="select-edit-opportunity-stage">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opportunityStages.map(stage => (
+                        <SelectItem key={stage} value={stage} className="capitalize">{stage.replace("-", " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Probability (%)</Label>
+                  <Input
+                    data-testid="input-edit-opportunity-probability"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={selectedOpportunity.probability}
+                    onChange={(e) => setSelectedOpportunity({ ...selectedOpportunity, probability: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Expected Close Date</Label>
+                  <Input
+                    data-testid="input-edit-opportunity-close-date"
+                    type="date"
+                    value={selectedOpportunity.expectedCloseDate}
+                    onChange={(e) => setSelectedOpportunity({ ...selectedOpportunity, expectedCloseDate: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditOpportunityDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditOpportunity} data-testid="button-save-edit-opportunity">
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
