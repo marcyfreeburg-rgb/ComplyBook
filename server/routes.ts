@@ -2031,7 +2031,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const employeeId = parseInt(req.params.employeeId);
-      const updates = req.body;
+      
+      // Validate field lengths before processing
+      const { bankRoutingNumber, employeeNumber, phone } = req.body;
+      if (bankRoutingNumber && bankRoutingNumber.length > 20) {
+        return res.status(400).json({ message: "Bank routing number must be 20 characters or less" });
+      }
+      if (employeeNumber && employeeNumber.length > 50) {
+        return res.status(400).json({ message: "Employee number must be 50 characters or less" });
+      }
+      if (phone && phone.length > 50) {
+        return res.status(400).json({ message: "Phone number must be 50 characters or less" });
+      }
+      
+      // Convert date strings to Date objects
+      const updates = {
+        ...req.body,
+        hireDate: req.body.hireDate ? new Date(req.body.hireDate) : null,
+        terminationDate: req.body.terminationDate ? new Date(req.body.terminationDate) : null,
+      };
       
       const employee = await storage.getEmployee(employeeId);
       if (!employee) {
@@ -2050,8 +2068,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedEmployee = await storage.updateEmployee(employeeId, updates);
       await storage.logUpdate(employee.organizationId, userId, 'employee', String(employeeId), employee, updatedEmployee);
       res.status(200).json(updatedEmployee);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating employee:", error);
+      if (error.code === '22001') {
+        return res.status(400).json({ message: "One of the fields exceeds the maximum allowed length. Please check your input." });
+      }
       res.status(400).json({ message: "Failed to update employee" });
     }
   });

@@ -1,0 +1,25 @@
+Audit stats: 8256 total (8256 active, 0 archived)
+4:14:26 AM [express] GET /api/auth/user 200 in 201ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+4:14:27 AM [express] GET /api/organizations 200 in 397ms :: [{"id":168,"name":"C Cubed Training","ty…
+4:14:27 AM [express] GET /api/security/mfa/status 200 in 569ms :: {"mfaEnabled":true,"mfaRequired":t…
+4:14:27 AM [express] GET /api/employees/167 304 in 253ms :: []
+4:14:27 AM [express] GET /api/teams/167 304 in 243ms :: []
+4:14:27 AM [express] GET /api/notifications/167/unread-count 200 in 447ms :: {"count":"0"}
+4:15:25 AM [express] POST /api/employees 201 in 1273ms :: {"id":1,"organizationId":167,"teamId":null…
+4:15:25 AM [express] GET /api/employees/167 200 in 248ms :: [{"id":1,"organizationId":167,"teamId":n…
+4:15:28 AM [express] GET /api/notifications/167/unread-count 304 in 248ms :: {"count":"0"}
+Menu
+4:15:43 AM [express] POST /api/teams 201 in 801ms :: {"id":1,"organizationId":167,"name":"ONE","desc…
+4:15:43 AM [express] GET /api/teams/167 200 in 237ms :: [{"id":1,"organizationId":167,"name":"ONE","…
+Error updating employee: TypeError: value.toISOString is not a function
+    at PgTimestamp.mapToDriverValue (file:///opt/render/project/src/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:131:73
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+4:15:58 AM [express] PATCH /api/employees/1 400 in 850ms :: {"message":"Failed to update employee"}
