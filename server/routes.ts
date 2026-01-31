@@ -15459,12 +15459,12 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
-  // Send form/survey invitation emails to donors
+  // Send form/survey invitation emails to donors or clients
   app.post("/api/forms/:formId/send-invitations", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const formId = parseInt(req.params.formId);
-      const { donorIds, personalMessage } = req.body;
+      const { donorIds, personalMessage, recipientType = 'donor' } = req.body;
 
       if (!donorIds || !Array.isArray(donorIds) || donorIds.length === 0) {
         return res.status(400).json({ message: "Please select at least one recipient" });
@@ -15485,11 +15485,18 @@ Keep the response approximately 100-150 words.`;
         return res.status(404).json({ message: "Organization not found" });
       }
 
-      // Get donors with email addresses
-      const donors = await storage.getDonors(form.organizationId);
-      const selectedDonors = donors.filter(d => donorIds.includes(d.id) && d.email);
+      // Get recipients based on type (donors for nonprofit, clients for for-profit)
+      let selectedRecipients: { id: number; name: string; email: string | null }[] = [];
+      
+      if (recipientType === 'client') {
+        const clients = await storage.getClients(form.organizationId);
+        selectedRecipients = clients.filter(c => donorIds.includes(c.id) && c.email);
+      } else {
+        const donors = await storage.getDonors(form.organizationId);
+        selectedRecipients = donors.filter(d => donorIds.includes(d.id) && d.email);
+      }
 
-      if (selectedDonors.length === 0) {
+      if (selectedRecipients.length === 0) {
         return res.status(400).json({ message: "No recipients with valid email addresses found" });
       }
 
@@ -15515,11 +15522,11 @@ Keep the response approximately 100-150 words.`;
         errors: [] as string[]
       };
 
-      for (const donor of selectedDonors) {
+      for (const recipient of selectedRecipients) {
         try {
           await sendFormInvitationEmail({
-            to: donor.email!,
-            recipientName: donor.name,
+            to: recipient.email!,
+            recipientName: recipient.name,
             organizationName: organization.name,
             formTitle: form.title,
             formDescription: form.description || undefined,
@@ -15531,8 +15538,8 @@ Keep the response approximately 100-150 words.`;
           results.sent++;
         } catch (error: any) {
           results.failed++;
-          results.errors.push(`Failed to send to ${donor.email}: ${error.message}`);
-          console.error(`Error sending form invitation to ${donor.email}:`, error);
+          results.errors.push(`Failed to send to ${recipient.email}: ${error.message}`);
+          console.error(`Error sending form invitation to ${recipient.email}:`, error);
         }
       }
 

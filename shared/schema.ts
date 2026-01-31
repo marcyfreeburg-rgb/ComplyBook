@@ -3742,6 +3742,7 @@ export const forms = pgTable("forms", {
     templateCategory?: string;
     enableDonorPrefill?: boolean;
     embedEnabled?: boolean;
+    isInvoicePaymentSurvey?: boolean;
   }>().default({}),
   paymentSettings: jsonb("payment_settings").$type<{
     enablePayments?: boolean;

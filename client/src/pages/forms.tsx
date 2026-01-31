@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, MoreHorizontal, Edit2, Trash2, Copy, QrCode, Link2, FileText, ExternalLink, GripVertical, X, Users, Mail, Send, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Donor } from "@shared/schema";
+import type { Donor, Client } from "@shared/schema";
 import { QRCodeSVG } from "qrcode.react";
 import type { Form, FormQuestion } from "@shared/schema";
 
@@ -162,6 +162,25 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
   const donors = donorsResponse?.data || [];
   const donorsWithEmail = donors.filter(d => d.email);
 
+  // Fetch clients for sending invitations (for for-profit organizations)
+  const { data: clientsResponse } = useQuery<{ data: Client[] }>({
+    queryKey: ["/api/clients", organization?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${organization?.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch clients");
+      return response.json();
+    },
+    enabled: !!organization?.id && organization?.type === 'for_profit' && isSendInvitationsOpen,
+  });
+  const clients = clientsResponse?.data || [];
+  const clientsWithEmail = clients.filter(c => c.email);
+
+  // Unified recipients list based on organization type
+  const recipients = organization?.type === 'nonprofit' ? donorsWithEmail : clientsWithEmail;
+  const recipientType = organization?.type === 'nonprofit' ? 'donors' : 'clients';
+
   const forms = formsResponse?.data || [];
   const formDetail = formDetailResponse?.data;
   const questions = formDetail?.questions || [];
@@ -221,10 +240,11 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
   });
 
   const sendInvitationsMutation = useMutation({
-    mutationFn: async ({ formId, donorIds, personalMessage }: { formId: number; donorIds: number[]; personalMessage: string }) => {
+    mutationFn: async ({ formId, donorIds, personalMessage, recipientType }: { formId: number; donorIds: number[]; personalMessage: string; recipientType: 'donor' | 'client' }) => {
       const response = await apiRequest("POST", `/api/forms/${formId}/send-invitations`, {
         donorIds,
         personalMessage,
+        recipientType,
       });
       return response.json();
     },
@@ -858,18 +878,16 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Preview
                     </DropdownMenuItem>
-                    {organization?.type === 'nonprofit' && (
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setSelectedForm(form);
-                          setIsSendInvitationsOpen(true);
-                        }}
-                        data-testid={`button-send-email-${form.id}`}
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Send by Email
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setSelectedForm(form);
+                        setIsSendInvitationsOpen(true);
+                      }}
+                      data-testid={`button-send-email-${form.id}`}
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      Send by Email
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => deleteMutation.mutate(form.id)}
                       className="text-destructive"
@@ -1361,74 +1379,74 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
               Send Form by Email
             </DialogTitle>
             <DialogDescription>
-              Send "{selectedForm?.title}" to donors via email
+              Send "{selectedForm?.title}" to {recipientType} via email
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Select Recipients</Label>
-              {donorsWithEmail.length === 0 ? (
+              {recipients.length === 0 ? (
                 <div className="text-center py-6 border rounded-md bg-muted/30">
                   <Mail className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    No donors with email addresses found
+                    No {recipientType} with email addresses found
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Add email addresses to your donors first
+                    Add email addresses to your {recipientType} first
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">
-                      {selectedDonorIds.length} of {donorsWithEmail.length} selected
+                      {selectedDonorIds.length} of {recipients.length} selected
                     </span>
                     <Button 
                       variant="ghost" 
                       size="sm"
                       onClick={() => {
-                        if (selectedDonorIds.length === donorsWithEmail.length) {
+                        if (selectedDonorIds.length === recipients.length) {
                           setSelectedDonorIds([]);
                         } else {
-                          setSelectedDonorIds(donorsWithEmail.map(d => d.id));
+                          setSelectedDonorIds(recipients.map(r => r.id));
                         }
                       }}
-                      data-testid="button-select-all-donors"
+                      data-testid="button-select-all-recipients"
                     >
-                      {selectedDonorIds.length === donorsWithEmail.length ? "Deselect All" : "Select All"}
+                      {selectedDonorIds.length === recipients.length ? "Deselect All" : "Select All"}
                     </Button>
                   </div>
                   <ScrollArea className="h-[200px] border rounded-md p-3">
                     <div className="space-y-2">
-                      {donorsWithEmail.map((donor) => (
+                      {recipients.map((recipient) => (
                         <div 
-                          key={donor.id} 
+                          key={recipient.id} 
                           className="flex items-center space-x-3 p-2 rounded hover-elevate cursor-pointer"
                           onClick={() => {
                             setSelectedDonorIds(prev => 
-                              prev.includes(donor.id) 
-                                ? prev.filter(id => id !== donor.id)
-                                : [...prev, donor.id]
+                              prev.includes(recipient.id) 
+                                ? prev.filter(id => id !== recipient.id)
+                                : [...prev, recipient.id]
                             );
                           }}
                         >
                           <Checkbox
-                            checked={selectedDonorIds.includes(donor.id)}
+                            checked={selectedDonorIds.includes(recipient.id)}
                             onCheckedChange={(checked) => {
                               setSelectedDonorIds(prev => 
                                 checked 
-                                  ? [...prev, donor.id]
-                                  : prev.filter(id => id !== donor.id)
+                                  ? [...prev, recipient.id]
+                                  : prev.filter(id => id !== recipient.id)
                               );
                             }}
-                            data-testid={`checkbox-donor-${donor.id}`}
+                            data-testid={`checkbox-recipient-${recipient.id}`}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{donor.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{donor.email}</p>
+                            <p className="text-sm font-medium truncate">{recipient.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{recipient.email}</p>
                           </div>
-                          {selectedDonorIds.includes(donor.id) && (
+                          {selectedDonorIds.includes(recipient.id) && (
                             <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
                           )}
                         </div>
@@ -1470,6 +1488,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
                     formId: selectedForm.id,
                     donorIds: selectedDonorIds,
                     personalMessage,
+                    recipientType: organization?.type === 'nonprofit' ? 'donor' : 'client',
                   });
                 }
               }}
@@ -1484,7 +1503,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Send to {selectedDonorIds.length} {selectedDonorIds.length === 1 ? 'Donor' : 'Donors'}
+                  Send to {selectedDonorIds.length} {selectedDonorIds.length === 1 ? (organization?.type === 'nonprofit' ? 'Donor' : 'Client') : (organization?.type === 'nonprofit' ? 'Donors' : 'Clients')}
                 </>
               )}
             </Button>
