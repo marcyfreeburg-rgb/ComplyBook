@@ -12575,6 +12575,25 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // Get all milestones for an organization
+  app.get("/api/milestones/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const milestones = await storage.getMilestonesByOrganization(organizationId);
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching milestones by organization:", error);
+      res.status(500).json({ message: "Failed to fetch milestones" });
+    }
+  });
+
   app.post("/api/milestones", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;

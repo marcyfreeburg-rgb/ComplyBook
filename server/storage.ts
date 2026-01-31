@@ -1003,6 +1003,7 @@ export interface IStorage {
 
   // For-profit: Contract milestone operations
   getContractMilestones(contractId: number): Promise<ContractMilestone[]>;
+  getMilestonesByOrganization(organizationId: number): Promise<ContractMilestone[]>;
   getContractMilestone(id: number): Promise<ContractMilestone | undefined>;
   createContractMilestone(milestone: InsertContractMilestone): Promise<ContractMilestone>;
   updateContractMilestone(id: number, updates: Partial<InsertContractMilestone>): Promise<ContractMilestone>;
@@ -8328,6 +8329,12 @@ export class DatabaseStorage implements IStorage {
   async getContractMilestones(contractId: number): Promise<ContractMilestone[]> {
     return await db.select().from(contractMilestones)
       .where(eq(contractMilestones.contractId, contractId))
+      .orderBy(contractMilestones.dueDate);
+  }
+
+  async getMilestonesByOrganization(organizationId: number): Promise<ContractMilestone[]> {
+    return await db.select().from(contractMilestones)
+      .where(eq(contractMilestones.organizationId, organizationId))
       .orderBy(contractMilestones.dueDate);
   }
 
