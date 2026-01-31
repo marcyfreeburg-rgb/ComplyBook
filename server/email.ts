@@ -1039,3 +1039,123 @@ This alert was sent by ${organizationName} via ComplyBook.
   await client.send(msg);
   console.log(`Budget alert email sent to ${to} for budget "${budgetName}" (${alertType})`);
 }
+
+// Form/Survey Invitation Email
+interface FormInvitationEmailParams {
+  to: string;
+  recipientName: string;
+  organizationName: string;
+  formTitle: string;
+  formDescription?: string;
+  formType: 'form' | 'survey';
+  formUrl: string;
+  personalMessage?: string;
+  branding?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    footer?: string;
+  };
+}
+
+export async function sendFormInvitationEmail({
+  to,
+  recipientName,
+  organizationName,
+  formTitle,
+  formDescription,
+  formType,
+  formUrl,
+  personalMessage,
+  branding
+}: FormInvitationEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const primaryColor = branding?.primaryColor || '#0070f3';
+  const accentColor = branding?.accentColor || '#0052cc';
+  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  const logoHtml = branding?.logoUrl 
+    ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${branding.logoUrl}" alt="Organization Logo" style="max-width: 150px; height: auto;" /></div>`
+    : '';
+  const footerHtml = branding?.footer
+    ? `<div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px; text-align: center; color: #666; font-size: 12px; white-space: pre-line;">${branding.footer}</div>`
+    : '';
+
+  const typeLabel = formType === 'survey' ? 'Survey' : 'Form';
+  const actionText = formType === 'survey' ? 'Take Survey' : 'Fill Out Form';
+  const descriptionHtml = formDescription 
+    ? `<p style="color: #4a5568; font-size: 14px; margin: 15px 0; line-height: 1.6;">${formDescription}</p>`
+    : '';
+  const personalMessageHtml = personalMessage
+    ? `<div style="background-color: #f8fafc; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+         <p style="color: #4a5568; font-size: 14px; margin: 0; font-style: italic;">"${personalMessage}"</p>
+       </div>`
+    : '';
+
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `${organizationName} invites you to complete: ${formTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${typeLabel} Invitation</title>
+        </head>
+        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+          <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            ${logoHtml}
+            <div style="background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); padding: 30px; color: white;">
+              <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">You're Invited!</h1>
+              <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">${organizationName} has sent you a ${typeLabel.toLowerCase()}</p>
+            </div>
+            
+            <div style="padding: 30px;">
+              <p style="color: #333; font-size: 16px; margin: 0 0 10px 0;">Hello ${recipientName},</p>
+              
+              <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 20px;">${formTitle}</h2>
+                ${descriptionHtml}
+              </div>
+              
+              ${personalMessageHtml}
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${formUrl}" style="display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                  ${actionText}
+                </a>
+              </div>
+              
+              <p style="color: #666; font-size: 13px; margin-top: 20px; text-align: center;">
+                Or copy and paste this link into your browser:<br>
+                <a href="${formUrl}" style="color: ${primaryColor}; word-break: break-all;">${formUrl}</a>
+              </p>
+            </div>
+            
+            ${footerHtml}
+            
+            <div style="background-color: #f8fafc; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+              <p style="margin: 0;">Sent via <a href="https://complybook.net" style="color: ${primaryColor}; text-decoration: none;">ComplyBook</a></p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Hello ${recipientName},
+
+${organizationName} has sent you a ${typeLabel.toLowerCase()}: ${formTitle}
+
+${formDescription ? formDescription + '\n\n' : ''}${personalMessage ? `Message from ${organizationName}:\n"${personalMessage}"\n\n` : ''}Please click the link below to complete the ${typeLabel.toLowerCase()}:
+${formUrl}
+
+This invitation was sent by ${organizationName} via ComplyBook.
+    `.trim()
+  };
+
+  await client.send(msg);
+  console.log(`Form invitation email sent to ${to} for "${formTitle}"`);
+}

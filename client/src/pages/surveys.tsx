@@ -14,7 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, MoreHorizontal, Edit2, Trash2, Copy, Eye, QrCode, Link2, ClipboardCheck, BarChart3, ExternalLink, GripVertical, X, ChevronUp, ChevronDown, Download, Filter, Code2, Search, TrendingUp, Shield, Tag, Palette } from "lucide-react";
+import { Plus, MoreHorizontal, Edit2, Trash2, Copy, Eye, QrCode, Link2, ClipboardCheck, BarChart3, ExternalLink, GripVertical, X, ChevronUp, ChevronDown, Download, Filter, Code2, Search, TrendingUp, Shield, Tag, Palette, Mail, Send, CheckCircle2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { QRCodeSVG } from "qrcode.react";
 import type { Form, FormQuestion } from "@shared/schema";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
@@ -102,6 +104,11 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
     description: "",
   });
   const [editOptionInput, setEditOptionInput] = useState("");
+  
+  // Send invitations state
+  const [isSendInvitationsOpen, setIsSendInvitationsOpen] = useState(false);
+  const [selectedDonorIds, setSelectedDonorIds] = useState<number[]>([]);
+  const [personalMessage, setPersonalMessage] = useState("");
 
   const { data: surveysResponse, isLoading } = useQuery<{ data: Form[] }>({
     queryKey: ["/api/forms", organization?.id, "survey"],
@@ -168,6 +175,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   const questions = surveyDetail?.questions || [];
   const responses = responsesData?.data || [];
   const donors = donorsData?.data || [];
+  const donorsWithEmail = donors.filter(d => d.email);
   const programs = programsData?.data || [];
 
   const filteredResponses = useMemo(() => {
@@ -293,6 +301,32 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
     },
     onError: () => {
       toast({ title: "Failed to delete survey", variant: "destructive" });
+    },
+  });
+
+  const sendInvitationsMutation = useMutation({
+    mutationFn: async ({ formId, donorIds, personalMessage }: { formId: number; donorIds: number[]; personalMessage: string }) => {
+      const response = await apiRequest("POST", `/api/forms/${formId}/send-invitations`, {
+        donorIds,
+        personalMessage,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsSendInvitationsOpen(false);
+      setSelectedDonorIds([]);
+      setPersonalMessage("");
+      toast({ 
+        title: "Invitations Sent",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to send invitations", 
+        description: error.message || "Please try again",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -776,6 +810,18 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Preview
                     </DropdownMenuItem>
+                    {organization?.type === 'nonprofit' && (
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setSelectedSurvey(survey);
+                          setIsSendInvitationsOpen(true);
+                        }}
+                        data-testid={`button-send-email-${survey.id}`}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Send by Email
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => deleteMutation.mutate(survey.id)}
                       className="text-destructive"
@@ -1505,6 +1551,152 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invitations Dialog */}
+      <Dialog open={isSendInvitationsOpen} onOpenChange={(open) => {
+        setIsSendInvitationsOpen(open);
+        if (!open) {
+          setSelectedDonorIds([]);
+          setPersonalMessage("");
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Send Survey by Email
+            </DialogTitle>
+            <DialogDescription>
+              Send "{selectedSurvey?.title}" to donors via email
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Recipients</Label>
+              {donorsWithEmail.length === 0 ? (
+                <div className="text-center py-6 border rounded-md bg-muted/30">
+                  <Mail className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    No donors with email addresses found
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add email addresses to your donors first
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      {selectedDonorIds.length} of {donorsWithEmail.length} selected
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        if (selectedDonorIds.length === donorsWithEmail.length) {
+                          setSelectedDonorIds([]);
+                        } else {
+                          setSelectedDonorIds(donorsWithEmail.map(d => d.id));
+                        }
+                      }}
+                      data-testid="button-select-all-donors"
+                    >
+                      {selectedDonorIds.length === donorsWithEmail.length ? "Deselect All" : "Select All"}
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-[200px] border rounded-md p-3">
+                    <div className="space-y-2">
+                      {donorsWithEmail.map((donor) => (
+                        <div 
+                          key={donor.id} 
+                          className="flex items-center space-x-3 p-2 rounded hover-elevate cursor-pointer"
+                          onClick={() => {
+                            setSelectedDonorIds(prev => 
+                              prev.includes(donor.id) 
+                                ? prev.filter(id => id !== donor.id)
+                                : [...prev, donor.id]
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedDonorIds.includes(donor.id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedDonorIds(prev => 
+                                checked 
+                                  ? [...prev, donor.id]
+                                  : prev.filter(id => id !== donor.id)
+                              );
+                            }}
+                            data-testid={`checkbox-donor-${donor.id}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{donor.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{donor.email}</p>
+                          </div>
+                          {selectedDonorIds.includes(donor.id) && (
+                            <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="personal-message">Personal Message (Optional)</Label>
+              <Textarea
+                id="personal-message"
+                placeholder="Add a personal message to include in the email..."
+                value={personalMessage}
+                onChange={(e) => setPersonalMessage(e.target.value)}
+                rows={3}
+                data-testid="input-personal-message"
+              />
+              <p className="text-xs text-muted-foreground">
+                This message will be included in the invitation email
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsSendInvitationsOpen(false)}
+              data-testid="button-cancel-send"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedSurvey && selectedDonorIds.length > 0) {
+                  sendInvitationsMutation.mutate({
+                    formId: selectedSurvey.id,
+                    donorIds: selectedDonorIds,
+                    personalMessage,
+                  });
+                }
+              }}
+              disabled={selectedDonorIds.length === 0 || sendInvitationsMutation.isPending}
+              data-testid="button-send-invitations"
+            >
+              {sendInvitationsMutation.isPending ? (
+                <>
+                  <Send className="h-4 w-4 mr-2 animate-pulse" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send to {selectedDonorIds.length} {selectedDonorIds.length === 1 ? 'Donor' : 'Donors'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

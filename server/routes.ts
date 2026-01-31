@@ -15459,6 +15459,111 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // Send form/survey invitation emails to donors
+  app.post("/api/forms/:formId/send-invitations", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+      const { donorIds, personalMessage } = req.body;
+
+      if (!donorIds || !Array.isArray(donorIds) || donorIds.length === 0) {
+        return res.status(400).json({ message: "Please select at least one recipient" });
+      }
+
+      const form = await storage.getForm(formId);
+      if (!form) {
+        return res.status(404).json({ message: "Form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can send invitations" });
+      }
+
+      const organization = await storage.getOrganization(form.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Get donors with email addresses
+      const donors = await storage.getDonors(form.organizationId);
+      const selectedDonors = donors.filter(d => donorIds.includes(d.id) && d.email);
+
+      if (selectedDonors.length === 0) {
+        return res.status(400).json({ message: "No recipients with valid email addresses found" });
+      }
+
+      // Build form URL
+      const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+      const formUrl = `${baseUrl}/s/${form.publicId}`;
+
+      // Get branding
+      const branding = {
+        primaryColor: organization.primaryColor || undefined,
+        accentColor: organization.accentColor || undefined,
+        fontFamily: organization.fontFamily || undefined,
+        logoUrl: organization.logoUrl || undefined,
+        footer: organization.emailFooter || undefined,
+      };
+
+      // Import and use the email function
+      const { sendFormInvitationEmail } = await import('./email');
+
+      const results = {
+        sent: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
+
+      for (const donor of selectedDonors) {
+        try {
+          await sendFormInvitationEmail({
+            to: donor.email!,
+            recipientName: donor.name,
+            organizationName: organization.name,
+            formTitle: form.title,
+            formDescription: form.description || undefined,
+            formType: form.formType as 'form' | 'survey',
+            formUrl,
+            personalMessage: personalMessage || undefined,
+            branding,
+          });
+          results.sent++;
+        } catch (error: any) {
+          results.failed++;
+          results.errors.push(`Failed to send to ${donor.email}: ${error.message}`);
+          console.error(`Error sending form invitation to ${donor.email}:`, error);
+        }
+      }
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId,
+        organizationId: form.organizationId,
+        action: 'form.invitations_sent',
+        resourceType: 'form',
+        resourceId: formId.toString(),
+        details: {
+          formTitle: form.title,
+          recipientCount: results.sent,
+          failedCount: results.failed,
+        },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'] || null,
+      });
+
+      res.json({
+        message: `Successfully sent ${results.sent} invitation${results.sent !== 1 ? 's' : ''}${results.failed > 0 ? `, ${results.failed} failed` : ''}`,
+        sent: results.sent,
+        failed: results.failed,
+        errors: results.errors,
+      });
+    } catch (error: any) {
+      console.error("Error sending form invitations:", error);
+      res.status(500).json({ message: error.message || "Failed to send invitations" });
+    }
+  });
+
   // Get form responses (MUST be before /:organizationId/:formId to avoid route collision)
   app.get("/api/forms/:formId/responses", isAuthenticated, async (req: any, res: Response) => {
     try {
