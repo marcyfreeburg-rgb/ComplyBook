@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Organization, Donor, Program, FormResponse } from "@shared/schema";
+import type { Organization, Donor, Client, Program, FormResponse } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       thankYouEmailBody: "",
       enableDonorPrefill: false,
       embedEnabled: false,
+      isInvoicePaymentSurvey: false,
     },
     branding: {
       useBranding: true,
@@ -155,7 +156,19 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
       if (!response.ok) throw new Error("Failed to fetch donors");
       return response.json();
     },
-    enabled: !!organization?.id,
+    enabled: !!organization?.id && organization?.type === 'nonprofit',
+  });
+
+  const { data: clientsData } = useQuery<{ data: Client[] }>({
+    queryKey: ["/api/clients", organization?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${organization?.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch clients");
+      return response.json();
+    },
+    enabled: !!organization?.id && organization?.type === 'for_profit',
   });
 
   const { data: programsData } = useQuery<{ data: Program[] }>({
@@ -176,7 +189,13 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   const responses = responsesData?.data || [];
   const donors = donorsData?.data || [];
   const donorsWithEmail = donors.filter(d => d.email);
+  const clients = clientsData?.data || [];
+  const clientsWithEmail = clients.filter(c => c.email);
   const programs = programsData?.data || [];
+
+  // Unified recipients list based on organization type
+  const recipients = organization?.type === 'nonprofit' ? donorsWithEmail : clientsWithEmail;
+  const recipientType = organization?.type === 'nonprofit' ? 'donors' : 'clients';
 
   const filteredResponses = useMemo(() => {
     let filtered = [...responses];
@@ -305,10 +324,11 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   });
 
   const sendInvitationsMutation = useMutation({
-    mutationFn: async ({ formId, donorIds, personalMessage }: { formId: number; donorIds: number[]; personalMessage: string }) => {
+    mutationFn: async ({ formId, donorIds, personalMessage, recipientType }: { formId: number; donorIds: number[]; personalMessage: string; recipientType: 'donor' | 'client' }) => {
       const response = await apiRequest("POST", `/api/forms/${formId}/send-invitations`, {
         donorIds,
         personalMessage,
+        recipientType,
       });
       return response.json();
     },
@@ -407,6 +427,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
         thankYouEmailBody: "",
         enableDonorPrefill: false,
         embedEnabled: false,
+        isInvoicePaymentSurvey: false,
       },
       branding: {
         useBranding: true,
@@ -704,6 +725,20 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     data-testid="switch-donor-prefill"
                   />
                 </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Invoice Payment Survey</Label>
+                    <p className="text-sm text-muted-foreground">Automatically send this survey when an invoice is paid</p>
+                  </div>
+                  <Switch
+                    checked={formData.settings.isInvoicePaymentSurvey}
+                    onCheckedChange={(checked) => setFormData({
+                      ...formData,
+                      settings: { ...formData.settings, isInvoicePaymentSurvey: checked }
+                    })}
+                    data-testid="switch-invoice-payment-survey"
+                  />
+                </div>
               </div>
               <div className="space-y-4 border-t pt-4">
                 <div className="flex items-center justify-between">
@@ -962,6 +997,20 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     ...formData,
                     settings: { ...formData.settings, enableDonorPrefill: checked }
                   })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Invoice Payment Survey</Label>
+                  <p className="text-sm text-muted-foreground">Auto-send when invoice is paid</p>
+                </div>
+                <Switch
+                  checked={formData.settings.isInvoicePaymentSurvey}
+                  onCheckedChange={(checked) => setFormData({
+                    ...formData,
+                    settings: { ...formData.settings, isInvoicePaymentSurvey: checked }
+                  })}
+                  data-testid="switch-edit-invoice-payment-survey"
                 />
               </div>
             </div>
@@ -1569,74 +1618,74 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               Send Survey by Email
             </DialogTitle>
             <DialogDescription>
-              Send "{selectedSurvey?.title}" to donors via email
+              Send "{selectedSurvey?.title}" to {recipientType} via email
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Select Recipients</Label>
-              {donorsWithEmail.length === 0 ? (
+              {recipients.length === 0 ? (
                 <div className="text-center py-6 border rounded-md bg-muted/30">
                   <Mail className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    No donors with email addresses found
+                    No {recipientType} with email addresses found
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Add email addresses to your donors first
+                    Add email addresses to your {recipientType} first
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">
-                      {selectedDonorIds.length} of {donorsWithEmail.length} selected
+                      {selectedDonorIds.length} of {recipients.length} selected
                     </span>
                     <Button 
                       variant="ghost" 
                       size="sm"
                       onClick={() => {
-                        if (selectedDonorIds.length === donorsWithEmail.length) {
+                        if (selectedDonorIds.length === recipients.length) {
                           setSelectedDonorIds([]);
                         } else {
-                          setSelectedDonorIds(donorsWithEmail.map(d => d.id));
+                          setSelectedDonorIds(recipients.map(r => r.id));
                         }
                       }}
-                      data-testid="button-select-all-donors"
+                      data-testid="button-select-all-recipients"
                     >
-                      {selectedDonorIds.length === donorsWithEmail.length ? "Deselect All" : "Select All"}
+                      {selectedDonorIds.length === recipients.length ? "Deselect All" : "Select All"}
                     </Button>
                   </div>
                   <ScrollArea className="h-[200px] border rounded-md p-3">
                     <div className="space-y-2">
-                      {donorsWithEmail.map((donor) => (
+                      {recipients.map((recipient) => (
                         <div 
-                          key={donor.id} 
+                          key={recipient.id} 
                           className="flex items-center space-x-3 p-2 rounded hover-elevate cursor-pointer"
                           onClick={() => {
                             setSelectedDonorIds(prev => 
-                              prev.includes(donor.id) 
-                                ? prev.filter(id => id !== donor.id)
-                                : [...prev, donor.id]
+                              prev.includes(recipient.id) 
+                                ? prev.filter(id => id !== recipient.id)
+                                : [...prev, recipient.id]
                             );
                           }}
                         >
                           <Checkbox
-                            checked={selectedDonorIds.includes(donor.id)}
+                            checked={selectedDonorIds.includes(recipient.id)}
                             onCheckedChange={(checked) => {
                               setSelectedDonorIds(prev => 
                                 checked 
-                                  ? [...prev, donor.id]
-                                  : prev.filter(id => id !== donor.id)
+                                  ? [...prev, recipient.id]
+                                  : prev.filter(id => id !== recipient.id)
                               );
                             }}
-                            data-testid={`checkbox-donor-${donor.id}`}
+                            data-testid={`checkbox-recipient-${recipient.id}`}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{donor.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{donor.email}</p>
+                            <p className="text-sm font-medium truncate">{recipient.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{recipient.email}</p>
                           </div>
-                          {selectedDonorIds.includes(donor.id) && (
+                          {selectedDonorIds.includes(recipient.id) && (
                             <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
                           )}
                         </div>
@@ -1678,6 +1727,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                     formId: selectedSurvey.id,
                     donorIds: selectedDonorIds,
                     personalMessage,
+                    recipientType: organization?.type === 'nonprofit' ? 'donor' : 'client',
                   });
                 }
               }}
@@ -1692,7 +1742,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Send to {selectedDonorIds.length} {selectedDonorIds.length === 1 ? 'Donor' : 'Donors'}
+                  Send to {selectedDonorIds.length} {selectedDonorIds.length === 1 ? (organization?.type === 'nonprofit' ? 'Donor' : 'Client') : (organization?.type === 'nonprofit' ? 'Donors' : 'Clients')}
                 </>
               )}
             </Button>
