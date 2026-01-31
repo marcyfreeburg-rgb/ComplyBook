@@ -1,0 +1,26 @@
+4:57:49 AM [express] GET /api/security/mfa/status 200 in 293ms :: {"mfaEnabled":true,"mfaRequired":t…
+4:57:49 AM [express] GET /api/organizations 200 in 533ms :: [{"id":168,"name":"C Cubed Training","ty…
+4:57:50 AM [express] GET /api/notifications/167/unread-count 304 in 232ms :: {"count":"0"}
+4:57:50 AM [express] GET /api/contracts/167 200 in 239ms :: []
+4:57:50 AM [express] GET /api/change-orders/167 200 in 373ms :: []
+4:57:50 AM [express] GET /api/proposals/167 200 in 380ms :: []
+4:58:51 AM [express] GET /api/notifications/167/unread-count 304 in 783ms :: {"count":"0"}
+4:59:03 AM [express] POST /api/contracts 201 in 1167ms :: {"id":16,"organizationId":167,"contractNum…
+4:59:03 AM [express] GET /api/contracts/167 200 in 235ms :: [{"id":16,"organizationId":167,"contract…
+4:59:52 AM [express] GET /api/notifications/167/unread-count 304 in 772ms :: {"count":"0"}
+Menu
+5:00:06 AM [express] POST /api/contracts 201 in 1084ms :: {"id":17,"organizationId":167,"contractNum…
+5:00:06 AM [express] GET /api/contracts/167 200 in 236ms :: [{"id":17,"organizationId":167,"contract…
+Error creating proposal: TypeError: value.toISOString is not a function
+    at PgTimestamp.mapToDriverValue (file:///opt/render/project/src/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:131:73
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:92:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+5:00:51 AM [express] POST /api/proposals 500 in 469ms :: {"message":"Failed to create proposal"}
+5:00:53 AM [express] GET /api/notifications/167/unread-count 304 in 441ms :: {"count":"0"}

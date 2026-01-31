@@ -14574,7 +14574,13 @@ Keep the response approximately 100-150 words.`;
   // Create a new proposal
   app.post("/api/proposals", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const proposal = await storage.createProposal(req.body);
+      // Convert date strings to Date objects
+      const proposalData = {
+        ...req.body,
+        submissionDeadline: req.body.submissionDeadline ? new Date(req.body.submissionDeadline) : null,
+        submittedDate: req.body.submittedDate ? new Date(req.body.submittedDate) : null,
+      };
+      const proposal = await storage.createProposal(proposalData);
       res.status(201).json(proposal);
     } catch (error: any) {
       console.error("Error creating proposal:", error);
@@ -14586,7 +14592,13 @@ Keep the response approximately 100-150 words.`;
   app.put("/api/proposals/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const proposal = await storage.updateProposal(id, req.body);
+      // Convert date strings to Date objects
+      const proposalData = {
+        ...req.body,
+        submissionDeadline: req.body.submissionDeadline ? new Date(req.body.submissionDeadline) : null,
+        submittedDate: req.body.submittedDate ? new Date(req.body.submittedDate) : null,
+      };
+      const proposal = await storage.updateProposal(id, proposalData);
       res.json(proposal);
     } catch (error: any) {
       console.error("Error updating proposal:", error);
