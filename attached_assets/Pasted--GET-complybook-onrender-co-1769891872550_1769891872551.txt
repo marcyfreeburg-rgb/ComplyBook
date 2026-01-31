@@ -1,0 +1,54 @@
+==> 
+==> ///////////////////////////////////////////////////////////
+[GET]
+complybook.onrender.com/ clientIP="34.82.29.197" requestID="06661691-c1f3-4cc8" responseTimeMS=18 responseBytes=223158 userAgent="Go-http-client/2.0"
+[GET]
+complybook.net/assets/index--iRhy3o1.css clientIP="216.147.126.248" requestID="ae350025-bcd7-41e8" responseTimeMS=432 responseBytes=17278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/government-contracts clientIP="216.147.126.248" requestID="d02736e5-1acf-4575" responseTimeMS=453 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-C1iJjC7r.js clientIP="216.147.126.248" requestID="5b523bda-fb72-45ac" responseTimeMS=228 responseBytes=916365 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="fbb52810-4c2a-4d02" responseTimeMS=5 responseBytes=1766 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="ffcf61d2-2de8-4b48" responseTimeMS=81 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="df7ebeee-3eca-4dd0" responseTimeMS=82 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="161a5c34-4d8f-4567" responseTimeMS=378 responseBytes=2248 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="f218939f-593d-435c" responseTimeMS=82 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+8:36:37 PM [express] GET /api/auth/user 200 in 373ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/api/indirect-rates/167 clientIP="216.147.126.248" requestID="2dd0a183-9aff-40f0" responseTimeMS=61 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="752a74dd-76dd-4678" responseTimeMS=694 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="c18165ab-7be5-4a54" responseTimeMS=302 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+8:36:38 PM [express] GET /api/security/mfa/status 304 in 300ms :: {"mfaEnabled":true,"mfaRequired":t…
+8:36:38 PM [express] GET /api/organizations 304 in 695ms :: [{"id":168,"name":"C Cubed Training","ty…
+8:36:38 PM [express] GET /api/indirect-rates/167 200 in 118ms
+[GET]
+complybook.net/api/contracts/167 clientIP="216.147.126.248" requestID="d38cf82e-b0ea-4609" responseTimeMS=430 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/time-entries/167 clientIP="216.147.126.248" requestID="a5057697-2d50-4be4" responseTimeMS=604 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/projects/167 clientIP="216.147.126.248" requestID="33356d5c-ddaf-4035" responseTimeMS=597 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="9d8aa736-1b5a-4984" responseTimeMS=241 responseBytes=1287 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="83a3d1fd-4d18-4592" responseTimeMS=475 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/milestones/167 clientIP="216.147.126.248" requestID="4b91ddd5-7168-4c32" responseTimeMS=431 responseBytes=1497 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+8:36:39 PM [express] GET /api/notifications/167/unread-count 200 in 239ms :: {"count":"0"}
+8:36:39 PM [express] GET /api/milestones/167 200 in 429ms :: [{"id":1,"contractId":29,"organizationI…
+8:36:39 PM [express] GET /api/contracts/167 304 in 427ms :: [{"id":29,"organizationId":167,"proposal…
+8:36:39 PM [express] GET /api/projects/167 304 in 596ms :: [{"id":8,"organizationId":167,"contractId…
+8:36:39 PM [express] GET /api/time-entries/167 304 in 602ms :: [{"id":11,"organizationId":167,"userI…
+[POST]
+complybook.net/api/indirect-rates clientIP="216.147.126.248" requestID="885bd879-3481-4f87" responseTimeMS=435 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+8:37:14 PM [express] POST /api/indirect-rates 200 in 484ms
+[GET]
+complybook.net/api/indirect-rates/167 clientIP="216.147.126.248" requestID="2572d684-75be-4967" responseTimeMS=121 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+8:37:15 PM [express] GET /api/indirect-rates/167 304 in 121ms

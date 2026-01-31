@@ -1027,6 +1027,13 @@ export interface IStorage {
   deleteProjectCost(id: number): Promise<void>;
   getProjectCostsByType(projectId: number): Promise<Array<{ costType: string; totalAmount: string }>>;
 
+  // For-profit: Indirect cost rate operations
+  getIndirectCostRates(organizationId: number): Promise<IndirectCostRate[]>;
+  getIndirectCostRate(id: number): Promise<IndirectCostRate | undefined>;
+  createIndirectCostRate(rate: InsertIndirectCostRate): Promise<IndirectCostRate>;
+  updateIndirectCostRate(id: number, updates: Partial<InsertIndirectCostRate>): Promise<IndirectCostRate>;
+  deleteIndirectCostRate(id: number): Promise<void>;
+
   // For-profit: Time entry operations
   getTimeEntries(organizationId: number, startDate?: Date, endDate?: Date): Promise<Array<TimeEntry & { userName: string; projectName?: string | null; contractName?: string | null }>>;
   getTimeEntry(id: number): Promise<TimeEntry | undefined>;

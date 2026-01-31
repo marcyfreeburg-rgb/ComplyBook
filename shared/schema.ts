@@ -2426,7 +2426,10 @@ export const insertIndirectCostRateSchema = createInsertSchema(indirectCostRates
 }).extend({
   ratePercentage: z.string().or(z.number()).transform(val => String(val)),
   effectiveStartDate: z.coerce.date(),
-  effectiveEndDate: z.coerce.date().optional(),
+  effectiveEndDate: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.date().optional().nullable()
+  ),
 });
 
 export type InsertIndirectCostRate = z.infer<typeof insertIndirectCostRateSchema>;

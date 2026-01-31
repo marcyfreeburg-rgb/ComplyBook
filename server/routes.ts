@@ -12676,6 +12676,106 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // Indirect Cost Rate routes
+  app.get("/api/indirect-rates/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const rates = await storage.getIndirectCostRates(organizationId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching indirect cost rates:", error);
+      res.status(500).json({ message: "Failed to fetch indirect cost rates" });
+    }
+  });
+
+  app.post("/api/indirect-rates", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...rateData } = req.body;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "No organization selected" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to create indirect cost rates" });
+      }
+
+      const validatedData = insertIndirectCostRateSchema.parse({
+        ...rateData,
+        organizationId,
+        createdBy: userId,
+      });
+
+      const rate = await storage.createIndirectCostRate(validatedData);
+      await storage.logCreate(organizationId, userId, 'indirect_rate', rate.id.toString(), rate);
+      res.json(rate);
+    } catch (error: any) {
+      console.error("Error creating indirect cost rate:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid rate data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create indirect cost rate" });
+    }
+  });
+
+  app.put("/api/indirect-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+
+      const rate = await storage.getIndirectCostRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Indirect cost rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to update indirect cost rates" });
+      }
+
+      const oldData = JSON.stringify(rate);
+      const updated = await storage.updateIndirectCostRate(rateId, req.body);
+      await storage.logUpdate(rate.organizationId, userId, 'indirect_rate', rateId.toString(), oldData, updated);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating indirect cost rate:", error);
+      res.status(500).json({ message: "Failed to update indirect cost rate" });
+    }
+  });
+
+  app.delete("/api/indirect-rates/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rateId = parseInt(req.params.id);
+
+      const rate = await storage.getIndirectCostRate(rateId);
+      if (!rate) {
+        return res.status(404).json({ message: "Indirect cost rate not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, rate.organizationId);
+      if (!userRole || userRole.role === 'viewer') {
+        return res.status(403).json({ message: "You don't have permission to delete indirect cost rates" });
+      }
+
+      await storage.logDelete(rate.organizationId, userId, 'indirect_rate', rateId.toString(), rate);
+      await storage.deleteIndirectCostRate(rateId);
+      res.json({ message: "Indirect cost rate deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting indirect cost rate:", error);
+      res.status(500).json({ message: "Failed to delete indirect cost rate" });
+    }
+  });
+
   // Project (Job Costing) routes
   app.get("/api/projects/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
