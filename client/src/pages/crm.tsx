@@ -4,6 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   LayoutDashboard, 
   Users, 
@@ -113,6 +116,15 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
+  const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
+  const [newLead, setNewLead] = useState({
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    value: "",
+    source: "Website"
+  });
   const { toast } = useToast();
 
   const leadStatuses: LeadStatus[] = ["new", "contacted", "qualified", "unqualified"];
@@ -198,6 +210,40 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     }
   };
 
+  const handleAddLead = () => {
+    if (!newLead.name || !newLead.company || !newLead.email) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in name, company, and email",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const lead: Lead = {
+      id: Math.max(...leads.map(l => l.id)) + 1,
+      name: newLead.name,
+      company: newLead.company,
+      email: newLead.email,
+      phone: newLead.phone,
+      value: parseFloat(newLead.value) || 0,
+      status: "new",
+      lastContactDate: new Date().toISOString().split('T')[0],
+      assignedTo: "Unassigned",
+      source: newLead.source,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    setLeads([lead, ...leads]);
+    setNewLead({ name: "", company: "", email: "", phone: "", value: "", source: "Website" });
+    setShowAddLeadDialog(false);
+    setActiveTab("leads");
+    toast({
+      title: "Lead added",
+      description: `${lead.name} has been added to your leads`
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -205,7 +251,7 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
           <h1 className="text-3xl font-bold">CRM</h1>
           <p className="text-muted-foreground">Manage leads, opportunities, and client relationships</p>
         </div>
-        <Button data-testid="button-add-lead">
+        <Button data-testid="button-add-lead" onClick={() => setShowAddLeadDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Lead
         </Button>
@@ -624,6 +670,100 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showAddLeadDialog} onOpenChange={setShowAddLeadDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Lead</DialogTitle>
+            <DialogDescription>
+              Enter the lead's information to add them to your pipeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="lead-name">Lead Name *</Label>
+              <Input
+                id="lead-name"
+                data-testid="input-lead-name"
+                placeholder="e.g., Enterprise Software RFP"
+                value={newLead.name}
+                onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-company">Company *</Label>
+              <Input
+                id="lead-company"
+                data-testid="input-lead-company"
+                placeholder="e.g., Acme Corporation"
+                value={newLead.company}
+                onChange={(e) => setNewLead({ ...newLead, company: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="lead-email">Email *</Label>
+                <Input
+                  id="lead-email"
+                  data-testid="input-lead-email"
+                  type="email"
+                  placeholder="contact@company.com"
+                  value={newLead.email}
+                  onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lead-phone">Phone</Label>
+                <Input
+                  id="lead-phone"
+                  data-testid="input-lead-phone"
+                  placeholder="555-0100"
+                  value={newLead.phone}
+                  onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="lead-value">Estimated Value ($)</Label>
+                <Input
+                  id="lead-value"
+                  data-testid="input-lead-value"
+                  type="number"
+                  placeholder="50000"
+                  value={newLead.value}
+                  onChange={(e) => setNewLead({ ...newLead, value: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lead-source">Source</Label>
+                <Select value={newLead.source} onValueChange={(value) => setNewLead({ ...newLead, source: value })}>
+                  <SelectTrigger data-testid="select-lead-source">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Website">Website</SelectItem>
+                    <SelectItem value="Referral">Referral</SelectItem>
+                    <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                    <SelectItem value="Trade Show">Trade Show</SelectItem>
+                    <SelectItem value="Cold Call">Cold Call</SelectItem>
+                    <SelectItem value="Email Campaign">Email Campaign</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddLeadDialog(false)} data-testid="button-cancel-lead">
+              Cancel
+            </Button>
+            <Button onClick={handleAddLead} data-testid="button-save-lead">
+              Add Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

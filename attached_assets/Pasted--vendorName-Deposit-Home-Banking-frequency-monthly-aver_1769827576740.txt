@@ -1,0 +1,151 @@
+ "vendorName": "Deposit Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 2000.00,
+      "minAmount": 1000.00,
+      "maxAmount": 2000.00,
+      "transactionIds": [
+        46187,
+        38720,
+        38726,
+        46215,
+        46230,
+        46245,
+        38899,
+        46248,
+        46262,
+        38910
+      ],
+      "confidence": 90,
+      "suggestedBillName": "Monthly Income Deposit"
+    },
+    {
+      "vendorName": "Visa Check WAVE - PAYROLL FEES",
+      "frequency": "monthly",
+      "averageAmount": 32.00,
+      "minAmount": 32.00,
+      "maxAmount": 32.00,
+      "transactionIds": [
+        46189,
+        46188,
+        46222,
+        46234,
+        38895,
+        46254,
+        38902,
+        46264,
+        38912
+      ],
+      "confidence": 90,
+      "suggestedBillName": "Monthly Payroll Fees"
+    },
+    {
+      "vendorName": "WAVE SV9T :",
+      "frequency": "monthly",
+      "averageAmount": 194.20,
+      "minAmount": 194.20,
+      "maxAmount": 194.20,
+      "transactionIds": [
+        46327,
+        38722,
+        46216,
+        38828,
+        46229,
+        38829,
+        46243,
+        38897
+      ],
+      "confidence": 90,
+      "suggestedBillName": "Monthly WAVE Income"
+    },
+    {
+      "vendorName": "FARMERS INS COMMERCIAL ($80.66)",
+      "frequency": "monthly",
+      "averageAmount": 80.66,
+      "minAmount": 80.66,
+      "maxAmount": 80.66,
+      "transactionIds": [
+        41763,
+        46209,
+        38724,
+        46218,
+        38839,
+        46232,
+        38894
+      ],
+      "confidence": 85,
+      "suggestedBillName": "Monthly Farmers Insurance ($80.66)"
+    },
+    {
+      "vendorName": "FARMERS INS COMMERCIAL ($60.00)",
+      "frequency": "monthly",
+      "averageAmount": 60.00,
+      "minAmount": 60.00,
+      "maxAmount": 60.00,
+      "transactionIds": [
+        41762,
+        46208,
+        38723,
+        46217,
+        38890,
+        46231,
+        38893
+      ],
+      "confidence": 85,
+      "suggestedBillName": "Monthly Farmers Insurance ($60.00)"
+    },
+    {
+      "vendorName": "Visa Check PUBLIC DATA CHECK 8",
+      "frequency": "monthly",
+      "averageAmount": 29.96,
+      "minAmount": 29.96,
+      "maxAmount": 29.96,
+      "transactionIds": [
+        46197,
+        38715,
+        46212,
+        46225,
+        46239,
+        38896,
+        46256,
+        38904
+      ],
+      "confidence": 80,
+      "suggestedBillName": "Monthly Public Data Check"
+    },
+    {
+      "vendorName": "Visa Check FINDRFP.COM MINNEAP",
+      "frequency": "monthly",
+      "averageAmount": 29.95,
+      "minAmount": 29.95,
+      "maxAmount": 29.95,
+      "transactionIds": [
+        46210,
+        46223,
+        38892
+      ],
+      "confidence": 75,
+      "suggestedBillName": "Monthly FINDRFP.COM Fee"
+    },
+    {
+      "vendorName": "Visa Check POCKET PREP - IT/CY",
+      "frequency": "monthly",
+      "averageAmount": 20.99,
+      "minAmount": 20.99,
+      "maxAmount": 20.99,
+      "transactionIds": [
+        46228,
+        46244,
+        38898
+      ],
+      "confidence": 70,
+      "suggestedBillName": "Monthly Pocket Prep Fee"
+    }
+  ]
+}
+[AI Pattern Detection] Found 9 recurring patterns
+2:43:08 AM [express] GET /api/ai/detect-recurring/167 200 in 20792ms :: [{"vendorName":"Deposit Home…
+2:43:35 AM [express] POST /api/recurring-transactions/generate/167 200 in 1107ms :: {"message":"Gene…
+Menu
+2:43:35 AM [express] GET /api/recurring-transactions/167 200 in 235ms :: [{"id":5,"organizationId":1…
+2:43:55 AM [express] GET /api/notifications/167/unread-count 304 in 762ms :: {"count":"0"}
+2:44:56 AM [express] GET /api/notifications/167/unread-count 304 in 789ms :: {"count":"0"}
