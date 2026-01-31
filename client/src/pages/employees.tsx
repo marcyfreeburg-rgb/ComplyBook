@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Users, Edit2, Mail, Phone, MapPin, DollarSign, Calendar, CreditCard, Badge } from "lucide-react";
+import { Plus, Trash2, Users, Edit2, Mail, Phone, MapPin, DollarSign, Calendar, CreditCard, Badge, Crown } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Employee, Organization } from "@shared/schema";
+import type { Employee, Organization, Team } from "@shared/schema";
 
 interface EmployeesProps {
   currentOrganization: Organization;
@@ -40,10 +41,16 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
     bankRoutingNumber: "",
     notes: "",
     isActive: 1,
+    teamId: null as number | null,
+    isTeamLeader: 0,
   });
 
   const { data: employees = [], isLoading } = useQuery<Employee[]>({
     queryKey: [`/api/employees/${currentOrganization.id}`],
+  });
+
+  const { data: teams = [] } = useQuery<Team[]>({
+    queryKey: [`/api/teams/${currentOrganization.id}`],
   });
 
   const resetForm = () => {
@@ -64,6 +71,8 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
       bankRoutingNumber: "",
       notes: "",
       isActive: 1,
+      teamId: null,
+      isTeamLeader: 0,
     });
   };
 
@@ -173,8 +182,16 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
       bankRoutingNumber: employee.bankRoutingNumber || "",
       notes: employee.notes || "",
       isActive: employee.isActive,
+      teamId: employee.teamId ?? null,
+      isTeamLeader: employee.isTeamLeader,
     });
     setIsEditDialogOpen(true);
+  };
+
+  const getTeamName = (teamId: number | null) => {
+    if (!teamId) return null;
+    const team = teams.find(t => t.id === teamId);
+    return team?.name;
   };
 
   const formatPayRate = (payType: string, payRate: string) => {
@@ -326,6 +343,45 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
               <SelectItem value="monthly">Monthly</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`${isEdit ? 'edit-' : ''}team`}>Team</Label>
+          <Select
+            value={formData.teamId ? String(formData.teamId) : "none"}
+            onValueChange={(value: string) => setFormData({ ...formData, teamId: value === "none" ? null : parseInt(value) })}
+          >
+            <SelectTrigger id={`${isEdit ? 'edit-' : ''}team`} data-testid={`select-${isEdit ? 'edit-' : ''}team`}>
+              <SelectValue placeholder="Select a team" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Team</SelectItem>
+              {teams.map((team) => (
+                <SelectItem key={team.id} value={String(team.id)}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Position</Label>
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id={`${isEdit ? 'edit-' : ''}team-leader`}
+              checked={formData.isTeamLeader === 1}
+              onCheckedChange={(checked) => setFormData({ ...formData, isTeamLeader: checked ? 1 : 0 })}
+              data-testid={`checkbox-${isEdit ? 'edit-' : ''}team-leader`}
+              disabled={!formData.teamId}
+            />
+            <label
+              htmlFor={`${isEdit ? 'edit-' : ''}team-leader`}
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Team Leader / Manager
+            </label>
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -503,6 +559,18 @@ export default function Employees({ currentOrganization, userId }: EmployeesProp
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
                           <Badge className="h-4 w-4" />
                           Employee #{employee.employeeNumber}
+                        </div>
+                      )}
+                      {employee.teamId && (
+                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          {getTeamName(employee.teamId)}
+                          {employee.isTeamLeader === 1 && (
+                            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                              <Crown className="h-3 w-3" />
+                              Team Leader
+                            </span>
+                          )}
                         </div>
                       )}
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
