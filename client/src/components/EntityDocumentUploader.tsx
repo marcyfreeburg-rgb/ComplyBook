@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, getCsrfToken } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Trash2, Upload, X, FileIcon, FileSpreadsheet, FileImage, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -32,6 +33,10 @@ interface Document {
   description: string | null;
   uploadedBy: string;
   createdAt: string;
+  source?: string;
+  sourceId?: number;
+  contractName?: string;
+  changeOrderNumber?: string;
 }
 
 interface SelectedFile {
@@ -310,6 +315,18 @@ export function EntityDocumentUploader({
 
   const entityLabel = entityType === "contract" ? "Contract" : entityType === "proposal" ? "Proposal" : "Change Order";
 
+  const getSourceLabel = (doc: Document): string | null => {
+    if (!doc.source || doc.source === entityType) return null;
+    if (doc.source === 'proposal') return 'From Proposal';
+    if (doc.source === 'contract') return doc.contractName ? `From ${doc.contractName}` : 'From Contract';
+    if (doc.source === 'change_order') return doc.changeOrderNumber ? `From CO #${doc.changeOrderNumber}` : 'From Change Order';
+    return null;
+  };
+
+  const isFromRelatedEntity = (doc: Document): boolean => {
+    return !!doc.source && doc.source !== entityType;
+  };
+
   return (
     <Card className="mt-4">
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
@@ -460,42 +477,55 @@ export function EntityDocumentUploader({
           </div>
         ) : (
           <div className="space-y-2">
-            {documents.map((doc) => (
-              <div 
-                key={doc.id} 
-                className="flex items-center justify-between p-2 rounded-md border bg-muted/30 hover-elevate"
-                data-testid={`document-item-${doc.id}`}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {getFileIcon(doc.mimeType)}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{doc.fileName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatFileSize(doc.fileSize)} • {new Date(doc.createdAt).toLocaleDateString()}
+            {documents.map((doc) => {
+              const sourceLabel = getSourceLabel(doc);
+              const fromRelated = isFromRelatedEntity(doc);
+              return (
+                <div 
+                  key={doc.id} 
+                  className="flex items-center justify-between p-2 rounded-md border bg-muted/30 hover-elevate"
+                  data-testid={`document-item-${doc.id}`}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {getFileIcon(doc.mimeType)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{doc.fileName}</span>
+                        {sourceLabel && (
+                          <Badge variant="secondary" className="text-xs shrink-0">
+                            {sourceLabel}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatFileSize(doc.fileSize)} • {new Date(doc.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDownload(doc)}
+                      data-testid={`button-download-${doc.id}`}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {!fromRelated && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteMutation.mutate(doc.id)}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-${doc.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleDownload(doc)}
-                    data-testid={`button-download-${doc.id}`}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => deleteMutation.mutate(doc.id)}
-                    disabled={deleteMutation.isPending}
-                    data-testid={`button-delete-${doc.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

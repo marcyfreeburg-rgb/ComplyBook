@@ -12433,7 +12433,7 @@ Keep the response approximately 100-150 words.`;
   app.post("/api/contracts", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { organizationId, ...contractData } = req.body;
+      const { organizationId, proposalId, ...contractData } = req.body;
       if (!organizationId) {
         return res.status(400).json({ message: "No organization selected" });
       }
@@ -12443,9 +12443,23 @@ Keep the response approximately 100-150 words.`;
         return res.status(403).json({ message: "You don't have permission to create contracts" });
       }
 
+      // Validate proposalId belongs to the same organization (security: prevent cross-tenant linking)
+      let validatedProposalId = null;
+      if (proposalId) {
+        const proposal = await storage.getProposal(proposalId);
+        if (!proposal) {
+          return res.status(400).json({ message: "Invalid proposal ID" });
+        }
+        if (proposal.organizationId !== organizationId) {
+          return res.status(403).json({ message: "Proposal does not belong to this organization" });
+        }
+        validatedProposalId = proposalId;
+      }
+
       const validatedData = insertContractSchema.parse({
         ...contractData,
         organizationId,
+        proposalId: validatedProposalId,
         createdBy: userId,
       });
 
@@ -12476,8 +12490,29 @@ Keep the response approximately 100-150 words.`;
         return res.status(403).json({ message: "You don't have permission to update contracts" });
       }
 
+      // Validate proposalId belongs to the same organization (security: prevent cross-tenant linking)
+      const { proposalId, ...restBody } = req.body;
+      let validatedProposalId = undefined;
+      if (proposalId !== undefined) {
+        if (proposalId === null || proposalId === '') {
+          validatedProposalId = null;
+        } else {
+          const proposal = await storage.getProposal(proposalId);
+          if (!proposal) {
+            return res.status(400).json({ message: "Invalid proposal ID" });
+          }
+          if (proposal.organizationId !== contract.organizationId) {
+            return res.status(403).json({ message: "Proposal does not belong to this organization" });
+          }
+          validatedProposalId = proposalId;
+        }
+      }
+
       const { updateContractSchema } = await import("@shared/schema");
-      const validatedData = updateContractSchema.parse(req.body);
+      const validatedData = updateContractSchema.parse({
+        ...restBody,
+        ...(validatedProposalId !== undefined && { proposalId: validatedProposalId }),
+      });
 
       const oldData = JSON.stringify(contract);
       const updated = await storage.updateContract(contractId, validatedData);
@@ -14748,7 +14783,7 @@ Keep the response approximately 100-150 words.`;
     return null;
   }
 
-  // Get documents for a specific entity
+  // Get documents for a specific entity (includes related entity documents)
   app.get("/api/documents/:entityType/:entityId", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -14776,9 +14811,77 @@ Keep the response approximately 100-150 words.`;
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      // Get documents with org scoping for defense-in-depth
-      const documents = await storage.getDocumentsByEntityWithOrg(entityType, parsedEntityId, orgId);
-      res.json(documents);
+      // Get documents from this entity and all related entities
+      const allDocuments: any[] = [];
+
+      // Get direct documents for this entity
+      const directDocs = await storage.getDocumentsByEntityWithOrg(entityType, parsedEntityId, orgId);
+      directDocs.forEach(doc => {
+        allDocuments.push({ ...doc, source: entityType, sourceId: parsedEntityId });
+      });
+
+      if (entityType === 'contract') {
+        // For contracts: also get proposal and change order documents
+        const contract = await storage.getContract(parsedEntityId);
+        if (contract) {
+          // Get proposal documents if linked
+          if (contract.proposalId) {
+            const proposalDocs = await storage.getDocumentsByEntityWithOrg('proposal', contract.proposalId, orgId);
+            proposalDocs.forEach(doc => {
+              allDocuments.push({ ...doc, source: 'proposal', sourceId: contract.proposalId });
+            });
+          }
+          // Get change order documents (org-scoped)
+          const changeOrders = await storage.getChangeOrdersByContract(parsedEntityId, orgId);
+          for (const co of changeOrders) {
+            const coDocs = await storage.getDocumentsByEntityWithOrg('change_order', co.id, orgId);
+            coDocs.forEach(doc => {
+              allDocuments.push({ ...doc, source: 'change_order', sourceId: co.id, changeOrderNumber: co.changeOrderNumber });
+            });
+          }
+        }
+      } else if (entityType === 'proposal') {
+        // For proposals: also get contract documents (if proposal won and became a contract)
+        const contracts = await storage.getContractsByProposalId(parsedEntityId, orgId);
+        for (const contract of contracts) {
+          const contractDocs = await storage.getDocumentsByEntityWithOrg('contract', contract.id, orgId);
+          contractDocs.forEach(doc => {
+            allDocuments.push({ ...doc, source: 'contract', sourceId: contract.id, contractName: contract.contractName });
+          });
+          // Also get change orders for this contract (org-scoped)
+          const changeOrders = await storage.getChangeOrdersByContract(contract.id, orgId);
+          for (const co of changeOrders) {
+            const coDocs = await storage.getDocumentsByEntityWithOrg('change_order', co.id, orgId);
+            coDocs.forEach(doc => {
+              allDocuments.push({ ...doc, source: 'change_order', sourceId: co.id, changeOrderNumber: co.changeOrderNumber });
+            });
+          }
+        }
+      } else if (entityType === 'change_order') {
+        // For change orders: also get contract and proposal documents
+        const changeOrder = await storage.getChangeOrder(parsedEntityId);
+        if (changeOrder) {
+          const contractDocs = await storage.getDocumentsByEntityWithOrg('contract', changeOrder.contractId, orgId);
+          contractDocs.forEach(doc => {
+            allDocuments.push({ ...doc, source: 'contract', sourceId: changeOrder.contractId });
+          });
+          // Get the contract to check for linked proposal
+          const contract = await storage.getContract(changeOrder.contractId);
+          if (contract?.proposalId) {
+            const proposalDocs = await storage.getDocumentsByEntityWithOrg('proposal', contract.proposalId, orgId);
+            proposalDocs.forEach(doc => {
+              allDocuments.push({ ...doc, source: 'proposal', sourceId: contract.proposalId });
+            });
+          }
+        }
+      }
+
+      // Remove duplicates by document id and sort by createdAt descending
+      const uniqueDocs = allDocuments
+        .filter((doc, index, self) => index === self.findIndex(d => d.id === doc.id))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      res.json(uniqueDocs);
     } catch (error: any) {
       console.error("Error fetching documents:", error);
       res.status(500).json({ message: "Failed to fetch documents" });

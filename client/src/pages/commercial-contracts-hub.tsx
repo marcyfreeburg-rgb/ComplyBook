@@ -38,6 +38,7 @@ type ContractFormData = {
   contactEmail: string;
   contactPhone: string;
   notes: string;
+  proposalId: string;
 };
 
 type ProposalFormData = {
@@ -82,6 +83,7 @@ const emptyContractForm: ContractFormData = {
   contactEmail: "",
   contactPhone: "",
   notes: "",
+  proposalId: "",
 };
 
 const emptyProposalForm: ProposalFormData = {
@@ -153,6 +155,7 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
       return await apiRequest("POST", "/api/contracts", {
         ...data,
         organizationId: currentOrganization.id,
+        proposalId: data.proposalId ? parseInt(data.proposalId) : null,
         totalValue: parseFloat(data.totalValue) || 0,
         fundedAmount: parseFloat(data.fundedAmount) || 0,
         billedAmount: parseFloat(data.billedAmount) || 0,
@@ -175,6 +178,7 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
     mutationFn: async ({ id, data }: { id: number; data: ContractFormData }) => {
       return await apiRequest("PUT", `/api/contracts/${id}`, {
         ...data,
+        proposalId: data.proposalId ? parseInt(data.proposalId) : null,
         totalValue: parseFloat(data.totalValue) || 0,
         fundedAmount: parseFloat(data.fundedAmount) || 0,
         billedAmount: parseFloat(data.billedAmount) || 0,
@@ -250,6 +254,7 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
         const contractNumber = `CC-${new Date().getFullYear()}-${timestamp.toString(36).toUpperCase()}`;
         await apiRequest("POST", "/api/contracts", {
           organizationId: currentOrganization.id,
+          proposalId: id, // Link contract to the source proposal
           contractNumber,
           contractName: data.title, // Use form data
           clientName: data.clientName, // Use form data
@@ -375,6 +380,7 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
         contactEmail: contract.contactEmail || "",
         contactPhone: contract.contactPhone || "",
         notes: contract.notes || "",
+        proposalId: contract.proposalId ? String(contract.proposalId) : "",
       });
     } else {
       setEditingContract(null);
@@ -382,6 +388,8 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
     }
     setContractDialogOpen(true);
   };
+
+  const wonProposals = proposals.filter(p => p.status === "won");
 
   const openProposalDialog = (proposal?: Proposal) => {
     if (proposal) {
@@ -1025,6 +1033,22 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
                 </Select>
               </div>
             </div>
+            {wonProposals.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="proposalId">Link to Proposal (optional)</Label>
+                <Select value={contractForm.proposalId} onValueChange={(value) => setContractForm({ ...contractForm, proposalId: value })}>
+                  <SelectTrigger data-testid="select-contract-proposal"><SelectValue placeholder="Select a won proposal..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No linked proposal</SelectItem>
+                    {wonProposals.map((proposal) => (
+                      <SelectItem key={proposal.id} value={String(proposal.id)}>
+                        {proposal.title} ({proposal.clientName})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="totalValue">Total Value ($)</Label>

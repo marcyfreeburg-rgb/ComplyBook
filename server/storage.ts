@@ -988,6 +988,7 @@ export interface IStorage {
   // For-profit: Contract operations
   getContracts(organizationId: number): Promise<Contract[]>;
   getContract(id: number): Promise<Contract | undefined>;
+  getContractsByProposalId(proposalId: number, organizationId: number): Promise<Contract[]>;
   createContract(contract: InsertContract): Promise<Contract>;
   updateContract(id: number, updates: Partial<InsertContract>): Promise<Contract>;
   deleteContract(id: number): Promise<void>;
@@ -1145,6 +1146,7 @@ export interface IStorage {
   // For-profit: Change Order Management operations
   getChangeOrders(organizationId: number): Promise<ChangeOrder[]>;
   getChangeOrder(id: number): Promise<ChangeOrder | undefined>;
+  getChangeOrdersByContract(contractId: number, organizationId: number): Promise<ChangeOrder[]>;
   createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder>;
   updateChangeOrder(id: number, updates: Partial<InsertChangeOrder>): Promise<ChangeOrder>;
   deleteChangeOrder(id: number): Promise<void>;
@@ -8231,6 +8233,12 @@ export class DatabaseStorage implements IStorage {
     return contract;
   }
 
+  async getContractsByProposalId(proposalId: number, organizationId: number): Promise<Contract[]> {
+    return await db.select().from(contracts)
+      .where(and(eq(contracts.proposalId, proposalId), eq(contracts.organizationId, organizationId)))
+      .orderBy(desc(contracts.createdAt));
+  }
+
   async createContract(contract: InsertContract): Promise<Contract> {
     const [newContract] = await db.insert(contracts).values(contract).returning();
     return newContract;
@@ -9223,6 +9231,12 @@ export class DatabaseStorage implements IStorage {
   async getChangeOrder(id: number): Promise<ChangeOrder | undefined> {
     const [changeOrder] = await db.select().from(changeOrders).where(eq(changeOrders.id, id));
     return changeOrder;
+  }
+
+  async getChangeOrdersByContract(contractId: number, organizationId: number): Promise<ChangeOrder[]> {
+    return await db.select().from(changeOrders)
+      .where(and(eq(changeOrders.contractId, contractId), eq(changeOrders.organizationId, organizationId)))
+      .orderBy(desc(changeOrders.createdAt));
   }
 
   async createChangeOrder(changeOrder: InsertChangeOrder): Promise<ChangeOrder> {

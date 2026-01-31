@@ -2234,6 +2234,7 @@ export type PledgePayment = typeof pledgePayments.$inferSelect;
 export const contracts = pgTable("contracts", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  proposalId: integer("proposal_id"),
   contractNumber: varchar("contract_number", { length: 100 }).notNull(),
   contractName: varchar("contract_name", { length: 255 }).notNull(),
   clientName: varchar("client_name", { length: 255 }).notNull(),
@@ -2253,7 +2254,9 @@ export const contracts = pgTable("contracts", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_contracts_proposal_id").on(table.proposalId),
+]);
 
 export const insertContractSchema = createInsertSchema(contracts).omit({
   id: true,
