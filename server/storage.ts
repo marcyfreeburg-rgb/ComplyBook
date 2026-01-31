@@ -254,6 +254,10 @@ import {
   reconciliationAlerts,
   type ReconciliationAlert,
   type InsertReconciliationAlert,
+  // Documents
+  documents,
+  type Document,
+  type InsertDocument,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -988,6 +992,13 @@ export interface IStorage {
   updateContract(id: number, updates: Partial<InsertContract>): Promise<Contract>;
   deleteContract(id: number): Promise<void>;
   updateContractBilledAmount(id: number, amount: string): Promise<Contract>;
+
+  // Document operations (for contracts, proposals, change orders)
+  getDocumentsByEntity(entityType: string, entityId: number): Promise<Document[]>;
+  getDocumentsByEntityWithOrg(entityType: string, entityId: number, organizationId: number): Promise<Document[]>;
+  getDocument(id: number): Promise<Document | undefined>;
+  createDocument(doc: InsertDocument): Promise<Document>;
+  deleteDocument(id: number): Promise<void>;
 
   // For-profit: Contract milestone operations
   getContractMilestones(contractId: number): Promise<ContractMilestone[]>;
@@ -8269,6 +8280,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(contracts.id, id))
       .returning();
     return updated;
+  }
+
+  // Document operations (for contracts, proposals, change orders)
+  async getDocumentsByEntity(entityType: string, entityId: number): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(and(
+        eq(documents.relatedEntityType, entityType),
+        eq(documents.relatedEntityId, entityId)
+      ))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByEntityWithOrg(entityType: string, entityId: number, organizationId: number): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(and(
+        eq(documents.relatedEntityType, entityType),
+        eq(documents.relatedEntityId, entityId),
+        eq(documents.organizationId, organizationId)
+      ))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+    return doc;
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const [newDoc] = await db.insert(documents).values(doc).returning();
+    return newDoc;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
   }
 
   // Contract milestone operations

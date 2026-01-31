@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Organization, Contract, Proposal, ChangeOrder } from "@shared/schema";
+import { EntityDocumentUploader } from "@/components/EntityDocumentUploader";
 
 interface CommercialContractsHubProps {
   currentOrganization: Organization;
@@ -1250,6 +1251,12 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
               </div>
               {viewingContract.description && (<div><Label className="text-muted-foreground">Description</Label><p>{viewingContract.description}</p></div>)}
               {viewingContract.notes && (<div><Label className="text-muted-foreground">Notes</Label><p>{viewingContract.notes}</p></div>)}
+              <EntityDocumentUploader
+                organizationId={currentOrganization.id}
+                entityType="contract"
+                entityId={viewingContract.id}
+                documentType="contract"
+              />
             </div>
           )}
           <DialogFooter>
@@ -1290,6 +1297,12 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
               )}
               {viewingProposal.description && (<div><Label className="text-muted-foreground">Description</Label><p>{viewingProposal.description}</p></div>)}
               {viewingProposal.notes && (<div><Label className="text-muted-foreground">Notes</Label><p>{viewingProposal.notes}</p></div>)}
+              <EntityDocumentUploader
+                organizationId={currentOrganization.id}
+                entityType="proposal"
+                entityId={viewingProposal.id}
+                documentType="other"
+              />
             </div>
           )}
           <DialogFooter>
@@ -1322,6 +1335,12 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
                     </div>
                     {viewingChangeOrder.description && (<div><Label className="text-muted-foreground">Description</Label><p>{viewingChangeOrder.description}</p></div>)}
                     {viewingChangeOrder.notes && (<div><Label className="text-muted-foreground">Notes</Label><p>{viewingChangeOrder.notes}</p></div>)}
+                    <EntityDocumentUploader
+                      organizationId={currentOrganization.id}
+                      entityType="change_order"
+                      entityId={viewingChangeOrder.id}
+                      documentType="other"
+                    />
                   </>
                 );
               })()}

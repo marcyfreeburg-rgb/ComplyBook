@@ -14730,6 +14730,232 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // ============== DOCUMENTS (Contracts, Proposals, Change Orders) ==============
+
+  // Helper to get entity and verify org membership
+  async function getEntityOrgId(entityType: string, entityId: number): Promise<number | null> {
+    if (entityType === "contract") {
+      const contract = await storage.getContract(entityId);
+      return contract?.organizationId || null;
+    } else if (entityType === "proposal") {
+      const proposal = await storage.getProposal(entityId);
+      return proposal?.organizationId || null;
+    } else if (entityType === "change_order") {
+      const changeOrder = await storage.getChangeOrder(entityId);
+      return changeOrder?.organizationId || null;
+    }
+    return null;
+  }
+
+  // Get documents for a specific entity
+  app.get("/api/documents/:entityType/:entityId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { entityType, entityId } = req.params;
+      
+      // Validate entityType
+      if (!['contract', 'proposal', 'change_order'].includes(entityType)) {
+        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order" });
+      }
+      
+      // Validate entityId
+      const parsedEntityId = parseInt(entityId);
+      if (isNaN(parsedEntityId) || parsedEntityId <= 0) {
+        return res.status(400).json({ message: "entityId must be a positive integer" });
+      }
+
+      // Get entity's organization and verify user access
+      const orgId = await getEntityOrgId(entityType, parsedEntityId);
+      if (!orgId) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, orgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Get documents with org scoping for defense-in-depth
+      const documents = await storage.getDocumentsByEntityWithOrg(entityType, parsedEntityId, orgId);
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Get upload URL for a document
+  app.post("/api/documents/upload-url", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      if (!isReplitEnvironment) {
+        return res.status(501).json({ message: "Document uploads are not supported in this environment" });
+      }
+
+      const userId = req.user.claims.sub;
+      const { entityType, entityId } = req.body;
+
+      // Validate entity context (required for authorization)
+      if (!entityType || typeof entityType !== 'string') {
+        return res.status(400).json({ message: "entityType is required and must be a string" });
+      }
+      if (!['contract', 'proposal', 'change_order'].includes(entityType)) {
+        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order" });
+      }
+      
+      const parsedEntityId = parseInt(entityId);
+      if (isNaN(parsedEntityId) || parsedEntityId <= 0) {
+        return res.status(400).json({ message: "entityId is required and must be a positive integer" });
+      }
+
+      // Derive organizationId from entity (never trust client-supplied orgId)
+      const entityOrgId = await getEntityOrgId(entityType, parsedEntityId);
+      if (!entityOrgId) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+
+      // Verify user has access to the entity's organization
+      const userRole = await storage.getUserRole(userId, entityOrgId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+      
+      res.json({ uploadUrl });
+    } catch (error: any) {
+      console.error("Error getting document upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  // Create a document record
+  app.post("/api/documents", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      if (!isReplitEnvironment) {
+        return res.status(501).json({ message: "Document uploads are not supported in this environment" });
+      }
+
+      const userId = req.user.claims.sub;
+      // Note: we intentionally ignore client-supplied organizationId for security
+      const { fileName, fileSize, mimeType, objectPath, documentType, relatedEntityType, relatedEntityId, description } = req.body;
+
+      // Validate relatedEntityType (required and must be valid)
+      if (!relatedEntityType || typeof relatedEntityType !== 'string') {
+        return res.status(400).json({ message: "relatedEntityType is required and must be a string" });
+      }
+      if (!['contract', 'proposal', 'change_order'].includes(relatedEntityType)) {
+        return res.status(400).json({ message: "relatedEntityType must be one of: contract, proposal, change_order" });
+      }
+
+      // Validate relatedEntityId (required and must be positive integer)
+      const parsedEntityId = parseInt(relatedEntityId);
+      if (isNaN(parsedEntityId) || parsedEntityId <= 0) {
+        return res.status(400).json({ message: "relatedEntityId is required and must be a positive integer" });
+      }
+
+      // Derive organizationId from the entity (never trust client-provided orgId)
+      const organizationId = await getEntityOrgId(relatedEntityType, parsedEntityId);
+      if (!organizationId) {
+        return res.status(404).json({ message: "Entity not found" });
+      }
+
+      // Verify user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Normalize the object path
+      const { ObjectStorageService, ObjectAccessGroupType, ObjectPermission } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+        visibility: 'private',
+        accessGroups: [{ type: ObjectAccessGroupType.LOGGED_IN, permission: ObjectPermission.READ }]
+      });
+
+      const document = await storage.createDocument({
+        organizationId,
+        fileName,
+        fileUrl: normalizedPath,
+        fileSize,
+        mimeType,
+        documentType,
+        relatedEntityType,
+        relatedEntityId: parsedEntityId,
+        uploadedBy: userId,
+        description,
+      });
+
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error("Error creating document:", error);
+      res.status(500).json({ message: "Failed to create document" });
+    }
+  });
+
+  // Download a document
+  app.get("/api/documents/download/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const document = await storage.getDocument(id);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Verify user has access to this organization
+      const userRole = await storage.getUserRole(userId, document.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this document" });
+      }
+
+      const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      try {
+        const objectFile = await objectStorageService.getObjectEntityFile(document.fileUrl);
+        res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+        await objectStorageService.downloadObject(objectFile, res);
+      } catch (err) {
+        if (err instanceof ObjectNotFoundError) {
+          return res.status(404).json({ message: "Document file not found in storage" });
+        }
+        throw err;
+      }
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  // Delete a document
+  app.delete("/api/documents/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      
+      // Get the document and verify org access
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, document.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this document" });
+      }
+
+      await storage.deleteDocument(id);
+      res.json({ message: "Document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
   // ============== FORMS & SURVEYS ==============
 
   // Get all forms/surveys for an organization
