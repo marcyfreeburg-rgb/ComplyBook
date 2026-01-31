@@ -1052,10 +1052,10 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
             {wonProposals.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="proposalId">Link to Proposal (optional)</Label>
-                <Select value={contractForm.proposalId} onValueChange={(value) => setContractForm({ ...contractForm, proposalId: value })}>
+                <Select value={contractForm.proposalId || "none"} onValueChange={(value) => setContractForm({ ...contractForm, proposalId: value === "none" ? "" : value })}>
                   <SelectTrigger data-testid="select-contract-proposal"><SelectValue placeholder="Select a won proposal..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No linked proposal</SelectItem>
+                    <SelectItem value="none">No linked proposal</SelectItem>
                     {wonProposals.map((proposal) => (
                       <SelectItem key={proposal.id} value={String(proposal.id)}>
                         {proposal.title} ({proposal.clientName})
