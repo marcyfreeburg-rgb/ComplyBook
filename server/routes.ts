@@ -9148,8 +9148,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to manage scheduled payments" });
       }
 
-      const updatedPayment = await storage.updateScheduledPayment(paymentId, { status: 'cancelled' });
-      res.json(updatedPayment);
+      await storage.deleteScheduledPayment(paymentId);
+      res.json({ message: "Scheduled payment deleted" });
     } catch (error) {
       console.error("Error cancelling scheduled payment:", error);
       res.status(500).json({ message: "Failed to cancel scheduled payment" });
