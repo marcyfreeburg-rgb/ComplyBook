@@ -2246,6 +2246,7 @@ export const contracts = pgTable("contracts", {
   billedAmount: numeric("billed_amount", { precision: 15, scale: 2 }).notNull().default("0"),
   status: contractStatusEnum("status").notNull().default('pending'),
   contractType: varchar("contract_type", { length: 100 }),
+  isGovernmentContract: boolean("is_government_contract").notNull().default(false),
   primeContractor: varchar("prime_contractor", { length: 255 }),
   contractOfficer: varchar("contract_officer", { length: 255 }),
   contactEmail: varchar("contact_email", { length: 255 }),

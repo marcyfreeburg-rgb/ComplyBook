@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -33,6 +34,7 @@ type ContractFormData = {
   billedAmount: string;
   status: "pending" | "active" | "completed" | "cancelled" | "on_hold";
   contractType: string;
+  isGovernmentContract: boolean;
   primeContractor: string;
   contractOfficer: string;
   contactEmail: string;
@@ -80,6 +82,7 @@ const emptyContractForm: ContractFormData = {
   billedAmount: "0",
   status: "pending",
   contractType: "",
+  isGovernmentContract: false,
   primeContractor: "",
   contractOfficer: "",
   contactEmail: "",
@@ -379,6 +382,7 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
         billedAmount: String(contract.billedAmount || "0"),
         status: contract.status,
         contractType: contract.contractType || "",
+        isGovernmentContract: contract.isGovernmentContract || false,
         primeContractor: contract.primeContractor || "",
         contractOfficer: contract.contractOfficer || "",
         contactEmail: contract.contactEmail || "",
@@ -394,6 +398,9 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
   };
 
   const wonProposals = proposals.filter(p => p.status === "won");
+  
+  // Filter to show only commercial (non-government) contracts
+  const commercialContracts = contracts.filter(c => !c.isGovernmentContract);
 
   const openProposalDialog = (proposal?: Proposal) => {
     if (proposal) {
@@ -535,10 +542,13 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
     return deadline > oneWeekFromNow && deadline <= twoWeeksFromNow;
   });
 
-  const activeContracts = contracts.filter(c => c.status === "active");
+  const activeContracts = commercialContracts.filter(c => c.status === "active");
   const totalActiveValue = activeContracts.reduce((sum, c) => sum + (parseFloat(String(c.totalValue)) || 0), 0);
   const proposalsInPipeline = proposals.filter(p => ["draft", "submitted", "under_review"].includes(p.status)).length;
-  const pendingChangeOrders = changeOrders.filter(co => co.status === "requested" || co.status === "under_review").length;
+  const pendingChangeOrders = changeOrders.filter(co => {
+    const contract = commercialContracts.find(c => c.id === co.contractId);
+    return contract && (co.status === "requested" || co.status === "under_review");
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -687,15 +697,15 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
 
           {loadingContracts ? (
             <Card><CardContent className="py-8 text-center">Loading contracts...</CardContent></Card>
-          ) : contracts.length === 0 ? (
+          ) : commercialContracts.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                No contracts found. Create your first commercial contract to get started.
+                No commercial contracts found. Create your first commercial contract to get started.
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4">
-              {contracts.map((contract) => (
+              {commercialContracts.map((contract) => (
                 <Card key={contract.id} data-testid={`card-contract-${contract.id}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between flex-wrap gap-2">
@@ -900,16 +910,16 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
         <TabsContent value="changes" className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <h2 className="text-xl font-semibold">Change Orders</h2>
-            <Button onClick={() => openChangeOrderDialog()} disabled={contracts.length === 0} data-testid="button-create-changeorder">
+            <Button onClick={() => openChangeOrderDialog()} disabled={commercialContracts.length === 0} data-testid="button-create-changeorder">
               <Plus className="h-4 w-4 mr-2" />
               New Change Order
             </Button>
           </div>
 
-          {contracts.length === 0 && (
+          {commercialContracts.length === 0 && (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Create a contract first before adding change orders.
+                Create a commercial contract first before adding change orders.
               </CardContent>
             </Card>
           )}
@@ -1083,6 +1093,17 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
                 <Input id="contractOfficer" value={contractForm.contractOfficer} onChange={(e) => setContractForm({ ...contractForm, contractOfficer: e.target.value })} placeholder="John Smith" data-testid="input-contract-officer" />
               </div>
             </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="isGovernmentContract" 
+                checked={contractForm.isGovernmentContract} 
+                onCheckedChange={(checked) => setContractForm({ ...contractForm, isGovernmentContract: checked === true })} 
+                data-testid="checkbox-government-contract"
+              />
+              <Label htmlFor="isGovernmentContract" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Government Contract
+              </Label>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea id="notes" value={contractForm.notes} onChange={(e) => setContractForm({ ...contractForm, notes: e.target.value })} placeholder="Additional notes..." data-testid="input-contract-notes" />
@@ -1219,7 +1240,7 @@ export default function CommercialContractsHub({ currentOrganization, userId }: 
               <Select value={changeOrderForm.contractId} onValueChange={(value) => setChangeOrderForm({ ...changeOrderForm, contractId: value })}>
                 <SelectTrigger data-testid="select-changeorder-contract"><SelectValue placeholder="Select a contract" /></SelectTrigger>
                 <SelectContent>
-                  {contracts.map(c => (
+                  {commercialContracts.map(c => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.contractNumber} - {c.contractName}</SelectItem>
                   ))}
                 </SelectContent>
