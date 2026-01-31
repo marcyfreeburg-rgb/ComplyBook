@@ -336,6 +336,15 @@ export default function GovernmentContractsHub({ currentOrganization, userId }: 
     setProjectDialogOpen(true);
   };
 
+  const openProjectDialogForContract = (contractId: number) => {
+    setEditingProject(null);
+    setProjectForm({
+      ...emptyProjectForm,
+      contractId: String(contractId),
+    });
+    setProjectDialogOpen(true);
+  };
+
   const handleSaveContract = () => {
     if (!contractForm.contractNumber || !contractForm.contractName || !contractForm.clientName || !contractForm.totalValue) {
       toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
@@ -486,10 +495,6 @@ export default function GovernmentContractsHub({ currentOrganization, userId }: 
         <TabsContent value="contracts" className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <h2 className="text-xl font-semibold">Government Contracts</h2>
-            <Button onClick={() => openContractDialog()} data-testid="button-create-gov-contract">
-              <Plus className="h-4 w-4 mr-2" />
-              New Government Contract
-            </Button>
           </div>
 
           {loadingContracts ? (
@@ -499,7 +504,7 @@ export default function GovernmentContractsHub({ currentOrganization, userId }: 
           ) : governmentContracts.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                No government contracts found. Create your first government contract to get started.
+                No government contracts found. To create a government contract, go to Commercial Contracts and check the "Government Contract" checkbox when creating a new contract.
               </CardContent>
             </Card>
           ) : (
@@ -539,6 +544,10 @@ export default function GovernmentContractsHub({ currentOrganization, userId }: 
                       </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">
+                      <Button variant="default" size="sm" onClick={() => openProjectDialogForContract(contract.id)} data-testid={`button-new-project-${contract.id}`}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Project
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => openContractDialog(contract)} data-testid={`button-edit-gov-contract-${contract.id}`}>
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
