@@ -1,0 +1,92 @@
+Workspace settings
+pro
+Workspace ID:
+tea-d4q96quuk2gs73fj3m4g
+
+Table of contents
+General
+Team Members
+Build Pipeline
+Deploy Policy
+Registry Credentials
+Security
+Compliance
+Delete Workspace
+General
+Name
+Marcy's workspace
+
+Edit
+Email
+Email address for workspace updates, such as system notifications.
+marcy.freeburg@gmail.com
+
+Edit
+Avatar
+M
+
+Edit
+Plan
+Professional
+For small teams and early-stage startups. Plan Benefits →
+Update Plan
+Team Members
+Add team members to collaborate in your Render workspace. Optionally specify member roles to enhance security. Learn more.
+
+Invite members
+Search members
+Search members
+
+Member email
+1
+
+Role
+m
+marcy.freeburg@gmail.com
+(you)
+
+Admin
+Build Pipeline
+Choose compute specs for your builds and other pre-deploy tasks. Purchased minutes expire at the end of each month and are not transferable between tiers.
+Build pipeline tier
+Starter
+$5 / 1,000 min
+2 CPU
+8 GB RAM
+Includes 500 free minutes
+Performance
+$25 / 1,000 min
+16 CPU
+64 GB RAM
+$0 monthly spend limit
+If you reach this limit and run out of minutes, builds and other pre-deploy tasks stop running.
+Edit
+Overlapping Deploy Policy
+Specify what happens to an in-progress deploy whenever a new deploy is triggered for the same service. Learn more.
+
+Edit
+Select an overlapping deploy policy
+Override
+Immediately cancel the in-progress deploy and start the new one.
+Wait
+Let the in-progress deploy finish, then start the most recent one (skip all deploys in between).
+Container Registry Credentials
+Store registry credentials to pull and deploy private images. Learn more.
+
+Add Credential
+No added credentials.
+Security
+Require additional security measures for all team members in this workspace.
+Enforce Two-Factor Authentication
+Secure your team by requiring a second form of authentication to sign in.
+
+
+Not enforced
+Enforce Single Sign-On with Google
+
+Not enforced
+Compliance
+Ensure compliance with security and regulatory requirements for your workspace.
+
+org
+Compliance features require an Organization or Enterprise plan t
