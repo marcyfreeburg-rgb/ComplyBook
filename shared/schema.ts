@@ -3585,6 +3585,80 @@ export type InsertVendorPaymentDetails = z.infer<typeof insertVendorPaymentDetai
 export type VendorPaymentDetails = typeof vendorPaymentDetails.$inferSelect;
 
 // ============================================
+// ORGANIZATION PAYMENT METHODS (for outbound payments)
+// ============================================
+
+export const paymentMethodTypeEnum = pgEnum('payment_method_type', ['ach', 'check', 'card', 'wire']);
+export const bankAccountTypeEnum = pgEnum('bank_account_type', ['checking', 'savings']);
+
+export const organizationPaymentMethods = pgTable("organization_payment_methods", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Method identification
+  name: varchar("name", { length: 255 }).notNull(), // e.g., "Main Operating Account", "Payroll Account"
+  methodType: paymentMethodTypeEnum("method_type").notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  
+  // Bank details for ACH/Check/Wire (encrypted)
+  bankName: varchar("bank_name", { length: 255 }),
+  bankNameEncrypted: text("bank_name_encrypted"),
+  accountNumberLast4: varchar("account_number_last4", { length: 4 }),
+  accountNumberEncrypted: text("account_number_encrypted"),
+  routingNumber: varchar("routing_number", { length: 9 }),
+  routingNumberEncrypted: text("routing_number_encrypted"),
+  accountType: bankAccountTypeEnum("account_type"),
+  
+  // Check-specific fields
+  checkStartNumber: integer("check_start_number"),
+  nextCheckNumber: integer("next_check_number"),
+  checkSignatory: varchar("check_signatory", { length: 255 }),
+  checkMailingAddress: text("check_mailing_address"),
+  
+  // Wire-specific fields
+  swiftCode: varchar("swift_code", { length: 11 }),
+  intermediaryBankName: varchar("intermediary_bank_name", { length: 255 }),
+  intermediaryRoutingNumber: varchar("intermediary_routing_number", { length: 9 }),
+  
+  // Card-specific fields (for virtual card payments)
+  cardLast4: varchar("card_last4", { length: 4 }),
+  cardExpiryMonth: integer("card_expiry_month"),
+  cardExpiryYear: integer("card_expiry_year"),
+  stripePaymentMethodId: varchar("stripe_payment_method_id", { length: 255 }),
+  
+  // Verification status
+  isVerified: boolean("is_verified").default(false).notNull(),
+  verifiedAt: timestamp("verified_at"),
+  verificationMethod: varchar("verification_method", { length: 50 }), // 'micro_deposit', 'plaid', 'manual'
+  
+  // Usage limits
+  dailyLimit: numeric("daily_limit", { precision: 12, scale: 2 }),
+  transactionLimit: numeric("transaction_limit", { precision: 12, scale: 2 }),
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_org_payment_methods_org_id").on(table.organizationId),
+  index("idx_org_payment_methods_type").on(table.methodType),
+]);
+
+export const insertOrganizationPaymentMethodSchema = createInsertSchema(organizationPaymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  methodType: z.enum(['ach', 'check', 'card', 'wire']),
+  accountType: z.enum(['checking', 'savings']).optional().nullable(),
+  dailyLimit: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+  transactionLimit: z.string().or(z.number()).transform(val => String(val)).optional().nullable(),
+});
+
+export type InsertOrganizationPaymentMethod = z.infer<typeof insertOrganizationPaymentMethodSchema>;
+export type OrganizationPaymentMethod = typeof organizationPaymentMethods.$inferSelect;
+
+// ============================================
 // FINCH PAYROLL/HRIS INTEGRATION
 // ============================================
 

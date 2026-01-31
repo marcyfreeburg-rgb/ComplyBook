@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar, Sparkles, Filter, X, MoreHorizontal } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, DollarSign, Eye, Download, CreditCard, Banknote, Wallet, Repeat, Search, AlertTriangle, Clock, CheckCircle, ArrowUpDown, Calendar, Sparkles, Filter, X, MoreHorizontal, CalendarClock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +82,20 @@ const defaultPaymentFormData: PaymentFormData = {
   notes: "",
 };
 
+interface SchedulePaymentFormData {
+  amount: string;
+  paymentMethod: PaymentMethod;
+  scheduledDate: string;
+  notes: string;
+}
+
+const defaultSchedulePaymentFormData: SchedulePaymentFormData = {
+  amount: "",
+  paymentMethod: "ach",
+  scheduledDate: format(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+  notes: "",
+};
+
 export default function Bills({ currentOrganization }: BillsProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -104,6 +118,9 @@ export default function Bills({ currentOrganization }: BillsProps) {
   const [isBulkPaymentDialogOpen, setIsBulkPaymentDialogOpen] = useState(false);
   const [quickFilter, setQuickFilter] = useState<'all' | 'due-soon' | 'overdue' | 'unpaid'>('all');
   const [paymentFormData, setPaymentFormData] = useState<PaymentFormData>(defaultPaymentFormData);
+  const [isSchedulePaymentDialogOpen, setIsSchedulePaymentDialogOpen] = useState(false);
+  const [schedulingBill, setSchedulingBill] = useState<Bill | null>(null);
+  const [schedulePaymentFormData, setSchedulePaymentFormData] = useState<SchedulePaymentFormData>(defaultSchedulePaymentFormData);
   const [newVendorForm, setNewVendorForm] = useState({
     name: "",
     email: "",
@@ -363,6 +380,51 @@ export default function Bills({ currentOrganization }: BillsProps) {
 
   const resetPaymentForm = () => {
     setPaymentFormData(defaultPaymentFormData);
+  };
+
+  const schedulePaymentMutation = useMutation({
+    mutationFn: async (data: { billId: number; formData: SchedulePaymentFormData }) => {
+      const amount = parseFloat(data.formData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error("Please enter a valid payment amount");
+      }
+      
+      return apiRequest('POST', '/api/scheduled-payments', {
+        organizationId: currentOrganization.id,
+        billId: data.billId,
+        scheduledDate: data.formData.scheduledDate,
+        amount: amount.toFixed(2),
+        paymentMethod: data.formData.paymentMethod,
+        notes: data.formData.notes || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bills', currentOrganization.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/scheduled-payments', currentOrganization.id] });
+      toast({
+        title: "Success",
+        description: "Payment scheduled successfully",
+      });
+      setIsSchedulePaymentDialogOpen(false);
+      setSchedulingBill(null);
+      setSchedulePaymentFormData(defaultSchedulePaymentFormData);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to schedule payment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSchedulePayment = (bill: Bill) => {
+    setSchedulingBill(bill);
+    setSchedulePaymentFormData({
+      ...defaultSchedulePaymentFormData,
+      amount: bill.totalAmount,
+    });
+    setIsSchedulePaymentDialogOpen(true);
   };
 
   const handleRecordPayment = (bill: Bill) => {
@@ -1155,20 +1217,34 @@ export default function Bills({ currentOrganization }: BillsProps) {
                             <TooltipContent>Delete Bill</TooltipContent>
                           </Tooltip>
                           {bill.status !== 'paid' && bill.status !== 'cancelled' ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleRecordPayment(bill)}
                                   data-testid={`button-pay-${bill.id}`}
                                 >
                                   <DollarSign className="w-4 h-4 mr-1" />
                                   Pay
                                 </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Record Payment</TooltipContent>
-                            </Tooltip>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleRecordPayment(bill)}
+                                  data-testid={`menu-record-payment-${bill.id}`}
+                                >
+                                  <DollarSign className="w-4 h-4 mr-2" />
+                                  Record Payment Now
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleSchedulePayment(bill)}
+                                  data-testid={`menu-schedule-payment-${bill.id}`}
+                                >
+                                  <CalendarClock className="w-4 h-4 mr-2" />
+                                  Schedule Payment
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           ) : (
                             <Button
                               variant="outline"
@@ -1814,6 +1890,130 @@ export default function Bills({ currentOrganization }: BillsProps) {
                 data-testid="button-record-payment"
               >
                 {recordPaymentMutation.isPending ? "Recording..." : "Record Payment"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Payment Dialog */}
+      <Dialog open={isSchedulePaymentDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsSchedulePaymentDialogOpen(false);
+          setSchedulingBill(null);
+          setSchedulePaymentFormData(defaultSchedulePaymentFormData);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule Payment</DialogTitle>
+            <DialogDescription>
+              {schedulingBill && (
+                <span>Schedule a future payment for bill #{schedulingBill.billNumber}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (schedulingBill) {
+              schedulePaymentMutation.mutate({
+                billId: schedulingBill.id,
+                formData: schedulePaymentFormData,
+              });
+            }
+          }}>
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Bill Total:</span>
+                  <span className="font-medium">${Number(schedulingBill?.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Due Date:</span>
+                  <span className="font-medium">{schedulingBill?.dueDate ? format(new Date(schedulingBill.dueDate), "MMM dd, yyyy") : "N/A"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="schedule-amount">Payment Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="schedule-amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={schedulePaymentFormData.amount}
+                    onChange={(e) => setSchedulePaymentFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    className="pl-7"
+                    required
+                    data-testid="input-schedule-amount"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="schedule-date">Scheduled Date</Label>
+                <Input
+                  id="schedule-date"
+                  type="date"
+                  value={schedulePaymentFormData.scheduledDate}
+                  onChange={(e) => setSchedulePaymentFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
+                  min={format(new Date(), "yyyy-MM-dd")}
+                  required
+                  data-testid="input-schedule-date"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="schedule-method">Payment Method</Label>
+                <Select 
+                  value={schedulePaymentFormData.paymentMethod} 
+                  onValueChange={(value: PaymentMethod) => setSchedulePaymentFormData(prev => ({ ...prev, paymentMethod: value }))}
+                >
+                  <SelectTrigger data-testid="select-schedule-method">
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ach">ACH Transfer</SelectItem>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="schedule-notes">Notes (Optional)</Label>
+                <Textarea
+                  id="schedule-notes"
+                  value={schedulePaymentFormData.notes}
+                  onChange={(e) => setSchedulePaymentFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add any notes about this scheduled payment..."
+                  rows={2}
+                  data-testid="input-schedule-notes"
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsSchedulePaymentDialogOpen(false);
+                  setSchedulingBill(null);
+                  setSchedulePaymentFormData(defaultSchedulePaymentFormData);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={schedulePaymentMutation.isPending}
+                data-testid="button-schedule-payment"
+              >
+                <CalendarClock className="w-4 h-4 mr-2" />
+                {schedulePaymentMutation.isPending ? "Scheduling..." : "Schedule Payment"}
               </Button>
             </DialogFooter>
           </form>

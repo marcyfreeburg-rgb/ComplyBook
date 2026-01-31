@@ -209,6 +209,9 @@ import {
   vendorPaymentDetails,
   type VendorPaymentDetails,
   type InsertVendorPaymentDetails,
+  organizationPaymentMethods,
+  type OrganizationPaymentMethod,
+  type InsertOrganizationPaymentMethod,
   finchConnections,
   type FinchConnection,
   type InsertFinchConnection,
@@ -723,6 +726,15 @@ export interface IStorage {
   createVendorPaymentDetails(details: InsertVendorPaymentDetails): Promise<VendorPaymentDetails>;
   updateVendorPaymentDetails(id: number, updates: Partial<InsertVendorPaymentDetails>): Promise<VendorPaymentDetails>;
   deleteVendorPaymentDetails(id: number): Promise<void>;
+
+  // Organization payment methods operations
+  getOrganizationPaymentMethods(organizationId: number): Promise<OrganizationPaymentMethod[]>;
+  getOrganizationPaymentMethod(id: number): Promise<OrganizationPaymentMethod | undefined>;
+  getDefaultOrganizationPaymentMethod(organizationId: number): Promise<OrganizationPaymentMethod | undefined>;
+  createOrganizationPaymentMethod(method: InsertOrganizationPaymentMethod): Promise<OrganizationPaymentMethod>;
+  updateOrganizationPaymentMethod(id: number, updates: Partial<InsertOrganizationPaymentMethod>): Promise<OrganizationPaymentMethod>;
+  deleteOrganizationPaymentMethod(id: number): Promise<void>;
+  setDefaultPaymentMethod(organizationId: number, methodId: number): Promise<void>;
 
   // Finch connection operations
   getFinchConnectionsByOrganization(organizationId: number): Promise<FinchConnection[]>;
@@ -6072,6 +6084,60 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVendorPaymentDetails(id: number): Promise<void> {
     await db.delete(vendorPaymentDetails).where(eq(vendorPaymentDetails.id, id));
+  }
+
+  // ============================================
+  // ORGANIZATION PAYMENT METHODS OPERATIONS
+  // ============================================
+
+  async getOrganizationPaymentMethods(organizationId: number): Promise<OrganizationPaymentMethod[]> {
+    return await db.select().from(organizationPaymentMethods)
+      .where(eq(organizationPaymentMethods.organizationId, organizationId))
+      .orderBy(desc(organizationPaymentMethods.isDefault), organizationPaymentMethods.name);
+  }
+
+  async getOrganizationPaymentMethod(id: number): Promise<OrganizationPaymentMethod | undefined> {
+    const [method] = await db.select().from(organizationPaymentMethods)
+      .where(eq(organizationPaymentMethods.id, id));
+    return method;
+  }
+
+  async getDefaultOrganizationPaymentMethod(organizationId: number): Promise<OrganizationPaymentMethod | undefined> {
+    const [method] = await db.select().from(organizationPaymentMethods)
+      .where(and(
+        eq(organizationPaymentMethods.organizationId, organizationId),
+        eq(organizationPaymentMethods.isDefault, true),
+        eq(organizationPaymentMethods.isActive, true)
+      ));
+    return method;
+  }
+
+  async createOrganizationPaymentMethod(method: InsertOrganizationPaymentMethod): Promise<OrganizationPaymentMethod> {
+    const [newMethod] = await db.insert(organizationPaymentMethods).values(method).returning();
+    return newMethod;
+  }
+
+  async updateOrganizationPaymentMethod(id: number, updates: Partial<InsertOrganizationPaymentMethod>): Promise<OrganizationPaymentMethod> {
+    const [updatedMethod] = await db
+      .update(organizationPaymentMethods)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(organizationPaymentMethods.id, id))
+      .returning();
+    return updatedMethod;
+  }
+
+  async deleteOrganizationPaymentMethod(id: number): Promise<void> {
+    await db.delete(organizationPaymentMethods).where(eq(organizationPaymentMethods.id, id));
+  }
+
+  async setDefaultPaymentMethod(organizationId: number, methodId: number): Promise<void> {
+    await db.update(organizationPaymentMethods)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(organizationPaymentMethods.organizationId, organizationId));
+    
+    await db.update(organizationPaymentMethods)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(eq(organizationPaymentMethods.id, methodId));
   }
 
   // ============================================

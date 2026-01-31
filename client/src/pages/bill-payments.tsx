@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Plus, 
   Edit, 
@@ -35,7 +36,10 @@ import {
   Play,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Building2,
+  Star,
+  Shield
 } from "lucide-react";
 import { format } from "date-fns";
 import type { 
@@ -43,7 +47,8 @@ import type {
   AutoPayRule, 
   ScheduledPayment, 
   BillPayment,
-  Vendor 
+  Vendor,
+  OrganizationPaymentMethod
 } from "@shared/schema";
 
 interface BillPaymentsProps {
@@ -79,6 +84,43 @@ const defaultAutoPayFormData: AutoPayRuleFormData = {
   requiresApproval: false,
 };
 
+type PaymentMethodType = 'ach' | 'check' | 'card' | 'wire';
+type BankAccountType = 'checking' | 'savings';
+
+interface PaymentMethodFormData {
+  name: string;
+  methodType: PaymentMethodType;
+  isDefault: boolean;
+  isActive: boolean;
+  bankName: string;
+  routingNumber: string;
+  accountNumberLast4: string;
+  accountType: BankAccountType | '';
+  checkStartNumber: string;
+  nextCheckNumber: string;
+  checkSignatory: string;
+  checkMailingAddress: string;
+  dailyLimit: string;
+  transactionLimit: string;
+}
+
+const defaultPaymentMethodFormData: PaymentMethodFormData = {
+  name: "",
+  methodType: "ach",
+  isDefault: false,
+  isActive: true,
+  bankName: "",
+  routingNumber: "",
+  accountNumberLast4: "",
+  accountType: "",
+  checkStartNumber: "",
+  nextCheckNumber: "",
+  checkSignatory: "",
+  checkMailingAddress: "",
+  dailyLimit: "",
+  transactionLimit: "",
+};
+
 export default function BillPayments({ currentOrganization }: BillPaymentsProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("scheduled");
@@ -86,6 +128,12 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
   const [editingRule, setEditingRule] = useState<AutoPayRule | null>(null);
   const [deleteRuleId, setDeleteRuleId] = useState<number | null>(null);
   const [autoPayFormData, setAutoPayFormData] = useState<AutoPayRuleFormData>(defaultAutoPayFormData);
+  
+  // Payment method state
+  const [isPaymentMethodDialogOpen, setIsPaymentMethodDialogOpen] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<OrganizationPaymentMethod | null>(null);
+  const [deletePaymentMethodId, setDeletePaymentMethodId] = useState<number | null>(null);
+  const [paymentMethodFormData, setPaymentMethodFormData] = useState<PaymentMethodFormData>(defaultPaymentMethodFormData);
 
   // Fetch auto-pay rules
   const { data: autoPayRules = [], isLoading: isLoadingRules } = useQuery<AutoPayRule[]>({
@@ -109,6 +157,121 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
   // Fetch vendors for dropdown
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors', currentOrganization.id],
+  });
+
+  // Fetch payment methods
+  const { data: paymentMethods = [], isLoading: isLoadingPaymentMethods } = useQuery<OrganizationPaymentMethod[]>({
+    queryKey: ['/api/payment-methods', currentOrganization.id],
+  });
+
+  // Create payment method mutation
+  const createPaymentMethodMutation = useMutation({
+    mutationFn: async (data: PaymentMethodFormData) => {
+      return apiRequest('POST', '/api/payment-methods', {
+        organizationId: currentOrganization.id,
+        name: data.name,
+        methodType: data.methodType,
+        isDefault: data.isDefault,
+        isActive: data.isActive,
+        bankName: data.bankName || null,
+        routingNumber: data.routingNumber || null,
+        accountNumberLast4: data.accountNumberLast4 || null,
+        accountType: data.accountType || null,
+        checkStartNumber: data.checkStartNumber ? parseInt(data.checkStartNumber) : null,
+        nextCheckNumber: data.nextCheckNumber ? parseInt(data.nextCheckNumber) : null,
+        checkSignatory: data.checkSignatory || null,
+        checkMailingAddress: data.checkMailingAddress || null,
+        dailyLimit: data.dailyLimit || null,
+        transactionLimit: data.transactionLimit || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-methods', currentOrganization.id] });
+      setIsPaymentMethodDialogOpen(false);
+      resetPaymentMethodForm();
+      toast({ title: "Payment method added successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to add payment method", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Update payment method mutation
+  const updatePaymentMethodMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<PaymentMethodFormData> }) => {
+      const payload: any = {};
+      if (updates.name !== undefined) payload.name = updates.name;
+      if (updates.methodType !== undefined) payload.methodType = updates.methodType;
+      if (updates.isDefault !== undefined) payload.isDefault = updates.isDefault;
+      if (updates.isActive !== undefined) payload.isActive = updates.isActive;
+      if (updates.bankName !== undefined) payload.bankName = updates.bankName || null;
+      if (updates.routingNumber !== undefined) payload.routingNumber = updates.routingNumber || null;
+      if (updates.accountNumberLast4 !== undefined) payload.accountNumberLast4 = updates.accountNumberLast4 || null;
+      if (updates.accountType !== undefined) payload.accountType = updates.accountType || null;
+      if (updates.checkStartNumber !== undefined) payload.checkStartNumber = updates.checkStartNumber ? parseInt(updates.checkStartNumber) : null;
+      if (updates.nextCheckNumber !== undefined) payload.nextCheckNumber = updates.nextCheckNumber ? parseInt(updates.nextCheckNumber) : null;
+      if (updates.checkSignatory !== undefined) payload.checkSignatory = updates.checkSignatory || null;
+      if (updates.checkMailingAddress !== undefined) payload.checkMailingAddress = updates.checkMailingAddress || null;
+      if (updates.dailyLimit !== undefined) payload.dailyLimit = updates.dailyLimit || null;
+      if (updates.transactionLimit !== undefined) payload.transactionLimit = updates.transactionLimit || null;
+      
+      return apiRequest('PATCH', `/api/payment-methods/${id}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-methods', currentOrganization.id] });
+      setIsPaymentMethodDialogOpen(false);
+      setEditingPaymentMethod(null);
+      resetPaymentMethodForm();
+      toast({ title: "Payment method updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to update payment method", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Delete payment method mutation
+  const deletePaymentMethodMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest('DELETE', `/api/payment-methods/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-methods', currentOrganization.id] });
+      setDeletePaymentMethodId(null);
+      toast({ title: "Payment method deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to delete payment method", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Set default payment method mutation
+  const setDefaultPaymentMethodMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest('POST', `/api/payment-methods/${id}/set-default`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-methods', currentOrganization.id] });
+      toast({ title: "Default payment method updated" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Failed to set default payment method", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
   });
 
   // Create auto-pay rule mutation
@@ -249,6 +412,61 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
     setIsAutoPayDialogOpen(true);
   };
 
+  const resetPaymentMethodForm = () => {
+    setPaymentMethodFormData(defaultPaymentMethodFormData);
+  };
+
+  const handleEditPaymentMethod = (method: OrganizationPaymentMethod) => {
+    setEditingPaymentMethod(method);
+    setPaymentMethodFormData({
+      name: method.name,
+      methodType: method.methodType as PaymentMethodType,
+      isDefault: method.isDefault,
+      isActive: method.isActive,
+      bankName: method.bankName || "",
+      routingNumber: method.routingNumber || "",
+      accountNumberLast4: method.accountNumberLast4 || "",
+      accountType: (method.accountType as BankAccountType) || "",
+      checkStartNumber: method.checkStartNumber?.toString() || "",
+      nextCheckNumber: method.nextCheckNumber?.toString() || "",
+      checkSignatory: method.checkSignatory || "",
+      checkMailingAddress: method.checkMailingAddress || "",
+      dailyLimit: method.dailyLimit || "",
+      transactionLimit: method.transactionLimit || "",
+    });
+    setIsPaymentMethodDialogOpen(true);
+  };
+
+  const getMethodTypeIcon = (type: string) => {
+    switch (type) {
+      case 'card':
+        return <CreditCard className="w-4 h-4" />;
+      case 'ach':
+        return <Banknote className="w-4 h-4" />;
+      case 'check':
+        return <DollarSign className="w-4 h-4" />;
+      case 'wire':
+        return <Building2 className="w-4 h-4" />;
+      default:
+        return <Wallet className="w-4 h-4" />;
+    }
+  };
+
+  const getMethodTypeLabel = (type: string): string => {
+    switch (type) {
+      case 'card':
+        return 'Credit Card';
+      case 'ach':
+        return 'Bank Transfer (ACH)';
+      case 'check':
+        return 'Check';
+      case 'wire':
+        return 'Wire Transfer';
+      default:
+        return type;
+    }
+  };
+
   const getPaymentMethodIcon = (method: PaymentMethod) => {
     switch (method) {
       case 'card':
@@ -358,6 +576,10 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
           <TabsTrigger value="history" data-testid="tab-history">
             <Clock className="w-4 h-4 mr-2" />
             Payment History
+          </TabsTrigger>
+          <TabsTrigger value="payment-methods" data-testid="tab-payment-methods">
+            <Building2 className="w-4 h-4 mr-2" />
+            Payment Methods
           </TabsTrigger>
         </TabsList>
 
@@ -608,6 +830,127 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Payment Methods Tab */}
+        <TabsContent value="payment-methods">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle>Payment Methods</CardTitle>
+                <CardDescription>Configure bank accounts, checks, and other payment methods for outbound payments</CardDescription>
+              </div>
+              <Button onClick={() => setIsPaymentMethodDialogOpen(true)} data-testid="button-add-payment-method">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Payment Method
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoadingPaymentMethods ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : paymentMethods.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No payment methods configured</p>
+                  <p className="text-sm">Add bank accounts or check settings to enable automated payments</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {paymentMethods.map((method) => (
+                    <Card key={method.id} className={!method.isActive ? "opacity-60" : ""} data-testid={`card-payment-method-${method.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getMethodTypeIcon(method.methodType)}
+                              <h3 className="font-medium" data-testid={`text-method-name-${method.id}`}>{method.name}</h3>
+                              {method.isDefault && (
+                                <Badge variant="outline" className="border-amber-500 text-amber-600">
+                                  <Star className="w-3 h-3 mr-1" />
+                                  Default
+                                </Badge>
+                              )}
+                              {!method.isActive && <Badge variant="secondary">Inactive</Badge>}
+                              {method.isVerified && (
+                                <Badge variant="outline" className="border-green-500 text-green-600">
+                                  <Shield className="w-3 h-3 mr-1" />
+                                  Verified
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                              <span>{getMethodTypeLabel(method.methodType)}</span>
+                              {method.bankName && (
+                                <span className="flex items-center gap-1">
+                                  <Building2 className="w-3 h-3" />
+                                  {method.bankName}
+                                </span>
+                              )}
+                              {method.accountNumberLast4 && (
+                                <span>Account ending in {method.accountNumberLast4}</span>
+                              )}
+                              {method.routingNumber && (
+                                <span>Routing: {method.routingNumber}</span>
+                              )}
+                              {method.accountType && (
+                                <span className="capitalize">{method.accountType}</span>
+                              )}
+                              {method.methodType === 'check' && method.nextCheckNumber && (
+                                <span>Next check #: {method.nextCheckNumber}</span>
+                              )}
+                            </div>
+                            {(method.dailyLimit || method.transactionLimit) && (
+                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                {method.dailyLimit && (
+                                  <span>Daily limit: ${parseFloat(method.dailyLimit).toLocaleString()}</span>
+                                )}
+                                {method.transactionLimit && (
+                                  <span>Per-transaction limit: ${parseFloat(method.transactionLimit).toLocaleString()}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!method.isDefault && method.isActive && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDefaultPaymentMethodMutation.mutate(method.id)}
+                                disabled={setDefaultPaymentMethodMutation.isPending}
+                                data-testid={`button-set-default-${method.id}`}
+                              >
+                                <Star className="w-3 h-3 mr-1" />
+                                Set Default
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditPaymentMethod(method)}
+                              data-testid={`button-edit-method-${method.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletePaymentMethodId(method.id)}
+                              data-testid={`button-delete-method-${method.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Create/Edit Auto-Pay Rule Dialog */}
@@ -817,6 +1160,300 @@ export default function BillPayments({ currentOrganization }: BillPaymentsProps)
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteRuleId && deleteRuleMutation.mutate(deleteRuleId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create/Edit Payment Method Dialog */}
+      <Dialog open={isPaymentMethodDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsPaymentMethodDialogOpen(false);
+          setEditingPaymentMethod(null);
+          resetPaymentMethodForm();
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingPaymentMethod ? "Edit Payment Method" : "Add Payment Method"}</DialogTitle>
+            <DialogDescription>
+              {editingPaymentMethod 
+                ? "Update the payment method settings" 
+                : "Configure a new payment method for outbound payments"}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (editingPaymentMethod) {
+                updatePaymentMethodMutation.mutate({ id: editingPaymentMethod.id, updates: paymentMethodFormData });
+              } else {
+                createPaymentMethodMutation.mutate(paymentMethodFormData);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="methodName">Name *</Label>
+                <Input
+                  id="methodName"
+                  value={paymentMethodFormData.name}
+                  onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, name: e.target.value })}
+                  placeholder="e.g., Main Operating Account"
+                  required
+                  data-testid="input-method-name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="methodType">Payment Type *</Label>
+                <Select
+                  value={paymentMethodFormData.methodType}
+                  onValueChange={(value: PaymentMethodType) => setPaymentMethodFormData({ ...paymentMethodFormData, methodType: value })}
+                >
+                  <SelectTrigger id="methodType" data-testid="select-method-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ach">
+                      <div className="flex items-center gap-2">
+                        <Banknote className="w-4 h-4" />
+                        Bank Transfer (ACH)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="check">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Check
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="wire">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Wire Transfer
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="card">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4" />
+                        Credit Card
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Bank Details Section - for ACH, Check, Wire */}
+            {(paymentMethodFormData.methodType === 'ach' || paymentMethodFormData.methodType === 'check' || paymentMethodFormData.methodType === 'wire') && (
+              <>
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium mb-3">Bank Account Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bankName">Bank Name</Label>
+                      <Input
+                        id="bankName"
+                        value={paymentMethodFormData.bankName}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, bankName: e.target.value })}
+                        placeholder="e.g., Chase Bank"
+                        data-testid="input-bank-name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="routingNumber">Routing Number</Label>
+                      <Input
+                        id="routingNumber"
+                        value={paymentMethodFormData.routingNumber}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, routingNumber: e.target.value.replace(/\D/g, '').slice(0, 9) })}
+                        placeholder="9 digits"
+                        maxLength={9}
+                        data-testid="input-routing-number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accountNumberLast4">Account Number (Last 4 digits)</Label>
+                      <Input
+                        id="accountNumberLast4"
+                        value={paymentMethodFormData.accountNumberLast4}
+                        onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, accountNumberLast4: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                        placeholder="Last 4 digits"
+                        maxLength={4}
+                        data-testid="input-account-last4"
+                      />
+                      <p className="text-xs text-muted-foreground">For security, only store the last 4 digits displayed here</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accountType">Account Type</Label>
+                      <Select
+                        value={paymentMethodFormData.accountType || "none"}
+                        onValueChange={(value) => setPaymentMethodFormData({ ...paymentMethodFormData, accountType: value === "none" ? "" : value as BankAccountType })}
+                      >
+                        <SelectTrigger id="accountType" data-testid="select-account-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Select type</SelectItem>
+                          <SelectItem value="checking">Checking</SelectItem>
+                          <SelectItem value="savings">Savings</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Check-Specific Fields */}
+            {paymentMethodFormData.methodType === 'check' && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium mb-3">Check Settings</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="checkStartNumber">Starting Check Number</Label>
+                    <Input
+                      id="checkStartNumber"
+                      type="number"
+                      value={paymentMethodFormData.checkStartNumber}
+                      onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, checkStartNumber: e.target.value })}
+                      placeholder="e.g., 1001"
+                      data-testid="input-check-start"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nextCheckNumber">Next Check Number</Label>
+                    <Input
+                      id="nextCheckNumber"
+                      type="number"
+                      value={paymentMethodFormData.nextCheckNumber}
+                      onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, nextCheckNumber: e.target.value })}
+                      placeholder="Auto-increments"
+                      data-testid="input-check-next"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="checkSignatory">Signatory Name</Label>
+                    <Input
+                      id="checkSignatory"
+                      value={paymentMethodFormData.checkSignatory}
+                      onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, checkSignatory: e.target.value })}
+                      placeholder="Name that appears on checks"
+                      data-testid="input-check-signatory"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="checkMailingAddress">Mailing Address</Label>
+                    <Textarea
+                      id="checkMailingAddress"
+                      value={paymentMethodFormData.checkMailingAddress}
+                      onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, checkMailingAddress: e.target.value })}
+                      placeholder="Address for mailing checks"
+                      rows={3}
+                      data-testid="input-check-address"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Limits Section */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium mb-3">Payment Limits (Optional)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dailyLimit">Daily Limit</Label>
+                  <Input
+                    id="dailyLimit"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={paymentMethodFormData.dailyLimit}
+                    onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, dailyLimit: e.target.value })}
+                    placeholder="No limit"
+                    data-testid="input-daily-limit"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transactionLimit">Per-Transaction Limit</Label>
+                  <Input
+                    id="transactionLimit"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={paymentMethodFormData.transactionLimit}
+                    onChange={(e) => setPaymentMethodFormData({ ...paymentMethodFormData, transactionLimit: e.target.value })}
+                    placeholder="No limit"
+                    data-testid="input-transaction-limit"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Status Toggles */}
+            <div className="border-t pt-4 mt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isActive">Active</Label>
+                  <p className="text-xs text-muted-foreground">Enable this payment method for use</p>
+                </div>
+                <Switch
+                  id="isActive"
+                  checked={paymentMethodFormData.isActive}
+                  onCheckedChange={(checked) => setPaymentMethodFormData({ ...paymentMethodFormData, isActive: checked })}
+                  data-testid="switch-active"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isDefault">Set as Default</Label>
+                  <p className="text-xs text-muted-foreground">Use this as the default payment method</p>
+                </div>
+                <Switch
+                  id="isDefault"
+                  checked={paymentMethodFormData.isDefault}
+                  onCheckedChange={(checked) => setPaymentMethodFormData({ ...paymentMethodFormData, isDefault: checked })}
+                  data-testid="switch-default"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => {
+                setIsPaymentMethodDialogOpen(false);
+                setEditingPaymentMethod(null);
+                resetPaymentMethodForm();
+              }}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createPaymentMethodMutation.isPending || updatePaymentMethodMutation.isPending}
+                data-testid="button-save-method"
+              >
+                {editingPaymentMethod ? "Save Changes" : "Add Payment Method"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Payment Method Confirmation Dialog */}
+      <AlertDialog open={!!deletePaymentMethodId} onOpenChange={(open) => !open && setDeletePaymentMethodId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment Method</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payment method? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletePaymentMethodId && deletePaymentMethodMutation.mutate(deletePaymentMethodId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

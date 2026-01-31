@@ -8995,7 +8995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/scheduled-payments', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const data = insertScheduledPaymentSchema.parse(req.body);
+      // Parse without createdBy since it comes from the session
+      const data = insertScheduledPaymentSchema.omit({ createdBy: true }).parse(req.body);
       
       const userRole = await storage.getUserRole(userId, data.organizationId);
       if (!userRole) {
@@ -9361,6 +9362,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting vendor payment details:", error);
       res.status(500).json({ message: "Failed to delete vendor payment details" });
+    }
+  });
+
+  // ============================================
+  // ORGANIZATION PAYMENT METHODS ROUTES
+  // ============================================
+
+  app.get('/api/payment-methods/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const methods = await storage.getOrganizationPaymentMethods(organizationId);
+      res.json(methods);
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      res.status(500).json({ message: "Failed to fetch payment methods" });
+    }
+  });
+
+  app.get('/api/payment-methods/single/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const methodId = parseInt(req.params.id);
+      const method = await storage.getOrganizationPaymentMethod(methodId);
+      
+      if (!method) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      const userRole = await storage.getUserRole(userId, method.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      res.json(method);
+    } catch (error) {
+      console.error("Error fetching payment method:", error);
+      res.status(500).json({ message: "Failed to fetch payment method" });
+    }
+  });
+
+  app.post('/api/payment-methods', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payment methods" });
+      }
+
+      const method = await storage.createOrganizationPaymentMethod({
+        ...req.body,
+        createdBy: userId,
+      });
+      
+      await storage.logCreate(organizationId, userId, 'payment_method', method.id.toString(), method);
+      res.json(method);
+    } catch (error) {
+      console.error("Error creating payment method:", error);
+      res.status(500).json({ message: "Failed to create payment method" });
+    }
+  });
+
+  app.patch('/api/payment-methods/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const methodId = parseInt(req.params.id);
+
+      const method = await storage.getOrganizationPaymentMethod(methodId);
+      if (!method) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, method.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payment methods" });
+      }
+
+      const oldData = JSON.stringify(method);
+      const updatedMethod = await storage.updateOrganizationPaymentMethod(methodId, req.body);
+      await storage.logUpdate(method.organizationId, userId, 'payment_method', methodId.toString(), oldData, updatedMethod);
+      res.json(updatedMethod);
+    } catch (error) {
+      console.error("Error updating payment method:", error);
+      res.status(500).json({ message: "Failed to update payment method" });
+    }
+  });
+
+  app.delete('/api/payment-methods/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const methodId = parseInt(req.params.id);
+
+      const method = await storage.getOrganizationPaymentMethod(methodId);
+      if (!method) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, method.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payment methods" });
+      }
+
+      await storage.logDelete(method.organizationId, userId, 'payment_method', methodId.toString(), method);
+      await storage.deleteOrganizationPaymentMethod(methodId);
+      res.json({ message: "Payment method deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting payment method:", error);
+      res.status(500).json({ message: "Failed to delete payment method" });
+    }
+  });
+
+  app.post('/api/payment-methods/:id/set-default', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const methodId = parseInt(req.params.id);
+
+      const method = await storage.getOrganizationPaymentMethod(methodId);
+      if (!method) {
+        return res.status(404).json({ message: "Payment method not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, method.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage payment methods" });
+      }
+
+      await storage.setDefaultPaymentMethod(method.organizationId, methodId);
+      res.json({ message: "Default payment method set successfully" });
+    } catch (error) {
+      console.error("Error setting default payment method:", error);
+      res.status(500).json({ message: "Failed to set default payment method" });
     }
   });
 
