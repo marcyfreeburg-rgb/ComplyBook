@@ -1,0 +1,28 @@
+[GET]
+complybook.net/api/teams/167 clientIP="216.147.126.248" requestID="8b8bca30-5bad-4e9b" responseTimeMS=805 responseBytes=1179 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/employees/167 clientIP="216.147.126.248" requestID="991421ee-a04c-45d9" responseTimeMS=817 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/employees/167/active clientIP="216.147.126.248" requestID="6c118cd8-963f-490d" responseTimeMS=242 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/payroll-runs/167 clientIP="216.147.126.248" requestID="1cb9eb15-8afd-4a96" responseTimeMS=250 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/deductions/167/active clientIP="216.147.126.248" requestID="29a8db74-edd5-4471" responseTimeMS=498 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/documents/policy/167 clientIP="216.147.126.248" requestID="55bd60ca-b43a-4c14" responseTimeMS=489 responseBytes=1276 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/finch/connection/167 clientIP="216.147.126.248" requestID="3e551091-ac53-49e3" responseTimeMS=632 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="776cfd9b-7b9d-4bb2" responseTimeMS=241 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+4:35:00 PM [express] GET /api/employees/167 304 in 813ms :: [{"id":1,"organizationId":167,"teamId":1…
+4:35:00 PM [express] GET /api/teams/167 304 in 802ms :: [{"id":1,"organizationId":167,"name":"ONE","…
+4:35:05 PM [express] GET /api/employees/167/active 304 in 240ms :: [{"id":1,"organizationId":167,"te…
+4:35:05 PM [express] GET /api/payroll-runs/167 304 in 248ms :: []
+4:35:05 PM [express] GET /api/deductions/167/active 304 in 434ms :: []
+4:35:05 PM [express] GET /api/documents/policy/167 200 in 487ms :: []
+4:35:05 PM [express] GET /api/finch/connection/167 304 in 628ms :: []
+4:35:09 PM [express] GET /api/notifications/167/unread-count 304 in 237ms :: {"count":"0"}
+[CSRF] Token mismatch - Path: /documents/upload-file, Method: POST, IP: 172.68.3.141, Cookie: present, Header: missing
+[POST]
+complybook.net/api/documents/upload-file clientIP="216.147.126.248" requestID="296eaa39-09fd-45c7" resp

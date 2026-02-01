@@ -83,14 +83,19 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
       formData.append('category', 'policies');
       formData.append('name', file.name);
       
+      // Get CSRF token from cookie for file upload
+      const csrfToken = document.cookie.split(';').find(c => c.trim().startsWith('csrf_token='))?.split('=')[1];
+      
       const response = await fetch('/api/documents/upload-file', {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
       });
       
       if (!response.ok) {
-        throw new Error('Failed to upload document');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to upload document');
       }
       
       queryClient.invalidateQueries({ queryKey: ['/api/documents', 'policy', currentOrganization.id] });
