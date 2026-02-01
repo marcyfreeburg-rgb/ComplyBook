@@ -1,0 +1,33 @@
+1:08:41 AM [express] GET /api/auth/user 200 in 361ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+1:08:41 AM [express] GET /api/organizations 200 in 333ms :: [{"id":168,"name":"C Cubed Training","ty…
+[GET]
+complybook.net/api/tax-form-1099s/167/2026 clientIP="216.147.126.248" requestID="705e6715-12b3-4b93" responseTimeMS=235 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="58ff2439-2b8d-4f6d" responseTimeMS=515 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="5e215e5f-b3d0-427c" responseTimeMS=461 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="d6c282ae-a878-400e" responseTimeMS=474 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="b47a448d-7786-4616" responseTimeMS=234 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/api/tax-categories/167 clientIP="216.147.126.248" requestID="4f33f5c7-9fde-4210" responseTimeMS=414 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-reports/167/2026 clientIP="216.147.126.248" requestID="e56c52d8-504a-4996" responseTimeMS=415 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+1:08:42 AM [express] GET /api/security/mfa/status 304 in 513ms :: {"mfaEnabled":true,"mfaRequired":t…
+1:08:42 AM [express] GET /api/notifications/167/unread-count 304 in 232ms :: {"count":"0"}
+1:08:42 AM [express] GET /api/tax-form-1099s/167/2026 304 in 234ms :: []
+1:08:42 AM [express] GET /api/tax-categories/167 304 in 412ms :: []
+1:08:42 AM [express] GET /api/tax-reports/167/2026 200 in 470ms
+[POST]
+complybook.net/api/ai-tax-analysis/167 clientIP="216.147.126.248" requestID="39e430ce-3187-4d5e" responseTimeMS=29001 responseBytes=1351 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[AI Tax Analysis] Error: SyntaxError: Unexpected end of JSON input
+[AI Tax Analysis] Received response for 82 categories
+    at JSON.parse (<anonymous>)
+    at analyzeCategoriesToTaxDeductibility (file:///opt/render/project/src/dist/index.js:11818:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:20661:23
+1:09:23 AM [express] POST /api/ai-tax-analysis/167 503 in 28982ms :: {"message":"AI analysis not ava…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="33e7f002-f9cc-4

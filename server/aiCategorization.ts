@@ -604,6 +604,44 @@ export interface TaxAnalysisResult {
   analysisDate: string;
 }
 
+// Helper function to process AI analysis response and calculate summary
+function processAnalysisResponse(parsed: any, expenseCategories: any[]): TaxAnalysisResult {
+  const suggestions: TaxDeductibilitySuggestion[] = parsed.suggestions || [];
+
+  let suggestedChanges = 0;
+  let fullyDeductible = 0;
+  let partiallyDeductible = 0;
+  let nonDeductible = 0;
+
+  suggestions.forEach(s => {
+    if (s.currentlyDeductible !== s.suggestedDeductible) {
+      suggestedChanges++;
+    }
+    if (s.suggestedDeductible) {
+      if (s.deductionPercentage && s.deductionPercentage < 100) {
+        partiallyDeductible++;
+      } else {
+        fullyDeductible++;
+      }
+    } else {
+      nonDeductible++;
+    }
+  });
+
+  return {
+    suggestions,
+    summary: {
+      totalCategories: expenseCategories.length,
+      correctlyClassified: suggestions.length - suggestedChanges,
+      suggestedChanges,
+      fullyDeductible,
+      partiallyDeductible,
+      nonDeductible
+    },
+    analysisDate: new Date().toISOString()
+  };
+}
+
 export async function analyzeCategoriesToTaxDeductibility(
   organizationId: number
 ): Promise<TaxAnalysisResult | null> {
@@ -677,12 +715,20 @@ Respond with valid JSON in this exact format:
 
     // Use appropriate model based on environment
     const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
+    
+    // Calculate appropriate token limit based on number of categories
+    // Each category analysis needs ~100-150 tokens in the response
+    const estimatedTokensNeeded = Math.max(4000, expenseCategories.length * 150 + 500);
+    const maxTokens = Math.min(estimatedTokensNeeded, 16000); // Cap at 16k for safety
+    
+    console.log(`[AI Tax Analysis] Analyzing ${expenseCategories.length} categories with max tokens: ${maxTokens}`);
+    
     const completion = await openai.chat.completions.create({
       model: modelName,
       messages: [
         { 
           role: "system", 
-          content: "You are an IRS tax deduction expert. Always respond with valid JSON. Be accurate and conservative in tax deduction recommendations." 
+          content: "You are an IRS tax deduction expert. Always respond with valid JSON. Be accurate and conservative in tax deduction recommendations. For each category, provide a concise analysis." 
         },
         { 
           role: "user", 
@@ -690,7 +736,7 @@ Respond with valid JSON in this exact format:
         }
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 2000,
+      max_completion_tokens: maxTokens,
     });
 
     const responseText = completion.choices[0]?.message?.content;
@@ -698,47 +744,45 @@ Respond with valid JSON in this exact format:
       console.error('[AI Tax Analysis] No response from AI');
       return null;
     }
-
-    console.log(`[AI Tax Analysis] Received response for ${expenseCategories.length} categories`);
     
-    const parsed = JSON.parse(responseText);
-    const suggestions: TaxDeductibilitySuggestion[] = parsed.suggestions || [];
-
-    // Calculate summary statistics
-    let suggestedChanges = 0;
-    let fullyDeductible = 0;
-    let partiallyDeductible = 0;
-    let nonDeductible = 0;
-
-    suggestions.forEach(s => {
-      if (s.currentlyDeductible !== s.suggestedDeductible) {
-        suggestedChanges++;
-      }
-      if (s.suggestedDeductible) {
-        if (s.deductionPercentage && s.deductionPercentage < 100) {
-          partiallyDeductible++;
-        } else {
-          fullyDeductible++;
+    // Check if response was truncated
+    const finishReason = completion.choices[0]?.finish_reason;
+    if (finishReason === 'length') {
+      console.error('[AI Tax Analysis] Response was truncated due to length limit');
+      // Try to salvage partial response by finding last complete JSON object
+      try {
+        // Find the last complete suggestion object
+        const lastValidIndex = responseText.lastIndexOf('}');
+        if (lastValidIndex > 0) {
+          // Try to close the JSON properly
+          let fixedResponse = responseText.substring(0, lastValidIndex + 1);
+          // Check if we need to close the suggestions array
+          if (!fixedResponse.endsWith(']}')) {
+            fixedResponse = fixedResponse + ']}';
+          }
+          const parsed = JSON.parse(fixedResponse);
+          console.log(`[AI Tax Analysis] Recovered ${parsed.suggestions?.length || 0} suggestions from truncated response`);
+          return processAnalysisResponse(parsed, expenseCategories);
         }
-      } else {
-        nonDeductible++;
+      } catch (e) {
+        console.error('[AI Tax Analysis] Could not recover from truncated response');
+        return null;
       }
-    });
+    }
 
-    const result: TaxAnalysisResult = {
-      suggestions,
-      summary: {
-        totalCategories: expenseCategories.length,
-        correctlyClassified: expenseCategories.length - suggestedChanges,
-        suggestedChanges,
-        fullyDeductible,
-        partiallyDeductible,
-        nonDeductible
-      },
-      analysisDate: new Date().toISOString()
-    };
-
-    console.log(`[AI Tax Analysis] Analysis complete: ${suggestedChanges} suggested changes out of ${expenseCategories.length} categories`);
+    console.log(`[AI Tax Analysis] Received complete response for ${expenseCategories.length} categories`);
+    
+    let parsed;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[AI Tax Analysis] Failed to parse JSON response:', parseError);
+      console.error('[AI Tax Analysis] Response preview:', responseText.substring(0, 500));
+      return null;
+    }
+    
+    const result = processAnalysisResponse(parsed, expenseCategories);
+    console.log(`[AI Tax Analysis] Analysis complete: ${result.summary.suggestedChanges} suggested changes out of ${expenseCategories.length} categories`);
     
     return result;
   } catch (error) {
