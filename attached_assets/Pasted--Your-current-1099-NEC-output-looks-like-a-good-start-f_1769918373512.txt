@@ -1,0 +1,76 @@
+
+Your current 1099-NEC output looks like a good start for a preview/record copy (Copy B for the recipient or Copy C for payer records)—it has the core visual elements, key fields populated, a clear disclaimer, and notes. However, to generate correct, IRS-acceptable 1099-NEC forms (especially for official filing), your app needs to go beyond pretty PDF rendering. The IRS cares about data accuracy, formatting compliance, validation, filing mechanics, and legal responsibilities—not just the look.
+
+For Tax Year 2025 (forms filed in early 2026), the threshold remains $600 for 1099-NEC (nonemployee compensation), though it rises to $2,000 starting in 2026 payments under recent legislation. No major layout changes for 1099-NEC itself this year (beyond some golden parachute payment shifts from 1099-MISC to NEC Box 3, which doesn't affect your example).
+
+Here's a breakdown of what you need to implement for reliable, "correct" 1099 generation and handling in ComplyBook:
+
+1. Accurate Data Collection & Validation (Core to Correctness)
+Mandatory fields (from current 1099-NEC layout):
+Payer's name, address, city/state/ZIP, phone (optional but recommended), and TIN (EIN or SSN).
+Recipient's name (first/last or business), address, city/state/ZIP, TIN (SSN/ITIN/EIN—your screenshot shows masked *-2592, which is good for display but must be full/valid for filing).
+Box 1: Nonemployee compensation (must be ≥$600 aggregate per recipient to trigger requirement; your $5,000.00 is fine).
+Box 4: Federal income tax withheld (if backup withholding applies, e.g., no TIN provided).
+Box 5–7: State info if applicable (state tax withheld, state/Payer's state no., state income).
+Account number (optional but useful for multiple forms per recipient).
+Validation rules to enforce:
+TIN format check (9 digits, valid checksum for EIN/SSN).
+Name/TIN matching (use IRS TIN Matching API or bulk upload for free validation to avoid B-Notices/penalties).
+Aggregate payments: Sum all qualifying payments (from Money Out/Contracts/vendor tracking) per recipient/year ≥$600.
+No personal payments; only business-related nonemployee comp (services, not rents/royalties—those go on 1099-MISC).
+Handle corrections: Support "Corrected" checkbox and original form reference.
+Common error sources (avoid these to prevent penalties up to $680+ per form for intentional disregard):
+Wrong form (NEC vs. MISC).
+Incorrect/missing TIN or name mismatch.
+Under/over-reporting amounts.
+Missing backup withholding when required.
+2. Generate Compliant Outputs
+PDF for Recipient/Payer Copies (what you have now):
+Use exact IRS layout (download current 1099-NEC PDF from irs.gov as template).
+Include all official wording, scannable zones, Copy labels (B for recipient, C for payer, 1 for state if needed).
+Add your strong disclaimer (you already have a good one—keep it prominent).
+Support multi-page if needed (rare for single recipient).
+E-filing Ready Files (critical for official submission):
+Primary option now: IRIS Taxpayer Portal (free IRS system).
+Generate CSV using the official TY2025 IRIS CSV template (download from irs.gov/iris—updated ~Jan 2026).
+Or use XML via IRIS A2A (Application-to-Application) if batch/high volume.
+Legacy option for TY2025: FIRE system (Pub 1220 flat-file format)—but FIRE retires end of 2026; IRIS mandatory for TY2026+.
+Your app should output:
+CSV/XML for upload to IRIS (or FIRE for 2025).
+Support manual entry/upload in IRIS portal if users file themselves.
+Direct e-filing integration (advanced/nice-to-have):
+Partner with IRIS-approved transmitter or build A2A API integration (requires IRIS TCC application—takes ~45 days).
+Or integrate with services like Tax1099, Track1099 (they handle filing, TIN matching, corrections).
+3. Workflow & Compliance Features
+Recipient Delivery:
+Email/print Copy B to recipient by Jan 31, 2026 (for TY2025).
+Track delivery status (sent/viewed).
+IRS Filing:
+File by Jan 31, 2026 (paper or e-file for 1099-NEC).
+If 10+ total info returns (any 1099/W-2/etc.), mandatory e-file (via IRIS/FIRE).
+Generate Form 1096 transmittal if paper (rare now).
+Audit Trail & Corrections:
+Log all generations, changes, filings (you already have immutable logging—leverage it).
+Support corrected forms (mark "Corrected", refile with IRS).
+Disclaimers & Education:
+Prominent note: "Not tax advice; verify data. Use official IRS channels for filing."
+Link to irs.gov/forms-pubs/about-form-1099-nec and IRIS portal.
+4. Implementation Roadmap (Prioritized)
+Immediate (to fix current output):
+Add full TIN input/validation (unmasked for filing export).
+Pull payer info automatically from organization settings.
+Ensure amounts aggregate correctly from transaction data.
+Match layout exactly to current IRS 1099-NEC (Rev. April 2025 or later).
+Next:
+Add CSV export matching IRIS TY2025 template.
+TIN validation integration (free IRS TIN Match program).
+Workflow: "Generate PDF Preview" → "Mark Ready" → "Export for IRIS Filing".
+Future:
+Direct IRIS submission (if volume justifies).
+Auto-flagging for state copies/filing.
+Batch processing for multiple contractors.
+Your screenshot shows "NOT FILED" status—add buttons/workflows for "Export CSV for IRIS", "Print Copies", "Mark Filed" (with upload confirmation).
+
+Penalties for bad 1099s are steep ($60–$680+ per form, no cap for intentional), so emphasize user responsibility + your app as assistant/tool.
+
+If you share more (e.g., how data pulls in, or a sample export attempt), or want help brainstorming CSV structure/prompts for AI-assisted review of payments, let me know! This ties nicely into your existing vendor/contract tracking
