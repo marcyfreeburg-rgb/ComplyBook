@@ -1,0 +1,64 @@
+74d1d00
+Add security token to file uploads for budgets and policies Include CSRF token in POST requests for `/api/documents/upload-file` in both `budgets.tsx` and `payroll.tsx` to resolve CSRF token mismatch errors. Replit-Commit-Author: Agent Replit-Commit-Session-Id: 21940f87-c48f-4613-bcce-c747344c802f Replit-Commit-Checkpoint-Type: full_checkpoint Replit-Commit-Event-Id: e3a9f47d-2c72-4acc-881f-4c4e16c8ba29 Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/103f4de3-ae28-4aa4-a17a-f12025f12326/21940f87-c48f-4613-bcce-c747344c802f/fTNFWNj
+
+Rollback
+Exited with status 1 while running your code.
+Read our docs for common ways to troubleshoot your deploy.
+
+All logs
+Search
+Search
+
+Feb 1, 9:35 AM - 9:40 AM
+MST
+
+
+
+        writeBuffer: undefined,
+        tlsState: 0,
+        tlsRead: undefined,
+        tlsWrite: undefined
+      },
+      _keepAlive: false,
+      _keepAliveInitialDelayMillis: 0,
+      lastBuffer: false,
+      parsedStatements: {},
+      ssl: false,
+      _ending: true,
+      _emitMessage: false,
+      _connecting: true
+    },
+    queryQueue: [],
+    binary: false,
+    processID: 1317783629,
+    secretKey: -2001856207,
+    ssl: false,
+    _connectionTimeoutMillis: 0,
+    config: {
+      connectionString: 'postgresql://neondb_owner:npg_m9GHXrTZ4vlh@ep-cool-leaf-ahmjliok.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require',
+      max: 10,
+      maxUses: Infinity,
+      allowExitOnIdle: false,
+      maxLifetimeSeconds: 0,
+      idleTimeoutMillis: 10000
+    },
+    _connectionCallback: null,
+    release: [Function (anonymous)],
+    activeQuery: null,
+    readyForQuery: true,
+    hasExecuted: true,
+    _poolUseCount: 1
+  }
+}
+Node.js v22.16.0
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Running 'npm run start'
+Menu
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+[Plaid] Initializing with environment: production
+[Plaid] Base path: https://production.plaid.com
+[Plaid] Client ID configured: true
+[Plaid] Secret configured: true
+Initializing Stripe integration...
