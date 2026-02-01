@@ -467,8 +467,25 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                       data={metrics.eventsByType}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
-                      label={({ eventType, count }) => `${eventType}: ${count}`}
+                      labelLine={true}
+                      label={({ eventType, count, cx, cy, midAngle, outerRadius }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = outerRadius + 25;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            fill="currentColor"
+                            className="text-foreground text-xs"
+                            textAnchor={x > cx ? 'start' : 'end'}
+                            dominantBaseline="central"
+                          >
+                            {`${eventType}: ${count}`}
+                          </text>
+                        );
+                      }}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="count"
