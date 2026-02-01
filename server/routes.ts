@@ -9997,6 +9997,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route with year as path parameter (used by frontend)
+  app.get('/api/tax-reports/:organizationId/:year', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const taxYear = parseInt(req.params.year);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const reports = await storage.getTaxReports(organizationId, taxYear);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching tax reports:", error);
+      res.status(500).json({ message: "Failed to fetch tax reports" });
+    }
+  });
+
   app.post('/api/tax-reports/:organizationId/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

@@ -1,0 +1,126 @@
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+[GET]
+complybook.onrender.com/ clientIP="34.82.29.197" requestID="d5933c54-dac6-4461" responseTimeMS=17 responseBytes=223158 userAgent="Go-http-client/2.0"
+Audit retention completed: 0 archived, 0 deleted
+Audit stats: 8306 total (8306 active, 0 archived)
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="611ccacb-dde7-4511" responseTimeMS=624 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:28 AM [express] GET /api/notifications/167/unread-count 304 in 620ms :: {"count":"0"}
+[GET]
+complybook.net/tax-reporting clientIP="216.147.126.248" requestID="fff564de-9076-47eb" responseTimeMS=22 responseBytes=223158 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DX86Ze2z.js clientIP="216.147.126.248" requestID="fe20d49b-6aa8-4068" responseTimeMS=21 responseBytes=223158 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DFBuE2y_.css clientIP="216.147.126.248" requestID="4a491615-5aee-4060" responseTimeMS=68 responseBytes=17431 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/tax-reporting clientIP="216.147.126.248" requestID="ef95701f-dca9-492f" responseTimeMS=66 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="e246dc14-d988-42a1" responseTimeMS=161 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="3728ee37-51c2-42a6" responseTimeMS=3 responseBytes=1766 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="744afe0d-c475-44e3" responseTimeMS=77 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/tax-reporting clientIP="216.147.126.248" requestID="530644eb-9105-49ea" responseTimeMS=60 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DX86Ze2z.js clientIP="216.147.126.248" requestID="b86252b3-4d6c-438c" responseTimeMS=230 responseBytes=926559 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DFBuE2y_.css clientIP="216.147.126.248" requestID="a636a524-7d15-43ce" responseTimeMS=421 responseBytes=17431 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="b718db75-5e7b-4d12" responseTimeMS=293 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="44ef49a4-a894-4afa" responseTimeMS=80 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="843a14e3-0589-4223" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="2e0d54f5-aa8f-4966" responseTimeMS=80 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="33568b98-d1c3-4fab" responseTimeMS=119 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="228b4a52-23ad-4ec2" responseTimeMS=360 responseBytes=2250 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:41 AM [express] GET /api/auth/user 200 in 358ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+2:20:41 AM [express] GET /api/security/mfa/status 304 in 293ms :: {"mfaEnabled":true,"mfaRequired":t…
+2:20:42 AM [express] GET /api/organizations 304 in 689ms :: [{"id":168,"name":"C Cubed Training","ty…
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="b7d9245d-5126-4b2d" responseTimeMS=118 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-reports/167/2026 clientIP="216.147.126.248" requestID="aa5c79da-9bfb-4ebc" responseTimeMS=63 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="79ac7e24-f143-4452" responseTimeMS=233 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="50d20ba6-ede6-425c" responseTimeMS=691 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:42 AM [express] GET /api/tax-reports/167/2026 200 in 116ms
+2:20:42 AM [express] GET /api/notifications/167/unread-count 304 in 232ms :: {"count":"0"}
+[GET]
+complybook.net/api/categories/167 clientIP="216.147.126.248" requestID="2a7f4a09-e957-426a" responseTimeMS=653 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-form-1099s/167/2026 clientIP="216.147.126.248" requestID="d0faa6cb-e99f-4d2a" responseTimeMS=777 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:43 AM [express] GET /api/categories/167 304 in 648ms :: [{"id":269,"organizationId":167,"name":…
+2:20:43 AM [express] GET /api/tax-form-1099s/167/2026 304 in 773ms :: []
+[GET]
+complybook.net/api/tax-reports/167/2025 clientIP="216.147.126.248" requestID="9492cf7d-81ca-434b" responseTimeMS=64 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-form-1099s/167/2025 clientIP="216.147.126.248" requestID="43fe3774-bdfd-4fc4" responseTimeMS=238 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:48 AM [express] GET /api/tax-reports/167/2025 200 in 120ms
+2:20:48 AM [express] GET /api/tax-form-1099s/167/2025 304 in 236ms :: []
+[GET]
+complybook.net/api/tax-reports/167/2025 clientIP="216.147.126.248" requestID="663adf10-691e-4353" responseTimeMS=118 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/tax-reports/167/generate clientIP="216.147.126.248" requestID="72ce268d-af65-41a0" responseTimeMS=606 responseBytes=1729 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:49 AM [express] POST /api/tax-reports/167/generate 201 in 596ms :: {"id":6,"organizationId":167…
+2:20:49 AM [express] GET /api/tax-reports/167/2025 304 in 117ms
+[GET]
+complybook.net/assets/index-DFBuE2y_.css clientIP="216.147.126.248" requestID="d51f1701-a3a0-4b4c" responseTimeMS=65 responseBytes=17431 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/tax-reporting clientIP="216.147.126.248" requestID="3c10ceb9-2ac3-4694" responseTimeMS=61 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="5a7691c8-5955-4a5f" responseTimeMS=137 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="fc8ca6e4-655d-47a3" responseTimeMS=177 responseBytes=2250 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DX86Ze2z.js clientIP="216.147.126.248" requestID="f6e1e574-f5fd-48a7" responseTimeMS=263 responseBytes=926559 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:57 AM [express] GET /api/auth/user 200 in 175ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="b32ecac4-98ce-4c9e" responseTimeMS=116 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="e6bbff16-5423-49c4" responseTimeMS=68 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="ace0e920-88ce-4172" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="2d636b56-bfa2-45ea" responseTimeMS=297 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="7eca6dac-7b11-410f" responseTimeMS=481 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-form-1099s/167/2026 clientIP="216.147.126.248" requestID="9fb4eebd-0d06-4d96" responseTimeMS=233 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="73f4630c-2ba7-4d32" responseTimeMS=118 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:58 AM [express] GET /api/organizations 304 in 297ms :: [{"id":168,"name":"C Cubed Training","ty…
+2:20:58 AM [express] GET /api/security/mfa/status 304 in 480ms :: {"mfaEnabled":true,"mfaRequired":t…
+2:20:58 AM [express] GET /api/tax-form-1099s/167/2026 304 in 232ms :: []
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="69eab3cf-6936-4a08" responseTimeMS=598 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/167 clientIP="216.147.126.248" requestID="f7dd0185-bb2c-42b4" responseTimeMS=297 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-reports/167/2026 clientIP="216.147.126.248" requestID="419b8fd4-2b08-46c5" responseTimeMS=468 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:20:59 AM [express] GET /api/categories/167 304 in 295ms :: [{"id":269,"organizationId":167,"name":…
+2:20:59 AM [express] GET /api/notifications/167/unread-count 304 in 597ms :: {"count":"0"}
+2:20:59 AM [express] GET /api/tax-reports/167/2026 304 in 467ms
+Menu
+[POST]
+complybook.net/api/tax-reports/167/generate clientIP="216.147.126.248" requestID="ac329f7c-d25b-480c" responseTimeMS=549 responseBytes=1607 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:21:07 AM [express] POST /api/tax-reports/167/generate 201 in 545ms :: {"id":7,"organizationId":167…
+[GET]
+complybook.net/api/tax-reports/167/2026 clientIP="216.147.126.248" requestID="e01b4f30-5c76-43b1" responseTimeMS=121 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:21:08 AM [express] GET /api/tax-reports/167/2026 304 in 117ms
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="dff865bb-ccf2-4cc5" responseTimeMS=768 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:22:00 AM [express] GET /api/notifications/167/unread-count 304 in 766ms :: {"count":"0"}
+[POST]
+complybook.net/api/tax-form-1099s/167 clientIP="216.147.126.248" requestID="b1a4f33e-4196-41c2" responseTimeMS=780 responseBytes=1541 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-form-1099s/167/2026 clientIP="216.147.126.248" requestID="2b1171bf-c327-4a7b" responseTimeMS=235 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+2:22:14 AM [express] POST /api/tax-form-1099s/167 201 in 776ms :: {"id":4,"organizationId":167,"taxY…
+2:22:14 AM [express] GET /api/tax-form-1099s/167/2026 304 in 233ms :: []
