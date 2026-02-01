@@ -522,22 +522,29 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 // IRS Business Tax Deduction Definitions for AI reference
+// Note: IRS Publication 535 was last fully revised in 2022. Current guidance is now distributed across
+// Pub 334 (Small Business), Pub 463 (Travel/Gifts/Car), Pub 587 (Home Office), and IRS.gov resources.
 const IRS_TAX_DEDUCTION_DEFINITIONS = `
-IRS Business Tax Deduction Categories (based on IRS Publication 535 - Business Expenses):
+IRS Business Tax Deduction Categories (based on IRS Publications as of 2024):
 
-1. FULLY DEDUCTIBLE BUSINESS EXPENSES:
+REFERENCE PUBLICATIONS:
+- IRS Publication 535 (Business Expenses) - Last full revision 2022, foundational rules
+- IRS Publication 334 (Tax Guide for Small Business) - Current small business guidance
+- IRS Publication 463 (Travel, Gift, and Car Expenses) - Travel, meals, vehicle deductions
+- IRS Publication 587 (Business Use of Your Home) - Home office deduction rules
+
+1. FULLY DEDUCTIBLE BUSINESS EXPENSES (Pub 535, Pub 334):
    - Advertising and marketing costs
    - Bank fees and charges
    - Business insurance premiums
    - Business licenses and permits
-   - Client/customer gifts (up to $25 per recipient per year)
+   - Client/customer gifts (up to $25 per recipient per year - Pub 463)
    - Continuing education and professional development
    - Contract labor and subcontractor payments
    - Depreciation on business assets
    - Employee wages and salaries
    - Equipment rental and leases
    - Health insurance premiums (self-employed)
-   - Home office expenses (if exclusive business use)
    - Interest on business loans
    - Internet and phone service (business portion)
    - Legal and professional fees
@@ -550,18 +557,27 @@ IRS Business Tax Deduction Categories (based on IRS Publication 535 - Business E
    - Research and development costs
    - Retirement plan contributions
    - Software and technology subscriptions
-   - Travel expenses (airfare, lodging, transportation)
    - Utilities for business premises
-   - Vehicle expenses (business use portion)
    - Website hosting and domain costs
 
-2. PARTIALLY DEDUCTIBLE EXPENSES:
-   - Meals with clients/customers (50% deductible)
-   - Business entertainment (generally not deductible after 2017 tax reform)
-   - Personal vehicle used for business (mileage rate or actual expenses for business portion only)
-   - Home utilities (only business-use percentage)
+2. TRAVEL, VEHICLE & MEAL EXPENSES (Pub 463):
+   - Travel expenses (airfare, lodging, transportation) - Fully deductible if business purpose
+   - Vehicle expenses (business use portion) - Standard mileage rate or actual expenses
+   - Meals with clients/customers - 50% deductible (was 100% temporarily 2021-2022)
+   - Per diem rates for travel - Based on GSA rates for lodging and M&IE
 
-3. NON-DEDUCTIBLE EXPENSES:
+3. HOME OFFICE EXPENSES (Pub 587):
+   - Home office deduction - Regular and exclusive business use required
+   - Simplified method: $5 per square foot, max 300 sq ft ($1,500 max)
+   - Regular method: Percentage of home expenses (utilities, insurance, repairs, depreciation)
+   - Home utilities - Only business-use percentage deductible
+
+4. PARTIALLY DEDUCTIBLE EXPENSES:
+   - Meals with clients/customers (50% deductible - Pub 463)
+   - Personal vehicle used for business (mileage rate or actual expenses for business portion only)
+   - Cell phone and internet (only business-use percentage)
+
+5. NON-DEDUCTIBLE EXPENSES:
    - Personal expenses unrelated to business
    - Political contributions
    - Penalties and fines
@@ -569,14 +585,15 @@ IRS Business Tax Deduction Categories (based on IRS Publication 535 - Business E
    - Commuting expenses (home to regular workplace)
    - Life insurance premiums for self
    - Club memberships (social/athletic)
-   - Personal entertainment
-   - Capital expenditures (must be depreciated, not deducted)
+   - Entertainment expenses (generally not deductible after 2017 TCJA)
+   - Capital expenditures (must be depreciated, not deducted in full)
 
-4. SPECIAL CONSIDERATIONS:
+6. SPECIAL CONSIDERATIONS:
    - Mixed-use expenses: Only the business portion is deductible
-   - Startup costs: Up to $5,000 can be deducted in first year, remainder amortized
-   - Bad debts: Can be deducted when deemed uncollectible
+   - Startup costs: Up to $5,000 can be deducted in first year, remainder amortized over 180 months
+   - Bad debts: Can be deducted when deemed uncollectible (specific identification method)
    - Charitable contributions: Deductible for C-corps; pass-through for other entities
+   - Section 179 deduction: Immediate expensing of qualifying business assets (limits apply)
 `;
 
 export interface TaxDeductibilitySuggestion {
@@ -694,7 +711,7 @@ For each category, determine:
 4. Brief reasoning
 5. If partially deductible, what percentage (e.g., 50 for meals)
 
-IMPORTANT: Base your analysis strictly on IRS Publication 535 and standard business deduction rules.
+IMPORTANT: Base your analysis on current IRS publications (Pub 535, Pub 334, Pub 463, Pub 587) and standard business deduction rules. Reference the specific publication when applicable.
 
 Respond with valid JSON in this exact format:
 {

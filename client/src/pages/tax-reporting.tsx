@@ -13,13 +13,40 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { FileText, Plus, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { Organization, TaxCategory, TaxReport, TaxForm1099, InsertTaxCategory, InsertTaxForm1099, Category } from "@shared/schema";
 import { insertTaxCategorySchema, insertTaxForm1099Schema } from "@shared/schema";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+const currentYear = new Date().getFullYear();
+
+function TaxDisclaimer({ variant = "default" }: { variant?: "default" | "ai" }) {
+  return (
+    <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+      <Info className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+      <AlertTitle className="text-amber-800 dark:text-amber-400 text-sm font-medium">Important Tax Disclaimer</AlertTitle>
+      <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+        {variant === "ai" ? (
+          <>
+            This AI analysis is for informational purposes only and does not constitute tax advice. 
+            Based on IRS Publications 334, 463, 535 (last revised 2022), and 587 as of {currentYear}. 
+            Tax laws change frequently. Please consult a qualified tax professional before making tax decisions.
+          </>
+        ) : (
+          <>
+            This information is for general guidance only and does not constitute tax advice. 
+            Based on IRS guidelines as of {currentYear}. Please consult a qualified tax professional 
+            for advice specific to your situation.
+          </>
+        )}
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 interface TaxDeductibilitySuggestion {
   categoryId: number;
@@ -303,6 +330,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4">
+          <TaxDisclaimer />
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -427,6 +455,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
+          <TaxDisclaimer />
           <Card>
             <CardHeader>
               <CardTitle>Year-End Tax Reports</CardTitle>
@@ -500,6 +529,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
 
         {!isNonProfit && (
           <TabsContent value="1099s" className="space-y-4">
+            <TaxDisclaimer />
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -715,6 +745,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
 
         {!isNonProfit && (
           <TabsContent value="ai-analysis" className="space-y-4">
+            <TaxDisclaimer variant="ai" />
             <Card>
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -724,7 +755,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                       AI Tax Deduction Analysis
                     </CardTitle>
                     <CardDescription>
-                      Use AI to analyze your expense categories against IRS business tax deduction guidelines
+                      Use AI to analyze your expense categories against IRS Publications 334, 463, 535, and 587
                     </CardDescription>
                   </div>
                   <Button 
@@ -753,7 +784,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                     <p className="text-lg font-medium mb-2">No analysis run yet</p>
                     <p className="text-sm max-w-md mx-auto">
                       Click "Run AI Analysis" to have AI review your expense categories and suggest 
-                      which should be marked as tax-deductible based on IRS Publication 535 guidelines.
+                      which should be marked as tax-deductible based on current IRS publication guidelines.
                     </p>
                   </div>
                 ) : (
