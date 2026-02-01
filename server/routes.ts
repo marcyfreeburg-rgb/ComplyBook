@@ -6682,6 +6682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
+      const period = req.query.period as string || 'current_month';
+      const year = parseInt(req.query.year as string) || new Date().getFullYear();
       
       // Check user has access to this organization
       const userRole = await storage.getUserRole(userId, organizationId);
@@ -6689,7 +6691,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      const stats = await storage.getDashboardStats(organizationId);
+      // Calculate date range based on period
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date;
+
+      switch (period) {
+        case 'last_month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        case 'last_3_months':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case 'last_6_months':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case 'year':
+          startDate = new Date(year, 0, 1);
+          endDate = new Date(year, 11, 31);
+          break;
+        case 'current_month':
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+      }
+
+      const stats = await storage.getDashboardStats(organizationId, startDate, endDate);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);

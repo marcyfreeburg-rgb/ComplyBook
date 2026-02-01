@@ -532,7 +532,7 @@ export interface IStorage {
   exportCashFlowProjections(organizationId: number, scenarioId?: number, format?: 'csv' | 'json'): Promise<string>;
 
   // Dashboard/Report operations
-  getDashboardStats(organizationId: number): Promise<{
+  getDashboardStats(organizationId: number, startDate?: Date, endDate?: Date): Promise<{
     totalIncome: string;
     totalExpenses: string;
     netIncome: string;
@@ -4107,18 +4107,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard/Report operations
-  async getDashboardStats(organizationId: number): Promise<{
+  async getDashboardStats(organizationId: number, startDate?: Date, endDate?: Date): Promise<{
     totalIncome: string;
     totalExpenses: string;
     netIncome: string;
     transactionCount: number;
     recentTransactions: Transaction[];
   }> {
+    // Default to current month if no dates provided
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const filterStartDate = startDate || new Date(now.getFullYear(), now.getMonth(), 1);
+    const filterEndDate = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // Get income and expenses for current month
+    // Get income and expenses for the specified period
     const [incomeResult] = await db
       .select({
         total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
@@ -4128,8 +4129,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(transactions.organizationId, organizationId),
           eq(transactions.type, 'income'),
-          gte(transactions.date, startOfMonth),
-          lte(transactions.date, endOfMonth)
+          gte(transactions.date, filterStartDate),
+          lte(transactions.date, filterEndDate)
         )
       );
 
@@ -4142,8 +4143,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(transactions.organizationId, organizationId),
           eq(transactions.type, 'expense'),
-          gte(transactions.date, startOfMonth),
-          lte(transactions.date, endOfMonth)
+          gte(transactions.date, filterStartDate),
+          lte(transactions.date, filterEndDate)
         )
       );
 
@@ -4155,8 +4156,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(transactions.organizationId, organizationId),
-          gte(transactions.date, startOfMonth),
-          lte(transactions.date, endOfMonth)
+          gte(transactions.date, filterStartDate),
+          lte(transactions.date, filterEndDate)
         )
       );
 

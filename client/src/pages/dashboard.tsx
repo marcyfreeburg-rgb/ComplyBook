@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -6,13 +6,42 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart, Rocket } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart, Rocket, Calendar } from "lucide-react";
 import { Link } from "wouter";
-import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { useLocation } from "wouter";
 import type { Organization, Transaction, Budget } from "@shared/schema";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+type TimePeriod = 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'year';
+
+const TIME_PERIOD_OPTIONS: { value: TimePeriod; label: string }[] = [
+  { value: 'current_month', label: 'Current Month' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: 'last_3_months', label: 'Last 3 Months' },
+  { value: 'last_6_months', label: 'Last 6 Months' },
+  { value: 'year', label: 'This Year' },
+];
+
+function getTimePeriodLabel(period: TimePeriod, selectedYear: number): string {
+  const now = new Date();
+  switch (period) {
+    case 'current_month':
+      return format(now, 'MMMM yyyy');
+    case 'last_month':
+      return format(subMonths(now, 1), 'MMMM yyyy');
+    case 'last_3_months':
+      return `${format(subMonths(now, 2), 'MMM')} - ${format(now, 'MMM yyyy')}`;
+    case 'last_6_months':
+      return `${format(subMonths(now, 5), 'MMM')} - ${format(now, 'MMM yyyy')}`;
+    case 'year':
+      return `${selectedYear}`;
+    default:
+      return format(now, 'MMMM yyyy');
+  }
+}
 
 interface DashboardProps {
   currentOrganization: Organization;
@@ -29,9 +58,24 @@ interface DashboardStats {
 export default function Dashboard({ currentOrganization }: DashboardProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('current_month');
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  
+  // Generate year options (current year and 4 previous years)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
   
   const { data: stats, isLoading, error } = useQuery<DashboardStats>({
-    queryKey: [`/api/dashboard/${currentOrganization.id}`],
+    queryKey: [`/api/dashboard/${currentOrganization.id}`, timePeriod, selectedYear],
+    queryFn: async () => {
+      const params = new URLSearchParams({ period: timePeriod });
+      if (timePeriod === 'year') {
+        params.set('year', selectedYear.toString());
+      }
+      const response = await fetch(`/api/dashboard/${currentOrganization.id}?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+      return response.json();
+    },
     retry: false,
     staleTime: 30000, // Show cached data for 30 seconds while refetching
   });
@@ -93,7 +137,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
     }
   }, [error, toast]);
 
-  const currentMonth = format(new Date(), 'MMMM yyyy');
+  const periodLabel = getTimePeriodLabel(timePeriod, selectedYear);
 
   if (isLoading) {
     return (
@@ -101,7 +145,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {currentOrganization.name} • {currentMonth}
+            {currentOrganization.name} • {periodLabel}
           </p>
         </div>
 
@@ -152,15 +196,46 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {currentOrganization.name} • {currentMonth}
+            {currentOrganization.name} • {periodLabel}
           </p>
         </div>
-        <Link href="/getting-started">
-          <Button variant="outline" data-testid="button-getting-started">
-            <Rocket className="h-4 w-4 mr-2" />
-            Getting Started Guide
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={timePeriod} onValueChange={(value) => setTimePeriod(value as TimePeriod)}>
+              <SelectTrigger className="w-[160px]" data-testid="select-time-period">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_PERIOD_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value} data-testid={`option-${option.value}`}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {timePeriod === 'year' && (
+              <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                <SelectTrigger className="w-[100px]" data-testid="select-year">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={year.toString()} data-testid={`option-year-${year}`}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <Link href="/getting-started">
+            <Button variant="outline" data-testid="button-getting-started">
+              <Rocket className="h-4 w-4 mr-2" />
+              Getting Started Guide
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Metrics Cards */}
@@ -179,7 +254,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
               ${income.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              This month
+              {periodLabel}
             </p>
           </CardContent>
         </Card>
@@ -198,7 +273,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
               ${expenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              This month
+              {periodLabel}
             </p>
           </CardContent>
         </Card>
@@ -220,7 +295,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
               ${netIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              This month
+              {periodLabel}
             </p>
           </CardContent>
         </Card>
