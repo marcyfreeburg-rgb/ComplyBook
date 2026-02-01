@@ -1,0 +1,57 @@
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook.net + 2 more domains
+==> 
+==> ///////////////////////////////////////////////////////////
+[GET]
+complybook.onrender.com/ clientIP="35.197.97.226" requestID="4ec4aa7f-3351-44b4" responseTimeMS=17 responseBytes=223158 userAgent="Go-http-client/2.0"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="6d638a82-338d-4ec4" responseTimeMS=873 responseBytes=1289 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:08:43 AM [express] GET /api/notifications/167/unread-count 200 in 869ms :: {"count":"0"}
+[GET]
+complybook.net/assets/index-DFBuE2y_.css clientIP="216.147.126.248" requestID="630ce6b9-e0d1-4faa" responseTimeMS=66 responseBytes=17431 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/tax-reporting clientIP="216.147.126.248" requestID="f2c46405-aadd-4748" responseTimeMS=66 responseBytes=1865 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-C8JshMLA.js clientIP="216.147.126.248" requestID="1c3b0a0e-a8e3-4150" responseTimeMS=483 responseBytes=928040 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="83371f81-7d74-4148" responseTimeMS=63 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="371de18a-395c-4f81" responseTimeMS=64 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="8b9f6153-74db-4201" responseTimeMS=5 responseBytes=1766 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="4ac0f05f-a7a7-49d5" responseTimeMS=64 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="9313ac04-b50b-4da4" responseTimeMS=304 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.126.248" requestID="fc59eb8d-201d-4eda" responseTimeMS=119 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="3a2d2f45-c633-4fc5" responseTimeMS=505 responseBytes=2795 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="b01e6aa9-3a2e-4885" responseTimeMS=733 responseBytes=2250 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:08:54 AM [express] GET /api/auth/user 200 in 732ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+Menu
+3:08:54 AM [express] GET /api/security/mfa/status 304 in 302ms :: {"mfaEnabled":true,"mfaRequired":t…
+3:08:54 AM [express] GET /api/organizations 200 in 503ms :: [{"id":168,"name":"C Cubed Training","ty…
+[GET]
+complybook.net/api/tax-form-1099s/167/2026 clientIP="216.147.126.248" requestID="182868b4-fc63-4a95" responseTimeMS=623 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="444e3b8f-26bd-4eaa" responseTimeMS=824 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/167 clientIP="216.147.126.248" requestID="fc541fd9-3512-4bec" responseTimeMS=685 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/tax-reports/167/2026 clientIP="216.147.126.248" requestID="7a0b8fc4-a289-4613" responseTimeMS=250 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:08:55 AM [express] GET /api/tax-reports/167/2026 304 in 249ms :: [{"id":7,"organizationId":167,"ta…
+3:08:55 AM [express] GET /api/tax-form-1099s/167/2026 304 in 621ms :: []
+3:08:55 AM [express] GET /api/categories/167 304 in 684ms :: [{"id":269,"organizationId":167,"name":…
+3:08:55 AM [express] GET /api/notifications/167/unread-count 304 in 820ms :: {"count":"0"}
+[GET]
+complybook.net/api/tax-reports/7/pdf clientIP="216.147.126.248" requestID="29d3726f-348e-4291" responseTimeMS=257 responseBytes=1278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.ico clientIP="216.147.126.248" requestID="16733e05-29db-4e0f" responseTimeMS=63 responseBytes=1865 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:09:03 AM [express] GET /api/tax-reports/7/pdf 200 in 254ms :: []
+[GET]
+complybook.net/sw.js clientIP="216.147.126.248" requestID="0d3f16b6-844d-4260" responseTimeMS=63 respons

@@ -277,8 +277,8 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
 
   const handleViewPdf = (type: 'report' | '1099', id: number) => {
     const endpoint = type === 'report' 
-      ? `/api/tax-reports/${id}/pdf`
-      : `/api/tax-form-1099s/${id}/pdf`;
+      ? `/api/tax-reports/${id}/pdf?inline=true`
+      : `/api/tax-form-1099s/${id}/pdf?inline=true`;
     window.open(endpoint, '_blank');
   };
 

@@ -10116,6 +10116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const reportId = parseInt(req.params.reportId);
+      const inline = req.query.inline === 'true';
 
       const report = await storage.getTaxReport(reportId);
       if (!report) {
@@ -10141,9 +10142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } : undefined
       });
 
+      const filename = `tax-report-${report.taxYear}-${report.formType}.pdf`;
+      const disposition = inline ? 'inline' : 'attachment';
+      
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="tax-report-${report.taxYear}-${report.formType}.pdf"`);
-      res.send(pdfBuffer);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.end(pdfBuffer);
     } catch (error) {
       console.error("Error generating tax report PDF:", error);
       res.status(500).json({ message: "Failed to generate tax report PDF" });
@@ -10229,6 +10235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const formId = parseInt(req.params.formId);
+      const inline = req.query.inline === 'true';
 
       const form = await storage.getTaxForm1099(formId);
       if (!form) {
@@ -10256,9 +10263,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
                            form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+      const filename = `${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf`;
+      const disposition = inline ? 'inline' : 'attachment';
+      
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf"`);
-      res.send(pdfBuffer);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.end(pdfBuffer);
     } catch (error) {
       console.error("Error generating 1099 form PDF:", error);
       res.status(500).json({ message: "Failed to generate 1099 form PDF" });
