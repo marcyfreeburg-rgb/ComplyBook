@@ -1678,6 +1678,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                         >
                           <Checkbox
                             checked={selectedDonorIds.includes(recipient.id)}
+                            onClick={(e) => e.stopPropagation()}
                             onCheckedChange={(checked) => {
                               setSelectedDonorIds(prev => 
                                 checked 
