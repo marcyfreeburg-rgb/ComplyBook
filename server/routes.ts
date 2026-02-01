@@ -9998,6 +9998,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tax Report PDF generation - MUST be defined before /:organizationId/:year to avoid route collision
+  app.get('/api/tax-reports/:reportId/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.reportId);
+      const inline = req.query.inline === 'true';
+
+      console.log(`[PDF] Starting tax report PDF generation for report ${reportId}, inline=${inline}`);
+
+      const report = await storage.getTaxReport(reportId);
+      if (!report) {
+        console.log(`[PDF] Tax report ${reportId} not found`);
+        return res.status(404).json({ message: "Tax report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, report.organizationId);
+      if (!userRole) {
+        console.log(`[PDF] User ${userId} denied access to report ${reportId}`);
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(report.organizationId);
+      if (!organization) {
+        console.log(`[PDF] Organization ${report.organizationId} not found`);
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      console.log(`[PDF] Generating PDF for report ${reportId}, org: ${organization.name}`);
+      
+      const pdfBuffer = await generateTaxReportPdf({
+        report,
+        organization,
+        branding: organization.brandingSettings ? {
+          primaryColor: (organization.brandingSettings as any).primaryColor,
+          logoUrl: organization.logoUrl || undefined
+        } : undefined
+      });
+
+      console.log(`[PDF] Generated PDF buffer size: ${pdfBuffer.length} bytes`);
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        console.error(`[PDF] Empty PDF buffer generated for report ${reportId}`);
+        return res.status(500).json({ message: "PDF generation produced empty result" });
+      }
+
+      const filename = `tax-report-${report.taxYear}-${report.formType}.pdf`;
+      const disposition = inline ? 'inline' : 'attachment';
+      
+      // Clear any previously set headers and send PDF
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Length': pdfBuffer.length,
+        'Content-Disposition': `${disposition}; filename="${filename}"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      console.log(`[PDF] Sending PDF response with ${pdfBuffer.length} bytes`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("[PDF] Error generating tax report PDF:", error);
+      res.status(500).json({ message: "Failed to generate tax report PDF" });
+    }
+  });
+
   // Route with year as path parameter (used by frontend)
   app.get('/api/tax-reports/:organizationId/:year', isAuthenticated, async (req: any, res) => {
     try {
@@ -10042,6 +10108,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating tax report:", error);
       res.status(500).json({ message: "Failed to generate tax report" });
+    }
+  });
+
+  // 1099 Form PDF generation - MUST be defined before /:organizationId/:year to avoid route collision
+  app.get('/api/tax-form-1099s/:formId/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+      const inline = req.query.inline === 'true';
+
+      console.log(`[PDF] Starting 1099 form PDF generation for form ${formId}, inline=${inline}`);
+
+      const form = await storage.getTaxForm1099(formId);
+      if (!form) {
+        console.log(`[PDF] 1099 form ${formId} not found`);
+        return res.status(404).json({ message: "1099 form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        console.log(`[PDF] User ${userId} denied access to form ${formId}`);
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(form.organizationId);
+      if (!organization) {
+        console.log(`[PDF] Organization ${form.organizationId} not found`);
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      console.log(`[PDF] Generating PDF for 1099 form ${formId}, recipient: ${form.recipientName}`);
+
+      const pdfBuffer = await generateTaxForm1099Pdf({
+        form,
+        organization,
+        branding: organization.brandingSettings ? {
+          primaryColor: (organization.brandingSettings as any).primaryColor,
+          logoUrl: organization.logoUrl || undefined
+        } : undefined
+      });
+
+      console.log(`[PDF] Generated 1099 PDF buffer size: ${pdfBuffer.length} bytes`);
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        console.error(`[PDF] Empty PDF buffer generated for 1099 form ${formId}`);
+        return res.status(500).json({ message: "PDF generation produced empty result" });
+      }
+
+      const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
+                           form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+      const filename = `${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf`;
+      const disposition = inline ? 'inline' : 'attachment';
+      
+      // Clear any previously set headers and send PDF
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Length': pdfBuffer.length,
+        'Content-Disposition': `${disposition}; filename="${filename}"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      console.log(`[PDF] Sending 1099 PDF response with ${pdfBuffer.length} bytes`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("[PDF] Error generating 1099 form PDF:", error);
+      res.status(500).json({ message: "Failed to generate 1099 form PDF" });
     }
   });
 
@@ -10108,72 +10242,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating 1099 form:", error);
       res.status(400).json({ message: "Failed to create 1099 form" });
-    }
-  });
-
-  // Tax Report PDF generation
-  app.get('/api/tax-reports/:reportId/pdf', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const reportId = parseInt(req.params.reportId);
-      const inline = req.query.inline === 'true';
-
-      console.log(`[PDF] Starting tax report PDF generation for report ${reportId}, inline=${inline}`);
-
-      const report = await storage.getTaxReport(reportId);
-      if (!report) {
-        console.log(`[PDF] Tax report ${reportId} not found`);
-        return res.status(404).json({ message: "Tax report not found" });
-      }
-
-      const userRole = await storage.getUserRole(userId, report.organizationId);
-      if (!userRole) {
-        console.log(`[PDF] User ${userId} denied access to report ${reportId}`);
-        return res.status(403).json({ message: "Access denied to this organization" });
-      }
-
-      const organization = await storage.getOrganization(report.organizationId);
-      if (!organization) {
-        console.log(`[PDF] Organization ${report.organizationId} not found`);
-        return res.status(404).json({ message: "Organization not found" });
-      }
-
-      console.log(`[PDF] Generating PDF for report ${reportId}, org: ${organization.name}`);
-      
-      const pdfBuffer = await generateTaxReportPdf({
-        report,
-        organization,
-        branding: organization.brandingSettings ? {
-          primaryColor: (organization.brandingSettings as any).primaryColor,
-          logoUrl: organization.logoUrl || undefined
-        } : undefined
-      });
-
-      console.log(`[PDF] Generated PDF buffer size: ${pdfBuffer.length} bytes`);
-
-      if (!pdfBuffer || pdfBuffer.length === 0) {
-        console.error(`[PDF] Empty PDF buffer generated for report ${reportId}`);
-        return res.status(500).json({ message: "PDF generation produced empty result" });
-      }
-
-      const filename = `tax-report-${report.taxYear}-${report.formType}.pdf`;
-      const disposition = inline ? 'inline' : 'attachment';
-      
-      // Clear any previously set headers and send PDF
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Length': pdfBuffer.length,
-        'Content-Disposition': `${disposition}; filename="${filename}"`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-      
-      console.log(`[PDF] Sending PDF response with ${pdfBuffer.length} bytes`);
-      res.send(pdfBuffer);
-    } catch (error) {
-      console.error("[PDF] Error generating tax report PDF:", error);
-      res.status(500).json({ message: "Failed to generate tax report PDF" });
     }
   });
 
@@ -10248,74 +10316,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error emailing tax report:", error);
       res.status(500).json({ message: "Failed to email tax report" });
-    }
-  });
-
-  // 1099 Form PDF generation
-  app.get('/api/tax-form-1099s/:formId/pdf', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const formId = parseInt(req.params.formId);
-      const inline = req.query.inline === 'true';
-
-      console.log(`[PDF] Starting 1099 form PDF generation for form ${formId}, inline=${inline}`);
-
-      const form = await storage.getTaxForm1099(formId);
-      if (!form) {
-        console.log(`[PDF] 1099 form ${formId} not found`);
-        return res.status(404).json({ message: "1099 form not found" });
-      }
-
-      const userRole = await storage.getUserRole(userId, form.organizationId);
-      if (!userRole) {
-        console.log(`[PDF] User ${userId} denied access to form ${formId}`);
-        return res.status(403).json({ message: "Access denied to this organization" });
-      }
-
-      const organization = await storage.getOrganization(form.organizationId);
-      if (!organization) {
-        console.log(`[PDF] Organization ${form.organizationId} not found`);
-        return res.status(404).json({ message: "Organization not found" });
-      }
-
-      console.log(`[PDF] Generating PDF for 1099 form ${formId}, recipient: ${form.recipientName}`);
-
-      const pdfBuffer = await generateTaxForm1099Pdf({
-        form,
-        organization,
-        branding: organization.brandingSettings ? {
-          primaryColor: (organization.brandingSettings as any).primaryColor,
-          logoUrl: organization.logoUrl || undefined
-        } : undefined
-      });
-
-      console.log(`[PDF] Generated 1099 PDF buffer size: ${pdfBuffer.length} bytes`);
-
-      if (!pdfBuffer || pdfBuffer.length === 0) {
-        console.error(`[PDF] Empty PDF buffer generated for 1099 form ${formId}`);
-        return res.status(500).json({ message: "PDF generation produced empty result" });
-      }
-
-      const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
-                           form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
-      const filename = `${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf`;
-      const disposition = inline ? 'inline' : 'attachment';
-      
-      // Clear any previously set headers and send PDF
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Length': pdfBuffer.length,
-        'Content-Disposition': `${disposition}; filename="${filename}"`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-      
-      console.log(`[PDF] Sending 1099 PDF response with ${pdfBuffer.length} bytes`);
-      res.send(pdfBuffer);
-    } catch (error) {
-      console.error("[PDF] Error generating 1099 form PDF:", error);
-      res.status(500).json({ message: "Failed to generate 1099 form PDF" });
     }
   });
 
