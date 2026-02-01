@@ -16331,16 +16331,15 @@ Keep the response approximately 100-150 words.`;
       await storage.createAuditLog({
         userId,
         organizationId: form.organizationId,
-        action: 'form.invitations_sent',
-        resourceType: 'form',
-        resourceId: formId.toString(),
-        details: {
+        action: 'create',
+        entityType: 'form_invitation',
+        entityId: formId.toString(),
+        changes: {
           formTitle: form.title,
           recipientCount: results.sent,
           failedCount: results.failed,
         },
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'] || null,
+        ipAddress: req.ip || 'unknown',
       });
 
       res.json({
