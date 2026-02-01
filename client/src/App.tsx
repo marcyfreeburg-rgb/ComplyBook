@@ -520,6 +520,12 @@ function AuthenticatedApp() {
               <Route path="/pricing" component={Pricing} />
               <Route path="/checkout/success" component={Pricing} />
               <Route path="/donor-portal" component={DonorPortal} />
+              <Route path="/s/:publicId">
+                <PublicForm formType="survey" />
+              </Route>
+              <Route path="/f/:publicId">
+                <PublicForm formType="form" />
+              </Route>
               <Route component={NotFound} />
             </Switch>
           </main>
@@ -587,6 +593,12 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
         <Route path="/donor-portal" component={DonorPortal} />
+        <Route path="/s/:publicId">
+          <PublicForm formType="survey" />
+        </Route>
+        <Route path="/f/:publicId">
+          <PublicForm formType="form" />
+        </Route>
         <Route component={Landing} />
       </Switch>
     );
