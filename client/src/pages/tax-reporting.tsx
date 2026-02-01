@@ -13,10 +13,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Download, CheckCircle2, XCircle } from "lucide-react";
-import type { Organization, TaxCategory, TaxReport, TaxForm1099, InsertTaxCategory, InsertTaxForm1099 } from "@shared/schema";
+import { FileText, Plus, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import type { Organization, TaxCategory, TaxReport, TaxForm1099, InsertTaxCategory, InsertTaxForm1099, Category } from "@shared/schema";
 import { insertTaxCategorySchema, insertTaxForm1099Schema } from "@shared/schema";
 import { format } from "date-fns";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+interface TaxDeductibilitySuggestion {
+  categoryId: number;
+  categoryName: string;
+  currentlyDeductible: boolean;
+  suggestedDeductible: boolean;
+  confidence: number;
+  irsCategory: string;
+  reasoning: string;
+  deductionPercentage?: number;
+  irsReference?: string;
+}
+
+interface TaxAnalysisResult {
+  suggestions: TaxDeductibilitySuggestion[];
+  summary: {
+    totalCategories: number;
+    correctlyClassified: number;
+    suggestedChanges: number;
+    fullyDeductible: number;
+    partiallyDeductible: number;
+    nonDeductible: number;
+  };
+  analysisDate: string;
+}
 
 interface TaxReportingProps {
   currentOrganization: Organization;
@@ -27,6 +55,8 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [is1099DialogOpen, setIs1099DialogOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<TaxAnalysisResult | null>(null);
+  const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
 
   const categoryForm = useForm<InsertTaxCategory>({
     resolver: zodResolver(insertTaxCategorySchema.omit({ organizationId: true })),
@@ -106,6 +136,75 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     },
     onError: () => {
       toast({ title: "Failed to generate tax report", variant: "destructive" });
+    },
+  });
+
+  const runAiAnalysisMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/ai-tax-analysis/${currentOrganization.id}`, {});
+      return response.json();
+    },
+    onSuccess: (data: TaxAnalysisResult) => {
+      setAiAnalysisResult(data);
+      setAppliedSuggestions(new Set());
+      toast({ 
+        title: "AI Analysis Complete", 
+        description: `Analyzed ${data.summary.totalCategories} categories. ${data.summary.suggestedChanges} changes recommended.` 
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "AI Analysis Failed", 
+        description: error.message || "Could not complete the analysis. Make sure AI integration is configured.",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const applySuggestionMutation = useMutation({
+    mutationFn: async ({ categoryId, taxDeductible }: { categoryId: number; taxDeductible: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/categories/${categoryId}/tax-deductible`, { taxDeductible });
+      return response.json();
+    },
+    onSuccess: (_, { categoryId }) => {
+      setAppliedSuggestions(prev => new Set([...prev, categoryId]));
+      queryClient.invalidateQueries({ queryKey: ['/api/categories', currentOrganization.id] });
+      toast({ title: "Category updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update category", variant: "destructive" });
+    },
+  });
+
+  const applyAllSuggestionsMutation = useMutation({
+    mutationFn: async (suggestions: TaxDeductibilitySuggestion[]) => {
+      const changesToApply = suggestions.filter(s => 
+        s.currentlyDeductible !== s.suggestedDeductible && !appliedSuggestions.has(s.categoryId)
+      );
+      
+      for (const suggestion of changesToApply) {
+        await apiRequest('PATCH', `/api/categories/${suggestion.categoryId}/tax-deductible`, { 
+          taxDeductible: suggestion.suggestedDeductible 
+        });
+      }
+      
+      return changesToApply.length;
+    },
+    onSuccess: (count) => {
+      if (aiAnalysisResult) {
+        const allChanged = aiAnalysisResult.suggestions
+          .filter(s => s.currentlyDeductible !== s.suggestedDeductible)
+          .map(s => s.categoryId);
+        setAppliedSuggestions(new Set(allChanged));
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/categories', currentOrganization.id] });
+      toast({ 
+        title: "All suggestions applied", 
+        description: `Updated ${count} categories based on IRS guidelines.` 
+      });
+    },
+    onError: () => {
+      toast({ title: "Failed to apply suggestions", variant: "destructive" });
     },
   });
 
@@ -200,6 +299,7 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
           <TabsTrigger value="categories" data-testid="tab-categories">Tax Categories</TabsTrigger>
           <TabsTrigger value="reports" data-testid="tab-reports">Year-End Reports</TabsTrigger>
           {!isNonProfit && <TabsTrigger value="1099s" data-testid="tab-1099s">1099 Forms</TabsTrigger>}
+          {!isNonProfit && <TabsTrigger value="ai-analysis" data-testid="tab-ai-analysis">AI Tax Analysis</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="categories" className="space-y-4">
@@ -608,6 +708,226 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                     <div className="text-sm text-muted-foreground">No 1099 forms yet. Add one to get started.</div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {!isNonProfit && (
+          <TabsContent value="ai-analysis" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      AI Tax Deduction Analysis
+                    </CardTitle>
+                    <CardDescription>
+                      Use AI to analyze your expense categories against IRS business tax deduction guidelines
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    onClick={() => runAiAnalysisMutation.mutate()} 
+                    disabled={runAiAnalysisMutation.isPending}
+                    data-testid="button-run-ai-analysis"
+                  >
+                    {runAiAnalysisMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Run AI Analysis
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!aiAnalysisResult ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium mb-2">No analysis run yet</p>
+                    <p className="text-sm max-w-md mx-auto">
+                      Click "Run AI Analysis" to have AI review your expense categories and suggest 
+                      which should be marked as tax-deductible based on IRS Publication 535 guidelines.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-2xl font-bold">{aiAnalysisResult.summary.totalCategories}</div>
+                          <p className="text-sm text-muted-foreground">Categories Analyzed</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-2xl font-bold text-green-600">{aiAnalysisResult.summary.fullyDeductible}</div>
+                          <p className="text-sm text-muted-foreground">Fully Deductible</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-2xl font-bold text-yellow-600">{aiAnalysisResult.summary.partiallyDeductible}</div>
+                          <p className="text-sm text-muted-foreground">Partially Deductible</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-2xl font-bold text-orange-600">{aiAnalysisResult.summary.suggestedChanges}</div>
+                          <p className="text-sm text-muted-foreground">Suggested Changes</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {aiAnalysisResult.summary.suggestedChanges > 0 && (
+                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-orange-500" />
+                          <span className="font-medium">
+                            {aiAnalysisResult.summary.suggestedChanges} categories may need their tax deductibility updated
+                          </span>
+                        </div>
+                        <Button
+                          variant="default"
+                          onClick={() => applyAllSuggestionsMutation.mutate(aiAnalysisResult.suggestions)}
+                          disabled={applyAllSuggestionsMutation.isPending}
+                          data-testid="button-apply-all-suggestions"
+                        >
+                          {applyAllSuggestionsMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Applying...
+                            </>
+                          ) : (
+                            "Apply All Suggestions"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="text-sm text-muted-foreground">
+                      Analysis date: {format(new Date(aiAnalysisResult.analysisDate), "PPP 'at' p")}
+                    </div>
+
+                    <ScrollArea className="h-[400px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Current Status</TableHead>
+                            <TableHead>AI Suggestion</TableHead>
+                            <TableHead>IRS Category</TableHead>
+                            <TableHead>Confidence</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {aiAnalysisResult.suggestions.map((suggestion) => {
+                            const needsChange = suggestion.currentlyDeductible !== suggestion.suggestedDeductible;
+                            const isApplied = appliedSuggestions.has(suggestion.categoryId);
+                            
+                            return (
+                              <TableRow 
+                                key={suggestion.categoryId}
+                                className={needsChange && !isApplied ? "bg-orange-50 dark:bg-orange-950/20" : ""}
+                                data-testid={`row-category-${suggestion.categoryId}`}
+                              >
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{suggestion.categoryName}</div>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <p className="text-xs text-muted-foreground truncate max-w-[200px] cursor-help">
+                                          {suggestion.reasoning}
+                                        </p>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-[300px]">
+                                        <p>{suggestion.reasoning}</p>
+                                        {suggestion.irsReference && (
+                                          <p className="text-xs mt-1 text-muted-foreground">
+                                            Reference: {suggestion.irsReference}
+                                          </p>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={suggestion.currentlyDeductible ? "default" : "secondary"}>
+                                    {suggestion.currentlyDeductible ? "Deductible" : "Non-Deductible"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {needsChange && <ArrowRight className="h-4 w-4 text-orange-500" />}
+                                    <Badge 
+                                      variant={suggestion.suggestedDeductible ? "default" : "secondary"}
+                                      className={needsChange ? "ring-2 ring-orange-300" : ""}
+                                    >
+                                      {suggestion.suggestedDeductible ? "Deductible" : "Non-Deductible"}
+                                      {suggestion.deductionPercentage && suggestion.deductionPercentage < 100 && (
+                                        <span className="ml-1">({suggestion.deductionPercentage}%)</span>
+                                      )}
+                                    </Badge>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm">{suggestion.irsCategory}</span>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full rounded-full ${
+                                          suggestion.confidence >= 80 ? 'bg-green-500' :
+                                          suggestion.confidence >= 60 ? 'bg-yellow-500' : 'bg-orange-500'
+                                        }`}
+                                        style={{ width: `${suggestion.confidence}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">{suggestion.confidence}%</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {needsChange && !isApplied ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => applySuggestionMutation.mutate({
+                                        categoryId: suggestion.categoryId,
+                                        taxDeductible: suggestion.suggestedDeductible
+                                      })}
+                                      disabled={applySuggestionMutation.isPending}
+                                      data-testid={`button-apply-${suggestion.categoryId}`}
+                                    >
+                                      Apply
+                                    </Button>
+                                  ) : isApplied ? (
+                                    <Badge variant="outline" className="text-green-600">
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      Applied
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-muted-foreground">
+                                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      Correct
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

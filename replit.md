@@ -180,6 +180,7 @@ This flow ensures:
 
 ## Recent Changes
 
+- **AI Tax Deduction Analysis**: For-profit organizations can now use AI to analyze expense categories against IRS Publication 535 business tax deduction guidelines. The feature suggests which categories should be marked as tax-deductible, showing confidence scores and IRS category matches, with ability to apply suggestions individually or in bulk.
 - **Automated Invoice Payment Surveys**: Surveys marked as "Invoice Payment Survey" are automatically sent to clients when an invoice is marked as paid. Supports both nonprofit (donors) and for-profit (clients) organizations in email invitations.
 - **Bill Payment Scheduling**: Added ability to schedule future payments directly from Bills page
 - **Aplos Import Support**: Added nonprofit-specific import for donors, funds, and transactions from Aplos

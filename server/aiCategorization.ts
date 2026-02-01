@@ -520,3 +520,229 @@ Respond ONLY with valid JSON in this exact format:
     return null;
   }
 }
+
+// IRS Business Tax Deduction Definitions for AI reference
+const IRS_TAX_DEDUCTION_DEFINITIONS = `
+IRS Business Tax Deduction Categories (based on IRS Publication 535 - Business Expenses):
+
+1. FULLY DEDUCTIBLE BUSINESS EXPENSES:
+   - Advertising and marketing costs
+   - Bank fees and charges
+   - Business insurance premiums
+   - Business licenses and permits
+   - Client/customer gifts (up to $25 per recipient per year)
+   - Continuing education and professional development
+   - Contract labor and subcontractor payments
+   - Depreciation on business assets
+   - Employee wages and salaries
+   - Equipment rental and leases
+   - Health insurance premiums (self-employed)
+   - Home office expenses (if exclusive business use)
+   - Interest on business loans
+   - Internet and phone service (business portion)
+   - Legal and professional fees
+   - Maintenance and repairs
+   - Office supplies and materials
+   - Payroll taxes (employer portion)
+   - Postage and shipping
+   - Professional memberships and subscriptions
+   - Rent for business premises
+   - Research and development costs
+   - Retirement plan contributions
+   - Software and technology subscriptions
+   - Travel expenses (airfare, lodging, transportation)
+   - Utilities for business premises
+   - Vehicle expenses (business use portion)
+   - Website hosting and domain costs
+
+2. PARTIALLY DEDUCTIBLE EXPENSES:
+   - Meals with clients/customers (50% deductible)
+   - Business entertainment (generally not deductible after 2017 tax reform)
+   - Personal vehicle used for business (mileage rate or actual expenses for business portion only)
+   - Home utilities (only business-use percentage)
+
+3. NON-DEDUCTIBLE EXPENSES:
+   - Personal expenses unrelated to business
+   - Political contributions
+   - Penalties and fines
+   - Personal clothing (unless uniforms/protective gear)
+   - Commuting expenses (home to regular workplace)
+   - Life insurance premiums for self
+   - Club memberships (social/athletic)
+   - Personal entertainment
+   - Capital expenditures (must be depreciated, not deducted)
+
+4. SPECIAL CONSIDERATIONS:
+   - Mixed-use expenses: Only the business portion is deductible
+   - Startup costs: Up to $5,000 can be deducted in first year, remainder amortized
+   - Bad debts: Can be deducted when deemed uncollectible
+   - Charitable contributions: Deductible for C-corps; pass-through for other entities
+`;
+
+export interface TaxDeductibilitySuggestion {
+  categoryId: number;
+  categoryName: string;
+  currentlyDeductible: boolean;
+  suggestedDeductible: boolean;
+  confidence: number;
+  irsCategory: string;
+  reasoning: string;
+  deductionPercentage?: number; // For partially deductible items
+  irsReference?: string;
+}
+
+export interface TaxAnalysisResult {
+  suggestions: TaxDeductibilitySuggestion[];
+  summary: {
+    totalCategories: number;
+    correctlyClassified: number;
+    suggestedChanges: number;
+    fullyDeductible: number;
+    partiallyDeductible: number;
+    nonDeductible: number;
+  };
+  analysisDate: string;
+}
+
+export async function analyzeCategoriesToTaxDeductibility(
+  organizationId: number
+): Promise<TaxAnalysisResult | null> {
+  // Check if AI is available
+  if (!openai) {
+    console.log('[AI Tax Analysis] AI not available - no API key configured');
+    return null;
+  }
+
+  try {
+    // Get all expense categories for this organization
+    const allCategories = await storage.getCategories(organizationId);
+    const expenseCategories = allCategories.filter(cat => cat.type === 'expense');
+
+    if (expenseCategories.length === 0) {
+      console.log(`[AI Tax Analysis] No expense categories found for organization ${organizationId}`);
+      return {
+        suggestions: [],
+        summary: {
+          totalCategories: 0,
+          correctlyClassified: 0,
+          suggestedChanges: 0,
+          fullyDeductible: 0,
+          partiallyDeductible: 0,
+          nonDeductible: 0
+        },
+        analysisDate: new Date().toISOString()
+      };
+    }
+
+    // Build the category list for analysis
+    const categoryList = expenseCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      description: cat.description || '',
+      currentlyTaxDeductible: cat.taxDeductible
+    }));
+
+    const prompt = `You are a tax expert specializing in IRS business tax deductions. Analyze each expense category and determine if it should be marked as tax-deductible based on IRS rules.
+
+${IRS_TAX_DEDUCTION_DEFINITIONS}
+
+Expense Categories to Analyze:
+${JSON.stringify(categoryList, null, 2)}
+
+For each category, determine:
+1. Whether it should be tax-deductible based on IRS definitions
+2. Your confidence level (0-100)
+3. Which IRS category it matches
+4. Brief reasoning
+5. If partially deductible, what percentage (e.g., 50 for meals)
+
+IMPORTANT: Base your analysis strictly on IRS Publication 535 and standard business deduction rules.
+
+Respond with valid JSON in this exact format:
+{
+  "suggestions": [
+    {
+      "categoryId": <number>,
+      "categoryName": "<string>",
+      "currentlyDeductible": <boolean>,
+      "suggestedDeductible": <boolean>,
+      "confidence": <number 0-100>,
+      "irsCategory": "<IRS category name>",
+      "reasoning": "<brief explanation>",
+      "deductionPercentage": <optional number for partial deductions>,
+      "irsReference": "<optional IRS publication reference>"
+    }
+  ]
+}`;
+
+    // Use appropriate model based on environment
+    const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
+    const completion = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { 
+          role: "system", 
+          content: "You are an IRS tax deduction expert. Always respond with valid JSON. Be accurate and conservative in tax deduction recommendations." 
+        },
+        { 
+          role: "user", 
+          content: prompt 
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
+
+    const responseText = completion.choices[0]?.message?.content;
+    if (!responseText) {
+      console.error('[AI Tax Analysis] No response from AI');
+      return null;
+    }
+
+    console.log(`[AI Tax Analysis] Received response for ${expenseCategories.length} categories`);
+    
+    const parsed = JSON.parse(responseText);
+    const suggestions: TaxDeductibilitySuggestion[] = parsed.suggestions || [];
+
+    // Calculate summary statistics
+    let suggestedChanges = 0;
+    let fullyDeductible = 0;
+    let partiallyDeductible = 0;
+    let nonDeductible = 0;
+
+    suggestions.forEach(s => {
+      if (s.currentlyDeductible !== s.suggestedDeductible) {
+        suggestedChanges++;
+      }
+      if (s.suggestedDeductible) {
+        if (s.deductionPercentage && s.deductionPercentage < 100) {
+          partiallyDeductible++;
+        } else {
+          fullyDeductible++;
+        }
+      } else {
+        nonDeductible++;
+      }
+    });
+
+    const result: TaxAnalysisResult = {
+      suggestions,
+      summary: {
+        totalCategories: expenseCategories.length,
+        correctlyClassified: expenseCategories.length - suggestedChanges,
+        suggestedChanges,
+        fullyDeductible,
+        partiallyDeductible,
+        nonDeductible
+      },
+      analysisDate: new Date().toISOString()
+    };
+
+    console.log(`[AI Tax Analysis] Analysis complete: ${suggestedChanges} suggested changes out of ${expenseCategories.length} categories`);
+    
+    return result;
+  } catch (error) {
+    console.error('[AI Tax Analysis] Error:', error);
+    return null;
+  }
+}

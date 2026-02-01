@@ -11,7 +11,7 @@ import { isStorageAvailable, getStorageType, getStorageService, filesystemStorag
 const isObjectStorageAvailable = isStorageAvailable();
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
-import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching } from "./aiCategorization";
+import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching, analyzeCategoriesToTaxDeductibility } from "./aiCategorization";
 import { detectRecurringPatterns, suggestBudget, createBillFromPattern } from "./aiPatternDetection";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
@@ -9911,6 +9911,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating tax category:", error);
       res.status(400).json({ message: "Failed to create tax category" });
+    }
+  });
+
+  // AI Tax Deductibility Analysis - Analyzes expense categories against IRS definitions
+  app.post('/api/ai-tax-analysis/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Check organization type - this feature is for for-profit organizations
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const result = await analyzeCategoriesToTaxDeductibility(organizationId);
+      
+      if (!result) {
+        return res.status(503).json({ message: "AI analysis not available. Please ensure AI integration is configured." });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error running AI tax analysis:", error);
+      res.status(500).json({ message: "Failed to run AI tax analysis" });
+    }
+  });
+
+  // Update category tax deductible status
+  app.patch('/api/categories/:id/tax-deductible', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const categoryId = parseInt(req.params.id);
+      const { taxDeductible } = req.body;
+
+      if (typeof taxDeductible !== 'boolean') {
+        return res.status(400).json({ message: "taxDeductible must be a boolean" });
+      }
+
+      // Get the category to find its organization
+      const category = await storage.getCategory(categoryId);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, category.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (userRole.role !== 'owner' && userRole.role !== 'admin' && userRole.role !== 'accountant') {
+        return res.status(403).json({ message: "Insufficient permissions to update category" });
+      }
+
+      const updatedCategory = await storage.updateCategory(categoryId, { taxDeductible });
+      res.json(updatedCategory);
+    } catch (error) {
+      console.error("Error updating category tax deductible status:", error);
+      res.status(500).json({ message: "Failed to update category" });
     }
   });
 
