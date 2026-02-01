@@ -206,29 +206,58 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
   const applyAllSuggestionsMutation = useMutation({
     mutationFn: async (suggestions: TaxDeductibilitySuggestion[]) => {
       const changesToApply = suggestions.filter(s => 
-        s.currentlyDeductible !== s.suggestedDeductible && !appliedSuggestions.has(s.categoryId)
+        s.currentlyDeductible !== s.suggestedDeductible && 
+        !appliedSuggestions.has(s.categoryId) &&
+        typeof s.suggestedDeductible === 'boolean'
       );
       
-      for (const suggestion of changesToApply) {
-        await apiRequest('PATCH', `/api/categories/${suggestion.categoryId}/tax-deductible`, { 
-          taxDeductible: suggestion.suggestedDeductible 
-        });
+      const results = { success: 0, failed: 0, successIds: [] as number[] };
+      
+      // Process in parallel batches of 5 for speed
+      const batchSize = 5;
+      for (let i = 0; i < changesToApply.length; i += batchSize) {
+        const batch = changesToApply.slice(i, i + batchSize);
+        const batchResults = await Promise.allSettled(
+          batch.map(suggestion => 
+            apiRequest('PATCH', `/api/categories/${suggestion.categoryId}/tax-deductible`, { 
+              taxDeductible: suggestion.suggestedDeductible 
+            }).then(() => suggestion.categoryId)
+          )
+        );
+        
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled') {
+            results.success++;
+            results.successIds.push(result.value);
+          } else {
+            results.failed++;
+          }
+        }
       }
       
-      return changesToApply.length;
+      return results;
     },
-    onSuccess: (count) => {
-      if (aiAnalysisResult) {
-        const allChanged = aiAnalysisResult.suggestions
-          .filter(s => s.currentlyDeductible !== s.suggestedDeductible)
-          .map(s => s.categoryId);
-        setAppliedSuggestions(new Set(allChanged));
-      }
-      queryClient.invalidateQueries({ queryKey: ['/api/categories', currentOrganization.id] });
-      toast({ 
-        title: "All suggestions applied", 
-        description: `Updated ${count} categories based on IRS guidelines.` 
+    onSuccess: (results) => {
+      // Update applied suggestions with successful ones
+      setAppliedSuggestions(prev => {
+        const newSet = new Set(prev);
+        results.successIds.forEach(id => newSet.add(id));
+        return newSet;
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/categories', currentOrganization.id] });
+      
+      if (results.failed > 0) {
+        toast({ 
+          title: "Suggestions partially applied", 
+          description: `Updated ${results.success} categories. ${results.failed} failed.`,
+          variant: "default"
+        });
+      } else {
+        toast({ 
+          title: "All suggestions applied", 
+          description: `Updated ${results.success} categories based on IRS guidelines.` 
+        });
+      }
     },
     onError: () => {
       toast({ title: "Failed to apply suggestions", variant: "destructive" });

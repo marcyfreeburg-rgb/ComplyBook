@@ -623,7 +623,17 @@ export interface TaxAnalysisResult {
 
 // Helper function to process AI analysis response and calculate summary
 function processAnalysisResponse(parsed: any, expenseCategories: any[]): TaxAnalysisResult {
-  const suggestions: TaxDeductibilitySuggestion[] = parsed.suggestions || [];
+  const rawSuggestions = parsed.suggestions || [];
+  
+  // Sanitize and validate each suggestion to ensure proper boolean values
+  const suggestions: TaxDeductibilitySuggestion[] = rawSuggestions.map((s: any) => ({
+    ...s,
+    // Ensure boolean values - AI sometimes returns strings like "true" or other values
+    currentlyDeductible: s.currentlyDeductible === true || s.currentlyDeductible === 'true',
+    suggestedDeductible: s.suggestedDeductible === true || s.suggestedDeductible === 'true',
+    // Ensure confidence is a number between 0-100
+    confidence: typeof s.confidence === 'number' ? Math.min(100, Math.max(0, s.confidence)) : 50
+  }));
 
   let suggestedChanges = 0;
   let fullyDeductible = 0;
