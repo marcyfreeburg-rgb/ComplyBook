@@ -128,7 +128,9 @@ export default function AuditTrail({ currentOrganization }: AuditTrailProps) {
                   <SelectItem value="invoice">Invoice</SelectItem>
                   <SelectItem value="bill">Bill</SelectItem>
                   <SelectItem value="budget">Budget</SelectItem>
-                  <SelectItem value="grant">Grant</SelectItem>
+                  {currentOrganization?.type === 'nonprofit' && (
+                    <SelectItem value="grant">Grant</SelectItem>
+                  )}
                   <SelectItem value="vendor">Vendor</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
                 </SelectContent>

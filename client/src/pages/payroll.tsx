@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus, Edit, Link2, Unlink, CheckCircle2, Loader2 } from "lucide-react";
+import { Plus, DollarSign, Calendar, Users, Eye, Play, Trash2, AlertCircle, UserPlus, Edit, Link2, Unlink, CheckCircle2, Loader2, FileText, Upload, Download, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   AlertDialog,
@@ -22,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { PayrollRun, PayrollItem, Employee, Deduction, Organization } from "@shared/schema";
+import type { PayrollRun, PayrollItem, Employee, Deduction, Organization, Document as DocumentType } from "@shared/schema";
 
 interface PayrollProps {
   currentOrganization: Organization;
@@ -57,6 +58,62 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
 
   const { data: deductions = [] } = useQuery<Deduction[]>({
     queryKey: [`/api/deductions/${currentOrganization.id}/active`],
+  });
+
+  // Policies & Procedures documents
+  const [isUploadingPolicy, setIsUploadingPolicy] = useState(false);
+  const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
+  
+  const { data: policyDocuments = [], isLoading: isLoadingPolicies } = useQuery<DocumentType[]>({
+    queryKey: ['/api/documents', 'policy', currentOrganization.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/documents/policy/${currentOrganization.id}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  const uploadPolicyDocument = async (file: File) => {
+    setIsUploadingPolicy(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('entityType', 'policy');
+      formData.append('entityId', currentOrganization.id.toString());
+      formData.append('category', 'policies');
+      formData.append('name', file.name);
+      
+      const response = await fetch('/api/documents/upload-file', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload document');
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/documents', 'policy', currentOrganization.id] });
+      toast({ title: "Document uploaded", description: "Policy document uploaded successfully" });
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message || "Failed to upload document", variant: "destructive" });
+    } finally {
+      setIsUploadingPolicy(false);
+    }
+  };
+
+  const deletePolicyDocumentMutation = useMutation({
+    mutationFn: async (docId: number) => {
+      await apiRequest('DELETE', `/api/documents/${docId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/documents', 'policy', currentOrganization.id] });
+      toast({ title: "Document deleted" });
+      setDeleteDocId(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete document", variant: "destructive" });
+    }
   });
 
   const { data: finchConnections = [], isLoading: isLoadingFinchConnections } = useQuery<Array<{
@@ -934,6 +991,124 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Policies & Procedures Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Policies & Procedures
+            </CardTitle>
+            <CardDescription>Upload and manage HR policies, employee handbooks, and procedures</CardDescription>
+          </div>
+          <div>
+            <input
+              type="file"
+              id="policy-upload"
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadPolicyDocument(file);
+                e.target.value = '';
+              }}
+            />
+            <Button 
+              onClick={() => document.getElementById('policy-upload')?.click()}
+              disabled={isUploadingPolicy}
+              data-testid="button-upload-policy"
+            >
+              {isUploadingPolicy ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              Upload Document
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingPolicies ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading documents...</span>
+            </div>
+          ) : policyDocuments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No policy documents uploaded yet</p>
+              <p className="text-sm">Upload employee handbooks, HR policies, and procedures here</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document</TableHead>
+                  <TableHead>Uploaded</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {policyDocuments.map((doc) => (
+                  <TableRow key={doc.id} data-testid={`row-policy-doc-${doc.id}`}>
+                    <TableCell className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{doc.fileName}</span>
+                    </TableCell>
+                    <TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-policy-menu-${doc.id}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => window.open(`/api/documents/download/${doc.id}`, '_blank')}
+                            data-testid={`menu-download-policy-${doc.id}`}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeleteDocId(doc.id)}
+                            data-testid={`menu-delete-policy-${doc.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Policy Document Dialog */}
+      <AlertDialog open={!!deleteDocId} onOpenChange={() => setDeleteDocId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to delete this document? This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteDocId && deletePolicyDocumentMutation.mutate(deleteDocId)}
+              disabled={deletePolicyDocumentMutation.isPending}
+            >
+              {deletePolicyDocumentMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deletePayrollRunId !== null} onOpenChange={(open) => !open && setDeletePayrollRunId(null)}>

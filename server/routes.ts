@@ -583,12 +583,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only owners and admins can invite users" });
       }
 
-      // Check if user being invited already has access
-      const inviteeEmail = req.body.email;
+      // Check if user being invited already has access (but not just as a super admin with synthetic role)
+      const inviteeEmail = req.body.email?.toLowerCase();
       const existingUser = await storage.getUserByEmail(inviteeEmail);
       if (existingUser) {
         const existingRole = await storage.getUserRole(existingUser.id, organizationId);
-        if (existingRole) {
+        // Only block if they have a real database entry (id > 0), not a synthetic super admin role (id = -1)
+        if (existingRole && existingRole.id > 0) {
           return res.status(400).json({ message: "This user already has access to this organization" });
         }
       }
@@ -10739,6 +10740,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (limit) filters.limit = parseInt(limit as string);
       
       const auditLogs = await storage.getAuditLogs(organizationId, filters);
+      
+      // Filter out grant-related entries for for-profit organizations
+      const organization = await storage.getOrganization(organizationId);
+      if (organization && organization.type !== 'nonprofit') {
+        const filteredLogs = auditLogs.filter(log => log.entityType?.toLowerCase() !== 'grant');
+        return res.json(filteredLogs);
+      }
+      
       res.json(auditLogs);
     } catch (error) {
       console.error("Error fetching audit logs:", error);
@@ -15551,6 +15560,10 @@ Keep the response approximately 100-150 words.`;
     } else if (entityType === "change_order") {
       const changeOrder = await storage.getChangeOrder(entityId);
       return changeOrder?.organizationId || null;
+    } else if (entityType === "policy" || entityType === "budget") {
+      // For policy and budget entity types, entityId is actually the organizationId
+      const organization = await storage.getOrganization(entityId);
+      return organization?.id || null;
     }
     return null;
   }
@@ -15769,8 +15782,8 @@ Keep the response approximately 100-150 words.`;
       const { entityType, entityId } = req.params;
       
       // Validate entityType
-      if (!['contract', 'proposal', 'change_order'].includes(entityType)) {
-        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order" });
+      if (!['contract', 'proposal', 'change_order', 'policy', 'budget'].includes(entityType)) {
+        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order, policy, budget" });
       }
       
       // Validate entityId
@@ -15881,8 +15894,8 @@ Keep the response approximately 100-150 words.`;
       if (!entityType || typeof entityType !== 'string') {
         return res.status(400).json({ message: "entityType is required and must be a string" });
       }
-      if (!['contract', 'proposal', 'change_order'].includes(entityType)) {
-        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order" });
+      if (!['contract', 'proposal', 'change_order', 'policy', 'budget'].includes(entityType)) {
+        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order, policy, budget" });
       }
       
       const parsedEntityId = parseInt(entityId);
@@ -15953,8 +15966,8 @@ Keep the response approximately 100-150 words.`;
       }
 
       // Validate entity context
-      if (!['contract', 'proposal', 'change_order'].includes(entityType)) {
-        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order" });
+      if (!['contract', 'proposal', 'change_order', 'policy', 'budget'].includes(entityType)) {
+        return res.status(400).json({ message: "entityType must be one of: contract, proposal, change_order, policy, budget" });
       }
 
       const parsedEntityId = parseInt(entityId);

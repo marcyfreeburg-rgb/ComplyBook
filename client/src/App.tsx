@@ -318,6 +318,12 @@ function AuthenticatedApp() {
               <Route path="/brand-settings">
                 <BrandSettings currentOrganization={currentOrganization} />
               </Route>
+              <Route path="/organization-management">
+                <Organizations 
+                  onSelectOrganization={handleOrganizationSwitch}
+                  userId={user?.id || ''}
+                />
+              </Route>
               <Route path="/reports">
                 <Reports currentOrganization={currentOrganization} />
               </Route>

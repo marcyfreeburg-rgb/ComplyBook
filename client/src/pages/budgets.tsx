@@ -15,10 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText, PieChart as PieChartIcon, AlertTriangle, CheckCircle, Clock, Target, Flame, Lock, Info, TrendingDown } from "lucide-react";
+import { Plus, TrendingUp, Trash2, ArrowLeft, Edit, Download, FileText, PieChart as PieChartIcon, AlertTriangle, CheckCircle, Clock, Target, Flame, Lock, Info, TrendingDown, Upload, Loader2, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant, type Organization, type Bill, type RecurringTransaction } from "@shared/schema";
+import { insertBudgetSchema, insertBudgetItemSchema, insertBudgetIncomeItemSchema, type Budget, type BudgetItem, type BudgetIncomeItem, type Category, type Grant, type Organization, type Bill, type RecurringTransaction, type Document as DocumentType } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { CategoryCombobox } from "@/components/category-combobox";
 import { BudgetSuggestionPanel } from "@/components/budget-suggestion";
@@ -133,6 +135,8 @@ export default function Budgets() {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteBudgetId, setDeleteBudgetId] = useState<number | null>(null);
   const [showBudgetSuggestions, setShowBudgetSuggestions] = useState(false);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
 
   const organizationId = parseInt(localStorage.getItem("currentOrganizationId") || "0");
   if (!organizationId) {
@@ -153,6 +157,60 @@ export default function Budgets() {
   const { data: grants = [] } = useQuery<Grant[]>({
     queryKey: ["/api/grants", organizationId],
     enabled: organizationId > 0,
+  });
+
+  // Budget & Audit documents
+  const { data: budgetDocuments = [], isLoading: isLoadingDocs } = useQuery<DocumentType[]>({
+    queryKey: ['/api/documents', 'budget', organizationId],
+    queryFn: async () => {
+      const response = await fetch(`/api/documents/budget/${organizationId}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: organizationId > 0,
+  });
+
+  const uploadBudgetDocument = async (file: File, category: string) => {
+    setIsUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('entityType', 'budget');
+      formData.append('entityId', organizationId.toString());
+      formData.append('category', category);
+      formData.append('name', file.name);
+      
+      const response = await fetch('/api/documents/upload-file', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload document');
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/documents', 'budget', organizationId] });
+      toast({ title: "Document uploaded", description: `${category === 'audits' ? 'Audit' : 'Budget'} document uploaded successfully` });
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message || "Failed to upload document", variant: "destructive" });
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
+
+  const deleteBudgetDocumentMutation = useMutation({
+    mutationFn: async (docId: number) => {
+      await apiRequest('DELETE', `/api/documents/${docId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/documents', 'budget', organizationId] });
+      toast({ title: "Document deleted" });
+      setDeleteDocId(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete document", variant: "destructive" });
+    }
   });
 
   const { data: organizations = [] } = useQuery<Array<Organization & { userRole: string }>>({
@@ -1799,7 +1857,7 @@ export default function Budgets() {
                                   onClick={() => {
                                     if (budgetItemData) deleteItemMutation.mutate(budgetItemData.id);
                                   }}
-                                  disabled={deleteItemMutation.isPending || budgetItemData?.isLocked}
+                                  disabled={deleteItemMutation.isPending || budgetItemData?.isLocked === true}
                                   data-testid={`button-delete-item-${item.categoryId}`}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -2015,6 +2073,154 @@ export default function Budgets() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Budget & Audit Documents Section */}
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Budget & Audit Documents
+            </CardTitle>
+            <CardDescription>Upload and manage budget files, audit reports, and financial documents</CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              id="budget-upload"
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadBudgetDocument(file, 'budgets');
+                e.target.value = '';
+              }}
+            />
+            <input
+              type="file"
+              id="audit-upload"
+              className="hidden"
+              accept=".pdf,.doc,.docx"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadBudgetDocument(file, 'audits');
+                e.target.value = '';
+              }}
+            />
+            <Button 
+              variant="outline"
+              onClick={() => document.getElementById('budget-upload')?.click()}
+              disabled={isUploadingDoc}
+              data-testid="button-upload-budget"
+            >
+              {isUploadingDoc ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              Upload Budget
+            </Button>
+            <Button 
+              onClick={() => document.getElementById('audit-upload')?.click()}
+              disabled={isUploadingDoc}
+              data-testid="button-upload-audit"
+            >
+              {isUploadingDoc ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              Upload Audit
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDocs ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading documents...</span>
+            </div>
+          ) : budgetDocuments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No budget or audit documents uploaded yet</p>
+              <p className="text-sm">Upload budgets, audits, and financial documents here</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Document</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Uploaded</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {budgetDocuments.map((doc) => (
+                  <TableRow key={doc.id} data-testid={`row-budget-doc-${doc.id}`}>
+                    <TableCell className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{doc.fileName}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={doc.documentType === 'other' ? 'default' : 'secondary'}>
+                        {doc.description?.includes('audit') ? 'Audit' : 'Budget'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-doc-menu-${doc.id}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => window.open(`/api/documents/download/${doc.id}`, '_blank')}
+                            data-testid={`menu-download-doc-${doc.id}`}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeleteDocId(doc.id)}
+                            data-testid={`menu-delete-doc-${doc.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Document Dialog */}
+      <AlertDialog open={!!deleteDocId} onOpenChange={() => setDeleteDocId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to delete this document? This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteDocId && deleteBudgetDocumentMutation.mutate(deleteDocId)}
+              disabled={deleteBudgetDocumentMutation.isPending}
+            >
+              {deleteBudgetDocumentMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteBudgetId !== null} onOpenChange={(open) => !open && setDeleteBudgetId(null)}>
         <AlertDialogContent data-testid="dialog-confirm-delete">
