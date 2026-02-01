@@ -462,7 +462,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300} data-testid="chart-events-by-type">
-                  <PieChart>
+                  <PieChart margin={{ left: 80, right: 80 }}>
                     <Pie
                       data={metrics.eventsByType}
                       cx="50%"
@@ -470,9 +470,14 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                       labelLine={true}
                       label={({ eventType, count, cx, cy, midAngle, outerRadius }) => {
                         const RADIAN = Math.PI / 180;
-                        const radius = outerRadius + 25;
+                        const radius = outerRadius + 20;
                         const x = cx + radius * Math.cos(-midAngle * RADIAN);
                         const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        const displayName = eventType === 'login_success' ? 'Login Success' : 
+                                           eventType === 'login_failed' ? 'Login Failed' :
+                                           eventType === 'logout' ? 'Logout' :
+                                           eventType === 'password_reset' ? 'Password Reset' :
+                                           eventType.replace(/_/g, ' ');
                         return (
                           <text
                             x={x}
@@ -482,11 +487,11 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                             textAnchor={x > cx ? 'start' : 'end'}
                             dominantBaseline="central"
                           >
-                            {`${eventType}: ${count}`}
+                            {`${displayName}: ${count}`}
                           </text>
                         );
                       }}
-                      outerRadius={80}
+                      outerRadius={70}
                       fill="#8884d8"
                       dataKey="count"
                     >
@@ -494,8 +499,21 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip formatter={(value, name) => {
+                      const displayName = name === 'login_success' ? 'Login Success' : 
+                                         name === 'login_failed' ? 'Login Failed' :
+                                         name === 'logout' ? 'Logout' :
+                                         name === 'password_reset' ? 'Password Reset' :
+                                         String(name).replace(/_/g, ' ');
+                      return [value, displayName];
+                    }} />
+                    <Legend formatter={(value) => {
+                      return value === 'login_success' ? 'Login Success' : 
+                             value === 'login_failed' ? 'Login Failed' :
+                             value === 'logout' ? 'Logout' :
+                             value === 'password_reset' ? 'Password Reset' :
+                             String(value).replace(/_/g, ' ');
+                    }} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
