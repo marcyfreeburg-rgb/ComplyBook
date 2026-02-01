@@ -1,0 +1,22 @@
+[GET]
+complybook.net/api/clients/167 clientIP="216.147.126.248" requestID="2d4de914-1d70-4c65" responseTimeMS=241 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:29:50 PM [express] GET /api/clients/167 304 in 239ms :: [{"id":29,"organizationId":167,"name":"C C…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="e1c4f9ad-e35d-4f5a" responseTimeMS=773 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:30:06 PM [express] GET /api/notifications/167/unread-count 304 in 770ms :: {"count":"0"}
+[POST]
+complybook.net/api/clients clientIP="216.147.126.248" requestID="59cabca0-7720-4eb2" responseTimeMS=781 responseBytes=1459 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/clients/167 clientIP="216.147.126.248" requestID="a1a59999-6353-4a4f" responseTimeMS=241 responseBytes=1675 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:30:35 PM [express] POST /api/clients 201 in 777ms :: {"id":33,"organizationId":167,"name":"John Fr…
+Menu
+4:30:35 PM [express] GET /api/clients/167 200 in 239ms :: [{"id":29,"organizationId":167,"name":"C C…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="542024b4-a81c-4c56" responseTimeMS=798 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:31:07 PM [express] GET /api/notifications/167/unread-count 304 in 796ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="1b1d0992-2d46-4db2" responseTimeMS=834 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:33:08 PM [express] GET /api/notifications/167/unread-count 304 in 815ms :: {"count":"0"}
+[POST]
+complybook.net/api/documents/upload-file clientIP="216.147.126.248" requestID="d45e2022-ba10-4269" responseTimeMS=4 responseBytes=317 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[CSRF] Token mismatch - Path: /documents/upload-file, Method: POST, IP: 172.71.151.231, Cookie: present, Header: missi

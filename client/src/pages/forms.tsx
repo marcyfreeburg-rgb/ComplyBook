@@ -148,7 +148,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
   });
 
   // Fetch donors for sending invitations (only for nonprofit organizations)
-  const { data: donorsResponse } = useQuery<{ data: Donor[] }>({
+  const { data: donors = [] } = useQuery<Donor[]>({
     queryKey: ["/api/donors", organization?.id],
     queryFn: async () => {
       const response = await fetch(`/api/donors/${organization?.id}`, {
@@ -159,11 +159,10 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
     },
     enabled: !!organization?.id && organization?.type === 'nonprofit' && isSendInvitationsOpen,
   });
-  const donors = donorsResponse?.data || [];
   const donorsWithEmail = donors.filter(d => d.email);
 
   // Fetch clients for sending invitations (for for-profit organizations)
-  const { data: clientsResponse } = useQuery<{ data: Client[] }>({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients", organization?.id],
     queryFn: async () => {
       const response = await fetch(`/api/clients/${organization?.id}`, {
@@ -174,7 +173,6 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
     },
     enabled: !!organization?.id && organization?.type === 'forprofit' && isSendInvitationsOpen,
   });
-  const clients = clientsResponse?.data || [];
   const clientsWithEmail = clients.filter(c => c.email);
 
   // Unified recipients list based on organization type
