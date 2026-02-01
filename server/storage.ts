@@ -1009,6 +1009,7 @@ export interface IStorage {
   // Document operations (for contracts, proposals, change orders)
   getDocumentsByEntity(entityType: string, entityId: number): Promise<Document[]>;
   getDocumentsByEntityWithOrg(entityType: string, entityId: number, organizationId: number): Promise<Document[]>;
+  getDocumentsByOrganization(organizationId: number): Promise<Document[]>;
   getDocument(id: number): Promise<Document | undefined>;
   createDocument(doc: InsertDocument): Promise<Document>;
   deleteDocument(id: number): Promise<void>;
@@ -8397,6 +8398,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocument(id: number): Promise<void> {
     await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async getDocumentsByOrganization(organizationId: number): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(eq(documents.organizationId, organizationId))
+      .orderBy(desc(documents.createdAt));
   }
 
   // Contract milestone operations

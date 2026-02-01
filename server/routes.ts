@@ -15555,6 +15555,36 @@ Keep the response approximately 100-150 words.`;
     return null;
   }
 
+  // Get all documents for an organization
+  app.get("/api/organizations/:organizationId/documents", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Verify user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const allDocuments = await storage.getDocumentsByOrganization(organizationId);
+      
+      // Get uploader info for each document
+      const documentsWithUser = await Promise.all(allDocuments.map(async (doc) => {
+        const user = await storage.getUser(doc.uploadedBy);
+        return {
+          ...doc,
+          uploaderName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown'
+        };
+      }));
+
+      res.json(documentsWithUser);
+    } catch (error: any) {
+      console.error("Error fetching organization documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
   // Get documents for a specific entity (includes related entity documents)
   app.get("/api/documents/:entityType/:entityId", isAuthenticated, async (req: any, res: Response) => {
     try {

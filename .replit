@@ -50,3 +50,6 @@ PLAID_ENV = "production"
 
 [userenv.development]
 FINCH_SANDBOX = "finch"
+
+[userenv.production]
+STORAGE_PATH = "/opt/render/project/src/uploads/documents"
