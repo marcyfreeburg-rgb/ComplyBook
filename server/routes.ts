@@ -15598,6 +15598,68 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // Get policy documents for an organization
+  app.get("/api/documents/policy/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Verify user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const allDocuments = await storage.getDocumentsByOrganization(organizationId);
+      const policyDocuments = allDocuments.filter(doc => doc.relatedEntityType === 'policy');
+      
+      // Get uploader info for each document
+      const documentsWithUser = await Promise.all(policyDocuments.map(async (doc) => {
+        const user = await storage.getUser(doc.uploadedBy);
+        return {
+          ...doc,
+          uploaderName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown'
+        };
+      }));
+
+      res.json(documentsWithUser);
+    } catch (error: any) {
+      console.error("Error fetching policy documents:", error);
+      res.status(500).json({ message: "Failed to fetch policy documents" });
+    }
+  });
+
+  // Get budget documents for an organization
+  app.get("/api/documents/budget/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      // Verify user has access to this organization
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const allDocuments = await storage.getDocumentsByOrganization(organizationId);
+      const budgetDocuments = allDocuments.filter(doc => doc.relatedEntityType === 'budget');
+      
+      // Get uploader info for each document
+      const documentsWithUser = await Promise.all(budgetDocuments.map(async (doc) => {
+        const user = await storage.getUser(doc.uploadedBy);
+        return {
+          ...doc,
+          uploaderName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown'
+        };
+      }));
+
+      res.json(documentsWithUser);
+    } catch (error: any) {
+      console.error("Error fetching budget documents:", error);
+      res.status(500).json({ message: "Failed to fetch budget documents" });
+    }
+  });
+
   // ============================================
   // COMPLIANCE CALENDAR ROUTES
   // ============================================
@@ -15995,6 +16057,31 @@ Keep the response approximately 100-150 words.`;
         file.originalname,
         file.buffer
       );
+
+      // For policy and budget types, also create a document record in the database
+      if (entityType === 'policy' || entityType === 'budget') {
+        const documentType = entityType === 'policy' ? 'other' : 'other'; // Use 'other' for these types
+        const document = await storage.createDocument({
+          organizationId,
+          fileName: file.originalname,
+          fileUrl: objectPath,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          documentType: documentType as any,
+          relatedEntityType: entityType,
+          relatedEntityId: parsedEntityId, // This is the organizationId for policy/budget
+          description: `${entityType === 'policy' ? 'Policy' : 'Budget'} document`,
+          uploadedBy: userId,
+        });
+        
+        return res.json({ 
+          objectPath,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          documentId: document.id
+        });
+      }
 
       res.json({ 
         objectPath,
