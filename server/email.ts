@@ -1096,51 +1096,91 @@ export async function sendFormInvitationEmail({
   const msg = {
     to,
     from: fromEmail,
-    subject: `${organizationName} invites you to complete: ${formTitle}`,
+    subject: `${organizationName}: ${formTitle}`,
     html: `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${typeLabel} Invitation</title>
+          <title>${typeLabel} from ${organizationName}</title>
         </head>
-        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-          <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-            ${logoHtml}
-            <div style="background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); padding: 30px; color: white;">
-              <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">You're Invited!</h1>
-              <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">${organizationName} has sent you a ${typeLabel.toLowerCase()}</p>
-            </div>
-            
-            <div style="padding: 30px;">
-              <p style="color: #333; font-size: 16px; margin: 0 0 10px 0;">Hello ${recipientName},</p>
-              
-              <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                <h2 style="color: #1a1a1a; margin: 0 0 10px 0; font-size: 20px;">${formTitle}</h2>
-                ${descriptionHtml}
-              </div>
-              
-              ${personalMessageHtml}
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${formUrl}" style="display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                  ${actionText}
-                </a>
-              </div>
-              
-              <p style="color: #666; font-size: 13px; margin-top: 20px; text-align: center;">
-                Or copy and paste this link into your browser:<br>
-                <a href="${formUrl}" style="color: ${primaryColor}; word-break: break-all;">${formUrl}</a>
-              </p>
-            </div>
-            
-            ${footerHtml}
-            
-            <div style="background-color: #f8fafc; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-              <p style="margin: 0;">Sent via <a href="https://complybook.net" style="color: ${primaryColor}; text-decoration: none;">ComplyBook</a></p>
-            </div>
-          </div>
+        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+            <tr>
+              <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+                  <!-- Header -->
+                  <tr>
+                    <td style="background-color: ${primaryColor}; padding: 32px 40px; text-align: center;">
+                      ${branding?.logoUrl ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 180px; max-height: 60px; margin-bottom: 16px;" />` : `<h2 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">${organizationName}</h2>`}
+                    </td>
+                  </tr>
+                  
+                  <!-- Body -->
+                  <tr>
+                    <td style="padding: 40px;">
+                      <p style="color: #374151; font-size: 16px; margin: 0 0 24px 0;">Dear ${recipientName},</p>
+                      
+                      <p style="color: #374151; font-size: 16px; margin: 0 0 24px 0;">
+                        We invite you to complete the following ${typeLabel.toLowerCase()}:
+                      </p>
+                      
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 24px;">
+                        <tr>
+                          <td style="padding: 24px;">
+                            <h3 style="color: #111827; margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">${formTitle}</h3>
+                            ${formDescription ? `<p style="color: #6b7280; font-size: 14px; margin: 0; line-height: 1.5;">${formDescription}</p>` : ''}
+                          </td>
+                        </tr>
+                      </table>
+                      
+                      ${personalMessage ? `
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
+                        <tr>
+                          <td style="border-left: 3px solid ${primaryColor}; padding-left: 16px;">
+                            <p style="color: #4b5563; font-size: 14px; margin: 0; font-style: italic;">"${personalMessage}"</p>
+                          </td>
+                        </tr>
+                      </table>
+                      ` : ''}
+                      
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td align="center" style="padding: 16px 0 32px 0;">
+                            <a href="${formUrl}" style="display: inline-block; background-color: ${primaryColor}; color: white; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                              ${actionText}
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                      
+                      <p style="color: #9ca3af; font-size: 13px; margin: 0; text-align: center;">
+                        Or copy this link: <a href="${formUrl}" style="color: ${primaryColor}; word-break: break-all;">${formUrl}</a>
+                      </p>
+                    </td>
+                  </tr>
+                  
+                  ${branding?.footer ? `
+                  <tr>
+                    <td style="border-top: 1px solid #e5e7eb; padding: 24px 40px;">
+                      <p style="color: #6b7280; font-size: 13px; margin: 0; text-align: center; white-space: pre-line;">${branding.footer}</p>
+                    </td>
+                  </tr>
+                  ` : ''}
+                  
+                  <!-- Footer -->
+                  <tr>
+                    <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                        Powered by <a href="https://complybook.net" style="color: ${primaryColor}; text-decoration: none;">ComplyBook</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
         </body>
       </html>
     `,

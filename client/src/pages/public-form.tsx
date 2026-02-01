@@ -229,14 +229,16 @@ export default function PublicForm({ formType }: PublicFormProps) {
     if (Object.keys(validationErrors).length > 0) return false;
     if (respondentEmailError) return false;
     
-    // Check required contact info
-    if (settings.collectEmail && !respondentEmail) return false;
-    if (settings.collectName && !respondentName) return false;
-    
-    // Validate email format if collected
-    if (settings.collectEmail && respondentEmail) {
-      const emailError = validateRespondentEmail(respondentEmail);
-      if (emailError) return false;
+    // Check required contact info (only for forms, not surveys - surveys are anonymous)
+    if (!isSurvey) {
+      if (settings.collectEmail && !respondentEmail) return false;
+      if (settings.collectName && !respondentName) return false;
+      
+      // Validate email format if collected
+      if (settings.collectEmail && respondentEmail) {
+        const emailError = validateRespondentEmail(respondentEmail);
+        if (emailError) return false;
+      }
     }
 
     // Check all required questions and validate field-specific formats
