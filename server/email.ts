@@ -1113,7 +1113,7 @@ export async function sendFormInvitationEmail({
                   <!-- Header -->
                   <tr>
                     <td style="background-color: ${primaryColor}; padding: 32px 40px; text-align: center;">
-                      ${branding?.logoUrl ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-width: 180px; max-height: 60px; margin-bottom: 16px;" />` : `<h2 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">${organizationName}</h2>`}
+                      <h2 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">${organizationName}</h2>
                     </td>
                   </tr>
                   
