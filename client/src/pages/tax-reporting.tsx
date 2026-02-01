@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { Organization, TaxReport, TaxForm1099, InsertTaxForm1099, Category } from "@shared/schema";
 import { insertTaxForm1099Schema } from "@shared/schema";
+import { z } from "zod";
+
+// Form schema for 1099 - omit server-side fields
+const form1099Schema = insertTaxForm1099Schema.omit({ organizationId: true, createdBy: true });
+type Form1099Values = z.infer<typeof form1099Schema>;
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -88,10 +93,10 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
   const [emailTarget, setEmailTarget] = useState<{ type: 'report' | '1099'; id: number; name: string } | null>(null);
   const [emailAddress, setEmailAddress] = useState('');
 
-  const form1099Form = useForm<InsertTaxForm1099>({
-    resolver: zodResolver(insertTaxForm1099Schema.omit({ organizationId: true, createdBy: true })),
+  const form1099Form = useForm<Form1099Values>({
+    resolver: zodResolver(form1099Schema),
     defaultValues: {
-      taxYear: new Date().getFullYear(),
+      taxYear: selectedYear,
       formType: "1099_nec",
       totalAmount: "",
       recipientName: "",
@@ -101,6 +106,11 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
       notes: "",
     },
   });
+  
+  // Update form default year when selectedYear changes
+  useEffect(() => {
+    form1099Form.setValue('taxYear', selectedYear);
+  }, [selectedYear, form1099Form]);
 
   // Get categories and filter for tax-deductible expense categories
   const { data: allCategories, isLoading: isCategoriesLoading } = useQuery<Category[]>({
@@ -127,11 +137,27 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     mutationFn: async (data: InsertTaxForm1099) => {
       return await apiRequest('POST', `/api/tax-form-1099s/${currentOrganization.id}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear] });
+    onSuccess: (_, data) => {
+      // Invalidate and refetch the year of the created form
+      queryClient.invalidateQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, data.taxYear] });
+      queryClient.refetchQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, data.taxYear] });
+      // Also invalidate currently selected year if different
+      if (data.taxYear !== selectedYear) {
+        queryClient.invalidateQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear] });
+        queryClient.refetchQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear] });
+      }
       toast({ title: "1099 form created successfully" });
       setIs1099DialogOpen(false);
-      form1099Form.reset();
+      form1099Form.reset({
+        taxYear: selectedYear,
+        formType: "1099_nec",
+        totalAmount: "",
+        recipientName: "",
+        recipientTin: "",
+        recipientAddress: "",
+        isFiled: 0,
+        notes: "",
+      });
     },
     onError: () => {
       toast({ title: "Failed to create 1099 form", variant: "destructive" });
@@ -143,7 +169,9 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
       return await apiRequest('POST', `/api/tax-reports/${currentOrganization.id}/generate`, { taxYear });
     },
     onSuccess: (_, taxYear) => {
+      // Force refetch of tax reports for this year
       queryClient.invalidateQueries({ queryKey: ['/api/tax-reports', currentOrganization.id, taxYear] });
+      queryClient.refetchQueries({ queryKey: ['/api/tax-reports', currentOrganization.id, taxYear] });
       toast({ title: "Tax report generated successfully" });
     },
     onError: () => {
@@ -267,8 +295,8 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     },
   });
 
-  const on1099Submit = (data: InsertTaxForm1099) => {
-    create1099Mutation.mutate(data);
+  const on1099Submit = (data: Form1099Values) => {
+    create1099Mutation.mutate(data as InsertTaxForm1099);
   };
 
   const handleGenerateReport = () => {
