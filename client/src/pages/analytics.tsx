@@ -21,20 +21,87 @@ interface AnalyticsProps {
   currentOrganization: Organization;
 }
 
+interface YearOverYearData {
+  currentYear: { income: string; expenses: string; netIncome: string };
+  previousYear: { income: string; expenses: string; netIncome: string };
+  change: { income: string; expenses: string; netIncome: string; incomePercent: number; expensesPercent: number; netIncomePercent: number };
+  monthlyComparison: Array<{
+    month: string;
+    currentYearIncome: string;
+    previousYearIncome: string;
+    currentYearExpenses: string;
+    previousYearExpenses: string;
+  }>;
+}
+
+interface ForecastData {
+  forecast: Array<{
+    month: string;
+    projectedIncome: string;
+    projectedExpenses: string;
+    projectedNetIncome: string;
+    confidence: 'high' | 'medium' | 'low';
+  }>;
+  trendAnalysis: {
+    incomeGrowthRate: number;
+    expenseGrowthRate: number;
+    averageMonthlyIncome: string;
+    averageMonthlyExpenses: string;
+  };
+}
+
+interface FinancialHealthData {
+  burnRate: string;
+  runway: number | null;
+  cashReserves: string;
+  quickRatio: number | null;
+  profitMargin: number;
+  monthlyAvgIncome: string;
+  monthlyAvgExpenses: string;
+  healthScore: number;
+  healthStatus: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+}
+
+interface SpendingInsightsData {
+  topExpenseCategories: Array<{
+    categoryName: string;
+    amount: string;
+    percentage: number;
+    trend: 'up' | 'down' | 'stable';
+  }>;
+  unusualSpending: Array<{
+    categoryName: string;
+    currentAmount: string;
+    averageAmount: string;
+    percentDiff: number;
+  }>;
+  recurringExpenses: Array<{
+    description: string;
+    amount: string;
+    frequency: string;
+    nextDate: string;
+  }>;
+  savingsOpportunities: Array<{
+    category: string;
+    potentialSavings: string;
+    recommendation: string;
+  }>;
+}
+
 export default function Analytics({ currentOrganization }: AnalyticsProps) {
-  const { data: yearOverYear, isLoading: yoyLoading } = useQuery({
+  const { data: yearOverYear, isLoading: yoyLoading } = useQuery<YearOverYearData>({
     queryKey: [`/api/analytics/${currentOrganization.id}/year-over-year`],
   });
 
-  const { data: forecast, isLoading: forecastLoading } = useQuery({
+  const { data: forecast, isLoading: forecastLoading } = useQuery<ForecastData>({
     queryKey: [`/api/analytics/${currentOrganization.id}/forecast?months=6`],
   });
 
-  const { data: financialHealth, isLoading: healthLoading } = useQuery({
+  const { data: financialHealth, isLoading: healthLoading } = useQuery<FinancialHealthData>({
     queryKey: [`/api/analytics/${currentOrganization.id}/financial-health`],
   });
 
-  const { data: spendingInsights, isLoading: insightsLoading } = useQuery({
+  const { data: spendingInsights, isLoading: insightsLoading } = useQuery<SpendingInsightsData>({
     queryKey: [`/api/analytics/${currentOrganization.id}/spending-insights`],
   });
 
@@ -430,6 +497,22 @@ export default function Analytics({ currentOrganization }: AnalyticsProps) {
               </CardContent>
             </Card>
           )}
+
+          {!forecast && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground">
+                    Unable to load forecast data
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Please try again later or add more transactions
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Spending Insights */}
@@ -541,6 +624,22 @@ export default function Analytics({ currentOrganization }: AnalyticsProps) {
                 </Card>
               )}
             </>
+          )}
+
+          {!spendingInsights && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <PieChartIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-sm text-muted-foreground">
+                    Unable to load spending insights
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Please try again later or add more transactions
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
