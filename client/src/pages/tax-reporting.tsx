@@ -13,10 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info } from "lucide-react";
+import { FileText, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info, Plus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import type { Organization, TaxCategory, TaxReport, TaxForm1099, InsertTaxCategory, InsertTaxForm1099, Category } from "@shared/schema";
-import { insertTaxCategorySchema, insertTaxForm1099Schema } from "@shared/schema";
+import type { Organization, TaxReport, TaxForm1099, InsertTaxForm1099, Category } from "@shared/schema";
+import { insertTaxForm1099Schema } from "@shared/schema";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -79,20 +79,10 @@ interface TaxReportingProps {
 
 export default function TaxReporting({ currentOrganization }: TaxReportingProps) {
   const { toast } = useToast();
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [is1099DialogOpen, setIs1099DialogOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [aiAnalysisResult, setAiAnalysisResult] = useState<TaxAnalysisResult | null>(null);
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
-
-  const categoryForm = useForm<InsertTaxCategory>({
-    resolver: zodResolver(insertTaxCategorySchema.omit({ organizationId: true })),
-    defaultValues: {
-      name: "",
-      description: "",
-      isDeductible: 1,
-    },
-  });
 
   const form1099Form = useForm<InsertTaxForm1099>({
     resolver: zodResolver(insertTaxForm1099Schema.omit({ organizationId: true, createdBy: true })),
@@ -108,10 +98,16 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     },
   });
 
-  const { data: taxCategories } = useQuery<TaxCategory[]>({
-    queryKey: ['/api/tax-categories', currentOrganization.id],
+  // Get categories and filter for tax-deductible expense categories
+  const { data: allCategories, isLoading: isCategoriesLoading } = useQuery<Category[]>({
+    queryKey: ['/api/categories', currentOrganization.id],
     enabled: !!currentOrganization.id,
   });
+  
+  // Filter for tax-deductible expense categories
+  const taxDeductibleCategories = allCategories?.filter(
+    cat => cat.type === 'expense' && cat.taxDeductible === true
+  ) || [];
 
   const { data: taxReports } = useQuery<TaxReport[]>({
     queryKey: ['/api/tax-reports', currentOrganization.id, selectedYear],
@@ -121,21 +117,6 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
   const { data: form1099s } = useQuery<Array<TaxForm1099 & { vendorName: string }>>({
     queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear],
     enabled: !!currentOrganization.id,
-  });
-
-  const createCategoryMutation = useMutation({
-    mutationFn: async (data: InsertTaxCategory) => {
-      return await apiRequest('POST', `/api/tax-categories/${currentOrganization.id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tax-categories', currentOrganization.id] });
-      toast({ title: "Tax category created successfully" });
-      setIsCategoryDialogOpen(false);
-      categoryForm.reset();
-    },
-    onError: () => {
-      toast({ title: "Failed to create tax category", variant: "destructive" });
-    },
   });
 
   const create1099Mutation = useMutation({
@@ -264,10 +245,6 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     },
   });
 
-  const onCategorySubmit = (data: InsertTaxCategory) => {
-    createCategoryMutation.mutate(data);
-  };
-
   const on1099Submit = (data: InsertTaxForm1099) => {
     create1099Mutation.mutate(data);
   };
@@ -313,12 +290,12 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tax Categories</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Tax-Deductible Categories</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-categories-count">
-              {taxCategories?.length || 0}
+              {taxDeductibleCategories.length}
             </div>
           </CardContent>
         </Card>
@@ -362,101 +339,19 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
           <TaxDisclaimer />
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Tax Categories</CardTitle>
-                  <CardDescription>Define tax-deductible expense categories</CardDescription>
-                </div>
-                <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button data-testid="button-create-category">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Category
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create Tax Category</DialogTitle>
-                      <DialogDescription>Define a new tax category for your organization</DialogDescription>
-                    </DialogHeader>
-                    <Form {...categoryForm}>
-                      <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-                        <FormField
-                          control={categoryForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Category Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="e.g., Office Supplies" data-testid="input-category-name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={categoryForm.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  {...field} 
-                                  value={field.value || ''}
-                                  placeholder="Describe this category..." 
-                                  data-testid="input-category-description" 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={categoryForm.control}
-                          name="isDeductible"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Is Tax Deductible?</FormLabel>
-                              <Select
-                                value={field.value?.toString()}
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                              >
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-deductible">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="1">Yes</SelectItem>
-                                  <SelectItem value="0">No</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit" disabled={createCategoryMutation.isPending} data-testid="button-save-category">
-                            {createCategoryMutation.isPending ? "Creating..." : "Create Category"}
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
+              <CardTitle>Tax-Deductible Expense Categories</CardTitle>
+              <CardDescription>
+                Expense categories marked as tax-deductible. {!isNonProfit && "Use the AI Tax Analysis tab to analyze and update categories."}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {taxCategories && taxCategories.length > 0 ? (
-                  taxCategories.map((category) => (
+                {isCategoriesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : taxDeductibleCategories.length > 0 ? (
+                  taxDeductibleCategories.map((category) => (
                     <div
                       key={category.id}
                       className="p-4 border rounded-md"
@@ -469,14 +364,23 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                             <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
                           )}
                         </div>
-                        <Badge variant={category.isDeductible ? "default" : "secondary"}>
-                          {category.isDeductible ? "Deductible" : "Non-Deductible"}
+                        <Badge variant="default">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Tax Deductible
                         </Badge>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-sm text-muted-foreground">No tax categories yet. Add one to get started.</div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="font-medium">No tax-deductible categories yet</p>
+                    <p className="text-sm mt-1">
+                      {isNonProfit 
+                        ? "Mark expense categories as tax-deductible in the Categories section."
+                        : "Use the AI Tax Analysis tab to analyze your categories against IRS guidelines."}
+                    </p>
+                  </div>
                 )}
               </div>
             </CardContent>
