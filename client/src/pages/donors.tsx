@@ -201,7 +201,7 @@ export default function Donors({ currentOrganization, userId }: DonorsProps) {
               Add Donor
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add Donor</DialogTitle>
               <DialogDescription>
@@ -291,7 +291,7 @@ export default function Donors({ currentOrganization, userId }: DonorsProps) {
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Donor</DialogTitle>
             <DialogDescription>
