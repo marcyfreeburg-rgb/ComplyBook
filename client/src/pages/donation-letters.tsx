@@ -157,18 +157,18 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             line-height: 1.6;
           }
           .header {
-            text-align: center;
+            text-align: left;
             margin-bottom: 40px;
             padding-bottom: 20px;
             border-bottom: 2px solid ${currentOrganization.invoicePrimaryColor || '#3b82f6'};
           }
           .logo {
-            max-width: 180px;
-            max-height: 60px;
+            max-width: 48px;
+            max-height: 48px;
             width: auto;
             height: auto;
             object-fit: contain;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
           }
           .org-name {
             font-size: 24px;
