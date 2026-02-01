@@ -19,6 +19,7 @@ import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey, createInvoiceCheckoutSession } from "./stripeClient";
 import { generateInvoicePdf } from "./invoicePdf";
+import { generateTaxReportPdf, generateTaxForm1099Pdf } from "./taxPdf";
 import finchRoutes from "./finch";
 import memoize from "memoizee";
 import multer from "multer";
@@ -10107,6 +10108,235 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating 1099 form:", error);
       res.status(400).json({ message: "Failed to create 1099 form" });
+    }
+  });
+
+  // Tax Report PDF generation
+  app.get('/api/tax-reports/:reportId/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.reportId);
+
+      const report = await storage.getTaxReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Tax report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, report.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(report.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const pdfBuffer = await generateTaxReportPdf({
+        report,
+        organization,
+        branding: organization.brandingSettings ? {
+          primaryColor: (organization.brandingSettings as any).primaryColor,
+          logoUrl: organization.logoUrl || undefined
+        } : undefined
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="tax-report-${report.taxYear}-${report.formType}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating tax report PDF:", error);
+      res.status(500).json({ message: "Failed to generate tax report PDF" });
+    }
+  });
+
+  // Tax Report email
+  app.post('/api/tax-reports/:reportId/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.reportId);
+      const { email } = req.body;
+
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ message: "Email address is required" });
+      }
+
+      const report = await storage.getTaxReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Tax report not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, report.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(report.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const pdfBuffer = await generateTaxReportPdf({
+        report,
+        organization,
+        branding: organization.brandingSettings ? {
+          primaryColor: (organization.brandingSettings as any).primaryColor,
+          logoUrl: organization.logoUrl || undefined
+        } : undefined
+      });
+
+      const { getUncachableSendGridClient } = await import("./email");
+      const { client, fromEmail } = await getUncachableSendGridClient();
+      
+      const formType = report.formType === '990' ? 'Form 990' : 'Schedule C';
+      await client.send({
+        to: email,
+        from: fromEmail,
+        subject: `${organization.name} - ${report.taxYear} Tax Report (${formType})`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1a1a1a;">Your Tax Report is Attached</h2>
+            <p style="color: #374151;">Please find attached the ${report.taxYear} ${formType} tax report for ${organization.name}.</p>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #374151; margin-top: 0;">Summary</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #666;">Total Income:</td><td style="text-align: right; color: #16a34a; font-weight: 600;">$${parseFloat(report.totalIncome).toLocaleString()}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Total Expenses:</td><td style="text-align: right; color: #dc2626; font-weight: 600;">$${parseFloat(report.totalExpenses).toLocaleString()}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Deductions:</td><td style="text-align: right; color: #2563eb; font-weight: 600;">$${parseFloat(report.totalDeductions).toLocaleString()}</td></tr>
+                <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 12px 0 8px; color: #1a1a1a; font-weight: 600;">Net Income:</td><td style="text-align: right; color: #1a1a1a; font-weight: 700; font-size: 18px;">$${parseFloat(report.netIncome).toLocaleString()}</td></tr>
+              </table>
+            </div>
+            <p style="color: #6b7280; font-size: 12px;">This report is for informational purposes only. Please consult a qualified tax professional for advice specific to your situation.</p>
+          </div>
+        `,
+        attachments: [{
+          content: pdfBuffer.toString('base64'),
+          filename: `tax-report-${report.taxYear}-${report.formType}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }]
+      });
+
+      res.json({ message: "Tax report emailed successfully" });
+    } catch (error) {
+      console.error("Error emailing tax report:", error);
+      res.status(500).json({ message: "Failed to email tax report" });
+    }
+  });
+
+  // 1099 Form PDF generation
+  app.get('/api/tax-form-1099s/:formId/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+
+      const form = await storage.getTaxForm1099(formId);
+      if (!form) {
+        return res.status(404).json({ message: "1099 form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(form.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const pdfBuffer = await generateTaxForm1099Pdf({
+        form,
+        organization,
+        branding: organization.brandingSettings ? {
+          primaryColor: (organization.brandingSettings as any).primaryColor,
+          logoUrl: organization.logoUrl || undefined
+        } : undefined
+      });
+
+      const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
+                           form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating 1099 form PDF:", error);
+      res.status(500).json({ message: "Failed to generate 1099 form PDF" });
+    }
+  });
+
+  // 1099 Form email
+  app.post('/api/tax-form-1099s/:formId/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+      const { email } = req.body;
+
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ message: "Email address is required" });
+      }
+
+      const form = await storage.getTaxForm1099(formId);
+      if (!form) {
+        return res.status(404).json({ message: "1099 form not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const organization = await storage.getOrganization(form.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const pdfBuffer = await generateTaxForm1099Pdf({
+        form,
+        organization,
+        branding: organization.brandingSettings ? {
+          primaryColor: (organization.brandingSettings as any).primaryColor,
+          logoUrl: organization.logoUrl || undefined
+        } : undefined
+      });
+
+      const { getUncachableSendGridClient } = await import("./email");
+      const { client, fromEmail } = await getUncachableSendGridClient();
+      
+      const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
+                           form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+      
+      await client.send({
+        to: email,
+        from: fromEmail,
+        subject: `${organization.name} - ${formTypeLabel} for ${form.recipientName} (${form.taxYear})`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1a1a1a;">Your ${formTypeLabel} is Attached</h2>
+            <p style="color: #374151;">Please find attached the ${formTypeLabel} form for ${form.recipientName} for tax year ${form.taxYear}.</p>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #666;">Recipient:</td><td style="text-align: right; color: #1a1a1a; font-weight: 600;">${form.recipientName}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Form Type:</td><td style="text-align: right; color: #1a1a1a;">${formTypeLabel}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Tax Year:</td><td style="text-align: right; color: #1a1a1a;">${form.taxYear}</td></tr>
+                <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 12px 0 8px; color: #1a1a1a; font-weight: 600;">Total Amount:</td><td style="text-align: right; color: #16a34a; font-weight: 700; font-size: 18px;">$${parseFloat(form.totalAmount).toLocaleString()}</td></tr>
+              </table>
+            </div>
+            <p style="color: #6b7280; font-size: 12px;">This is a copy for your records. For official IRS filing, use the official 1099 form from the IRS or approved tax software.</p>
+          </div>
+        `,
+        attachments: [{
+          content: pdfBuffer.toString('base64'),
+          filename: `${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }]
+      });
+
+      res.json({ message: "1099 form emailed successfully" });
+    } catch (error) {
+      console.error("Error emailing 1099 form:", error);
+      res.status(500).json({ message: "Failed to email 1099 form" });
     }
   });
 

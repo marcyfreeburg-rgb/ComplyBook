@@ -13,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info, Plus } from "lucide-react";
+import { FileText, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info, Plus, Eye, Mail, MoreVertical } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { Organization, TaxReport, TaxForm1099, InsertTaxForm1099, Category } from "@shared/schema";
 import { insertTaxForm1099Schema } from "@shared/schema";
 import { format } from "date-fns";
@@ -83,6 +84,9 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [aiAnalysisResult, setAiAnalysisResult] = useState<TaxAnalysisResult | null>(null);
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailTarget, setEmailTarget] = useState<{ type: 'report' | '1099'; id: number; name: string } | null>(null);
+  const [emailAddress, setEmailAddress] = useState('');
 
   const form1099Form = useForm<InsertTaxForm1099>({
     resolver: zodResolver(insertTaxForm1099Schema.omit({ organizationId: true, createdBy: true })),
@@ -245,12 +249,68 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     },
   });
 
+  const emailMutation = useMutation({
+    mutationFn: async ({ type, id, email }: { type: 'report' | '1099'; id: number; email: string }) => {
+      const endpoint = type === 'report' 
+        ? `/api/tax-reports/${id}/email`
+        : `/api/tax-form-1099s/${id}/email`;
+      return await apiRequest('POST', endpoint, { email });
+    },
+    onSuccess: () => {
+      toast({ title: "Email sent successfully" });
+      setEmailDialogOpen(false);
+      setEmailAddress('');
+      setEmailTarget(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to send email", variant: "destructive" });
+    },
+  });
+
   const on1099Submit = (data: InsertTaxForm1099) => {
     create1099Mutation.mutate(data);
   };
 
   const handleGenerateReport = () => {
     generateTaxReportMutation.mutate(selectedYear);
+  };
+
+  const handleViewPdf = (type: 'report' | '1099', id: number) => {
+    const endpoint = type === 'report' 
+      ? `/api/tax-reports/${id}/pdf`
+      : `/api/tax-form-1099s/${id}/pdf`;
+    window.open(endpoint, '_blank');
+  };
+
+  const handleDownloadPdf = async (type: 'report' | '1099', id: number, filename: string) => {
+    const endpoint = type === 'report' 
+      ? `/api/tax-reports/${id}/pdf`
+      : `/api/tax-form-1099s/${id}/pdf`;
+    try {
+      const response = await fetch(endpoint, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to download');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      toast({ title: "Failed to download PDF", variant: "destructive" });
+    }
+  };
+
+  const handleOpenEmailDialog = (type: 'report' | '1099', id: number, name: string) => {
+    setEmailTarget({ type, id, name });
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = () => {
+    if (!emailTarget || !emailAddress) return;
+    emailMutation.mutate({ type: emailTarget.type, id: emailTarget.id, email: emailAddress });
   };
 
   const isNonProfit = currentOrganization.type === 'nonprofit';
@@ -416,10 +476,38 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                             Generated {format(new Date(report.createdAt), 'MMM d, yyyy')}
                           </p>
                         </div>
-                        <Button variant="outline" size="sm">
-                          <Download className="mr-2 h-4 w-4" />
-                          Export
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" data-testid={`button-export-report-${report.id}`}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Export
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={() => handleViewPdf('report', report.id)}
+                              data-testid={`button-view-report-${report.id}`}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDownloadPdf('report', report.id, `tax-report-${report.taxYear}-${report.formType}.pdf`)}
+                              data-testid={`button-download-report-${report.id}`}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              Download PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleOpenEmailDialog('report', report.id, `${report.taxYear} ${report.formType === '990' ? 'Form 990' : 'Schedule C'}`)}
+                              data-testid={`button-email-report-${report.id}`}
+                            >
+                              <Mail className="mr-2 h-4 w-4" />
+                              Email PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -664,6 +752,45 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                               <p className="text-sm text-muted-foreground mt-1">Vendor: {form.vendorName}</p>
                             )}
                           </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" data-testid={`button-export-1099-${form.id}`}>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={() => handleViewPdf('1099', form.id)}
+                                data-testid={`button-view-1099-${form.id}`}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
+                                                       form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+                                  handleDownloadPdf('1099', form.id, `${formTypeLabel}-${form.recipientName.replace(/[^a-zA-Z0-9]/g, '_')}-${form.taxYear}.pdf`);
+                                }}
+                                data-testid={`button-download-1099-${form.id}`}
+                              >
+                                <Download className="mr-2 h-4 w-4" />
+                                Download PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
+                                                       form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+                                  handleOpenEmailDialog('1099', form.id, `${formTypeLabel} for ${form.recipientName}`);
+                                }}
+                                data-testid={`button-email-1099-${form.id}`}
+                              >
+                                <Mail className="mr-2 h-4 w-4" />
+                                Email PDF
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))
@@ -897,6 +1024,54 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
           </TabsContent>
         )}
       </Tabs>
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email {emailTarget?.type === 'report' ? 'Tax Report' : '1099 Form'}</DialogTitle>
+            <DialogDescription>
+              Send {emailTarget?.name} as a PDF attachment
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="email-input" className="text-sm font-medium">
+                Email Address
+              </label>
+              <Input
+                id="email-input"
+                type="email"
+                placeholder="recipient@example.com"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                data-testid="input-email-address"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSendEmail} 
+                disabled={!emailAddress || emailMutation.isPending}
+                data-testid="button-send-email"
+              >
+                {emailMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Email
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

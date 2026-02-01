@@ -6478,16 +6478,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTaxReports(organizationId: number, taxYear?: number): Promise<TaxReport[]> {
-    let query = db
-      .select()
-      .from(taxReports)
-      .where(eq(taxReports.organizationId, organizationId));
-
+    const conditions = [eq(taxReports.organizationId, organizationId)];
+    
     if (taxYear) {
-      query = query.where(eq(taxReports.taxYear, taxYear));
+      conditions.push(eq(taxReports.taxYear, taxYear));
     }
 
-    const reports = await query.orderBy(desc(taxReports.taxYear));
+    const reports = await db
+      .select()
+      .from(taxReports)
+      .where(and(...conditions))
+      .orderBy(desc(taxReports.taxYear));
     return reports;
   }
 
@@ -6509,7 +6510,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTaxForm1099s(organizationId: number, taxYear?: number): Promise<Array<TaxForm1099 & { vendorName: string }>> {
-    let query = db
+    const conditions = [eq(taxForm1099s.organizationId, organizationId)];
+    
+    if (taxYear) {
+      conditions.push(eq(taxForm1099s.taxYear, taxYear));
+    }
+
+    const forms = await db
       .select({
         id: taxForm1099s.id,
         organizationId: taxForm1099s.organizationId,
@@ -6530,13 +6537,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(taxForm1099s)
       .leftJoin(vendors, eq(taxForm1099s.vendorId, vendors.id))
-      .where(eq(taxForm1099s.organizationId, organizationId));
-
-    if (taxYear) {
-      query = query.where(eq(taxForm1099s.taxYear, taxYear));
-    }
-
-    const forms = await query.orderBy(desc(taxForm1099s.taxYear));
+      .where(and(...conditions))
+      .orderBy(desc(taxForm1099s.taxYear));
     return forms;
   }
 
@@ -6711,79 +6713,80 @@ export class DatabaseStorage implements IStorage {
     const validatedFields = selectedFields.filter(field => dataSourceFields.includes(field));
 
     // Build query based on data source
+    // Use conditions array with and() to properly combine filters (avoid chained .where() which replaces previous conditions)
     switch (report.dataSource) {
-      case 'transactions':
-        query = db.select().from(transactions);
+      case 'transactions': {
+        const conditions = [eq(transactions.organizationId, report.organizationId)];
         
-        // Apply organization filter
-        query = query.where(eq(transactions.organizationId, report.organizationId));
-        
-        // Apply date range if provided
         if (dateFrom) {
-          query = query.where(gte(transactions.date, new Date(dateFrom)));
+          conditions.push(gte(transactions.date, new Date(dateFrom)));
         }
         if (dateTo) {
-          query = query.where(lte(transactions.date, new Date(dateTo)));
+          conditions.push(lte(transactions.date, new Date(dateTo)));
         }
-        
-        // Apply additional filters from report definition
         if (filters?.type && filters.type !== 'all') {
-          query = query.where(eq(transactions.type, filters.type));
+          conditions.push(eq(transactions.type, filters.type));
         }
-        // Support both legacy single categoryId and new categoryIds array
         if (filters?.categoryIds && Array.isArray(filters.categoryIds) && filters.categoryIds.length > 0) {
-          query = query.where(inArray(transactions.categoryId, filters.categoryIds));
+          conditions.push(inArray(transactions.categoryId, filters.categoryIds));
         } else if (filters?.categoryId) {
-          query = query.where(eq(transactions.categoryId, parseInt(filters.categoryId)));
+          conditions.push(eq(transactions.categoryId, parseInt(filters.categoryId)));
         }
         if (filters?.minAmount) {
-          query = query.where(gte(transactions.amount, filters.minAmount));
+          conditions.push(gte(transactions.amount, filters.minAmount));
         }
         if (filters?.maxAmount) {
-          query = query.where(lte(transactions.amount, filters.maxAmount));
+          conditions.push(lte(transactions.amount, filters.maxAmount));
         }
+        
+        query = db.select().from(transactions).where(and(...conditions));
         break;
+      }
 
-      case 'invoices':
-        query = db.select().from(invoices);
-        query = query.where(eq(invoices.organizationId, report.organizationId));
+      case 'invoices': {
+        const conditions = [eq(invoices.organizationId, report.organizationId)];
         
         if (dateFrom) {
-          query = query.where(gte(invoices.issueDate, new Date(dateFrom)));
+          conditions.push(gte(invoices.issueDate, new Date(dateFrom)));
         }
         if (dateTo) {
-          query = query.where(lte(invoices.issueDate, new Date(dateTo)));
+          conditions.push(lte(invoices.issueDate, new Date(dateTo)));
+        }
+        if (filters?.status && filters.status !== 'all') {
+          conditions.push(eq(invoices.status, filters.status));
         }
         
-        if (filters?.status && filters.status !== 'all') {
-          query = query.where(eq(invoices.status, filters.status));
-        }
+        query = db.select().from(invoices).where(and(...conditions));
         break;
+      }
 
-      case 'bills':
-        query = db.select().from(bills);
-        query = query.where(eq(bills.organizationId, report.organizationId));
+      case 'bills': {
+        const conditions = [eq(bills.organizationId, report.organizationId)];
         
         if (dateFrom) {
-          query = query.where(gte(bills.issueDate, new Date(dateFrom)));
+          conditions.push(gte(bills.issueDate, new Date(dateFrom)));
         }
         if (dateTo) {
-          query = query.where(lte(bills.issueDate, new Date(dateTo)));
+          conditions.push(lte(bills.issueDate, new Date(dateTo)));
+        }
+        if (filters?.status && filters.status !== 'all') {
+          conditions.push(eq(bills.status, filters.status));
         }
         
-        if (filters?.status && filters.status !== 'all') {
-          query = query.where(eq(bills.status, filters.status));
-        }
+        query = db.select().from(bills).where(and(...conditions));
         break;
+      }
 
-      case 'grants':
-        query = db.select().from(grants);
-        query = query.where(eq(grants.organizationId, report.organizationId));
+      case 'grants': {
+        const conditions = [eq(grants.organizationId, report.organizationId)];
         
         if (filters?.status && filters.status !== 'all') {
-          query = query.where(eq(grants.status, filters.status));
+          conditions.push(eq(grants.status, filters.status));
         }
+        
+        query = db.select().from(grants).where(and(...conditions));
         break;
+      }
 
       default:
         throw new Error(`Unsupported data source: ${report.dataSource}`);
@@ -6834,6 +6837,28 @@ export class DatabaseStorage implements IStorage {
     endDate?: Date;
     limit?: number;
   }): Promise<Array<AuditLog & { userName: string; userEmail: string }>> {
+    // Build conditions array to properly combine filters (avoid chained .where() which replaces previous conditions)
+    const conditions = [eq(auditLogs.organizationId, organizationId)];
+
+    if (filters?.entityType) {
+      conditions.push(eq(auditLogs.entityType, filters.entityType));
+    }
+    if (filters?.entityId) {
+      conditions.push(eq(auditLogs.entityId, filters.entityId));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(auditLogs.userId, filters.userId));
+    }
+    if (filters?.action) {
+      conditions.push(eq(auditLogs.action, filters.action as any));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(auditLogs.timestamp, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(auditLogs.timestamp, filters.endDate));
+    }
+
     let query = db
       .select({
         auditLog: auditLogs,
@@ -6842,31 +6867,9 @@ export class DatabaseStorage implements IStorage {
       })
       .from(auditLogs)
       .innerJoin(users, eq(auditLogs.userId, users.id))
-      .where(eq(auditLogs.organizationId, organizationId))
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.timestamp))
       .$dynamic();
-
-    // Apply filters
-    if (filters?.entityType) {
-      query = query.where(eq(auditLogs.entityType, filters.entityType));
-    }
-    if (filters?.entityId) {
-      query = query.where(eq(auditLogs.entityId, filters.entityId));
-    }
-    if (filters?.userId) {
-      query = query.where(eq(auditLogs.userId, filters.userId));
-    }
-    if (filters?.action) {
-      query = query.where(eq(auditLogs.action, filters.action as any));
-    }
-    if (filters?.startDate) {
-      query = query.where(gte(auditLogs.timestamp, filters.startDate));
-    }
-    if (filters?.endDate) {
-      query = query.where(lte(auditLogs.timestamp, filters.endDate));
-    }
-
-    // Order by timestamp descending (newest first)
-    query = query.orderBy(desc(auditLogs.timestamp));
 
     // Apply limit
     if (filters?.limit) {
@@ -7520,17 +7523,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProgramExpenses(programId: number, startDate?: Date, endDate?: Date): Promise<Array<Transaction & { totalAmount: string }>> {
-    let query = db.select().from(transactions)
-      .where(eq(transactions.programId, programId));
+    // Build conditions array to properly combine filters (avoid chained .where() which replaces previous conditions)
+    const conditions = [eq(transactions.programId, programId)];
 
     if (startDate && endDate) {
-      query = query.where(and(
-        gte(transactions.date, startDate),
-        lte(transactions.date, endDate)
-      ));
+      conditions.push(gte(transactions.date, startDate));
+      conditions.push(lte(transactions.date, endDate));
     }
 
-    const expenses = await query.orderBy(desc(transactions.date));
+    const expenses = await db.select().from(transactions)
+      .where(and(...conditions))
+      .orderBy(desc(transactions.date));
     
     // Calculate total
     const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
@@ -7556,22 +7559,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(programs.organizationId, organizationId));
 
     const results = await Promise.all(programList.map(async (program) => {
-      // Get actual spending for this program
-      let query = db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` })
-        .from(transactions)
-        .where(and(
-          eq(transactions.programId, program.id),
-          eq(transactions.type, 'expense')
-        ));
+      // Build conditions array to properly combine filters (avoid chained .where() which replaces previous conditions)
+      const conditions = [
+        eq(transactions.programId, program.id),
+        eq(transactions.type, 'expense')
+      ];
 
       if (startDate && endDate) {
-        query = query.where(and(
-          gte(transactions.date, startDate),
-          lte(transactions.date, endDate)
-        ));
+        conditions.push(gte(transactions.date, startDate));
+        conditions.push(lte(transactions.date, endDate));
       }
 
-      const [actualResult] = await query;
+      const [actualResult] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS NUMERIC)), 0)` })
+        .from(transactions)
+        .where(and(...conditions));
       const actual = parseFloat(actualResult?.total || '0');
       const budget = parseFloat(program.budget || '0');
       const variance = budget - actual;
@@ -8585,7 +8586,17 @@ export class DatabaseStorage implements IStorage {
 
   // Time entry operations
   async getTimeEntries(organizationId: number, startDate?: Date, endDate?: Date): Promise<Array<TimeEntry & { userName: string; projectName?: string | null; contractName?: string | null }>> {
-    let query = db.select({
+    // Build conditions array to properly combine filters (avoid chained .where() which replaces previous conditions)
+    const conditions = [eq(timeEntries.organizationId, organizationId)];
+    
+    if (startDate) {
+      conditions.push(gte(timeEntries.clockInTime, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(timeEntries.clockInTime, endDate));
+    }
+
+    const results = await db.select({
       id: timeEntries.id,
       organizationId: timeEntries.organizationId,
       userId: timeEntries.userId,
@@ -8610,16 +8621,9 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(users, eq(timeEntries.userId, users.id))
     .leftJoin(projects, eq(timeEntries.projectId, projects.id))
     .leftJoin(contracts, eq(timeEntries.contractId, contracts.id))
-    .where(eq(timeEntries.organizationId, organizationId));
-
-    if (startDate) {
-      query = query.where(gte(timeEntries.clockInTime, startDate)) as any;
-    }
-    if (endDate) {
-      query = query.where(lte(timeEntries.clockInTime, endDate)) as any;
-    }
-
-    const results = await query.orderBy(desc(timeEntries.clockInTime));
+    .where(and(...conditions))
+    .orderBy(desc(timeEntries.clockInTime));
+    
     return results;
   }
 
