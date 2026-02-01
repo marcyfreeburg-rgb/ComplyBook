@@ -1,0 +1,71 @@
+[GET]
+complybook.net/api/team/167 clientIP="216.147.126.248" requestID="65b1fb0c-7035-45c3" responseTimeMS=869 responseBytes=1410 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/plaid/accounts/167 clientIP="216.147.126.248" requestID="4ec83732-e4b0-4cf3" responseTimeMS=861 responseBytes=2004 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="a3ad7287-12fa-4f88" responseTimeMS=782 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:46:45 AM [express] GET /api/notifications/167/unread-count 304 in 781ms :: {"count":"0"}
+[PATCH]
+complybook.net/api/organizations/167/invoice-settings clientIP="216.147.126.248" requestID="5d78815c-922c-4a07" responseTimeMS=872 responseBytes=2256 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="3202f22b-c729-4f66" responseTimeMS=239 responseBytes=2879 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="f293922c-57e6-4101" responseTimeMS=239 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[Invoice Settings] User 43852944 updating org 167
+[Invoice Settings] User role: {
+  id: -1,
+  userId: '43852944',
+  organizationId: 167,
+  role: 'admin',
+  permissions: 'full_access',
+  createdAt: 2026-02-01T04:47:15.011Z
+}
+[Invoice Settings] Updating with fields: [
+  'companyName',         'companyAddress',
+  'companyPhone',        'companyEmail',
+  'companyWebsite',      'taxId',
+  'invoicePrefix',       'invoiceNotes',
+  'invoicePrimaryColor', 'invoiceAccentColor',
+  'invoiceFontFamily',   'invoiceTemplate',
+  'invoicePaymentTerms', 'invoicePaymentMethods',
+  'invoiceFooter',       'venmoUsername',
+  'paypalEmail',         'cashappUsername',
+  'stripeEnabled'
+]
+[Invoice Settings] Update successful
+4:47:15 AM [express] PATCH /api/organizations/167/invoice-settings 200 in 852ms :: {"id":167,"name":…
+4:47:15 AM [express] GET /api/organizations 200 in 237ms :: [{"id":234,"name":"Test Organization LLC…
+4:47:15 AM [express] GET /api/organizations 304 in 237ms :: [{"id":234,"name":"Test Organization LLC…
+4:47:21 AM [express] GET /api/invoices/167 200 in 245ms :: [{"id":51,"organizationId":167,"clientId"…
+4:47:22 AM [express] GET /api/clients/167 304 in 592ms :: [{"id":29,"organizationId":167,"name":"C C…
+[GET]
+complybook.net/api/invoices/167 clientIP="216.147.126.248" requestID="a7fdc2b1-53cb-45e4" responseTimeMS=249 responseBytes=1517 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/clients/167 clientIP="216.147.126.248" requestID="51050d21-0bf0-49f0" responseTimeMS=594 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:47:23 AM [express] GET /api/invoices/167/next-number 200 in 239ms :: {"nextInvoiceNumber":"INV-002…
+[GET]
+complybook.net/api/invoices/167/next-number clientIP="216.147.126.248" requestID="0e0c6c39-d7ae-4ac3" responseTimeMS=242 responseBytes=1308 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/invoices clientIP="216.147.126.248" requestID="67a2beb5-6065-4d0d" responseTimeMS=1110 responseBytes=1535 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/invoices/52/line-items clientIP="216.147.126.248" requestID="a2bebcac-1165-4084" responseTimeMS=304 responseBytes=1380 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="74.220.48.4" requestID="2f922521-d528-4dc1" responseTimeMS=5 responseBytes=67688 userAgent="node"
+[POST]
+complybook.net/api/invoices/52/send-email clientIP="216.147.126.248" requestID="c2a9f0d2-a692-4c1a" responseTimeMS=1730 responseBytes=1670 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/api/invoices/167 clientIP="216.147.126.248" requestID="755d057a-9773-4c52" responseTimeMS=244 responseBytes=1583 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.248" requestID="0c49c961-1a6f-498e" responseTimeMS=239 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="08184fd7-de2f-4221" responseTimeMS=240 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invoices/52/line-items clientIP="216.147.126.248" requestID="f9d4bb14-7166-44fc" responseTimeMS=654 responseBytes=1383 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:47:43 AM [express] POST /api/invoices 201 in 1106ms :: {"id":52,"organizationId":167,"clientId":32…
+4:47:44 AM [express] POST /api/invoices/52/line-items 201 in 301ms :: {"id":50,"invoiceId":52,"descr…
+4:47:45 AM [express] GET /api/notifications/167/unread-count 304 in 237ms :: {"count":"0"}
+4:47:45 AM [express] POST /api/invoices/52/send-email 200 in 1727ms :: {"message":"Invoice sent succ…
+4:47:46 AM [express] GET /api/invoices/167 200 in 241ms :: [{"id":51,"organizationId":167,"clientId"…
+4:47:49 AM [express] GET /api/organizations 304 in 238ms :: [{"id":234,"name":"Test Organization LLC…
+4:47:49 AM [express] GET /api/invoices/52/line-items 200 in 652ms :: [{"id":50,"invoiceId":52,"descr…

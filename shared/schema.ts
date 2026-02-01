@@ -76,7 +76,7 @@ export const proposalStatusEnum = pgEnum('proposal_status', ['draft', 'submitted
 export const subcontractorComplianceEnum = pgEnum('subcontractor_compliance', ['compliant', 'expiring_soon', 'non_compliant']);
 export const changeOrderStatusEnum = pgEnum('change_order_status', ['requested', 'under_review', 'approved', 'rejected', 'implemented']);
 export const documentTypeEnum = pgEnum('document_type', ['contract', 'invoice', 'receipt', 'report', 'certificate', 'grant_document', 'compliance', 'other']);
-export const complianceEventTypeEnum = pgEnum('compliance_event_type', ['deadline', 'renewal', 'audit', 'filing', 'review', 'certification']);
+export const complianceEventTypeEnum = pgEnum('compliance_event_type', ['financial_audit', 'budget_draft', 'final_budget', 'updated_budget', 'cyber_compliance', 'other']);
 
 // Notification enums
 export const notificationTypeEnum = pgEnum('notification_type', [
@@ -3361,7 +3361,7 @@ export const insertComplianceEventSchema = createInsertSchema(complianceEvents).
   createdAt: true,
   updatedAt: true,
 }).extend({
-  eventType: z.enum(['deadline', 'renewal', 'audit', 'filing', 'review', 'certification']),
+  eventType: z.enum(['financial_audit', 'budget_draft', 'final_budget', 'updated_budget', 'cyber_compliance', 'other']),
   dueDate: z.coerce.date(),
   completedDate: z.coerce.date().optional().nullable(),
   reminderDays: z.number().default(7),

@@ -261,6 +261,10 @@ import {
   documents,
   type Document,
   type InsertDocument,
+  // Compliance Events
+  complianceEvents,
+  type ComplianceEvent,
+  type InsertComplianceEvent,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -1013,6 +1017,14 @@ export interface IStorage {
   getDocument(id: number): Promise<Document | undefined>;
   createDocument(doc: InsertDocument): Promise<Document>;
   deleteDocument(id: number): Promise<void>;
+
+  // Compliance calendar operations
+  getComplianceEvents(organizationId: number): Promise<ComplianceEvent[]>;
+  getComplianceEvent(id: number): Promise<ComplianceEvent | undefined>;
+  createComplianceEvent(event: InsertComplianceEvent): Promise<ComplianceEvent>;
+  updateComplianceEvent(id: number, updates: Partial<InsertComplianceEvent>): Promise<ComplianceEvent>;
+  deleteComplianceEvent(id: number): Promise<void>;
+  getUpcomingComplianceEvents(organizationId: number, daysAhead: number): Promise<ComplianceEvent[]>;
 
   // For-profit: Contract milestone operations
   getContractMilestones(contractId: number): Promise<ContractMilestone[]>;
@@ -8404,6 +8416,51 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(documents)
       .where(eq(documents.organizationId, organizationId))
       .orderBy(desc(documents.createdAt));
+  }
+
+  // Compliance calendar operations
+  async getComplianceEvents(organizationId: number): Promise<ComplianceEvent[]> {
+    return await db.select().from(complianceEvents)
+      .where(eq(complianceEvents.organizationId, organizationId))
+      .orderBy(complianceEvents.dueDate);
+  }
+
+  async getComplianceEvent(id: number): Promise<ComplianceEvent | undefined> {
+    const [event] = await db.select().from(complianceEvents)
+      .where(eq(complianceEvents.id, id));
+    return event;
+  }
+
+  async createComplianceEvent(event: InsertComplianceEvent): Promise<ComplianceEvent> {
+    const [newEvent] = await db.insert(complianceEvents).values(event).returning();
+    return newEvent;
+  }
+
+  async updateComplianceEvent(id: number, updates: Partial<InsertComplianceEvent>): Promise<ComplianceEvent> {
+    const [updated] = await db.update(complianceEvents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(complianceEvents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteComplianceEvent(id: number): Promise<void> {
+    await db.delete(complianceEvents).where(eq(complianceEvents.id, id));
+  }
+
+  async getUpcomingComplianceEvents(organizationId: number, daysAhead: number): Promise<ComplianceEvent[]> {
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    
+    return await db.select().from(complianceEvents)
+      .where(and(
+        eq(complianceEvents.organizationId, organizationId),
+        eq(complianceEvents.isCompleted, 0),
+        gte(complianceEvents.dueDate, now),
+        lte(complianceEvents.dueDate, futureDate)
+      ))
+      .orderBy(complianceEvents.dueDate);
   }
 
   // Contract milestone operations

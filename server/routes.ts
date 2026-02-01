@@ -15585,6 +15585,183 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // ============================================
+  // COMPLIANCE CALENDAR ROUTES
+  // ============================================
+
+  // Get all compliance events for an organization
+  app.get("/api/organizations/:organizationId/compliance-events", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const events = await storage.getComplianceEvents(organizationId);
+      res.json(events);
+    } catch (error: any) {
+      console.error("Error fetching compliance events:", error);
+      res.status(500).json({ message: "Failed to fetch compliance events" });
+    }
+  });
+
+  // Get upcoming compliance events (within N days)
+  app.get("/api/organizations/:organizationId/compliance-events/upcoming/:days", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const daysAhead = parseInt(req.params.days) || 30;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const events = await storage.getUpcomingComplianceEvents(organizationId, daysAhead);
+      res.json(events);
+    } catch (error: any) {
+      console.error("Error fetching upcoming compliance events:", error);
+      res.status(500).json({ message: "Failed to fetch upcoming compliance events" });
+    }
+  });
+
+  // Create a compliance event
+  app.post("/api/compliance-events", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, dueDate, completedDate, ...eventData } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      const event = await storage.createComplianceEvent({
+        ...eventData,
+        organizationId,
+        createdBy: userId,
+        dueDate: dueDate ? new Date(dueDate) : new Date(),
+        completedDate: completedDate ? new Date(completedDate) : null,
+      });
+      res.status(201).json(event);
+    } catch (error: any) {
+      console.error("Error creating compliance event:", error);
+      res.status(500).json({ message: "Failed to create compliance event" });
+    }
+  });
+
+  // Update a compliance event
+  app.patch("/api/compliance-events/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const { dueDate, completedDate, ...otherUpdates } = req.body;
+
+      const existingEvent = await storage.getComplianceEvent(id);
+      if (!existingEvent) {
+        return res.status(404).json({ message: "Compliance event not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingEvent.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this compliance event" });
+      }
+
+      // Parse dates if provided
+      const updates: any = { ...otherUpdates };
+      if (dueDate !== undefined) {
+        updates.dueDate = dueDate ? new Date(dueDate) : null;
+      }
+      if (completedDate !== undefined) {
+        updates.completedDate = completedDate ? new Date(completedDate) : null;
+      }
+
+      const updated = await storage.updateComplianceEvent(id, updates);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating compliance event:", error);
+      res.status(500).json({ message: "Failed to update compliance event" });
+    }
+  });
+
+  // Delete a compliance event
+  app.delete("/api/compliance-events/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const existingEvent = await storage.getComplianceEvent(id);
+      if (!existingEvent) {
+        return res.status(404).json({ message: "Compliance event not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, existingEvent.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this compliance event" });
+      }
+
+      await storage.deleteComplianceEvent(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting compliance event:", error);
+      res.status(500).json({ message: "Failed to delete compliance event" });
+    }
+  });
+
+  // Download a document (must be before :entityType/:entityId route to avoid route conflict)
+  app.get("/api/documents/download/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const document = await storage.getDocument(id);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Verify user has access to this organization
+      const userRole = await storage.getUserRole(userId, document.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this document" });
+      }
+
+      const storageType = getStorageType();
+
+      if (storageType === "filesystem") {
+        try {
+          const fileBuffer = await filesystemStorage.getFile(document.fileUrl);
+          res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+          res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
+          res.send(fileBuffer);
+        } catch (err) {
+          return res.status(404).json({ message: "Document file not found in storage" });
+        }
+      } else if (storageType === "replit") {
+        const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
+        const objectStorageService = new ObjectStorageService();
+        
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.fileUrl);
+          res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+          await objectStorageService.downloadObject(objectFile, res);
+        } catch (err) {
+          if (err instanceof ObjectNotFoundError) {
+            return res.status(404).json({ message: "Document file not found in storage" });
+          }
+          throw err;
+        }
+      } else {
+        return res.status(501).json({ message: "No storage configured" });
+      }
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
   // Get documents for a specific entity (includes related entity documents)
   app.get("/api/documents/:entityType/:entityId", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -15885,57 +16062,6 @@ Keep the response approximately 100-150 words.`;
     } catch (error: any) {
       console.error("Error creating document:", error);
       res.status(500).json({ message: "Failed to create document" });
-    }
-  });
-
-  // Download a document
-  app.get("/api/documents/download/:id", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-      const document = await storage.getDocument(id);
-      
-      if (!document) {
-        return res.status(404).json({ message: "Document not found" });
-      }
-
-      // Verify user has access to this organization
-      const userRole = await storage.getUserRole(userId, document.organizationId);
-      if (!userRole) {
-        return res.status(403).json({ message: "Access denied to this document" });
-      }
-
-      const storageType = getStorageType();
-
-      if (storageType === "filesystem") {
-        try {
-          const fileBuffer = await filesystemStorage.getFile(document.fileUrl);
-          res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
-          res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
-          res.send(fileBuffer);
-        } catch (err) {
-          return res.status(404).json({ message: "Document file not found in storage" });
-        }
-      } else if (storageType === "replit") {
-        const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
-        const objectStorageService = new ObjectStorageService();
-        
-        try {
-          const objectFile = await objectStorageService.getObjectEntityFile(document.fileUrl);
-          res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
-          await objectStorageService.downloadObject(objectFile, res);
-        } catch (err) {
-          if (err instanceof ObjectNotFoundError) {
-            return res.status(404).json({ message: "Document file not found in storage" });
-          }
-          throw err;
-        }
-      } else {
-        return res.status(501).json({ message: "No storage configured" });
-      }
-    } catch (error: any) {
-      console.error("Error downloading document:", error);
-      res.status(500).json({ message: "Failed to download document" });
     }
   });
 
