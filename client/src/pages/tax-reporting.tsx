@@ -138,8 +138,8 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     mutationFn: async (taxYear: number) => {
       return await apiRequest('POST', `/api/tax-reports/${currentOrganization.id}/generate`, { taxYear });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tax-reports', currentOrganization.id] });
+    onSuccess: (_, taxYear) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tax-reports', currentOrganization.id, taxYear] });
       toast({ title: "Tax report generated successfully" });
     },
     onError: () => {
