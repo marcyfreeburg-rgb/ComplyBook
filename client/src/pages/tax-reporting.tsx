@@ -6,6 +6,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info, Plus, Eye, Mail, MoreVertical } from "lucide-react";
+import { FileText, Download, CheckCircle2, XCircle, Sparkles, AlertTriangle, ArrowRight, Loader2, Info, Plus, Eye, Mail, MoreVertical, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { Organization, TaxReport, TaxForm1099, InsertTaxForm1099, Category } from "@shared/schema";
@@ -295,6 +296,56 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
     },
   });
 
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'report' | '1099'; id: number; name: string } | null>(null);
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: number) => {
+      return await apiRequest('DELETE', `/api/tax-reports/${reportId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Tax report deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tax-reports', currentOrganization.id, selectedYear] });
+      queryClient.refetchQueries({ queryKey: ['/api/tax-reports', currentOrganization.id, selectedYear] });
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete tax report", variant: "destructive" });
+    },
+  });
+
+  const delete1099Mutation = useMutation({
+    mutationFn: async (formId: number) => {
+      return await apiRequest('DELETE', `/api/tax-form-1099s/${formId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "1099 form deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear] });
+      queryClient.refetchQueries({ queryKey: ['/api/tax-form-1099s', currentOrganization.id, selectedYear] });
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete 1099 form", variant: "destructive" });
+    },
+  });
+
+  const handleOpenDeleteDialog = (type: 'report' | '1099', id: number, name: string) => {
+    setDeleteTarget({ type, id, name });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === 'report') {
+      deleteReportMutation.mutate(deleteTarget.id);
+    } else {
+      delete1099Mutation.mutate(deleteTarget.id);
+    }
+  };
+
   const on1099Submit = (data: Form1099Values) => {
     create1099Mutation.mutate(data as InsertTaxForm1099);
   };
@@ -533,6 +584,15 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                             >
                               <Mail className="mr-2 h-4 w-4" />
                               Email PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleOpenDeleteDialog('report', report.id, `${report.taxYear} ${report.formType === '990' ? 'Form 990' : 'Schedule C'}`)}
+                              className="text-destructive focus:text-destructive"
+                              data-testid={`button-delete-report-${report.id}`}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Report
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -817,6 +877,19 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
                                 <Mail className="mr-2 h-4 w-4" />
                                 Email PDF
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  const formTypeLabel = form.formType === '1099_nec' ? '1099-NEC' : 
+                                                       form.formType === '1099_misc' ? '1099-MISC' : '1099-INT';
+                                  handleOpenDeleteDialog('1099', form.id, `${formTypeLabel} for ${form.recipientName}`);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                                data-testid={`button-delete-1099-${form.id}`}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Form
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -1100,6 +1173,41 @@ export default function TaxReporting({ currentOrganization }: TaxReportingProps)
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleteTarget?.type === 'report' ? 'Tax Report' : '1099 Form'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deleteTarget?.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteReportMutation.isPending || delete1099Mutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {(deleteReportMutation.isPending || delete1099Mutation.isPending) ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

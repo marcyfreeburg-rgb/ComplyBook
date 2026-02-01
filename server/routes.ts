@@ -10352,6 +10352,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete tax report
+  app.delete('/api/tax-reports/:reportId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reportId = parseInt(req.params.reportId);
+
+      const report = await storage.getTaxReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Tax report not found" });
+      }
+
+      // Only allow owner/admin to delete tax reports
+      const userRole = await storage.getUserRole(userId, report.organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can delete tax reports" });
+      }
+
+      await storage.deleteTaxReport(reportId);
+
+      // Log the deletion
+      await storage.createAuditLog({
+        userId,
+        organizationId: report.organizationId,
+        action: 'delete',
+        entityType: 'tax_report',
+        entityId: reportId.toString(),
+        details: { taxYear: report.taxYear, formType: report.formType }
+      });
+
+      res.json({ message: "Tax report deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting tax report:", error);
+      res.status(500).json({ message: "Failed to delete tax report" });
+    }
+  });
+
+  // Delete 1099 form
+  app.delete('/api/tax-form-1099s/:formId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const formId = parseInt(req.params.formId);
+
+      const form = await storage.getTaxForm1099(formId);
+      if (!form) {
+        return res.status(404).json({ message: "1099 form not found" });
+      }
+
+      // Only allow owner/admin to delete 1099 forms
+      const userRole = await storage.getUserRole(userId, form.organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can delete 1099 forms" });
+      }
+
+      await storage.deleteTaxForm1099(formId);
+
+      // Log the deletion
+      await storage.createAuditLog({
+        userId,
+        organizationId: form.organizationId,
+        action: 'delete',
+        entityType: 'tax_form_1099',
+        entityId: formId.toString(),
+        details: { taxYear: form.taxYear, formType: form.formType, recipientName: form.recipientName }
+      });
+
+      res.json({ message: "1099 form deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting 1099 form:", error);
+      res.status(500).json({ message: "Failed to delete 1099 form" });
+    }
+  });
+
   // ============================================
   // Custom Report Routes
   // ============================================
