@@ -1549,8 +1549,6 @@ export default function Budgets() {
                                       outerRadius={80}
                                       paddingAngle={2}
                                       dataKey="value"
-                                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                                      labelLine={false}
                                     >
                                       {budgetItems.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
@@ -1602,8 +1600,6 @@ export default function Budgets() {
                                       outerRadius={80}
                                       paddingAngle={2}
                                       dataKey="value"
-                                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                                      labelLine={false}
                                     >
                                       {incomeItems.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={INCOME_COLORS[index % INCOME_COLORS.length]} />

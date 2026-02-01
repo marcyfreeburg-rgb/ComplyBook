@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { QRCodeSVG } from "qrcode.react";
 import type { Form, FormQuestion } from "@shared/schema";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 
 type QuestionType = 'short_text' | 'long_text' | 'single_choice' | 'multiple_choice' | 'dropdown' | 'rating' | 'date' | 'email' | 'phone' | 'number' | 'file_upload';
@@ -1425,7 +1425,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                         <CardTitle className="text-base">{breakdown.question}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="h-[200px]">
+                        <div className="h-[240px]">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -1433,15 +1433,20 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
                                 dataKey="value"
                                 nameKey="name"
                                 cx="50%"
-                                cy="50%"
-                                outerRadius={70}
-                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                cy="40%"
+                                outerRadius={60}
                               >
                                 {breakdown.data.map((_, i) => (
                                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                                 ))}
                               </Pie>
                               <Tooltip />
+                              <Legend 
+                                layout="horizontal" 
+                                verticalAlign="bottom" 
+                                align="center"
+                                wrapperStyle={{ paddingTop: '10px' }}
+                              />
                             </PieChart>
                           </ResponsiveContainer>
                         </div>

@@ -524,7 +524,7 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
                 No expense categories to display
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={320}>
                 <RechartsPie>
                   <Pie
                     data={categoryBreakdown.expensesByCategory.map(cat => ({
@@ -532,10 +532,8 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
                       value: parseFloat(cat.amount),
                     }))}
                     cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => `${entry.name}: $${entry.value.toFixed(0)}`}
-                    outerRadius={100}
+                    cy="45%"
+                    outerRadius={80}
                     fill="hsl(var(--chart-1))"
                     dataKey="value"
                   >
@@ -553,6 +551,12 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
                       borderRadius: '6px',
                     }}
                     formatter={(value: any) => `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  />
+                  <Legend 
+                    layout="horizontal" 
+                    verticalAlign="bottom" 
+                    align="center"
+                    wrapperStyle={{ paddingTop: '10px' }}
                   />
                 </RechartsPie>
               </ResponsiveContainer>
