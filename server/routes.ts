@@ -10016,7 +10016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to generate tax reports" });
       }
 
-      const report = await storage.generateYearEndTaxReport(organizationId, taxYear);
+      const report = await storage.generateYearEndTaxReport(organizationId, taxYear, userId);
       res.status(201).json(report);
     } catch (error) {
       console.error("Error generating tax report:", error);

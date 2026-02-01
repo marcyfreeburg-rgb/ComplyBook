@@ -780,7 +780,7 @@ export interface IStorage {
   createTaxForm1099(form: InsertTaxForm1099): Promise<TaxForm1099>;
   updateTaxForm1099(id: number, updates: Partial<InsertTaxForm1099>): Promise<TaxForm1099>;
   deleteTaxForm1099(id: number): Promise<void>;
-  generateYearEndTaxReport(organizationId: number, taxYear: number): Promise<TaxReport>;
+  generateYearEndTaxReport(organizationId: number, taxYear: number, userId: string): Promise<TaxReport>;
 
   // Custom report operations
   getCustomReports(organizationId: number): Promise<CustomReport[]>;
@@ -6566,7 +6566,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(taxForm1099s).where(eq(taxForm1099s.id, id));
   }
 
-  async generateYearEndTaxReport(organizationId: number, taxYear: number): Promise<TaxReport> {
+  async generateYearEndTaxReport(organizationId: number, taxYear: number, userId: string): Promise<TaxReport> {
     // Get all transactions for the tax year
     const startDate = new Date(taxYear, 0, 1);
     const endDate = new Date(taxYear, 11, 31, 23, 59, 59, 999);
@@ -6643,7 +6643,7 @@ export class DatabaseStorage implements IStorage {
           totalNonDeductible: totalExpenses - totalDeductions,
           transactionCount: yearTransactions.length,
         },
-        generatedBy: 'system',
+        generatedBy: userId,
       })
       .returning();
 
