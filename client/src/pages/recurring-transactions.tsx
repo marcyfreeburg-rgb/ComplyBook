@@ -103,10 +103,11 @@ export default function RecurringTransactions({ currentOrganization, userId }: R
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Create recurring transaction error:", error);
       toast({
         title: "Error",
-        description: "Failed to create recurring transaction. Please try again.",
+        description: error?.message || "Failed to create recurring transaction. Please try again.",
         variant: "destructive",
       });
     },

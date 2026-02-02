@@ -5376,9 +5376,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recurringTransaction = await storage.createRecurringTransaction(recurringData);
       
       res.status(201).json(recurringTransaction);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating recurring transaction:", error);
-      res.status(400).json({ message: "Failed to create recurring transaction" });
+      console.error("Error details:", error.message, error.stack);
+      res.status(400).json({ message: "Failed to create recurring transaction", error: error.message });
     }
   });
 
