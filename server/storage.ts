@@ -267,7 +267,7 @@ import {
   type InsertComplianceEvent,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, gt, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
 import memoize from "memoizee";
 import { encryptField, decryptField } from './encryption';
 import { computeAuditLogHash, verifyAuditLogChain as verifyChain, repairAuditLogChain as repairChain } from './auditChain';

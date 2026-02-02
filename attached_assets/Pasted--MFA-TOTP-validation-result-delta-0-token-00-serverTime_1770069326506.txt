@@ -1,0 +1,105 @@
+[MFA] TOTP validation result: delta=0, token=00****, serverTime=2026-02-02T21:53:56.774Z
+9:53:56 PM [express] POST /api/auth/mfa/verify-login 200 in 918ms :: {"success":true,"message":"Logi…
+9:53:57 PM [express] GET /api/auth/mfa/login-status 200 in 178ms :: {"mfaPending":false,"mfaVerified…
+9:53:57 PM [express] GET /api/auth/user 200 in 587ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+9:53:58 PM [express] GET /api/security/mfa/status 304 in 295ms :: {"mfaEnabled":true,"mfaRequired":t…
+9:53:58 PM [express] GET /api/organizations 304 in 460ms :: [{"id":234,"name":"Test Organization LLC…
+9:53:59 PM [express] GET /api/dashboard/168/category-breakdown 304 in 712ms :: {"incomeByCategory":[…
+9:53:59 PM [express] GET /api/dashboard/168 304 in 699ms :: {"totalIncome":"0","totalExpenses":"71.2…
+9:53:59 PM [express] GET /api/notifications/168/unread-count 304 in 833ms :: {"count":"0"}
+9:53:59 PM [express] GET /api/dashboard/168/monthly-trends 304 in 859ms :: [{"month":"Sep 2025","inc…
+9:53:59 PM [express] GET /api/budgets/168 304 in 809ms :: [{"id":10,"organizationId":168,"grantId":1…
+9:54:00 PM [express] GET /api/budgets/10/vs-actual 304 in 591ms :: [{"categoryId":356,"categoryName"…
+9:54:06 PM [express] GET /api/donors/168 304 in 297ms :: [{"id":11,"organizationId":168,"name":"Case…
+9:54:06 PM [express] GET /api/donor-letters/168 304 in 307ms :: {"data":[{"id":7,"organizationId":16…
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.126.248" requestID="77138fc5-45a1-4544" responseTimeMS=298 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.126.248" requestID="9fcacfe7-d39a-4d52" responseTimeMS=309 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+9:54:10 PM [express] POST /api/donor-portal/send-access-link/13 200 in 643ms :: {"success":true,"mes…
+[POST]
+complybook.net/api/donor-portal/send-access-link/13 clientIP="216.147.126.248" requestID="7eec9be7-87f9-4cae" responseTimeMS=645 responseBytes=1334 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DO2QXZ39.js clientIP="216.147.126.248" requestID="8b1c5fa7-2b55-4b69" responseTimeMS=469 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-htOBSXgy.css clientIP="216.147.126.248" requestID="a2570361-dd0e-4985" responseTimeMS=116 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/donor-portal?token=dcb8b79b914dad9b023d76ddb12162bfcd35c3e269d77f01723430d6045f58e6 clientIP="216.147.126.248" requestID="4cdeaa29-45db-4f44" responseTimeMS=419 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="e2e9e621-5851-4395" responseTimeMS=359 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="85a02162-5d18-438e" responseTimeMS=116 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="7d90d790-86bb-4a42" responseTimeMS=289 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.126.248" requestID="125a1328-7493-40c8" responseTimeMS=116 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="ad1065b7-7645-4d67" responseTimeMS=3 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="f9958f4a-a682-415f" responseTimeMS=423 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="9539c3a3-00b0-49ae" responseTimeMS=120 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-portal/data/dcb8b79b914dad9b023d76ddb12162bfcd35c3e269d77f01723430d6045f58e6 clientIP="216.147.126.248" requestID="aacc4c2f-b306-451c" responseTimeMS=118 responseBytes=1134 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="f95f6628-1666-4870" responseTimeMS=587 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.126.248" requestID="b65deb44-e9dd-4a22" responseTimeMS=116 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/donor-portal?token=dcb8b79b914dad9b023d76ddb12162bfcd35c3e269d77f01723430d6045f58e6 clientIP="52.73.78.143" requestID="1288788a-d0f5-46d6" responseTimeMS=4 responseBytes=2040 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-htOBSXgy.css clientIP="52.73.78.143" requestID="6922f7b3-a528-4d73" responseTimeMS=10 responseBytes=17533 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-DO2QXZ39.js clientIP="52.73.78.143" requestID="f44f409e-6775-4d0d" responseTimeMS=532 responseBytes=928555 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/ clientIP="52.73.78.143" requestID="117dc287-bd83-4a54" responseTimeMS=4 responseBytes=1864 userAgent="Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-portal/data/dcb8b79b914dad9b023d76ddb12162bfcd35c3e269d77f01723430d6045f58e6 clientIP="52.73.78.143" requestID="28a47326-9c74-420d" responseTimeMS=2 responseBytes=1134 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="52.73.78.143" requestID="4dd95d59-a686-4c98" responseTimeMS=2 responseBytes=2243 userAgent="Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="52.73.78.143" requestID="210ef5d9-e5dc-4a4b" responseTimeMS=18 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="52.73.78.143" requestID="2e52a6dd-6df9-4c12" responseTimeMS=18 responseBytes=231776 userAgent="Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="52.73.78.143" requestID="3b09d8fb-63cf-460d" responseTimeMS=2 responseBytes=1116 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="52.73.78.143" requestID="e093cca0-4f79-43c9" responseTimeMS=2 responseBytes=1083 userAgent="Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="52.73.78.143" requestID="b9a82b5b-9a3c-4194" responseTimeMS=3 responseBytes=1590 userAgent="Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="52.73.78.143" requestID="0b37ddd6-66d9-4862" responseTimeMS=18 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-512.png clientIP="52.73.78.143" requestID="65bf55dc-5b33-4d66" responseTimeMS=164 responseBytes=231776 userAgent="Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.0.0 Safari/537.36"
+9:54:32 PM [express] GET /api/auth/user 304 in 357ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+9:54:32 PM [express] GET /api/security/mfa/status 304 in 287ms :: {"mfaEnabled":true,"mfaRequired":t…
+9:54:32 PM [express] GET /api/organizations 304 in 419ms :: [{"id":234,"name":"Test Organization LLC…
+Error fetching donor portal data: ReferenceError: gt is not defined
+    at DatabaseStorage.getDonorByAccessToken (file:///opt/render/project/src/dist/index.js:9053:11)
+    at file:///opt/render/project/src/dist/index.js:14952:37
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/opt/render/project/src/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5)
+    at /opt/render/project/src/node_modules/express/lib/router/index.js:284:15
+    at param (/opt/render/project/src/node_modules/express/lib/router/index.js:365:14)
+    at param (/opt/render/project/src/node_modules/express/lib/router/index.js:376:14)
+    at Function.process_params (/opt/render/project/src/node_modules/express/lib/router/index.js:421:3)
+9:54:33 PM [express] GET /api/donor-portal/data/dcb8b79b914dad9b023d76ddb12162bfcd35c3e269d77f017234…
+Menu
+9:54:33 PM [express] GET /api/notifications/168/unread-count 304 in 584ms :: {"count":"0"}
+9:54:37 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+Error fetching donor portal data: ReferenceError: gt is not defined
+    at DatabaseStorage.getDonorByAccessToken (file:///opt/render/project/src/dist/index.js:9053:11)
+    at file:///opt/render/project/src/dist/index.js:14952:37
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/opt/render/project/src/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/opt/render/project/src/node_modules/express/lib/router/layer.js:95:5)
+    at /opt/render/project/src/node_modules/express/lib/router/index.js:284:15
+    at param (/opt/render/project/src/node_modules/express/lib/router/index.js:365:14)
+    at param (/opt/render/project/src/node_modules/express/lib/router/index.js:376:14)
+    at Function.process_params (/opt/render/project/src/node_modules/express/lib/router/index.js:421:3)
+9:54:38 PM [express] GET /api/donor-portal/data/dcb8b79b914dad9b023d76ddb12162bfcd35c3e269d77f017234…
+[GET]
+complybook.net/favicon.ico clientIP="52.73.78.143" requestID="72e2ac61-eec7-420a" responseTimeMS=3 respo
