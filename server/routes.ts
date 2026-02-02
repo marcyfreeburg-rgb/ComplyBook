@@ -1733,13 +1733,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { getUncachableStripeClient } = await import('./stripeClient');
         const stripe = await getUncachableStripeClient();
         
-        // Build base URL from request or environment
+        // Build base URL from request or environment (Render/Replit compatible)
         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
         const host = req.headers['x-forwarded-host'] || req.headers.host;
         const baseUrl = host ? `${protocol}://${host}` : (
-          process.env.REPLIT_DOMAINS 
-            ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-            : `https://${process.env.REPLIT_DEV_DOMAIN || 'complybook.net'}`
+          process.env.RENDER_EXTERNAL_URL ||
+          (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : null) ||
+          'https://complybook.net'
         );
         
         const sessionParams: any = {
