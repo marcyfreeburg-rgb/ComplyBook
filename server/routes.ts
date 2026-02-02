@@ -12895,24 +12895,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/pledges/:id/payments", async (req: Request, res: Response) => {
+  app.post("/api/pledges/:id/payments", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const pledge = await storage.getPledge(parseInt(id));
 
       if (!pledge) {
         return res.status(404).json({ message: "Pledge not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (pledge.organizationId !== organizationId) {
+      // Verify user has access to this pledge's organization
+      const userRole = await storage.getUserRole(userId, pledge.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this pledge" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role === 'viewer') {
         return res.status(403).json({ message: "Viewers cannot record pledge payments" });
       }
+      
+      const organizationId = pledge.organizationId;
 
       const validatedData = insertPledgePaymentSchema.parse({
         ...req.body,
@@ -12920,7 +12923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const result = await storage.recordPledgePayment(parseInt(id), validatedData);
-      await storage.logCreate(organizationId, req.user!.id, 'pledge_payment', result.payment.id.toString(), result.payment);
+      await storage.logCreate(organizationId, userId, 'pledge_payment', result.payment.id.toString(), result.payment);
       res.status(201).json(result);
     } catch (error: any) {
       console.error("Error recording pledge payment:", error);
@@ -12931,17 +12934,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/pledges/:id/payments", async (req: Request, res: Response) => {
+  app.get("/api/pledges/:id/payments", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const pledge = await storage.getPledge(parseInt(id));
 
       if (!pledge) {
         return res.status(404).json({ message: "Pledge not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (pledge.organizationId !== organizationId) {
+      // Verify user has access to this pledge's organization
+      const userRole = await storage.getUserRole(userId, pledge.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this pledge" });
       }
 
