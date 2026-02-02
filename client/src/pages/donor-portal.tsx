@@ -9,7 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Heart, 
   DollarSign, 
@@ -22,11 +25,12 @@ import {
   Download,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  Plus,
+  CreditCard,
+  RefreshCw
 } from "lucide-react";
-import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
 
 interface DonorPortalData {
   donor: {
@@ -80,18 +84,39 @@ export default function DonorPortal() {
     phone: "",
     address: "",
   });
+  const [selectedTaxYear, setSelectedTaxYear] = useState<string>("all");
+  const [donationDialogOpen, setDonationDialogOpen] = useState(false);
+  const [donationAmount, setDonationAmount] = useState("25");
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<"monthly" | "yearly">("monthly");
+  const [pledgePaymentDialogOpen, setPledgePaymentDialogOpen] = useState(false);
+  const [selectedPledge, setSelectedPledge] = useState<DonorPortalData['pledges'][0] | null>(null);
+  const [pledgePaymentAmount, setPledgePaymentAmount] = useState("");
 
-  // Get token from URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get('token');
     if (tokenParam) {
       setToken(tokenParam);
     }
-  }, []);
+    const donationStatus = urlParams.get('donation');
+    if (donationStatus === 'success') {
+      toast({
+        title: "Thank you!",
+        description: "Your donation was successful. It may take a few moments to appear in your history.",
+      });
+      window.history.replaceState({}, '', window.location.pathname + '?token=' + tokenParam);
+    } else if (donationStatus === 'cancelled') {
+      toast({
+        title: "Donation cancelled",
+        description: "Your donation was not completed.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', window.location.pathname + '?token=' + tokenParam);
+    }
+  }, [toast]);
 
-  // Fetch portal data
-  const { data: portalData, isLoading, error } = useQuery<DonorPortalData>({
+  const { data: portalData, isLoading, error, refetch } = useQuery<DonorPortalData>({
     queryKey: ['/api/donor-portal/data', token],
     queryFn: async () => {
       const response = await fetch(`/api/donor-portal/data/${token}`);
@@ -104,7 +129,6 @@ export default function DonorPortal() {
     retry: false,
   });
 
-  // Update contact mutation
   const updateContactMutation = useMutation({
     mutationFn: async (data: { email?: string; phone?: string; address?: string }) => {
       return await apiRequest('PATCH', `/api/donor-portal/update-contact/${token}`, data);
@@ -115,6 +139,7 @@ export default function DonorPortal() {
         description: "Your contact information has been updated.",
       });
       setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/donor-portal/data', token] });
     },
     onError: () => {
       toast({
@@ -125,7 +150,57 @@ export default function DonorPortal() {
     },
   });
 
-  // Initialize contact form when data loads
+  const createDonationMutation = useMutation({
+    mutationFn: async (data: { amount: string; isRecurring: boolean; frequency?: string }) => {
+      const response = await apiRequest('POST', `/api/donor-portal/create-donation/${token}`, data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to start donation" }));
+        throw new Error(errorData.message || "Failed to start donation");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start donation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const recordPledgePaymentMutation = useMutation({
+    mutationFn: async (data: { pledgeId: number; amount: string }) => {
+      const response = await apiRequest('POST', `/api/donor-portal/pledge-payment/${token}`, data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to record payment" }));
+        throw new Error(errorData.message || "Failed to record payment");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment recorded",
+        description: "Your pledge payment has been recorded.",
+      });
+      setPledgePaymentDialogOpen(false);
+      setSelectedPledge(null);
+      setPledgePaymentAmount("");
+      queryClient.invalidateQueries({ queryKey: ['/api/donor-portal/data', token] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to record payment.",
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     if (portalData?.donor) {
       setContactForm({
@@ -136,7 +211,6 @@ export default function DonorPortal() {
     }
   }, [portalData]);
 
-  // Format currency
   const formatCurrency = (amount: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -144,7 +218,6 @@ export default function DonorPortal() {
     }).format(parseFloat(amount));
   };
 
-  // Get pledge status badge
   const getPledgeStatusBadge = (status: string) => {
     switch (status) {
       case 'fulfilled':
@@ -160,7 +233,6 @@ export default function DonorPortal() {
     }
   };
 
-  // Download letter as HTML
   const downloadLetter = (letter: DonorPortalData['letters'][0]) => {
     if (!letter.renderedHtml) {
       toast({
@@ -180,7 +252,30 @@ export default function DonorPortal() {
     URL.revokeObjectURL(url);
   };
 
-  // No token provided
+  const handleDonate = () => {
+    if (!donationAmount || parseFloat(donationAmount) < 1) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid donation amount (minimum $1).",
+        variant: "destructive",
+      });
+      return;
+    }
+    createDonationMutation.mutate({
+      amount: donationAmount,
+      isRecurring,
+      frequency: isRecurring ? recurringFrequency : undefined,
+    });
+  };
+
+  const handleRecordPledgePayment = () => {
+    if (!selectedPledge || !pledgePaymentAmount) return;
+    recordPledgePaymentMutation.mutate({
+      pledgeId: selectedPledge.id,
+      amount: pledgePaymentAmount,
+    });
+  };
+
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -197,7 +292,6 @@ export default function DonorPortal() {
     );
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
@@ -210,7 +304,6 @@ export default function DonorPortal() {
     );
   }
 
-  // Error state
   if (error || !portalData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -235,9 +328,13 @@ export default function DonorPortal() {
   const totalPledged = activePledges.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   const totalPaid = activePledges.reduce((sum, p) => sum + parseFloat(p.amountPaid), 0);
 
+  const availableYears = Array.from(new Set(portalData.letters.map(l => l.year))).sort((a, b) => b - a);
+  const filteredLetters = selectedTaxYear === "all" 
+    ? portalData.letters 
+    : portalData.letters.filter(l => l.year.toString() === selectedTaxYear);
+
   return (
     <div className="min-h-screen bg-background" data-testid="page-donor-portal">
-      {/* Header */}
       <div className="border-b bg-card">
         <div className="max-w-4xl mx-auto px-6 py-8">
           <div className="flex items-center gap-4">
@@ -256,17 +353,111 @@ export default function DonorPortal() {
               <p className="text-muted-foreground">Donor Portal</p>
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex items-center justify-between flex-wrap gap-4">
             <p className="text-lg">
               Welcome back, <span className="font-semibold" data-testid="text-donor-name">{portalData.donor.name}</span>
             </p>
+            <Dialog open={donationDialogOpen} onOpenChange={setDonationDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-make-donation">
+                  <Heart className="h-4 w-4 mr-2" />
+                  Make a Donation
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Make a Donation</DialogTitle>
+                  <DialogDescription>
+                    Support {portalData.organization.name} with a one-time or recurring gift.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Donation Amount</Label>
+                    <div className="flex gap-2">
+                      {['10', '25', '50', '100', '250'].map((amt) => (
+                        <Button
+                          key={amt}
+                          variant={donationAmount === amt ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setDonationAmount(amt)}
+                          data-testid={`button-amount-${amt}`}
+                        >
+                          ${amt}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={donationAmount}
+                        onChange={(e) => setDonationAmount(e.target.value)}
+                        className="w-32"
+                        data-testid="input-custom-amount"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Donation Type</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={!isRecurring ? "default" : "outline"}
+                        onClick={() => setIsRecurring(false)}
+                        data-testid="button-one-time"
+                      >
+                        One-Time
+                      </Button>
+                      <Button
+                        variant={isRecurring ? "default" : "outline"}
+                        onClick={() => setIsRecurring(true)}
+                        data-testid="button-recurring"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Recurring
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isRecurring && (
+                    <div className="space-y-2">
+                      <Label>Frequency</Label>
+                      <Select value={recurringFrequency} onValueChange={(v: "monthly" | "yearly") => setRecurringFrequency(v)}>
+                        <SelectTrigger data-testid="select-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <Button 
+                    className="w-full" 
+                    onClick={handleDonate}
+                    disabled={createDonationMutation.isPending}
+                    data-testid="button-proceed-donation"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    {createDonationMutation.isPending ? 'Processing...' : `Donate ${formatCurrency(donationAmount || '0')}`}
+                    {isRecurring && ` / ${recurringFrequency === 'monthly' ? 'month' : 'year'}`}
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    Secure payment powered by Stripe
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -314,7 +505,6 @@ export default function DonorPortal() {
           </Card>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="donations" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="donations" data-testid="tab-donations">Donations</TabsTrigger>
@@ -323,7 +513,6 @@ export default function DonorPortal() {
             <TabsTrigger value="profile" data-testid="tab-profile">My Info</TabsTrigger>
           </TabsList>
 
-          {/* Donations Tab */}
           <TabsContent value="donations">
             <Card>
               <CardHeader>
@@ -335,6 +524,14 @@ export default function DonorPortal() {
                   <div className="text-center py-8 text-muted-foreground">
                     <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No donations recorded yet</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setDonationDialogOpen(true)}
+                      data-testid="button-first-donation"
+                    >
+                      Make Your First Donation
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -366,7 +563,6 @@ export default function DonorPortal() {
             </Card>
           </TabsContent>
 
-          {/* Pledges Tab */}
           <TabsContent value="pledges">
             <Card>
               <CardHeader>
@@ -404,6 +600,21 @@ export default function DonorPortal() {
                                 {pledge.dueDate && ` • Due ${safeFormatDate(pledge.dueDate, 'MMM d, yyyy')}`}
                               </p>
                             </div>
+                            {pledge.status !== 'fulfilled' && pledge.status !== 'cancelled' && remaining > 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedPledge(pledge);
+                                  setPledgePaymentAmount(remaining.toFixed(2));
+                                  setPledgePaymentDialogOpen(true);
+                                }}
+                                data-testid={`button-pay-pledge-${pledge.id}`}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Record Payment
+                              </Button>
+                            )}
                           </div>
                           
                           <div className="space-y-1">
@@ -433,22 +644,38 @@ export default function DonorPortal() {
             </Card>
           </TabsContent>
 
-          {/* Tax Letters Tab */}
           <TabsContent value="letters">
             <Card>
               <CardHeader>
-                <CardTitle>Tax Letters</CardTitle>
-                <CardDescription>Download your tax-deductible donation letters</CardDescription>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle>Tax Letters</CardTitle>
+                    <CardDescription>Download your tax-deductible donation letters</CardDescription>
+                  </div>
+                  {availableYears.length > 1 && (
+                    <Select value={selectedTaxYear} onValueChange={setSelectedTaxYear}>
+                      <SelectTrigger className="w-[140px]" data-testid="select-tax-year">
+                        <SelectValue placeholder="Filter by year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {availableYears.map(year => (
+                          <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                {portalData.letters.length === 0 ? (
+                {filteredLetters.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No tax letters available yet</p>
+                    <p>No tax letters available {selectedTaxYear !== "all" ? `for ${selectedTaxYear}` : 'yet'}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {portalData.letters.map((letter) => (
+                    {filteredLetters.map((letter) => (
                       <div 
                         key={letter.id} 
                         className="flex items-center justify-between p-4 border rounded-lg"
@@ -490,7 +717,6 @@ export default function DonorPortal() {
             </Card>
           </TabsContent>
 
-          {/* Profile Tab */}
           <TabsContent value="profile">
             <Card>
               <CardHeader>
@@ -626,7 +852,58 @@ export default function DonorPortal() {
         </Tabs>
       </div>
 
-      {/* Footer */}
+      <Dialog open={pledgePaymentDialogOpen} onOpenChange={setPledgePaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Pledge Payment</DialogTitle>
+            <DialogDescription>
+              Record a payment toward your {selectedPledge && formatCurrency(selectedPledge.amount)} pledge.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Payment Amount</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={pledgePaymentAmount}
+                  onChange={(e) => setPledgePaymentAmount(e.target.value)}
+                  data-testid="input-pledge-payment"
+                />
+              </div>
+              {selectedPledge && (
+                <p className="text-xs text-muted-foreground">
+                  Remaining balance: {formatCurrency((parseFloat(selectedPledge.amount) - parseFloat(selectedPledge.amountPaid)).toString())}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRecordPledgePayment}
+                disabled={recordPledgePaymentMutation.isPending || !pledgePaymentAmount}
+                data-testid="button-submit-pledge-payment"
+              >
+                {recordPledgePaymentMutation.isPending ? 'Recording...' : 'Record Payment'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPledgePaymentDialogOpen(false);
+                  setSelectedPledge(null);
+                  setPledgePaymentAmount("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="border-t mt-12">
         <div className="max-w-4xl mx-auto px-6 py-6 text-center text-sm text-muted-foreground">
           <p>Thank you for your generous support of {portalData.organization.name}</p>

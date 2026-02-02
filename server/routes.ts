@@ -1664,6 +1664,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Donor portal - record pledge payment (token-based auth)
+  app.post('/api/donor-portal/pledge-payment/:token', async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      const result = await storage.getDonorByAccessToken(token);
+      if (!result) {
+        return res.status(401).json({ message: "Invalid or expired access token" });
+      }
+      
+      const { pledgeId, amount, paymentDate, paymentMethod, notes } = req.body;
+      
+      // Validate pledge belongs to this donor
+      const pledge = await storage.getPledge(pledgeId);
+      if (!pledge || pledge.donorId !== result.donor.id) {
+        return res.status(403).json({ message: "You don't have access to this pledge" });
+      }
+      
+      // Validate amount
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+      
+      const paymentData = {
+        pledgeId,
+        amount: parsedAmount.toString(),
+        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+        paymentMethod: paymentMethod || 'other',
+        notes: notes || null,
+      };
+      
+      const payment = await storage.recordPledgePayment(pledgeId, paymentData);
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error recording donor portal pledge payment:", error);
+      res.status(500).json({ message: "Failed to record payment" });
+    }
+  });
+
+  // Donor portal - create one-time donation checkout (Stripe)
+  // Note: Uses price_data for dynamic donation amounts (standard Stripe pattern for donations)
+  app.post('/api/donor-portal/create-donation/:token', async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      
+      const result = await storage.getDonorByAccessToken(token);
+      if (!result) {
+        return res.status(401).json({ message: "Invalid or expired access token" });
+      }
+      
+      const { amount, isRecurring, frequency } = req.body;
+      
+      // Validate amount
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount < 1) {
+        return res.status(400).json({ message: "Minimum donation amount is $1" });
+      }
+      
+      const organization = await storage.getOrganization(result.organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
+      // Create Stripe checkout session
+      try {
+        const { getUncachableStripeClient } = await import('./stripeClient');
+        const stripe = await getUncachableStripeClient();
+        
+        // Build base URL from request or environment
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        const baseUrl = host ? `${protocol}://${host}` : (
+          process.env.REPLIT_DOMAINS 
+            ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+            : `https://${process.env.REPLIT_DEV_DOMAIN || 'complybook.net'}`
+        );
+        
+        const sessionParams: any = {
+          payment_method_types: ['card'],
+          line_items: [{
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: isRecurring 
+                  ? `${frequency === 'yearly' ? 'Annual' : 'Monthly'} Donation to ${organization.name}`
+                  : `Donation to ${organization.name}`,
+                description: `Thank you for supporting ${organization.name}`,
+              },
+              unit_amount: Math.round(parsedAmount * 100),
+              ...(isRecurring && {
+                recurring: {
+                  interval: frequency === 'yearly' ? 'year' : 'month',
+                },
+              }),
+            },
+            quantity: 1,
+          }],
+          mode: isRecurring ? 'subscription' : 'payment',
+          success_url: `${baseUrl}/donor-portal?token=${token}&donation=success`,
+          cancel_url: `${baseUrl}/donor-portal?token=${token}&donation=cancelled`,
+          customer_email: result.donor.email || undefined,
+          metadata: {
+            donorId: result.donor.id.toString(),
+            organizationId: result.organizationId.toString(),
+            donorName: result.donor.name,
+            isRecurring: isRecurring ? 'true' : 'false',
+            source: 'donor_portal',
+          },
+        };
+        
+        const session = await stripe.checkout.sessions.create(sessionParams);
+        
+        res.json({ 
+          success: true, 
+          checkoutUrl: session.url,
+        });
+      } catch (stripeError: any) {
+        console.error("Stripe error:", stripeError);
+        res.status(500).json({ message: "Payment service temporarily unavailable" });
+      }
+    } catch (error) {
+      console.error("Error creating donation:", error);
+      res.status(500).json({ message: "Failed to create donation" });
+    }
+  });
+
   // Donor Letter routes
   app.get('/api/donor-letters/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
