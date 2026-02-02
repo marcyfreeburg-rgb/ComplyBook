@@ -1,0 +1,45 @@
+12:56:50 AM [express] GET /api/auth/user 200 in 360ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+12:56:51 AM [express] GET /api/security/mfa/status 304 in 292ms :: {"mfaEnabled":true,"mfaRequired":t…
+12:56:51 AM [express] GET /api/organizations 304 in 588ms :: [{"id":234,"name":"Test Organization LLC…
+12:56:51 AM [express] GET /api/notifications/168/unread-count 304 in 231ms :: {"count":"0"}
+12:56:52 AM [express] GET /api/donor-letters/168 304 in 488ms :: {"data":[{"id":7,"organizationId":16…
+12:56:52 AM [express] GET /api/donors/168 304 in 674ms :: [{"id":11,"organizationId":168,"name":"Case…
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.126.248" requestID="f7432c5c-d75f-40b7" responseTimeMS=117 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="b406fc8d-fd38-4cda" responseTimeMS=589 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.126.248" requestID="89e553c3-0cea-4a6a" responseTimeMS=489 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="bb03d77b-fc71-4fb7" responseTimeMS=232 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.126.248" requestID="245b2b9d-100f-4d81" responseTimeMS=676 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error sending donor access link: ResponseError: Forbidden
+    at node_modules/@sendgrid/client/src/classes/client.js:167:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 403,
+  response: {
+    headers: Object [AxiosHeaders] {
+      server: 'nginx',
+      date: 'Mon, 02 Feb 2026 00:56:54 GMT',
+      'content-type': 'application/json',
+      'content-length': '281',
+      connection: 'keep-alive',
+      'access-control-allow-origin': 'https://sendgrid.api-docs.io',
+      'access-control-allow-methods': 'POST',
+      'access-control-allow-headers': 'Authorization, Content-Type, On-behalf-of, x-sg-elas-acl',
+      'access-control-max-age': '600',
+      'x-no-cors-reason': 'https://sendgrid.com/docs/Classroom/Basics/API/cors.html',
+      'strict-transport-security': 'max-age=31536000; includeSubDomains',
+      'content-security-policy': "frame-ancestors 'none'",
+      'cache-control': 'no-cache',
+Menu
+      'x-content-type-options': 'no-sniff',
+      'referrer-policy': 'strict-origin-when-cross-origin'
+    },
+    body: { errors: [Array] }
+  }
+}
+12:56:55 AM [express] POST /api/donor-portal/send-access-link/13 500 in 477ms :: {"message":"Failed t…
+[POST]
+complybook.net/api/donor-portal/send-access-link/13 clientIP="216.147.126.248" requestID="1afae1b0-048e-4ee2" responseTimeMS=480 responseBytes=1314 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
