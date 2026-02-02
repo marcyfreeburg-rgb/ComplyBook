@@ -731,6 +731,16 @@ export interface IStorage {
   updateVendorPaymentDetails(id: number, updates: Partial<InsertVendorPaymentDetails>): Promise<VendorPaymentDetails>;
   deleteVendorPaymentDetails(id: number): Promise<void>;
 
+  // Organization branding operations
+  getBrandSettings(organizationId: number): Promise<{
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    primaryEmail?: string;
+    footer?: string;
+  } | undefined>;
+
   // Organization payment methods operations
   getOrganizationPaymentMethods(organizationId: number): Promise<OrganizationPaymentMethod[]>;
   getOrganizationPaymentMethod(id: number): Promise<OrganizationPaymentMethod | undefined>;
@@ -6099,6 +6109,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVendorPaymentDetails(id: number): Promise<void> {
     await db.delete(vendorPaymentDetails).where(eq(vendorPaymentDetails.id, id));
+  }
+
+  // ============================================
+  // ORGANIZATION BRANDING OPERATIONS
+  // ============================================
+
+  async getBrandSettings(organizationId: number): Promise<{
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    primaryEmail?: string;
+    footer?: string;
+  } | undefined> {
+    const org = await this.getOrganization(organizationId);
+    if (!org) return undefined;
+    
+    return {
+      primaryColor: org.invoicePrimaryColor || '#3b82f6',
+      accentColor: org.invoiceAccentColor || '#1e40af',
+      fontFamily: org.invoiceFontFamily || 'Inter',
+      logoUrl: org.logoUrl || undefined,
+      primaryEmail: org.companyEmail || undefined,
+      footer: org.invoiceFooter || undefined,
+    };
   }
 
   // ============================================

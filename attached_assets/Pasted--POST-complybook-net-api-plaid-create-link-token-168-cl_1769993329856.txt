@@ -1,0 +1,61 @@
+[POST]
+complybook.net/api/plaid/create-link-token/168 clientIP="216.147.126.248" requestID="0209ea0c-0e8c-43a8" responseTimeMS=2 responseBytes=317 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/mode clientIP="216.147.126.248" requestID="b23c0702-4c65-436c" responseTimeMS=466 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/team/168 clientIP="216.147.126.248" requestID="e0349a4d-64f0-4ed3" responseTimeMS=817 responseBytes=1410 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.126.248" requestID="23cae52d-6399-42b3" responseTimeMS=858 responseBytes=1278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="56b895e3-4855-42b1" responseTimeMS=818 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/plaid/accounts/168 clientIP="216.147.126.248" requestID="3d6382f5-0594-4e14" responseTimeMS=871 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/168 clientIP="216.147.126.248" requestID="c6c838e4-fc5f-4b7a" responseTimeMS=880 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[CSRF] Token mismatch - Path: /plaid/create-link-token/168, Method: POST, IP: 172.71.150.26, Cookie: present, Header: missing
+12:44:41 AM [express] GET /api/auth/mode 304 in 465ms :: {"mode":"local"}
+12:44:41 AM [express] GET /api/team/168 200 in 815ms :: [{"userId":"local_admin_default","email":"adm…
+12:44:41 AM [express] GET /api/plaid/accounts/168 304 in 869ms :: [{"id":18,"plaidItemId":9,"accountI…
+12:44:41 AM [express] GET /api/categories/168 304 in 878ms :: [{"id":185,"organizationId":168,"name":…
+12:44:41 AM [express] GET /api/notifications/168/unread-count 304 in 816ms :: {"count":"0"}
+12:44:41 AM [express] GET /api/invitations/168 200 in 855ms :: []
+12:44:48 AM [express] GET /api/donors/168 304 in 298ms :: [{"id":11,"organizationId":168,"name":"Case…
+12:44:48 AM [express] GET /api/donor-letters/168 304 in 309ms :: {"data":[{"id":7,"organizationId":16…
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.126.248" requestID="f8fef90f-e9b9-4029" responseTimeMS=311 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.126.248" requestID="d0146e3c-a227-4a3f" responseTimeMS=299 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="44f3f036-5d8d-48ef" responseTimeMS=804 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:45:43 AM [express] GET /api/notifications/168/unread-count 304 in 801ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="83fe79c1-fd75-4333" responseTimeMS=799 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:46:44 AM [express] GET /api/notifications/168/unread-count 304 in 798ms :: {"count":"0"}
+[POST]
+complybook.net/api/donors clientIP="216.147.126.248" requestID="2b78df53-50a4-4aa3" responseTimeMS=884 responseBytes=1459 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.126.248" requestID="0d4e2ec7-2dd3-45cd" responseTimeMS=301 responseBytes=1795 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:47:17 AM [express] POST /api/donors 201 in 881ms :: {"id":12,"organizationId":168,"name":"That gre…
+12:47:18 AM [express] GET /api/donors/168 200 in 298ms :: [{"id":11,"organizationId":168,"name":"Case…
+12:47:23 AM [express] DELETE /api/donors/12 200 in 439ms :: {"message":"Donor deleted successfully"}
+12:47:23 AM [express] GET /api/donors/168 200 in 298ms :: [{"id":11,"organizationId":168,"name":"Case…
+[DELETE]
+complybook.net/api/donors/12 clientIP="216.147.126.248" requestID="ba3577ef-8bc2-40ba" responseTimeMS=446 responseBytes=1315 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.126.248" requestID="7c013177-6420-44ac" responseTimeMS=305 responseBytes=1710 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="4c987680-2532-450c" responseTimeMS=790 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:47:45 AM [express] GET /api/notifications/168/unread-count 304 in 788ms :: {"count":"0"}
+Menu
+[POST]
+complybook.net/api/donors clientIP="216.147.126.248" requestID="10e543ef-0ecf-4aef" responseTimeMS=856 responseBytes=1452 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.126.248" requestID="feae102a-2031-461c" responseTimeMS=301 responseBytes=1791 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:48:11 AM [express] POST /api/donors 201 in 853ms :: {"id":13,"organizationId":168,"name":"ME","ema…
+12:48:11 AM [express] GET /api/donors/168 200 in 298ms :: [{"id":11,"organizationId":168,"name":"Case…
+Error sending donor access link: TypeError: storage.getBrandSettings is not a function
+    at file:///opt/render/project/src/dist/index.js:14844:45
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+12:48:14 AM [express] POST /api/donor-portal/send-access-link/13 500 in 369ms :: {"message":"Failed t…
+[POST]
+complybook.net/api/donor-portal/send-access-link/13 clientIP="216.147.126.248" requestID="80304c60-c18a-4365" responseTimeMS=372 responseBytes=1314 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
