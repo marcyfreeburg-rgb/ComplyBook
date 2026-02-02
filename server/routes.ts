@@ -12839,27 +12839,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/pledges/:id", async (req: Request, res: Response) => {
+  app.put("/api/pledges/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const pledge = await storage.getPledge(parseInt(id));
 
       if (!pledge) {
         return res.status(404).json({ message: "Pledge not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (pledge.organizationId !== organizationId) {
+      // Verify user has access to this pledge's organization
+      const userRole = await storage.getUserRole(userId, pledge.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this pledge" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role === 'viewer') {
         return res.status(403).json({ message: "Viewers cannot update pledges" });
       }
 
       const updatedPledge = await storage.updatePledge(parseInt(id), req.body);
-      await storage.logUpdate(organizationId, req.user!.id, 'pledge', id, pledge, updatedPledge);
+      await storage.logUpdate(pledge.organizationId, userId, 'pledge', id, pledge, updatedPledge);
       res.json(updatedPledge);
     } catch (error) {
       console.error("Error updating pledge:", error);
@@ -12867,27 +12868,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/pledges/:id", async (req: Request, res: Response) => {
+  app.delete("/api/pledges/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const pledge = await storage.getPledge(parseInt(id));
 
       if (!pledge) {
         return res.status(404).json({ message: "Pledge not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (pledge.organizationId !== organizationId) {
+      // Verify user has access to this pledge's organization
+      const userRole = await storage.getUserRole(userId, pledge.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this pledge" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role !== 'admin' && userRole.role !== 'owner') {
         return res.status(403).json({ message: "Only admins and owners can delete pledges" });
       }
 
       await storage.deletePledge(parseInt(id));
-      await storage.logDelete(organizationId, req.user!.id, 'pledge', id, pledge);
+      await storage.logDelete(pledge.organizationId, userId, 'pledge', id, pledge);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting pledge:", error);
