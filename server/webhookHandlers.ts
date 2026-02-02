@@ -229,6 +229,91 @@ export class WebhookHandlers {
       return;
     }
 
+    // Handle donor portal donation completion
+    const { source, donorId, organizationId: donorOrgId, donorName, isRecurring } = session.metadata || {};
+    if (source === 'donor_portal' && donorId && donorOrgId) {
+      console.log('Processing donor portal donation:', session.id);
+      try {
+        // Validate payment was completed
+        if (session.payment_status !== 'paid') {
+          console.log('Donation payment not yet completed, skipping');
+          return;
+        }
+
+        const orgId = parseInt(donorOrgId);
+        const dId = parseInt(donorId);
+        
+        // Idempotency check - skip if we already processed this session
+        const existingTransaction = await storage.getTransactionByExternalId(orgId, session.id);
+        if (existingTransaction) {
+          console.log('Donation already recorded for session:', session.id);
+          return;
+        }
+        
+        // Validate amount is present and positive
+        const amountTotal = session.amount_total || 0;
+        if (amountTotal <= 0) {
+          console.log('Skipping donation with zero or no amount:', session.id);
+          return;
+        }
+        
+        // Get the organization and donor to validate
+        const organization = await storage.getOrganization(orgId);
+        if (!organization) {
+          console.error('Organization not found for donation:', donorOrgId);
+          return;
+        }
+
+        const donor = await storage.getDonor(dId);
+        if (!donor || donor.organizationId !== orgId) {
+          console.error('Donor not found or org mismatch:', donorId);
+          return;
+        }
+
+        // Calculate donation amount
+        const amountInDollars = amountTotal / 100;
+        
+        // Find a default income category for donations or use null
+        const categories = await storage.getCategories(orgId);
+        const donationCategory = categories.find((c: { type: string; name: string }) => 
+          c.type === 'income' && 
+          (c.name.toLowerCase().includes('donation') || c.name.toLowerCase().includes('contribution'))
+        );
+
+        // Find an organization owner/admin to use as createdBy
+        const teamMembers = await storage.getTeamMembers(orgId);
+        const owner = teamMembers.find((m: { role: string }) => m.role === 'owner') || teamMembers[0];
+        
+        if (!owner) {
+          console.error('No team members found for organization:', orgId);
+          return;
+        }
+
+        // Create the donation as a transaction
+        const transactionDescription = isRecurring === 'true'
+          ? `Recurring Donation via Donor Portal - ${donorName || donor.name}`
+          : `One-time Donation via Donor Portal - ${donorName || donor.name}`;
+
+        await storage.createTransaction({
+          organizationId: orgId,
+          date: new Date(),
+          description: transactionDescription,
+          amount: String(amountInDollars),
+          type: 'income',
+          donorId: dId,
+          categoryId: donationCategory?.id || null,
+          source: 'manual',
+          externalId: session.id,
+          createdBy: owner.userId,
+        });
+
+        console.log(`Donation recorded: $${amountInDollars.toFixed(2)} from ${donor.name} to ${organization.name}`);
+      } catch (error) {
+        console.error('Error recording donor portal donation:', error);
+      }
+      return;
+    }
+
     if (!userId) {
       console.log('No userId in session metadata, skipping');
       return;
