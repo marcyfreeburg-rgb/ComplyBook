@@ -2,6 +2,7 @@
 import { sql, relations } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   integer,
   jsonb,
   numeric,
@@ -978,7 +979,7 @@ export const transactions = pgTable("transactions", {
   index("idx_transactions_org_program").on(table.organizationId, table.programId),
   index("idx_transactions_org_donor").on(table.organizationId, table.donorId),
   index("idx_transactions_date").on(table.date),
-  index("idx_transactions_external_id").on(table.organizationId, table.externalId),
+  uniqueIndex("idx_transactions_external_id").on(table.organizationId, table.externalId).where(sql`external_id IS NOT NULL`),
   index("idx_transactions_duplicate_check").on(table.organizationId, table.date, table.amount, table.type),
   index("idx_transactions_monthly_trends").on(table.organizationId, table.type, table.date),
 ]);

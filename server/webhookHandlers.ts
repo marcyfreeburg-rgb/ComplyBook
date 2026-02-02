@@ -403,7 +403,90 @@ export class WebhookHandlers {
 
   static async handleInvoicePaid(invoice: any): Promise<void> {
     console.log('Invoice paid:', invoice.id);
-    // Could send confirmation email, update usage stats, etc.
+    
+    // Check if this invoice is for a recurring donor portal donation
+    // The subscription metadata should contain our donor portal info
+    if (invoice.subscription) {
+      try {
+        const stripe = await getUncachableStripeClient();
+        const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+        
+        const { source, donorId, organizationId: donorOrgId, donorName } = subscription.metadata || {};
+        
+        if (source === 'donor_portal' && donorId && donorOrgId) {
+          console.log('Processing recurring donor portal payment:', invoice.id);
+          
+          const orgId = parseInt(donorOrgId);
+          const dId = parseInt(donorId);
+          
+          // Idempotency check - use invoice ID as externalId for recurring payments
+          const existingTransaction = await storage.getTransactionByExternalId(orgId, invoice.id);
+          if (existingTransaction) {
+            console.log('Recurring donation already recorded for invoice:', invoice.id);
+            return;
+          }
+          
+          // Validate amount is present and positive
+          const amountTotal = invoice.amount_paid || 0;
+          if (amountTotal <= 0) {
+            console.log('Skipping recurring donation with zero or no amount:', invoice.id);
+            return;
+          }
+          
+          // Get the organization and donor to validate
+          const organization = await storage.getOrganization(orgId);
+          if (!organization) {
+            console.error('Organization not found for recurring donation:', donorOrgId);
+            return;
+          }
+
+          const donor = await storage.getDonor(dId);
+          if (!donor || donor.organizationId !== orgId) {
+            console.error('Donor not found or org mismatch:', donorId);
+            return;
+          }
+
+          // Calculate donation amount (invoice.amount_paid is in cents)
+          const amountInDollars = amountTotal / 100;
+          
+          // Find a default income category for donations
+          const categories = await storage.getCategories(orgId);
+          const donationCategory = categories.find((c: { type: string; name: string }) => 
+            c.type === 'income' && 
+            (c.name.toLowerCase().includes('donation') || c.name.toLowerCase().includes('contribution'))
+          );
+          
+          // Find an organization owner/admin to use as createdBy (same as checkout handler)
+          const teamMembers = await storage.getTeamMembers(orgId);
+          const owner = teamMembers.find((m: { role: string }) => m.role === 'owner') || teamMembers[0];
+          
+          if (!owner) {
+            console.error('No team members found for organization:', orgId);
+            return;
+          }
+          
+          // Create the transaction for this recurring payment
+          const transactionDescription = `Recurring Donation via Donor Portal - ${donorName || donor.name}`;
+          
+          await storage.createTransaction({
+            organizationId: orgId,
+            date: new Date(),
+            description: transactionDescription,
+            amount: amountInDollars.toString(),
+            type: 'income',
+            categoryId: donationCategory?.id || null,
+            donorId: dId,
+            source: 'manual',
+            externalId: invoice.id, // Use invoice ID for recurring payments
+            createdBy: owner.userId,
+          });
+          
+          console.log(`Recorded recurring donation of $${amountInDollars.toFixed(2)} from donor ${dId} (invoice: ${invoice.id})`);
+        }
+      } catch (error) {
+        console.error('Error processing recurring donation invoice:', error);
+      }
+    }
   }
 
   static async handlePaymentFailed(invoice: any): Promise<void> {
