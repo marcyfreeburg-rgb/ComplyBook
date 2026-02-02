@@ -44,7 +44,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
   });
 
   const { data: reportData, isLoading, error, refetch } = useQuery<FunctionalExpenseData>({
-    queryKey: [`/api/reports/functional-expenses`, dateRange],
+    queryKey: [`/api/reports/functional-expenses/${currentOrganization.id}`, dateRange],
     enabled: !!dateRange.startDate && !!dateRange.endDate,
   });
 

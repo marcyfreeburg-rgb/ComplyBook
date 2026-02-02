@@ -12002,27 +12002,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/funds/:id", async (req: Request, res: Response) => {
+  app.put("/api/funds/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const fund = await storage.getFund(parseInt(id));
 
       if (!fund) {
         return res.status(404).json({ message: "Fund not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (fund.organizationId !== organizationId) {
+      // Verify user has access to this fund's organization
+      const userRole = await storage.getUserRole(userId, fund.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this fund" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role !== 'admin' && userRole.role !== 'owner') {
         return res.status(403).json({ message: "Only admins and owners can update funds" });
       }
 
       const updatedFund = await storage.updateFund(parseInt(id), req.body);
-      await storage.logUpdate(organizationId, req.user!.id, 'fund', id, fund, updatedFund);
+      await storage.logUpdate(fund.organizationId, userId, 'fund', id, fund, updatedFund);
       res.json(updatedFund);
     } catch (error) {
       console.error("Error updating fund:", error);
@@ -12030,27 +12031,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/funds/:id", async (req: Request, res: Response) => {
+  app.delete("/api/funds/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const fund = await storage.getFund(parseInt(id));
 
       if (!fund) {
         return res.status(404).json({ message: "Fund not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (fund.organizationId !== organizationId) {
+      // Verify user has access to this fund's organization
+      const userRole = await storage.getUserRole(userId, fund.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this fund" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role !== 'admin' && userRole.role !== 'owner') {
         return res.status(403).json({ message: "Only admins and owners can delete funds" });
       }
 
       await storage.deleteFund(parseInt(id));
-      await storage.logDelete(organizationId, req.user!.id, 'fund', id, fund);
+      await storage.logDelete(fund.organizationId, userId, 'fund', id, fund);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting fund:", error);
@@ -12058,17 +12060,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/funds/:id/transactions", async (req: Request, res: Response) => {
+  app.get("/api/funds/:id/transactions", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const fund = await storage.getFund(parseInt(id));
 
       if (!fund) {
         return res.status(404).json({ message: "Fund not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (fund.organizationId !== organizationId) {
+      // Verify user has access to this fund's organization
+      const userRole = await storage.getUserRole(userId, fund.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this fund" });
       }
 
@@ -12152,27 +12156,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/programs/:id", async (req: Request, res: Response) => {
+  app.put("/api/programs/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const program = await storage.getProgram(parseInt(id));
 
       if (!program) {
         return res.status(404).json({ message: "Program not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (program.organizationId !== organizationId) {
+      // Verify user has access to this program's organization
+      const userRole = await storage.getUserRole(userId, program.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this program" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role !== 'admin' && userRole.role !== 'owner') {
         return res.status(403).json({ message: "Only admins and owners can update programs" });
       }
 
       const updatedProgram = await storage.updateProgram(parseInt(id), req.body);
-      await storage.logUpdate(organizationId, req.user!.id, 'program', id, program, updatedProgram);
+      await storage.logUpdate(program.organizationId, userId, 'program', id, program, updatedProgram);
       res.json(updatedProgram);
     } catch (error) {
       console.error("Error updating program:", error);
@@ -12180,27 +12185,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/programs/:id", async (req: Request, res: Response) => {
+  app.delete("/api/programs/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const program = await storage.getProgram(parseInt(id));
 
       if (!program) {
         return res.status(404).json({ message: "Program not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (program.organizationId !== organizationId) {
+      // Verify user has access to this program's organization
+      const userRole = await storage.getUserRole(userId, program.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this program" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role !== 'admin' && userRole.role !== 'owner') {
         return res.status(403).json({ message: "Only admins and owners can delete programs" });
       }
 
       await storage.deleteProgram(parseInt(id));
-      await storage.logDelete(organizationId, req.user!.id, 'program', id, program);
+      await storage.logDelete(program.organizationId, userId, 'program', id, program);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting program:", error);
@@ -12208,18 +12214,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/programs/:id/expenses", async (req: Request, res: Response) => {
+  app.get("/api/programs/:id/expenses", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
       const { startDate, endDate } = req.query;
+      const userId = req.user.claims.sub;
       const program = await storage.getProgram(parseInt(id));
 
       if (!program) {
         return res.status(404).json({ message: "Program not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (program.organizationId !== organizationId) {
+      // Verify user has access to this program's organization
+      const userRole = await storage.getUserRole(userId, program.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this program" });
       }
 
@@ -12785,14 +12793,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/pledges/overdue", async (req: Request, res: Response) => {
+  app.get("/api/pledges/overdue/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -12960,9 +12966,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/pledge-payments/:id", async (req: Request, res: Response) => {
+  app.delete("/api/pledge-payments/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const payment = await storage.getPledgePayment(parseInt(id));
 
       if (!payment) {
@@ -12974,18 +12981,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Associated pledge not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (pledge.organizationId !== organizationId) {
+      // Verify user has access to this pledge's organization
+      const userRole = await storage.getUserRole(userId, pledge.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this payment" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role !== 'admin' && userRole.role !== 'owner') {
         return res.status(403).json({ message: "Only admins and owners can delete payments" });
       }
 
       await storage.deletePledgePayment(parseInt(id));
-      await storage.logDelete(organizationId, req.user!.id, 'pledge_payment', id, payment);
+      await storage.logDelete(pledge.organizationId, userId, 'pledge_payment', id, payment);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting pledge payment:", error);
@@ -12994,14 +13001,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced grant routes
-  app.get("/api/grants/upcoming-deadlines", async (req: Request, res: Response) => {
+  app.get("/api/grants/upcoming-deadlines/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -13015,9 +13020,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/grants/:id/compliance", async (req: Request, res: Response) => {
+  app.put("/api/grants/:id/compliance", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const { status, notes } = req.body;
 
       if (!['compliant', 'at_risk', 'non_compliant', 'pending_review'].includes(status)) {
@@ -13029,18 +13035,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Grant not found" });
       }
 
-      const organizationId = req.session?.organizationId;
-      if (grant.organizationId !== organizationId) {
+      // Verify user has access to this grant's organization
+      const userRole = await storage.getUserRole(userId, grant.organizationId);
+      if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this grant" });
       }
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
       if (userRole.role === 'viewer') {
         return res.status(403).json({ message: "Viewers cannot update grant compliance" });
       }
 
       const updatedGrant = await storage.updateGrantCompliance(parseInt(id), status, notes);
-      await storage.logUpdate(organizationId, req.user!.id, 'grant', id, grant, updatedGrant);
+      await storage.logUpdate(grant.organizationId, userId, 'grant', id, grant, updatedGrant);
       res.json(updatedGrant);
     } catch (error) {
       console.error("Error updating grant compliance:", error);
@@ -13049,14 +13055,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Functional expense report routes
-  app.get("/api/reports/functional-expenses", async (req: Request, res: Response) => {
+  app.get("/api/reports/functional-expenses/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -13078,14 +13082,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Form 990 report routes
-  app.get("/api/reports/form-990", async (req: Request, res: Response) => {
+  app.get("/api/reports/form-990/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const organizationId = req.session?.organizationId;
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
 
-      const userRole = await storage.getUserRole(req.user!.id, organizationId);
+      const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
@@ -13980,15 +13982,11 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
-  app.get("/api/time-entries/user/:userId", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/time-entries/user/:userId/:organizationId", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const targetUserId = req.params.userId;
-      const organizationId = req.session?.organizationId;
-
-      if (!organizationId) {
-        return res.status(400).json({ message: "No organization selected" });
-      }
+      const organizationId = parseInt(req.params.organizationId);
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
