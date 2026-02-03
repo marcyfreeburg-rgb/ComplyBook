@@ -152,8 +152,8 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       day: 'numeric' 
     });
 
-    // Clean, professional formal business letter template
-    // Note: html2pdf requires inline styles for reliable image sizing
+    // Clean, minimalist formal business letter template
+    // Two-column layout: left sidebar (company info), right (letter content)
     return `
       <!DOCTYPE html>
       <html>
@@ -163,181 +163,145 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           * { box-sizing: border-box; }
           body {
             font-family: ${fontFamily};
-            font-size: 12pt;
-            line-height: 1.5;
+            font-size: 11pt;
+            line-height: 1.6;
             color: #1a1a1a;
             margin: 0;
-            padding: 48px 56px;
+            padding: 40px 48px;
           }
           table { border-collapse: collapse; }
           
-          /* Header with logo and addresses */
-          .header-table {
+          /* Top header - logo and contact */
+          .top-header {
             width: 100%;
-            margin-bottom: 24px;
+            margin-bottom: 40px;
           }
           .logo-cell {
-            width: 70px;
-            vertical-align: top;
-            padding-right: 12px;
+            vertical-align: middle;
+            width: 60px;
           }
-          .sender-cell {
-            vertical-align: top;
-            font-size: 11pt;
-            color: #444;
-            line-height: 1.6;
-          }
-          .recipient-cell {
-            vertical-align: top;
+          .contact-cell {
+            vertical-align: middle;
             text-align: right;
-            font-size: 11pt;
-            color: #444;
-            line-height: 1.6;
+            font-size: 9pt;
+            color: #666;
+            line-height: 1.5;
           }
           
-          /* Company name - prominent */
-          .company-name {
-            font-size: 22pt;
-            font-weight: 700;
-            color: ${primaryColor};
-            margin: 24px 0 32px 0;
+          /* Main two-column layout */
+          .main-table {
+            width: 100%;
+          }
+          .sidebar-cell {
+            width: 160px;
+            vertical-align: top;
+            padding-right: 32px;
+          }
+          .content-cell {
+            vertical-align: top;
           }
           
-          /* Date line */
-          .date-line {
-            margin-bottom: 32px;
-            font-size: 11pt;
-            color: #444;
-          }
-          
-          /* Salutation */
-          .salutation {
+          /* Sidebar content */
+          .date-text {
+            font-size: 10pt;
+            color: #666;
             margin-bottom: 24px;
           }
-          
-          /* Body paragraphs */
-          .paragraph {
-            margin: 0 0 20px 0;
-            line-height: 1.7;
+          .sidebar-org {
+            font-size: 9pt;
+            color: #888;
+            line-height: 1.6;
+            margin-top: 16px;
           }
           
-          /* Donation amount - simple, inline emphasis */
+          /* Letter content */
+          .salutation {
+            margin-bottom: 20px;
+          }
+          .paragraph {
+            margin: 0 0 16px 0;
+            line-height: 1.7;
+          }
           .amount-highlight {
             font-weight: 600;
           }
-          
-          /* Tax info - simple paragraph, not a box */
           .tax-info {
-            margin: 24px 0;
-            font-size: 11pt;
-            color: #555;
+            margin: 20px 0;
+            font-size: 10pt;
+            color: #666;
             font-style: italic;
           }
-          
-          /* Closing */
           .closing {
-            margin-top: 40px;
+            margin-top: 32px;
           }
           .closing-text {
-            margin-bottom: 28px;
+            margin-bottom: 24px;
           }
           .signature-name {
             font-weight: 600;
           }
-          
-          /* Footer - simple, at bottom */
-          .footer-section {
-            margin-top: 48px;
-            padding-top: 16px;
-            border-top: 1px solid #ddd;
-          }
-          .footer-table {
-            width: 100%;
-          }
-          .footer-left {
-            vertical-align: bottom;
-            font-size: 10pt;
-            color: #666;
-          }
-          .footer-right {
-            vertical-align: bottom;
-            text-align: right;
-            font-size: 10pt;
-            color: #666;
-          }
         </style>
       </head>
       <body>
-        <!-- Header: Logo + Sender on left, Recipient on right -->
-        <table class="header-table">
+        <!-- Top Header: Logo on left, Contact on right -->
+        <table class="top-header">
           <tr>
-            ${logoUrl ? `
             <td class="logo-cell">
-              <img src="${logoUrl}" width="50" height="50" style="width:50px;height:50px;max-width:50px;max-height:50px;object-fit:contain;display:block;" alt="" />
+              ${logoUrl 
+                ? `<img src="${logoUrl}" width="48" height="48" style="width:48px;height:48px;max-width:48px;max-height:48px;object-fit:contain;display:block;" alt="" />`
+                : `<div style="font-size:20pt;font-weight:700;color:${primaryColor};">${(currentOrganization.companyName || currentOrganization.name).substring(0,2).toUpperCase()}</div>`
+              }
             </td>
-            ` : ''}
-            <td class="sender-cell">
-              <strong>${currentOrganization.companyName || currentOrganization.name}</strong><br/>
-              ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
-            </td>
-            <td class="recipient-cell">
-              ${selectedDonor.name}<br/>
-              ${selectedDonor.address ? selectedDonor.address.replace(/\n/g, '<br/>') : ''}
-              ${selectedDonor.email ? `<br/>${selectedDonor.email}` : ''}
+            <td class="contact-cell">
+              ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
+              ${currentOrganization.companyEmail ? currentOrganization.companyEmail : ''}
             </td>
           </tr>
         </table>
 
-        <!-- Company Name -->
-        <div class="company-name">${currentOrganization.companyName || currentOrganization.name}</div>
+        <!-- Main Two-Column Layout -->
+        <table class="main-table">
+          <tr>
+            <!-- Left Sidebar -->
+            <td class="sidebar-cell">
+              <div class="date-text">${currentDate}</div>
+              <div class="sidebar-org">
+                ${currentOrganization.companyName || currentOrganization.name}<br/>
+                ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
+              </div>
+            </td>
+            
+            <!-- Right Content -->
+            <td class="content-cell">
+              <div class="salutation">Dear ${selectedDonor.name},</div>
 
-        <!-- Date -->
-        <div class="date-line">${currentDate}</div>
+              <p class="paragraph">
+                Thank you for your generous support of ${currentOrganization.companyName || currentOrganization.name}. Your commitment to our mission makes a meaningful difference in the communities we serve.
+              </p>
 
-        <!-- Salutation -->
-        <div class="salutation">Dear ${selectedDonor.name},</div>
+              <p class="paragraph">
+                This letter acknowledges your charitable contribution of <span class="amount-highlight">${formatCurrency(selectedAmount)}</span> during the ${selectedYear} tax year. Please retain this document for your tax records.
+              </p>
 
-        <!-- Body -->
-        <p class="paragraph">
-          Thank you for your generous support of ${currentOrganization.companyName || currentOrganization.name}. Your commitment to our mission makes a meaningful difference in the communities we serve.
-        </p>
+              <p class="paragraph">
+                Your generosity enables us to continue our important work and expand our reach. We are truly grateful for your partnership and trust in our organization.
+              </p>
 
-        <p class="paragraph">
-          This letter acknowledges your charitable contribution of <span class="amount-highlight">${formatCurrency(selectedAmount)}</span> during the ${selectedYear} tax year. Please retain this document for your tax records.
-        </p>
+              <p class="tax-info">
+                ${currentOrganization.companyName || currentOrganization.name} is a 501(c)(3) tax-exempt organization${currentOrganization.taxId ? ` (EIN: ${currentOrganization.taxId})` : ''}. No goods or services were provided in exchange for this contribution.
+              </p>
 
-        <p class="paragraph">
-          Your generosity enables us to continue our important work and expand our reach. We are truly grateful for your partnership and trust in our organization.
-        </p>
+              <p class="paragraph">
+                On behalf of everyone at ${currentOrganization.companyName || currentOrganization.name}, thank you for your continued support.
+              </p>
 
-        <p class="tax-info">
-          ${currentOrganization.companyName || currentOrganization.name} is a 501(c)(3) tax-exempt organization${currentOrganization.taxId ? ` (EIN: ${currentOrganization.taxId})` : ''}. No goods or services were provided in exchange for this contribution. All contributions are tax-deductible to the extent allowed by law.
-        </p>
-
-        <p class="paragraph">
-          On behalf of everyone at ${currentOrganization.companyName || currentOrganization.name}, thank you for your continued support.
-        </p>
-
-        <!-- Closing -->
-        <div class="closing">
-          <div class="closing-text">Sincerely,</div>
-          <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer-section">
-          <table class="footer-table">
-            <tr>
-              <td class="footer-left">
-                ${currentOrganization.companyName || currentOrganization.name}
-              </td>
-              <td class="footer-right">
-                ${currentOrganization.companyAddress ? currentOrganization.companyAddress.split('\n').slice(-1)[0] : ''}<br/>
-                ${currentOrganization.companyPhone ? currentOrganization.companyPhone : ''}
-              </td>
-            </tr>
-          </table>
-        </div>
+              <div class="closing">
+                <div class="closing-text">Sincerely,</div>
+                <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
+              </div>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
@@ -360,8 +324,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       day: 'numeric' 
     });
 
-    // Clean, professional formal business letter template for custom letters
-    // Note: html2pdf requires inline styles for reliable image sizing
+    // Clean, minimalist two-column layout for custom letters
     return `
       <!DOCTYPE html>
       <html>
@@ -371,124 +334,96 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           * { box-sizing: border-box; }
           body {
             font-family: ${fontFamily};
-            font-size: 12pt;
-            line-height: 1.5;
+            font-size: 11pt;
+            line-height: 1.6;
             color: #1a1a1a;
             margin: 0;
-            padding: 48px 56px;
+            padding: 40px 48px;
           }
           table { border-collapse: collapse; }
           
-          .header-table {
+          .top-header {
             width: 100%;
-            margin-bottom: 24px;
+            margin-bottom: 40px;
           }
           .logo-cell {
-            width: 70px;
-            vertical-align: top;
-            padding-right: 12px;
+            vertical-align: middle;
+            width: 60px;
           }
-          .sender-cell {
-            vertical-align: top;
-            font-size: 11pt;
-            color: #444;
-            line-height: 1.6;
-          }
-          .recipient-cell {
-            vertical-align: top;
+          .contact-cell {
+            vertical-align: middle;
             text-align: right;
-            font-size: 11pt;
-            color: #444;
+            font-size: 9pt;
+            color: #666;
+            line-height: 1.5;
+          }
+          
+          .main-table {
+            width: 100%;
+          }
+          .sidebar-cell {
+            width: 160px;
+            vertical-align: top;
+            padding-right: 32px;
+          }
+          .content-cell {
+            vertical-align: top;
+          }
+          
+          .date-text {
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 24px;
+          }
+          .sidebar-org {
+            font-size: 9pt;
+            color: #888;
             line-height: 1.6;
-          }
-          
-          .company-name {
-            font-size: 22pt;
-            font-weight: 700;
-            color: ${primaryColor};
-            margin: 24px 0 32px 0;
-          }
-          
-          .date-line {
-            margin-bottom: 32px;
-            font-size: 11pt;
-            color: #444;
+            margin-top: 16px;
           }
           
           .letter-content {
             line-height: 1.7;
           }
           .letter-content p {
-            margin: 0 0 20px 0;
-          }
-          
-          .footer-section {
-            margin-top: 48px;
-            padding-top: 16px;
-            border-top: 1px solid #ddd;
-          }
-          .footer-table {
-            width: 100%;
-          }
-          .footer-left {
-            vertical-align: bottom;
-            font-size: 10pt;
-            color: #666;
-          }
-          .footer-right {
-            vertical-align: bottom;
-            text-align: right;
-            font-size: 10pt;
-            color: #666;
+            margin: 0 0 16px 0;
           }
         </style>
       </head>
       <body>
-        <!-- Header: Logo + Sender on left, Recipient on right -->
-        <table class="header-table">
+        <!-- Top Header: Logo on left, Contact on right -->
+        <table class="top-header">
           <tr>
-            ${logoUrl ? `
             <td class="logo-cell">
-              <img src="${logoUrl}" width="50" height="50" style="width:50px;height:50px;max-width:50px;max-height:50px;object-fit:contain;display:block;" alt="" />
+              ${logoUrl 
+                ? `<img src="${logoUrl}" width="48" height="48" style="width:48px;height:48px;max-width:48px;max-height:48px;object-fit:contain;display:block;" alt="" />`
+                : `<div style="font-size:20pt;font-weight:700;color:${primaryColor};">${(currentOrganization.companyName || currentOrganization.name).substring(0,2).toUpperCase()}</div>`
+              }
             </td>
-            ` : ''}
-            <td class="sender-cell">
-              <strong>${currentOrganization.companyName || currentOrganization.name}</strong><br/>
-              ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
-            </td>
-            <td class="recipient-cell">
-              ${selectedDonor.name}<br/>
-              ${selectedDonor.address ? selectedDonor.address.replace(/\n/g, '<br/>') : ''}
-              ${selectedDonor.email ? `<br/>${selectedDonor.email}` : ''}
+            <td class="contact-cell">
+              ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
+              ${currentOrganization.companyEmail ? currentOrganization.companyEmail : ''}
             </td>
           </tr>
         </table>
 
-        <!-- Company Name -->
-        <div class="company-name">${currentOrganization.companyName || currentOrganization.name}</div>
-
-        <!-- Date -->
-        <div class="date-line">${currentDate}</div>
-
-        <!-- Custom Body Content -->
-        <div class="letter-content">
-          ${bodyContent}
-        </div>
-
-        <!-- Footer -->
-        <div class="footer-section">
-          <table class="footer-table">
-            <tr>
-              <td class="footer-left">
-                ${currentOrganization.companyName || currentOrganization.name}
-              </td>
-              <td class="footer-right">
-                ${currentOrganization.companyAddress ? currentOrganization.companyAddress.split('\n').slice(-1)[0] : ''}<br/>
-                ${currentOrganization.companyPhone ? currentOrganization.companyPhone : ''}
-              </td>
-            </tr>
-          </table>
-        </div>
+        <!-- Main Two-Column Layout -->
+        <table class="main-table">
+          <tr>
+            <td class="sidebar-cell">
+              <div class="date-text">${currentDate}</div>
+              <div class="sidebar-org">
+                ${currentOrganization.companyName || currentOrganization.name}<br/>
+                ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
+              </div>
+            </td>
+            <td class="content-cell">
+              <div class="letter-content">
+                ${bodyContent}
+              </div>
+            </td>
+          </tr>
+        </table>
       </body>
       </html>
     `;
