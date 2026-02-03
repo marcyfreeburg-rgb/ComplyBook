@@ -94,26 +94,29 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [location, setLocation] = useLocation();
   
   // Extract grantId from URL parameters - derive from location each render
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const urlGrantIdStr = urlParams.get('grantId');
-  const urlGrantId = urlGrantIdStr ? parseInt(urlGrantIdStr) : undefined;
-  const [filterGrantId, setFilterGrantId] = useState<number | undefined>(urlGrantId);
-  
-  // Keep filterGrantId in sync with URL changes (back/forward navigation, external links)
-  // Also clear date/search filters when navigating with a grant filter to show all grant transactions
-  useEffect(() => {
-    const newGrantId = urlGrantIdStr ? parseInt(urlGrantIdStr) : undefined;
-    // Always update filterGrantId to match URL - this ensures filter is applied when navigating
-    if (newGrantId === undefined || !isNaN(newGrantId)) {
-      setFilterGrantId(newGrantId);
-      // When navigating to a grant-filtered view, clear other filters to show all transactions for that grant
-      if (newGrantId !== undefined) {
-        setSearchQuery("");
-        setStartDate("");
-        setEndDate("");
-      }
+  // Use useMemo to ensure this is computed on every render when location changes
+  const activeGrantId = useMemo(() => {
+    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const grantIdStr = urlParams.get('grantId');
+    if (grantIdStr) {
+      const parsed = parseInt(grantIdStr);
+      return isNaN(parsed) ? undefined : parsed;
     }
-  }, [urlGrantIdStr, location]);
+    return undefined;
+  }, [location]);
+  
+  // Track the previous grant ID to detect changes and clear filters
+  const prevGrantIdRef = useRef<number | undefined>(undefined);
+  
+  // Clear date/search filters when navigating to a grant-filtered view
+  useEffect(() => {
+    if (activeGrantId !== undefined && activeGrantId !== prevGrantIdRef.current) {
+      setSearchQuery("");
+      setStartDate("");
+      setEndDate("");
+    }
+    prevGrantIdRef.current = activeGrantId;
+  }, [activeGrantId]);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -236,7 +239,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setLoadedTransactions([]);
     setHasMoreTransactions(true);
     setTotalTransactions(0);
-  }, [debouncedSearchQuery, currentOrganization.id, debouncedStartDate, debouncedEndDate, filterGrantId]);
+  }, [debouncedSearchQuery, currentOrganization.id, debouncedStartDate, debouncedEndDate, activeGrantId]);
 
   interface PaginatedTransactionsResponse {
     transactions: Transaction[];
@@ -245,7 +248,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   }
 
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError, refetch: refetchTransactions } = useQuery<PaginatedTransactionsResponse>({
-    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate: debouncedStartDate, endDate: debouncedEndDate, grantId: filterGrantId }],
+    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate: debouncedStartDate, endDate: debouncedEndDate, grantId: activeGrantId }],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: TRANSACTIONS_PER_PAGE.toString(),
@@ -260,8 +263,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedEndDate) {
         params.append('endDate', debouncedEndDate);
       }
-      if (filterGrantId) {
-        params.append('grantId', filterGrantId.toString());
+      if (activeGrantId) {
+        params.append('grantId', activeGrantId.toString());
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
@@ -299,8 +302,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedEndDate) {
         params.append('endDate', debouncedEndDate);
       }
-      if (filterGrantId) {
-        params.append('grantId', filterGrantId.toString());
+      if (activeGrantId) {
+        params.append('grantId', activeGrantId.toString());
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch more transactions');
@@ -346,8 +349,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       if (debouncedEndDate) {
         params.append('endDate', debouncedEndDate);
       }
-      if (filterGrantId) {
-        params.append('grantId', filterGrantId.toString());
+      if (activeGrantId) {
+        params.append('grantId', activeGrantId.toString());
       }
       
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
@@ -2465,18 +2468,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       </div>
       
       {/* Grant Filter Indicator */}
-      {filterGrantId && (
+      {activeGrantId && (
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="flex items-center gap-2" data-testid="badge-grant-filter">
             <Filter className="h-3 w-3" />
-            Showing transactions for: {grants?.find(g => g.id === filterGrantId)?.name || `Grant #${filterGrantId}`}
+            Showing transactions for: {grants?.find(g => g.id === activeGrantId)?.name || `Grant #${activeGrantId}`}
             <Button
               variant="ghost"
               size="icon"
               className="h-4 w-4 p-0 ml-1"
               onClick={() => {
-                setFilterGrantId(undefined);
-                // Update URL to remove grantId param
+                // Navigate to transactions without grantId param to clear filter
                 setLocation('/transactions');
               }}
               data-testid="button-clear-grant-filter"
