@@ -169,7 +169,7 @@ export default function Deductions({ currentOrganization, userId }: DeductionsPr
     }
   };
 
-  const DeductionForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const renderDeductionForm = (isEdit = false) => (
     <div className="space-y-4 mt-4">
       <div className="space-y-2">
         <Label htmlFor={`${isEdit ? 'edit-' : ''}name`}>Name *</Label>
@@ -307,7 +307,7 @@ export default function Deductions({ currentOrganization, userId }: DeductionsPr
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit}>
-              <DeductionForm />
+              {renderDeductionForm(false)}
               <div className="flex justify-end gap-3 mt-6">
                 <Button
                   type="button"
@@ -342,7 +342,7 @@ export default function Deductions({ currentOrganization, userId }: DeductionsPr
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateSubmit}>
-            <DeductionForm isEdit={true} />
+            {renderDeductionForm(true)}
             <div className="flex justify-end gap-3 mt-6">
               <Button
                 type="button"
