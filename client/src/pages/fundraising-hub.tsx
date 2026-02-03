@@ -71,10 +71,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const createCampaignMutation = useMutation({
     mutationFn: async (data: Partial<FundraisingCampaign>) => {
-      return apiRequest('/api/fundraising-campaigns', {
-        method: 'POST',
-        body: JSON.stringify({ ...data, organizationId: currentOrganization.id }),
-      });
+      return apiRequest('POST', '/api/fundraising-campaigns', { ...data, organizationId: currentOrganization.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/fundraising-campaigns/${currentOrganization.id}`] });
@@ -89,10 +86,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const updateCampaignMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<FundraisingCampaign> }) => {
-      return apiRequest(`/api/fundraising-campaigns/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('PATCH', `/api/fundraising-campaigns/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/fundraising-campaigns/${currentOrganization.id}`] });
@@ -107,7 +101,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const archiveCampaignMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/fundraising-campaigns/${id}/archive`, { method: 'POST' });
+      return apiRequest('POST', `/api/fundraising-campaigns/${id}/archive`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/fundraising-campaigns/${currentOrganization.id}`] });
@@ -121,7 +115,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const deleteCampaignMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/fundraising-campaigns/${id}`, { method: 'DELETE' });
+      return apiRequest('DELETE', `/api/fundraising-campaigns/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/fundraising-campaigns/${currentOrganization.id}`] });
@@ -135,10 +129,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const createInKindMutation = useMutation({
     mutationFn: async (data: Partial<InKindDonation>) => {
-      return apiRequest('/api/in-kind-donations', {
-        method: 'POST',
-        body: JSON.stringify({ ...data, organizationId: currentOrganization.id }),
-      });
+      return apiRequest('POST', '/api/in-kind-donations', { ...data, organizationId: currentOrganization.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/in-kind-donations/${currentOrganization.id}`] });
@@ -153,10 +144,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const updateInKindMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<InKindDonation> }) => {
-      return apiRequest(`/api/in-kind-donations/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('PATCH', `/api/in-kind-donations/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/in-kind-donations/${currentOrganization.id}`] });
@@ -171,7 +159,7 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const deleteInKindMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/in-kind-donations/${id}`, { method: 'DELETE' });
+      return apiRequest('DELETE', `/api/in-kind-donations/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/in-kind-donations/${currentOrganization.id}`] });

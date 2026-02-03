@@ -1443,8 +1443,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to manage campaigns" });
       }
 
-      const campaign = await storage.createFundraisingCampaign({
+      // Parse date strings to Date objects
+      const parsedData = {
         ...campaignData,
+        startDate: campaignData.startDate ? new Date(campaignData.startDate) : null,
+        endDate: campaignData.endDate ? new Date(campaignData.endDate) : null,
+      };
+
+      const campaign = await storage.createFundraisingCampaign({
+        ...parsedData,
         organizationId,
         createdBy: userId,
       });
@@ -1480,7 +1487,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to manage campaigns" });
       }
 
-      const updated = await storage.updateFundraisingCampaign(campaignId, req.body);
+      // Parse date strings to Date objects
+      const parsedData = { ...req.body };
+      if (parsedData.startDate) parsedData.startDate = new Date(parsedData.startDate);
+      if (parsedData.endDate) parsedData.endDate = new Date(parsedData.endDate);
+
+      const updated = await storage.updateFundraisingCampaign(campaignId, parsedData);
       res.json(updated);
     } catch (error) {
       console.error("Error updating fundraising campaign:", error);
@@ -1602,8 +1614,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to manage in-kind donations" });
       }
 
-      const donation = await storage.createInKindDonation({
+      // Parse date string to Date object
+      const parsedData = {
         ...donationData,
+        donationDate: donationData.donationDate ? new Date(donationData.donationDate) : new Date(),
+      };
+
+      const donation = await storage.createInKindDonation({
+        ...parsedData,
         organizationId,
         createdBy: userId,
       });
@@ -1639,7 +1657,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to manage in-kind donations" });
       }
 
-      const updated = await storage.updateInKindDonation(donationId, req.body);
+      // Parse date string to Date object if present
+      const parsedData = { ...req.body };
+      if (parsedData.donationDate) parsedData.donationDate = new Date(parsedData.donationDate);
+
+      const updated = await storage.updateInKindDonation(donationId, parsedData);
       res.json(updated);
     } catch (error) {
       console.error("Error updating in-kind donation:", error);
