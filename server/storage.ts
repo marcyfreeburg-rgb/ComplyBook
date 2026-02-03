@@ -384,6 +384,7 @@ export interface IStorage {
   // Transaction operations
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
+  getTransactionCount(organizationId: number): Promise<number>;
   getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
@@ -2138,6 +2139,14 @@ export class DatabaseStorage implements IStorage {
       .from(transactions)
       .where(eq(transactions.organizationId, organizationId))
       .orderBy(desc(transactions.date), desc(transactions.id));
+  }
+
+  async getTransactionCount(organizationId: number): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(transactions)
+      .where(eq(transactions.organizationId, organizationId));
+    return result[0]?.count || 0;
   }
 
   async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {

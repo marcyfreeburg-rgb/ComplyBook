@@ -12,7 +12,7 @@ const isObjectStorageAvailable = isStorageAvailable();
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
 import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching, analyzeCategoriesToTaxDeductibility } from "./aiCategorization";
-import { detectRecurringPatterns, suggestBudget, createBillFromPattern } from "./aiPatternDetection";
+import { detectRecurringPatterns, suggestBudget, createBillFromPattern, clearPatternCache } from "./aiPatternDetection";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
 import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
@@ -5375,6 +5375,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const recurringTransaction = await storage.createRecurringTransaction(recurringData);
       
+      // Clear pattern cache since a new recurring transaction was created
+      clearPatternCache(organizationId);
+      
       res.status(201).json(recurringTransaction);
     } catch (error: any) {
       console.error("Error creating recurring transaction:", error);
@@ -6024,6 +6027,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reason: parseResult.data.reason || 'not_recurring',
         dismissedBy: userId
       });
+
+      // Clear pattern cache since a pattern was dismissed
+      clearPatternCache(organizationId);
 
       res.json(dismissed);
     } catch (error) {

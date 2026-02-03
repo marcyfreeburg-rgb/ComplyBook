@@ -1,0 +1,225 @@
+[GET]
+complybook.onrender.com/ clientIP="35.247.111.159" requestID="a845c65d-de92-420e" responseTimeMS=22 responseBytes=223158 userAgent="Go-http-client/2.0"
+[GET]
+complybook.net/assets/index-htOBSXgy.css clientIP="216.147.126.248" requestID="e8b43704-79ff-415b" responseTimeMS=419 responseBytes=17533 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CsnREIZx.js clientIP="216.147.126.248" requestID="59a44730-01b1-4ea8" responseTimeMS=239 responseBytes=930673 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/recurring-transactions clientIP="216.147.126.248" requestID="a0235090-724a-4d8a" responseTimeMS=455 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.126.248" requestID="9b408e13-a975-4ca5" responseTimeMS=370 responseBytes=2252 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.126.248" requestID="1e50a951-1483-4a2a" responseTimeMS=95 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.126.248" requestID="d52563dd-44cf-43d3" responseTimeMS=6 responseBytes=1766 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.126.248" requestID="f14c9855-7dcb-4914" responseTimeMS=76 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.126.248" requestID="cb09e5bd-2d9d-447d" responseTimeMS=130 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:07:11 AM [express] GET /api/auth/user 200 in 367ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.126.248" requestID="625c409f-b119-4377" responseTimeMS=688 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.126.248" requestID="6fe8a6f1-e8bd-4060" responseTimeMS=117 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="73c54309-c65b-45aa" responseTimeMS=469 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/recurring-transactions/168 clientIP="216.147.126.248" requestID="8d3125bd-f505-4994" responseTimeMS=460 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/168 clientIP="216.147.126.248" requestID="02d5d4c1-91d3-4879" responseTimeMS=541 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.126.248" requestID="3388a497-37b1-45ab" responseTimeMS=291 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:07:12 AM [express] GET /api/organizations 304 in 291ms :: [{"id":234,"name":"Test Organization LLC…
+12:07:12 AM [express] GET /api/security/mfa/status 304 in 687ms :: {"mfaEnabled":true,"mfaRequired":t…
+12:07:12 AM [express] GET /api/recurring-transactions/168 304 in 460ms :: []
+12:07:12 AM [express] GET /api/notifications/168/unread-count 304 in 464ms :: {"count":"0"}
+12:07:12 AM [express] GET /api/categories/168 304 in 540ms :: [{"id":185,"organizationId":168,"name":…
+[GET]
+complybook.net/api/recurring-transactions/168 clientIP="216.147.126.248" requestID="39664c5a-b5e0-4d60" responseTimeMS=235 responseBytes=1497 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/recurring-transactions clientIP="216.147.126.248" requestID="7a4faea2-2750-4205" responseTimeMS=801 responseBytes=1495 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:07:48 AM [express] POST /api/recurring-transactions 201 in 791ms :: {"id":6,"organizationId":168,"…
+12:07:48 AM [express] GET /api/recurring-transactions/168 200 in 234ms :: [{"id":6,"organizationId":1…
+[PATCH]
+complybook.net/api/recurring-transactions/6 clientIP="216.147.126.248" requestID="b31408fd-4b99-4350" responseTimeMS=912 responseBytes=1501 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:07:59 AM [express] PATCH /api/recurring-transactions/6 200 in 910ms :: {"id":6,"organizationId":16…
+[GET]
+complybook.net/api/recurring-transactions/168 clientIP="216.147.126.248" requestID="9bfef1a4-bda8-443e" responseTimeMS=260 responseBytes=1502 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:08:00 AM [express] GET /api/recurring-transactions/168 200 in 257ms :: [{"id":6,"organizationId":1…
+[PATCH]
+complybook.net/api/recurring-transactions/6 clientIP="216.147.126.248" requestID="1b4c665e-d234-4095" responseTimeMS=324 responseBytes=1501 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/recurring-transactions/168 clientIP="216.147.126.248" requestID="5ae66e00-3e7f-471d" responseTimeMS=263 responseBytes=1502 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:08:12 AM [express] PATCH /api/recurring-transactions/6 200 in 320ms :: {"id":6,"organizationId":16…
+12:08:12 AM [express] GET /api/recurring-transactions/168 200 in 261ms :: [{"id":6,"organizationId":1…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.126.248" requestID="d95bcaea-c2bb-447c" responseTimeMS=257 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:08:13 AM [express] GET /api/notifications/168/unread-count 304 in 256ms :: {"count":"0"}
+[DELETE]
+complybook.net/api/recurring-transactions/6 clientIP="216.147.126.248" requestID="1b68034c-3c9c-4549" responseTimeMS=324 responseBytes=1331 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:08:15 AM [express] DELETE /api/recurring-transactions/6 200 in 322ms :: {"message":"Recurring tran…
+[GET]
+complybook.net/api/recurring-transactions/168 clientIP="216.147.126.248" requestID="2bfc12e1-169e-4cfa" responseTimeMS=264 responseBytes=1280 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:08:16 AM [express] GET /api/recurring-transactions/168 200 in 262ms :: []
+[GET]
+complybook.net/api/ai/detect-recurring/168?months=6 clientIP="216.147.126.248" requestID="5931ced6-dff4-4ca9" responseTimeMS=26947 responseBytes=2561 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[AI Pattern Detection] AI response: {
+  "patterns": [
+    {
+      "vendorName": "EduReenv BOCES :",
+      "frequency": "monthly",
+      "averageAmount": 7183.24,
+      "minAmount": 445.72,
+      "maxAmount": 9360.05,
+      "transactionIds": [
+        46329,
+        38977,
+        39030,
+        39102,
+        39181,
+        39237,
+        39250
+      ],
+      "confidence": 95,
+      "suggestedBillName": "Monthly Income from EduReenv BOCES"
+    },
+    {
+      "vendorName": "Withdrawal Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 1500.00,
+      "minAmount": 1500.00,
+      "maxAmount": 1500.00,
+      "transactionIds": [
+        46341,
+        38976,
+        39027,
+        39099,
+        39176,
+        39245
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Monthly Home Banking Withdrawal"
+    },
+    {
+      "vendorName": "Withdrawal Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 2000.00,
+      "minAmount": 2000.00,
+      "maxAmount": 2000.00,
+      "transactionIds": [
+        46167,
+        38991,
+        39057,
+        39132,
+        39211,
+        39270
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Monthly Home Banking Transfer"
+    },
+    {
+      "vendorName": "SECOM INC SECOM.NET",
+      "frequency": "monthly",
+      "averageAmount": 64.95,
+      "minAmount": 64.95,
+      "maxAmount": 64.95,
+      "transactionIds": [
+        46176,
+        38995,
+        39051,
+        39136,
+        39215,
+        39268
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Monthly SECOM Service Fee"
+    },
+    {
+      "vendorName": "Visa Check PAPAS",
+      "frequency": "weekly",
+      "averageAmount": 22.54,
+      "minAmount": 21.86,
+      "maxAmount": 24.74,
+      "transactionIds": [
+        46161,
+        46184,
+        41548,
+        38993,
+        39010,
+        39022,
+        39061,
+        39069,
+        39086,
+        39104,
+        39157,
+        39175
+      ],
+      "confidence": 85,
+      "suggestedBillName": "Weekly Dining at PAPAS"
+    },
+    {
+      "vendorName": "7-Eleven",
+      "frequency": "weekly",
+      "averageAmount": 40.27,
+      "minAmount": 40.27,
+      "maxAmount": 41.36,
+      "transactionIds": [
+        46368,
+        46336,
+        41550,
+        38996,
+        39014,
+        39089,
+        39120,
+        39193
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Weekly Purchases at 7-Eleven"
+    },
+    {
+      "vendorName": "Visa Check LITTLE",
+      "frequency": "weekly",
+      "averageAmount": 21.50,
+      "minAmount": 19.91,
+      "maxAmount": 22.57,
+      "transactionIds": [
+        39137,
+        39153,
+        39187,
+        39209,
+        39227,
+        39241,
+        39266,
+        39239
+      ],
+      "confidence": 90,
+      "suggestedBillName": "Weekly Dining at LITTLE CAESARS"
+    },
+    {
+      "vendorName": "SAN ISABEL ELECTRIC",
+      "frequency": "monthly",
+      "averageAmount": 164.76,
+      "minAmount": 108.07,
+      "maxAmount": 276.64,
+      "transactionIds": [
+        46175,
+        38994,
+        39050,
+        39135,
+        39214,
+        39274
+      ],
+      "confidence": 70,
+      "suggestedBillName": "Monthly Electric Bill"
+    }
+  ]
+}
+[AI Pattern Detection] Found 8 recurring patterns
+12:08:35 AM [express] GET /api/ai/detect-recurring/168 200 in 26945ms :: [{"vendorName":"EduReenv BOC…
+Menu
+12:08:40 AM [express] POST /api/recurring-transactions 201 in 268ms :: {"id":7,"organizationId":168,"…
+12:08:41 AM [express] GET /api/recurring-transactions/168 200 in 236ms :: [{"id":7,"organizationId":1…
+[POST]
+complybook.net/api/recurring-transactions clientIP="216.147.126.248" requestID="9d2b5234-0b61-489b" responseTimeMS=270 responseBytes=1495 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/recurring-transactions/168 clientIP="216.147.126.248" requestID="f7e

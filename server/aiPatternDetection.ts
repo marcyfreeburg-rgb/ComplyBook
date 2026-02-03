@@ -16,6 +16,24 @@ const openai = isReplitEnvironment
       })
     : null;
 
+// Cache for AI pattern detection results (5 minute TTL)
+interface PatternCache {
+  patterns: RecurringPattern[];
+  timestamp: number;
+  transactionCount: number;
+}
+const patternCache = new Map<string, PatternCache>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Clear cache for an organization (call when patterns are dismissed or recurring transactions created)
+export function clearPatternCache(organizationId: number): void {
+  for (const key of patternCache.keys()) {
+    if (key.startsWith(`${organizationId}-`)) {
+      patternCache.delete(key);
+    }
+  }
+}
+
 export interface RecurringPattern {
   vendorName: string;
   vendorId?: number;
@@ -78,6 +96,19 @@ export async function detectRecurringPatterns(
   lookbackMonths: number = 6
 ): Promise<RecurringPattern[]> {
   try {
+    const cacheKey = `${organizationId}-${lookbackMonths}`;
+    
+    // Check cache first for quick response
+    const cached = patternCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      // Quick validation: check if transaction count is roughly the same
+      const currentTxCount = await storage.getTransactionCount(organizationId);
+      if (Math.abs(currentTxCount - cached.transactionCount) <= 5) {
+        console.log('[AI Pattern Detection] Returning cached results');
+        return cached.patterns;
+      }
+    }
+    
     // Parallel fetch for better performance
     const [transactions, vendors, categories, linkedIds] = await Promise.all([
       storage.getTransactions(organizationId),
@@ -406,6 +437,14 @@ Respond with JSON: {"patterns": [...]}`;
     }
 
     console.log(`[AI Pattern Detection] Found ${patterns.length} recurring patterns`);
+    
+    // Cache the results for faster subsequent requests
+    patternCache.set(cacheKey, {
+      patterns,
+      timestamp: Date.now(),
+      transactionCount: transactions.length
+    });
+    
     return patterns;
 
   } catch (error) {
