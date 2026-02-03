@@ -220,7 +220,8 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           }
           
           .recipient-section {
-            margin-bottom: 28px;
+            margin-top: 32px;
+            margin-bottom: 36px;
           }
           .recipient-label {
             font-size: 12px;
@@ -228,7 +229,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
           }
           .recipient-name {
             font-weight: 600;
@@ -237,28 +238,28 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           .recipient-info {
             font-size: 14px;
             color: #374151;
-            line-height: 1.5;
+            line-height: 1.6;
           }
           
           .letter-body {
-            margin-bottom: 24px;
+            margin-bottom: 28px;
           }
           .salutation {
-            margin-bottom: 20px;
+            margin-bottom: 28px;
           }
           .paragraph {
-            margin: 0 0 24px 0;
-            line-height: 1.7;
+            margin: 0 0 28px 0;
+            line-height: 1.8;
           }
           
           .donation-table {
             width: 100%;
-            margin: 20px 0;
+            margin: 28px 0;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
           }
           .donation-table td {
-            padding: 16px 20px;
+            padding: 20px 24px;
             border-left: 4px solid ${primaryColor};
           }
           .donation-label {
@@ -282,30 +283,30 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           
           .tax-notice-table {
             width: 100%;
-            margin: 20px 0;
+            margin: 28px 0;
             background: #fefce8;
             border: 1px solid #fde047;
           }
           .tax-notice-table td {
-            padding: 14px 18px;
+            padding: 16px 20px;
           }
           .tax-notice-title {
             font-weight: 600;
             color: #854d0e;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             font-size: 13px;
           }
           .tax-notice-text {
             color: #713f12;
             font-size: 12px;
-            line-height: 1.5;
+            line-height: 1.6;
           }
           
           .closing-section {
-            margin-top: 28px;
+            margin-top: 36px;
           }
           .closing-text {
-            margin-bottom: 24px;
+            margin-bottom: 28px;
           }
           .signature-name {
             font-weight: 600;
@@ -314,19 +315,12 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           .signature-title {
             font-size: 13px;
             color: #6b7280;
-            margin-top: 2px;
-          }
-          .ein-info {
-            font-size: 12px;
-            color: #6b7280;
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px solid #e5e7eb;
+            margin-top: 4px;
           }
           
           .footer {
-            margin-top: 40px;
-            padding-top: 16px;
+            margin-top: 48px;
+            padding-top: 20px;
             border-top: 1px solid #e5e7eb;
             text-align: center;
             font-size: 11px;
@@ -408,7 +402,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
               <td>
                 <div class="tax-notice-title">Important Tax Information</div>
                 <div class="tax-notice-text">
-                  ${currentOrganization.companyName || currentOrganization.name} is a tax-exempt organization under Section 501(c)(3) of the Internal Revenue Code. No goods or services were provided in exchange for this contribution. The full amount of your donation is tax-deductible to the extent allowed by law. Please consult with a qualified tax professional regarding the deductibility of your contribution.
+                  ${currentOrganization.companyName || currentOrganization.name} is a tax-exempt organization under Section 501(c)(3) of the Internal Revenue Code. No goods or services were provided in exchange for this contribution. All contributions are tax-deductible to the extent allowed by law. Please consult with a qualified tax professional regarding the deductibility of your contribution.
                 </div>
               </td>
             </tr>
@@ -424,7 +418,6 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           <div class="closing-text">With sincere gratitude,</div>
           <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
           <div class="signature-title">Development Department</div>
-          ${currentOrganization.taxId ? `<div class="ein-info">Federal Tax Identification Number (EIN): ${currentOrganization.taxId}</div>` : ''}
         </div>
 
         ${currentOrganization.invoiceFooter ? `
