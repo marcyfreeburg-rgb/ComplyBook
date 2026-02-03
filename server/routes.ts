@@ -1384,6 +1384,306 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
+  // FUNDRAISING CAMPAIGN ROUTES
+  // ============================================
+
+  // Get all fundraising campaigns for an organization
+  app.get('/api/fundraising-campaigns/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const includeArchived = req.query.includeArchived === 'true';
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Fundraising campaigns are only available for nonprofit organizations" });
+      }
+      
+      const campaigns = await storage.getFundraisingCampaigns(organizationId, includeArchived);
+      
+      // Get progress for each campaign from transactions
+      const campaignsWithProgress = await Promise.all(campaigns.map(async (campaign) => {
+        const progress = await storage.getCampaignProgress(campaign.id);
+        return {
+          ...campaign,
+          raisedAmount: progress.raised,
+          donationCount: progress.donationCount
+        };
+      }));
+      
+      res.json(campaignsWithProgress);
+    } catch (error) {
+      console.error("Error fetching fundraising campaigns:", error);
+      res.status(400).json({ message: "Failed to fetch campaigns" });
+    }
+  });
+
+  // Create a new fundraising campaign
+  app.post('/api/fundraising-campaigns', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...campaignData } = req.body;
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Fundraising campaigns are only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage campaigns" });
+      }
+
+      const campaign = await storage.createFundraisingCampaign({
+        ...campaignData,
+        organizationId,
+        createdBy: userId,
+      });
+      res.status(201).json(campaign);
+    } catch (error) {
+      console.error("Error creating fundraising campaign:", error);
+      res.status(400).json({ message: "Failed to create campaign" });
+    }
+  });
+
+  // Update a fundraising campaign
+  app.patch('/api/fundraising-campaigns/:campaignId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const campaignId = parseInt(req.params.campaignId);
+      
+      const campaign = await storage.getFundraisingCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, campaign.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage campaigns" });
+      }
+
+      const updated = await storage.updateFundraisingCampaign(campaignId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating fundraising campaign:", error);
+      res.status(400).json({ message: "Failed to update campaign" });
+    }
+  });
+
+  // Archive a fundraising campaign
+  app.post('/api/fundraising-campaigns/:campaignId/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const campaignId = parseInt(req.params.campaignId);
+      
+      const campaign = await storage.getFundraisingCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, campaign.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage campaigns" });
+      }
+
+      const archived = await storage.archiveFundraisingCampaign(campaignId);
+      res.json(archived);
+    } catch (error) {
+      console.error("Error archiving fundraising campaign:", error);
+      res.status(400).json({ message: "Failed to archive campaign" });
+    }
+  });
+
+  // Delete a fundraising campaign
+  app.delete('/api/fundraising-campaigns/:campaignId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const campaignId = parseInt(req.params.campaignId);
+      
+      const campaign = await storage.getFundraisingCampaign(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, campaign.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage campaigns" });
+      }
+
+      await storage.deleteFundraisingCampaign(campaignId);
+      res.status(200).json({ message: "Campaign deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting fundraising campaign:", error);
+      res.status(400).json({ message: "Failed to delete campaign" });
+    }
+  });
+
+  // ============================================
+  // IN-KIND DONATION ROUTES
+  // ============================================
+
+  // Get all in-kind donations for an organization
+  app.get('/api/in-kind-donations/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "In-kind donations are only available for nonprofit organizations" });
+      }
+      
+      const donations = await storage.getInKindDonations(organizationId);
+      res.json(donations);
+    } catch (error) {
+      console.error("Error fetching in-kind donations:", error);
+      res.status(400).json({ message: "Failed to fetch in-kind donations" });
+    }
+  });
+
+  // Create a new in-kind donation
+  app.post('/api/in-kind-donations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, ...donationData } = req.body;
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "In-kind donations are only available for nonprofit organizations" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage in-kind donations" });
+      }
+
+      const donation = await storage.createInKindDonation({
+        ...donationData,
+        organizationId,
+        createdBy: userId,
+      });
+      res.status(201).json(donation);
+    } catch (error) {
+      console.error("Error creating in-kind donation:", error);
+      res.status(400).json({ message: "Failed to create in-kind donation" });
+    }
+  });
+
+  // Update an in-kind donation
+  app.patch('/api/in-kind-donations/:donationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donationId = parseInt(req.params.donationId);
+      
+      const donation = await storage.getInKindDonation(donationId);
+      if (!donation) {
+        return res.status(404).json({ message: "In-kind donation not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, donation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage in-kind donations" });
+      }
+
+      const updated = await storage.updateInKindDonation(donationId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating in-kind donation:", error);
+      res.status(400).json({ message: "Failed to update in-kind donation" });
+    }
+  });
+
+  // Delete an in-kind donation
+  app.delete('/api/in-kind-donations/:donationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donationId = parseInt(req.params.donationId);
+      
+      const donation = await storage.getInKindDonation(donationId);
+      if (!donation) {
+        return res.status(404).json({ message: "In-kind donation not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, donation.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
+        return res.status(403).json({ message: "You don't have permission to manage in-kind donations" });
+      }
+
+      await storage.deleteInKindDonation(donationId);
+      res.status(200).json({ message: "In-kind donation deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting in-kind donation:", error);
+      res.status(400).json({ message: "Failed to delete in-kind donation" });
+    }
+  });
+
+  // ============================================
+  // DONOR STEWARDSHIP/TIERS ROUTES
+  // ============================================
+
+  // Get donor tiers summary for an organization
+  app.get('/api/donor-tiers/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor stewardship is only available for nonprofit organizations" });
+      }
+      
+      const tiers = await storage.getDonorTiers(organizationId);
+      res.json(tiers);
+    } catch (error) {
+      console.error("Error fetching donor tiers:", error);
+      res.status(400).json({ message: "Failed to fetch donor tiers" });
+    }
+  });
+
+  // ============================================
   // DONOR PORTAL ROUTES (Public-facing for donors)
   // ============================================
 
