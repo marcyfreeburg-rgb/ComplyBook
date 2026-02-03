@@ -341,7 +341,6 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             <td class="org-cell">
               <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
               <div class="org-details">
-                ${currentOrganization.companyName && currentOrganization.companyName !== currentOrganization.name ? `${currentOrganization.name}<br/>` : ''}
                 ${currentOrganization.companyAddress ? `${currentOrganization.companyAddress.replace(/\n/g, '<br/>')}<br/>` : ''}
                 ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
                 ${currentOrganization.companyEmail ? `${currentOrganization.companyEmail}<br/>` : ''}
@@ -431,12 +430,163 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     `;
   };
 
+  // Generate custom letter with same header as general letter
+  const generateCustomLetterHTML = (bodyContent: string) => {
+    if (!selectedDonor) return "";
+
+    const logoUrl = currentOrganization.logoUrl 
+      ? `${window.location.origin}${currentOrganization.logoUrl}`
+      : "";
+    
+    const primaryColor = currentOrganization.invoicePrimaryColor || '#3b82f6';
+    const fontFamily = currentOrganization.invoiceFontFamily || 'Inter, sans-serif';
+    
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: ${fontFamily};
+            font-size: 14px;
+            line-height: 1.5;
+            color: #374151;
+            margin: 0;
+            padding: 32px 40px;
+          }
+          table { border-collapse: collapse; }
+          .header-table {
+            width: 100%;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .logo-cell {
+            width: 80px;
+            vertical-align: top;
+            padding-right: 12px;
+          }
+          .org-cell { vertical-align: top; }
+          .org-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 4px 0;
+          }
+          .org-details {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.4;
+          }
+          .title-cell {
+            vertical-align: top;
+            text-align: right;
+          }
+          .letter-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: ${primaryColor};
+            margin: 0 0 8px 0;
+          }
+          .letter-meta {
+            font-size: 13px;
+            color: #6b7280;
+          }
+          .letter-meta-value {
+            color: #374151;
+            font-weight: 500;
+          }
+          .letter-content {
+            line-height: 1.7;
+          }
+          .letter-content p {
+            margin: 0 0 14px 0;
+          }
+          .footer {
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+          }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            ${logoUrl ? `
+            <td class="logo-cell">
+              <img src="${logoUrl}" alt="Logo" width="60" height="60" style="width: 60px; height: 60px; max-width: 60px; max-height: 60px; object-fit: contain;" />
+            </td>
+            ` : ''}
+            <td class="org-cell">
+              <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
+              <div class="org-details">
+                ${currentOrganization.companyAddress ? `${currentOrganization.companyAddress.replace(/\n/g, '<br/>')}<br/>` : ''}
+                ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
+                ${currentOrganization.companyEmail ? `${currentOrganization.companyEmail}<br/>` : ''}
+                ${currentOrganization.companyWebsite ? `${currentOrganization.companyWebsite}<br/>` : ''}
+                ${currentOrganization.taxId ? `Tax ID: ${currentOrganization.taxId}` : ''}
+              </div>
+            </td>
+            <td class="title-cell">
+              <div class="letter-title">DONOR LETTER</div>
+              <div class="letter-meta">
+                Date: <span class="letter-meta-value">${currentDate}</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <div class="letter-content">
+          ${bodyContent}
+        </div>
+
+        ${currentOrganization.invoiceFooter ? `
+          <div class="footer">
+            ${currentOrganization.invoiceFooter}
+          </div>
+        ` : ''}
+      </body>
+      </html>
+    `;
+  };
+
+  // Generate AI writing tips for custom letters
+  const getLetterWritingGuidance = () => {
+    const donorName = selectedDonor?.name || "the donor";
+    const orgName = currentOrganization.companyName || currentOrganization.name;
+    const amount = formatCurrency(selectedAmount);
+    
+    return {
+      tips: [
+        "Start with a warm, personalized greeting using the donor's name",
+        "Express sincere gratitude for their specific contribution",
+        "Share the impact of their donation with a concrete example",
+        "Mention your organization's mission and how they're helping",
+        "Include a specific story or outcome when possible",
+        "Close with appreciation and an invitation to stay connected"
+      ],
+      sampleOpening: `<p>Dear ${donorName},</p>\n\n<p>I hope this letter finds you well. On behalf of everyone at ${orgName}, I wanted to take a moment to personally thank you for your generous contribution of ${amount}.</p>`,
+      sampleBody: `<p>Your support has made a real difference in our community. [Share a specific impact story or outcome here - for example: "Thanks to donors like you, we were able to serve 50 more families this quarter" or "Your gift helped fund our new education program."]</p>\n\n<p>We are so grateful to have you as part of our ${orgName} family. Your belief in our mission inspires us every day.</p>`,
+      sampleClosing: `<p>With heartfelt thanks,</p>\n\n<p><strong>${orgName}</strong><br/>Development Team</p>`
+    };
+  };
+
   const handleDownloadPDF = async () => {
     if (!selectedDonor) return;
 
     const html = letterType === 'general' 
       ? generateGeneralLetterHTML()
-      : customContent;
+      : generateCustomLetterHTML(customContent);
 
     if (!html || (letterType === 'custom' && !customContent.trim())) {
       toast({
@@ -497,7 +647,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
 
     const html = letterType === 'general' 
       ? generateGeneralLetterHTML()
-      : customContent;
+      : generateCustomLetterHTML(customContent);
 
     if (!html || (letterType === 'custom' && !customContent.trim())) {
       toast({
@@ -758,22 +908,66 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
               </div>
             </div>
 
-            {/* Custom Content Editor */}
+            {/* Custom Content Editor with AI Guidance */}
             {letterType === 'custom' && (
-              <div className="space-y-2">
-                <Label htmlFor="custom-content">Letter Content (HTML)</Label>
-                <Textarea
-                  id="custom-content"
-                  value={customContent}
-                  onChange={(e) => setCustomContent(e.target.value)}
-                  placeholder="Enter your custom letter content in HTML format..."
-                  rows={12}
-                  className="font-mono text-sm"
-                  data-testid="textarea-custom-content"
-                />
-                <p className="text-xs text-muted-foreground">
-                  You can use HTML for formatting. Include your organization branding manually.
-                </p>
+              <div className="space-y-4">
+                {/* AI Writing Guidance */}
+                <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                    <FileText className="w-4 h-4" />
+                    <span className="font-medium text-sm">Writing Tips</span>
+                  </div>
+                  <ul className="text-sm text-blue-600 dark:text-blue-300 space-y-1 ml-6 list-disc">
+                    {getLetterWritingGuidance().tips.map((tip, i) => (
+                      <li key={i}>{tip}</li>
+                    ))}
+                  </ul>
+                  <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const guidance = getLetterWritingGuidance();
+                        setCustomContent(
+                          `${guidance.sampleOpening}\n\n${guidance.sampleBody}\n\n${guidance.sampleClosing}`
+                        );
+                      }}
+                      className="text-xs"
+                      data-testid="button-use-template"
+                    >
+                      <Edit3 className="w-3 h-3 mr-1" />
+                      Use Sample Template
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="custom-content">Letter Body</Label>
+                  <Textarea
+                    id="custom-content"
+                    value={customContent}
+                    onChange={(e) => setCustomContent(e.target.value)}
+                    placeholder={`<p>Dear ${selectedDonor?.name || 'Donor'},</p>\n\n<p>Thank you for your generous support...</p>\n\n<p>Sincerely,</p>\n<p><strong>${currentOrganization.companyName || currentOrganization.name}</strong></p>`}
+                    rows={10}
+                    className="font-mono text-sm"
+                    data-testid="textarea-custom-content"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Write the body of your letter using HTML. Use &lt;p&gt; tags for paragraphs and &lt;strong&gt; for bold text. 
+                    Your organization's header with logo will be added automatically.
+                  </p>
+                </div>
+
+                {/* Custom Letter Preview */}
+                {customContent.trim() && selectedDonor && (
+                  <div className="space-y-2">
+                    <Label>Preview</Label>
+                    <div
+                      className="border rounded-md p-6 bg-background max-h-72 overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(generateCustomLetterHTML(customContent)) }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
