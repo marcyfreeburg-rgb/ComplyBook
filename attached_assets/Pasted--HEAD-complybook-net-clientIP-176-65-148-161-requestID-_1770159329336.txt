@@ -1,0 +1,139 @@
+[HEAD]
+complybook.net/ clientIP="176.65.148.161" requestID="a4ce0bc6-50e1-47fb" responseTimeMS=6 responseBytes=1343 userAgent="Mozilla/5.0 (compatible; Let's Encrypt validation server; +https://www.letsencrypt.org)"
+[HEAD]
+complybook.net/ clientIP="176.65.148.161" requestID="3f121554-608b-4b76" responseTimeMS=4 responseBytes=1343 userAgent="Mozilla/5.0 (compatible; Let's Encrypt validation server; +https://www.letsencrypt.org)"
+[HEAD]
+complybook.net/ clientIP="146.70.185.32" requestID="b51b8f48-87aa-4bec" responseTimeMS=3 responseBytes=1343 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+[GET]
+complybook.net/api/ai/suggest-funding-source/168?vendorName=Visa%20Check%20PAPAS clientIP="216.147.124.109" requestID="8508e171-a2ad-4d20" responseTimeMS=1448 responseBytes=1319 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:49:57 PM [express] GET /api/ai/suggest-funding-source/168 200 in 1443ms :: {"suggestedGrantId":nul…
+[POST]
+complybook.net/api/ai/create-bill-from-pattern/168 clientIP="216.147.124.109" requestID="243946a6-d564-489d" responseTimeMS=817 responseBytes=1658 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[Pattern to Bill] Created bill 32 from pattern for Visa Check PAPAS
+10:50:06 PM [express] POST /api/ai/create-bill-from-pattern/168 201 in 814ms :: {"id":32,"organizatio…
+[GET]
+complybook.net/api/bills/168 clientIP="216.147.124.109" requestID="96b53616-3870-4159" responseTimeMS=235 responseBytes=1604 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:50:07 PM [express] GET /api/bills/168 200 in 233ms :: [{"id":32,"organizationId":168,"vendorId":23…
+[AI Pattern Detection] AI response: {
+  "patterns": [
+    {
+      "vendorName": "EduReenv BOCES :",
+      "frequency": "monthly",
+      "averageAmount": 7467.83,
+      "minAmount": 445.72,
+      "maxAmount": 9360.05,
+      "transactionIds": [
+        46329,
+        38977,
+        39030,
+        39102,
+        39181,
+        39237,
+        39250
+      ],
+      "confidence": 90,
+      "suggestedBillName": "Monthly Income from EduReenv BOCES"
+    },
+    {
+      "vendorName": "Withdrawal Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 1500.00,
+      "minAmount": 1500.00,
+      "maxAmount": 1500.00,
+      "transactionIds": [
+        46341,
+        38976,
+        39027,
+        39099,
+        39176,
+        39245
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Monthly Home Banking Withdrawal"
+    },
+    {
+      "vendorName": "Withdrawal Home Banking",
+      "frequency": "monthly",
+      "averageAmount": 2000.00,
+      "minAmount": 2000.00,
+      "maxAmount": 2000.00,
+      "transactionIds": [
+        46167,
+        38991,
+        39057,
+        39132,
+        39211,
+        39270
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Monthly Home Banking Transfer"
+    },
+    {
+      "vendorName": "Visa Check SAMSCLUB",
+      "frequency": "monthly",
+      "averageAmount": 23.82,
+      "minAmount": 15.69,
+      "maxAmount": 99.13,
+      "transactionIds": [
+        46340,
+        46157,
+        39012,
+        39011,
+        39159,
+        39158,
+        39228,
+        39284
+      ],
+      "confidence": 70,
+      "suggestedBillName": "Monthly SAMSCLUB Purchases"
+    },
+    {
+      "vendorName": "SECOM INC SECOM.NET",
+      "frequency": "monthly",
+      "averageAmount": 64.95,
+      "minAmount": 64.95,
+      "maxAmount": 64.95,
+      "transactionIds": [
+        46176,
+        38995,
+        39051,
+        39136,
+        39215,
+        39268
+      ],
+      "confidence": 100,
+      "suggestedBillName": "Monthly SECOM Subscription"
+    },
+    {
+      "vendorName": "SAN ISABEL ELECTRIC",
+      "frequency": "monthly",
+      "averageAmount": 177.77,
+      "minAmount": 108.07,
+      "maxAmount": 276.64,
+      "transactionIds": [
+        46175,
+        38994,
+        39050,
+        39135,
+        39214,
+        39274
+      ],
+      "confidence": 80,
+      "suggestedBillName": "Monthly Electric Bill"
+    }
+  ]
+}
+[AI Pattern Detection] Found 6 recurring patterns
+[GET]
+complybook.net/api/ai/detect-recurring/168?months=6 clientIP="216.147.124.109" requestID="99a3976c-55d1-41b9" responseTimeMS=22164 responseBytes=2271 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:50:29 PM [express] GET /api/ai/detect-recurring/168 200 in 22162ms :: [{"vendorName":"EduReenv BOC…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="95485268-92a6-4a5e" responseTimeMS=265 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+10:50:30 PM [express] GET /api/notifications/168/unread-count 304 in 263ms :: {"count":"0"}
+[POST]
+complybook.net/api/ai/dismiss-pattern/168 clientIP="216.147.124.109" requestID="9fafc948-1c75-4a26" responseTimeMS=1415 responseBytes=1437 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:54:20 PM [express] POST /api/ai/dismiss-pattern/168 200 in 1410ms :: {"id":3,"organizationId":168,…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="21f799d0-bca7-4688" responseTimeMS=264 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:54:30 PM [express] GET /api/notifications/168/unread-count 304 in 261ms :: {"count":"0"}

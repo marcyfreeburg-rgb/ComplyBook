@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Sparkles, 
@@ -17,7 +18,8 @@ import {
   RefreshCw,
   FileText,
   X,
-  Eye
+  Eye,
+  CheckSquare
 } from "lucide-react";
 import {
   Collapsible,
@@ -105,6 +107,9 @@ export function RecurringPatternDetector({
 
   // Track patterns that have been added in this session
   const [addedPatterns, setAddedPatterns] = useState<Set<string>>(new Set());
+
+  // Multi-select state for batch bill creation
+  const [selectedPatterns, setSelectedPatterns] = useState<Set<string>>(new Set());
 
   // Confirmation dialog state for customizing bill creation
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -297,6 +302,105 @@ export function RecurringPatternDetector({
     },
   });
 
+  // Batch bill creation mutation
+  const [batchCreating, setBatchCreating] = useState(false);
+  const createBatchBillsMutation = useMutation({
+    mutationFn: async (patterns: RecurringPattern[]) => {
+      setBatchCreating(true);
+      const results = [];
+      for (const pattern of patterns) {
+        const days = pattern.transactions.map(t => new Date(t.date).getDate());
+        const avgDay = Math.round(days.reduce((a, b) => a + b, 0) / days.length);
+        const dayOfMonth = Math.min(28, avgDay);
+        
+        const result = await apiRequest('POST', `/api/ai/create-bill-from-pattern/${organizationId}`, {
+          ...pattern,
+          frequency: pattern.frequency,
+          dayOfMonth,
+          fundingSource: 'unrestricted',
+          grantId: null,
+          categoryId: pattern.categoryId || null
+        });
+        results.push(result);
+      }
+      return results;
+    },
+    onSuccess: (_, patterns) => {
+      // Mark all patterns as added
+      const newAdded = new Set(addedPatterns);
+      patterns.forEach(pattern => {
+        const patternKey = `${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`;
+        newAdded.add(patternKey);
+      });
+      setAddedPatterns(newAdded);
+      setSelectedPatterns(new Set());
+      setBatchCreating(false);
+      toast({
+        title: "Bills Created",
+        description: `Successfully created ${patterns.length} recurring bills.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/bills'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/detect-recurring'] });
+    },
+    onError: (error: Error) => {
+      setBatchCreating(false);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create bills",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper functions for multi-select
+  const getPatternKey = (pattern: RecurringPattern) => 
+    `${pattern.vendorName.toLowerCase()}-${pattern.transactionType}`;
+
+  const togglePatternSelection = (pattern: RecurringPattern) => {
+    const key = getPatternKey(pattern);
+    const newSelected = new Set(selectedPatterns);
+    if (newSelected.has(key)) {
+      newSelected.delete(key);
+    } else {
+      newSelected.add(key);
+    }
+    setSelectedPatterns(newSelected);
+  };
+
+  const isPatternSelected = (pattern: RecurringPattern) => 
+    selectedPatterns.has(getPatternKey(pattern));
+
+  const selectableExpensePatterns = (patterns?.filter(p => 
+    p.transactionType === 'expense' && !isPatternAdded(p)
+  ) || []);
+
+  const selectAllExpensePatterns = () => {
+    const newSelected = new Set(selectedPatterns);
+    selectableExpensePatterns.forEach(p => newSelected.add(getPatternKey(p)));
+    setSelectedPatterns(newSelected);
+  };
+
+  const deselectAllExpensePatterns = () => {
+    const newSelected = new Set(selectedPatterns);
+    selectableExpensePatterns.forEach(p => newSelected.delete(getPatternKey(p)));
+    setSelectedPatterns(newSelected);
+  };
+
+  const allExpenseSelected = selectableExpensePatterns.length > 0 && 
+    selectableExpensePatterns.every(p => selectedPatterns.has(getPatternKey(p)));
+
+  const someExpenseSelected = selectableExpensePatterns.some(p => 
+    selectedPatterns.has(getPatternKey(p)));
+
+  const handleBatchCreate = () => {
+    const patternsToCreate = patterns?.filter(p => 
+      selectedPatterns.has(getPatternKey(p)) && p.transactionType === 'expense'
+    ) || [];
+    if (patternsToCreate.length > 0) {
+      createBatchBillsMutation.mutate(patternsToCreate);
+    }
+  };
+
   const togglePattern = (vendorName: string) => {
     const newExpanded = new Set(expandedPatterns);
     if (newExpanded.has(vendorName)) {
@@ -407,10 +511,47 @@ export function RecurringPatternDetector({
               <div className="space-y-6">
                 {expensePatterns.length > 0 && (
                   <div>
-                    <h3 className="font-medium mb-3 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-red-500" />
-                      Recurring Expenses ({expensePatterns.length})
-                    </h3>
+                    <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                      <h3 className="font-medium flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-red-500" />
+                        Recurring Expenses ({expensePatterns.length})
+                      </h3>
+                      {selectableExpensePatterns.length > 0 && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="select-all-expenses"
+                              checked={allExpenseSelected}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  selectAllExpensePatterns();
+                                } else {
+                                  deselectAllExpensePatterns();
+                                }
+                              }}
+                              data-testid="checkbox-select-all-expenses"
+                            />
+                            <label 
+                              htmlFor="select-all-expenses" 
+                              className="text-sm text-muted-foreground cursor-pointer"
+                            >
+                              Select All
+                            </label>
+                          </div>
+                          {someExpenseSelected && (
+                            <Button
+                              size="sm"
+                              onClick={handleBatchCreate}
+                              disabled={batchCreating}
+                              data-testid="button-batch-create-bills"
+                            >
+                              <CheckSquare className="w-4 h-4 mr-1" />
+                              {batchCreating ? 'Creating...' : `Add ${selectedPatterns.size} to Bills`}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div className="space-y-2">
                       {expensePatterns.map((pattern) => (
                         <PatternCard
@@ -424,6 +565,9 @@ export function RecurringPatternDetector({
                           isDismissing={dismissPatternMutation.isPending}
                           frequencyLabels={frequencyLabels}
                           isAdded={isPatternAdded(pattern)}
+                          isSelected={isPatternSelected(pattern)}
+                          onSelect={() => togglePatternSelection(pattern)}
+                          showCheckbox={!isPatternAdded(pattern)}
                         />
                       ))}
                     </div>
@@ -643,6 +787,9 @@ interface PatternCardProps {
   onAddIncome?: () => void;
   onDismiss?: (reason: DismissReason) => void;
   isCreating?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
+  showCheckbox?: boolean;
   isDismissing?: boolean;
   frequencyLabels: Record<string, string>;
   isIncome?: boolean;
@@ -660,20 +807,33 @@ function PatternCard({
   isDismissing,
   frequencyLabels,
   isIncome,
-  isAdded = false
+  isAdded = false,
+  isSelected = false,
+  onSelect,
+  showCheckbox = false
 }: PatternCardProps) {
   const [dismissOpen, setDismissOpen] = useState(false);
   const vendorSlug = pattern.vendorName.toLowerCase().replace(/\s+/g, '-');
   
   return (
     <div 
-      className={`border rounded-lg p-4 ${isIncome ? 'bg-green-50/50 dark:bg-green-950/20' : 'bg-orange-50/50 dark:bg-orange-950/20'}`}
+      className={`border rounded-lg p-4 ${isIncome ? 'bg-green-50/50 dark:bg-green-950/20' : 'bg-orange-50/50 dark:bg-orange-950/20'} ${isSelected ? 'ring-2 ring-primary' : ''}`}
       data-testid={`pattern-card-${vendorSlug}`}
     >
-      <div className="mb-2 text-sm text-muted-foreground" data-testid={`text-pattern-summary-${vendorSlug}`}>
-        We detected {pattern.transactionCount} payments to <span className="font-medium text-foreground">{pattern.vendorName}</span> (~${pattern.averageAmount.toFixed(2)} each, every ~{frequencyLabels[pattern.frequency]?.toLowerCase() || pattern.frequency}). 
-        {!isIncome ? ' Add as recurring bill?' : ' Include in forecast?'}
-      </div>
+      <div className="flex items-start gap-3">
+        {showCheckbox && onSelect && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onSelect}
+            className="mt-1"
+            data-testid={`checkbox-pattern-${vendorSlug}`}
+          />
+        )}
+        <div className="flex-1">
+          <div className="mb-2 text-sm text-muted-foreground" data-testid={`text-pattern-summary-${vendorSlug}`}>
+            We detected {pattern.transactionCount} payments to <span className="font-medium text-foreground">{pattern.vendorName}</span> (~${pattern.averageAmount.toFixed(2)} each, every ~{frequencyLabels[pattern.frequency]?.toLowerCase() || pattern.frequency}). 
+            {!isIncome ? ' Add as recurring bill?' : ' Include in forecast?'}
+          </div>
       
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div className="flex-1">
@@ -834,6 +994,8 @@ function PatternCard({
               {isExpanded ? 'Hide' : 'Review'} transactions
             </TooltipContent>
           </Tooltip>
+        </div>
+      </div>
         </div>
       </div>
 
