@@ -1470,6 +1470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userRole) {
         return res.status(403).json({ message: "Access denied" });
       }
+
+      const organization = await storage.getOrganization(campaign.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Fundraising campaigns are only available for nonprofit organizations" });
+      }
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to manage campaigns" });
@@ -1498,6 +1503,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userRole) {
         return res.status(403).json({ message: "Access denied" });
       }
+
+      const organization = await storage.getOrganization(campaign.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Fundraising campaigns are only available for nonprofit organizations" });
+      }
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to manage campaigns" });
@@ -1525,6 +1535,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = await storage.getUserRole(userId, campaign.organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(campaign.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Fundraising campaigns are only available for nonprofit organizations" });
       }
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
@@ -1614,6 +1629,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userRole) {
         return res.status(403).json({ message: "Access denied" });
       }
+
+      const organization = await storage.getOrganization(donation.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "In-kind donations are only available for nonprofit organizations" });
+      }
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
         return res.status(403).json({ message: "You don't have permission to manage in-kind donations" });
@@ -1641,6 +1661,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = await storage.getUserRole(userId, donation.organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(donation.organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "In-kind donations are only available for nonprofit organizations" });
       }
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
