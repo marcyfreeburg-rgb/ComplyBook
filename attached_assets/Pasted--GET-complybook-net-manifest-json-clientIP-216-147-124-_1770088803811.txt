@@ -1,0 +1,84 @@
+[GET]
+complybook.net/manifest.json clientIP="216.147.124.109" requestID="16316238-5a34-4cec" responseTimeMS=21 responseBytes=1766 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.124.109" requestID="23a336e8-c478-45b3" responseTimeMS=74 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.124.109" requestID="55ea4493-eef3-4fe8" responseTimeMS=288 responseBytes=2992 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.124.109" requestID="cb052108-405f-44b9" responseTimeMS=185 responseBytes=2252 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.124.109" requestID="d1120064-d4a7-4910" responseTimeMS=136 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="85d97a41-729e-476e" responseTimeMS=255 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.124.109" requestID="afaaddda-d39e-47ba" responseTimeMS=886 responseBytes=1222 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donation-letters/168/2026 clientIP="216.147.124.109" requestID="da31e634-9535-455d" responseTimeMS=759 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.124.109" requestID="97a68d8c-19f6-41ed" responseTimeMS=475 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.124.109" requestID="91d703c5-d593-448b" responseTimeMS=719 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:17:50 AM [express] GET /api/notifications/168/unread-count 304 in 255ms :: {"count":"0"}
+3:17:50 AM [express] GET /api/security/mfa/status 200 in 884ms :: {"mfaEnabled":true,"mfaRequired":t…
+3:17:50 AM [express] GET /api/donor-letters/168 304 in 717ms :: {"data":[{"id":7,"organizationId":16…
+3:17:50 AM [express] GET /api/donation-letters/168/2026 304 in 758ms :: {"data":[]}
+[GET]
+complybook.net/api/donation-letters/168/2025 clientIP="216.147.124.109" requestID="a2866551-b3b5-44cc" responseTimeMS=334 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.124.109" requestID="02b571ff-f46d-472b" responseTimeMS=296 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:17:53 AM [express] GET /api/donor-letters/168 304 in 295ms :: {"data":[{"id":7,"organizationId":16…
+3:17:53 AM [express] GET /api/donation-letters/168/2025 304 in 333ms :: {"data":[{"donor":{"id":9,"o…
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.124.109" requestID="bf5e8723-1eb3-4aed" responseTimeMS=481 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-HwE7T4YF.css clientIP="216.147.124.109" requestID="068fba76-1b5a-4bc7" responseTimeMS=481 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/donor-letters/8/finalize clientIP="216.147.124.109" requestID="fcabbf48-e101-46e8" responseTimeMS=369 responseBytes=3335 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/donor-letters clientIP="216.147.124.109" requestID="3a73ee71-a1e5-4737" responseTimeMS=512 responseBytes=1481 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:18:08 AM [express] POST /api/donor-letters 201 in 500ms :: {"data":{"id":8,"organizationId":168,"d…
+3:18:08 AM [express] POST /api/donor-letters/8/finalize 200 in 367ms :: {"data":{"id":8,"organizatio…
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.124.109" requestID="917787e6-4557-452a" responseTimeMS=303 responseBytes=3749 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:18:09 AM [express] GET /api/donor-letters/168 200 in 301ms :: {"data":[{"id":8,"organizationId":16…
+[GET]
+complybook.net/donation-letters clientIP="216.147.124.109" requestID="e5add6c3-2bd1-4d78" responseTimeMS=421 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-HwE7T4YF.css clientIP="216.147.124.109" requestID="fc706211-7fd5-494a" responseTimeMS=66 responseBytes=17428 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-C8Mq2-wb.js clientIP="216.147.124.109" requestID="d84abd2d-0a41-4172" responseTimeMS=648 responseBytes=931671 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.124.109" requestID="73fc4e2f-7815-45f7" responseTimeMS=62 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.124.109" requestID="61344c7c-a1d9-49ff" responseTimeMS=120 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.124.109" requestID="8216a3df-3e7c-4a9a" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.124.109" requestID="e762eecf-d461-4869" responseTimeMS=654 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.124.109" requestID="05eebe84-ca66-4892" responseTimeMS=118 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.124.109" requestID="7c38cda6-6c44-4b0d" responseTimeMS=73 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.124.109" requestID="72a6c75d-4620-4c0e" responseTimeMS=368 responseBytes=2252 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.124.109" requestID="77e0eb40-1db0-45ff" responseTimeMS=242 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:18:29 AM [express] GET /api/auth/user 200 in 366ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+3:18:29 AM [express] GET /api/organizations 304 in 240ms :: [{"id":234,"name":"Test Organization LLC…
+3:18:29 AM [express] GET /api/security/mfa/status 304 in 654ms :: {"mfaEnabled":true,"mfaRequired":t…
+Menu
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="28ab2371-f784-49db" responseTimeMS=422 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.124.109" requestID="5ec59468-f3a6-40a5" responseTimeMS=488 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donation-letters/168/2026 clientIP="216.147.124.109" requestID="73878ae2-317d-492c" responseTimeMS=665 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:18:30 AM [express] GET /api/notifications/168/unread-count 304 in 421ms :: {"count":"0"}
+3:18:30 AM [express] GET /api/donor-letters/168 304 in 487ms :: {"data":[{"id":8,"organizationId":16…
+3:18:30 AM [express] GET /api/donation-letters/168/2026 304 in 664ms :: {"data":[]}
+[GET]
+complybook.net/api/donation-letters/168/2025 clientIP="216.147.124.109" requestID="94af8e26-0914-4ca3" responseTimeMS=299 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-letters/168 clientIP="216.147.124.109" requestID="be7c9ea7-3abb-4714" responseTimeMS=298 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:18:32 AM [express] GET /api/donor-letters/168 304 in 297ms :: {"data":[{"id":8,"organizationId":16…
+3:18:32 AM [express] GET /api/donation-letters/168/2025 304 in 298ms :: {"data":[{"donor":{"id":9,"o…
