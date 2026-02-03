@@ -177,14 +177,9 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             border-bottom: 1px solid #e5e7eb;
           }
           .logo-cell {
-            width: 70px;
+            width: 80px;
             vertical-align: top;
-            padding-right: 16px;
-          }
-          .logo-cell img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
+            padding-right: 12px;
           }
           .org-cell {
             vertical-align: top;
@@ -340,7 +335,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           <tr>
             ${logoUrl ? `
             <td class="logo-cell">
-              <img src="${logoUrl}" alt="Logo" />
+              <img src="${logoUrl}" alt="Logo" width="60" height="60" style="width: 60px; height: 60px; max-width: 60px; max-height: 60px; object-fit: contain;" />
             </td>
             ` : ''}
             <td class="org-cell">
