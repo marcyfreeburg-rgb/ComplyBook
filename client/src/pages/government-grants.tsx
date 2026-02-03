@@ -119,10 +119,12 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
   const [deleteFFRId, setDeleteFFRId] = useState<number | null>(null);
   const [deleteAuditItemId, setDeleteAuditItemId] = useState<number | null>(null);
 
-  // Fetch data for dropdowns
-  const { data: grants = [] } = useQuery({
+  // Fetch data for dropdowns - filter to only show government grants
+  const { data: allGrants = [] } = useQuery<any[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
   });
+  // Only show grants that are marked as government grants
+  const grants = allGrants.filter((grant: any) => grant.isGovernmentGrant === true);
 
   const { data: employees = [] } = useQuery({
     queryKey: [`/api/employees/${currentOrganization.id}`],

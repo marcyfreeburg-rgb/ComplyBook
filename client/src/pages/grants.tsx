@@ -26,6 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +68,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
     status: 'active' as 'active' | 'completed' | 'pending',
     startDate: null as string | null,
     endDate: null as string | null,
+    isGovernmentGrant: false,
   });
 
   const { data: grants, isLoading, error } = useQuery<GrantWithSpent[]>({
@@ -197,6 +199,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
       status: 'active' as 'active' | 'completed' | 'pending',
       startDate: null as string | null,
       endDate: null as string | null,
+      isGovernmentGrant: false,
     });
   };
 
@@ -211,6 +214,7 @@ export default function Grants({ currentOrganization }: GrantsProps) {
       status: grant.status,
       startDate: grant.startDate ? (typeof grant.startDate === 'string' ? grant.startDate : grant.startDate.toISOString().split('T')[0]) : null,
       endDate: grant.endDate ? (typeof grant.endDate === 'string' ? grant.endDate : grant.endDate.toISOString().split('T')[0]) : null,
+      isGovernmentGrant: grant.isGovernmentGrant || false,
     });
     setIsDialogOpen(true);
   };
@@ -478,6 +482,24 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                   data-testid="input-grant-restrictions"
                 />
               </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isGovernmentGrant"
+                  checked={formData.isGovernmentGrant}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isGovernmentGrant: checked === true })}
+                  data-testid="checkbox-government-grant"
+                />
+                <Label 
+                  htmlFor="isGovernmentGrant" 
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Government Grant
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2 ml-6">
+                Check this if this is a federal, state, or local government grant. This enables government grant compliance features.
+              </p>
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button

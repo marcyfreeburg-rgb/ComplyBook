@@ -1061,6 +1061,7 @@ export const grants = pgTable("grants", {
   grantorContact: varchar("grantor_contact", { length: 255 }), // Primary contact at funding org
   grantorEmail: varchar("grantor_email", { length: 255 }),
   grantorPhone: varchar("grantor_phone", { length: 50 }),
+  isGovernmentGrant: boolean("is_government_grant").notNull().default(false), // For government grants compliance features
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
