@@ -803,7 +803,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const handleCreateAuditItem = () => {
     const payload = {
-      auditYear: parseInt(auditItemFormData.auditYear),
+      auditYear: auditItemFormData.auditYear,
       itemType: auditItemFormData.itemType,
       description: auditItemFormData.description,
       grantId: auditItemFormData.grantId ? parseInt(auditItemFormData.grantId) : undefined,

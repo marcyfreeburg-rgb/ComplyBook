@@ -1,0 +1,52 @@
+9:30:33 PM [express] POST /api/federal-financial-reports 201 in 1087ms :: {"id":1,"organizationId":1…
+9:30:33 PM [express] GET /api/federal-financial-reports/168 200 in 232ms :: [{"id":1,"organizationId…
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.124.109" requestID="eb04fc89-e5a1-4421" responseTimeMS=128 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CvEyT44P.css clientIP="216.147.124.109" requestID="94c39f0f-74fe-4956" responseTimeMS=478 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="39689ea8-f2ec-46c5" responseTimeMS=419 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+9:30:47 PM [express] GET /api/notifications/168/unread-count 304 in 416ms :: {"count":"0"}
+[POST]
+complybook.net/api/audit-prep-items clientIP="216.147.124.109" requestID="5a89e701-f9c8-403f" responseTimeMS=816 responseBytes=1393 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="a77b115f-6188-46e0" responseTimeMS=820 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error creating audit prep item: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "number",
+    "path": [
+      "auditYear"
+    ],
+    "message": "Expected string, received number"
+  }
+]
+    at get error (file:///opt/render/project/src/node_modules/zod/v3/types.js:39:31)
+    at ZodObject.parse (file:///opt/render/project/src/node_modules/zod/v3/types.js:114:22)
+    at file:///opt/render/project/src/dist/index.js:26344:55
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  issues: [
+Menu
+    {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'number',
+      path: [Array],
+      message: 'Expected string, received number'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'number',
+      path: [Array],
+      message: 'Expected string, received number'
+    }
+  ]
+}
+9:31:48 PM [express] POST /api/audit-prep-items 400 in 809ms :: {"message":"Invalid item data","erro…
+9:31:48 PM [express] GET /api/notifications/168/unread-count 304 in 818ms :: {"count":"0"}
