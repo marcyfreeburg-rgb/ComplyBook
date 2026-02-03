@@ -93,17 +93,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
-  // Extract grantId from URL parameters - derive from location each render
-  // Use useMemo to ensure this is computed on every render when location changes
+  // Extract grantId from URL parameters - wouter's location only returns pathname,
+  // so we need to use window.location.search for query params
   const activeGrantId = useMemo(() => {
-    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const urlParams = new URLSearchParams(window.location.search);
     const grantIdStr = urlParams.get('grantId');
     if (grantIdStr) {
       const parsed = parseInt(grantIdStr);
       return isNaN(parsed) ? undefined : parsed;
     }
     return undefined;
-  }, [location]);
+  }, [location]); // Still depend on location to re-run when route changes
   
   // Track the previous grant ID to detect changes and clear filters
   const prevGrantIdRef = useRef<number | undefined>(undefined);
