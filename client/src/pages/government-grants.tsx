@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Clock, DollarSign, Users, FileText, CheckCircle, AlertCircle, Plus, Edit, Trash2, FileCheck, AlertTriangle, UserCheck, Download } from "lucide-react";
+import { Clock, DollarSign, Users, FileText, CheckCircle, AlertCircle, Plus, Edit, Trash2, FileCheck, AlertTriangle, UserCheck, Download, Calendar, Bell } from "lucide-react";
+import { useMemo } from "react";
 import html2pdf from "html2pdf.js";
 import type { Organization } from "@shared/schema";
 
@@ -1311,6 +1312,127 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
     setEditingAuditItem(null);
   };
 
+  // Compliance Tracking - Compute upcoming due dates and missing data warnings
+  const complianceAlerts = useMemo(() => {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date(today);
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    const upcomingItems: Array<{
+      type: 'sub_award_monitoring' | 'federal_report' | 'audit_due';
+      title: string;
+      dueDate: Date;
+      daysUntilDue: number;
+      severity: 'urgent' | 'warning' | 'info';
+      id: number;
+      details: string;
+    }> = [];
+
+    const missingDataWarnings: Array<{
+      type: 'sub_award' | 'federal_report' | 'audit_item';
+      title: string;
+      id: number;
+      missingField: string;
+    }> = [];
+
+    // Check Sub Awards for upcoming monitoring dates and missing dates
+    (subAwards as any[]).forEach((award: any) => {
+      const grant = grants.find((g: any) => g.id === award.grantId);
+      const grantName = grant?.name || 'Unknown Grant';
+      
+      if (award.nextMonitoringDate) {
+        const monitoringDate = new Date(award.nextMonitoringDate);
+        if (monitoringDate >= today && monitoringDate <= thirtyDaysFromNow) {
+          const daysUntilDue = Math.ceil((monitoringDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          upcomingItems.push({
+            type: 'sub_award_monitoring',
+            title: `Sub-Award Monitoring: ${award.subrecipientName}`,
+            dueDate: monitoringDate,
+            daysUntilDue,
+            severity: daysUntilDue <= 7 ? 'urgent' : daysUntilDue <= 14 ? 'warning' : 'info',
+            id: award.id,
+            details: `Grant: ${grantName}`,
+          });
+        }
+      } else if (award.status === 'active') {
+        missingDataWarnings.push({
+          type: 'sub_award',
+          title: `${award.subrecipientName} (${grantName})`,
+          id: award.id,
+          missingField: 'Next Monitoring Date',
+        });
+      }
+    });
+
+    // Check Federal Financial Reports for due dates (use reporting period end as proxy for due date)
+    (federalReports as any[]).forEach((report: any) => {
+      const grant = grants.find((g: any) => g.id === report.grantId);
+      const grantName = grant?.name || 'Unknown Grant';
+      
+      // Check for missing reporting period end date (required for compliance tracking)
+      if (!report.reportingPeriodEnd && report.status !== 'approved') {
+        missingDataWarnings.push({
+          type: 'federal_report',
+          title: `SF-425 Report (${grantName})`,
+          id: report.id,
+          missingField: 'Reporting Period End Date',
+        });
+      } else if (report.reportingPeriodEnd && report.status === 'draft') {
+        // Use the reportingPeriodEnd as a proxy for when the report is due
+        // Reports are typically due 30-90 days after the reporting period ends
+        const periodEndDate = new Date(report.reportingPeriodEnd);
+        const reportDueDate = new Date(periodEndDate);
+        reportDueDate.setDate(reportDueDate.getDate() + 30); // Assume 30 days after period end
+        
+        if (reportDueDate >= today && reportDueDate <= thirtyDaysFromNow) {
+          const daysUntilDue = Math.ceil((reportDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          upcomingItems.push({
+            type: 'federal_report',
+            title: `SF-425 Federal Report`,
+            dueDate: reportDueDate,
+            daysUntilDue,
+            severity: daysUntilDue <= 7 ? 'urgent' : daysUntilDue <= 14 ? 'warning' : 'info',
+            id: report.id,
+            details: `Grant: ${grantName} | Period: ${new Date(report.reportingPeriodStart).toLocaleDateString()} - ${new Date(report.reportingPeriodEnd).toLocaleDateString()}`,
+          });
+        }
+      }
+    });
+
+    // Check Audit Prep Items for due dates and missing dates
+    (auditItems as any[]).forEach((item: any) => {
+      if (item.dueDate && item.completionStatus !== 'completed') {
+        const dueDate = new Date(item.dueDate);
+        if (dueDate >= today && dueDate <= thirtyDaysFromNow) {
+          const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          upcomingItems.push({
+            type: 'audit_due',
+            title: `Audit Item: ${item.description.substring(0, 50)}${item.description.length > 50 ? '...' : ''}`,
+            dueDate,
+            daysUntilDue,
+            severity: daysUntilDue <= 7 ? 'urgent' : daysUntilDue <= 14 ? 'warning' : 'info',
+            id: item.id,
+            details: `Type: ${item.itemType.replace(/_/g, ' ')} | Year: ${item.auditYear}`,
+          });
+        }
+      } else if (!item.dueDate && item.completionStatus !== 'completed') {
+        missingDataWarnings.push({
+          type: 'audit_item',
+          title: `${item.description.substring(0, 40)}${item.description.length > 40 ? '...' : ''}`,
+          id: item.id,
+          missingField: 'Due Date',
+        });
+      }
+    });
+
+    // Sort upcoming items by due date
+    upcomingItems.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
+    return { upcomingItems, missingDataWarnings };
+  }, [subAwards, federalReports, auditItems, grants]);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -1337,6 +1459,155 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Compliance Tracking Section */}
+      {grants.length > 0 && (complianceAlerts.upcomingItems.length > 0 || complianceAlerts.missingDataWarnings.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-2" data-testid="section-compliance-tracking">
+          {/* Upcoming Due Dates */}
+          {complianceAlerts.upcomingItems.length > 0 && (
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950" data-testid="card-upcoming-due-dates">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                  <Calendar className="h-5 w-5" />
+                  Upcoming Due Dates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {complianceAlerts.upcomingItems.slice(0, 5).map((item, index) => (
+                  <div 
+                    key={`${item.type}-${item.id}`} 
+                    className={`p-3 rounded-lg border ${
+                      item.severity === 'urgent' 
+                        ? 'border-red-300 bg-red-100 dark:border-red-800 dark:bg-red-900/50' 
+                        : item.severity === 'warning'
+                        ? 'border-amber-300 bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50'
+                        : 'border-blue-200 bg-blue-100 dark:border-blue-800 dark:bg-blue-900/50'
+                    }`}
+                    data-testid={`alert-upcoming-${index}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {item.severity === 'urgent' && (
+                            <Bell className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                          )}
+                          <p className={`font-medium text-sm truncate ${
+                            item.severity === 'urgent' 
+                              ? 'text-red-800 dark:text-red-200' 
+                              : item.severity === 'warning'
+                              ? 'text-amber-800 dark:text-amber-200'
+                              : 'text-blue-800 dark:text-blue-200'
+                          }`} data-testid={`text-upcoming-title-${index}`}>
+                            {item.title}
+                          </p>
+                        </div>
+                        <p className={`text-xs ${
+                          item.severity === 'urgent' 
+                            ? 'text-red-700 dark:text-red-300' 
+                            : item.severity === 'warning'
+                            ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-blue-700 dark:text-blue-300'
+                        }`}>
+                          {item.details}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-sm font-semibold ${
+                          item.severity === 'urgent' 
+                            ? 'text-red-700 dark:text-red-300' 
+                            : item.severity === 'warning'
+                            ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-blue-700 dark:text-blue-300'
+                        }`} data-testid={`text-days-until-${index}`}>
+                          {item.daysUntilDue === 0 ? 'Today' : item.daysUntilDue === 1 ? 'Tomorrow' : `${item.daysUntilDue} days`}
+                        </p>
+                        <p className={`text-xs ${
+                          item.severity === 'urgent' 
+                            ? 'text-red-600 dark:text-red-400' 
+                            : item.severity === 'warning'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        }`}>
+                          {item.dueDate.toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2 h-7 px-2 text-xs"
+                      onClick={() => {
+                        if (item.type === 'sub_award_monitoring') setActiveTab('sub-awards');
+                        else if (item.type === 'federal_report') setActiveTab('federal-reports');
+                        else if (item.type === 'audit_due') setActiveTab('audit-prep');
+                      }}
+                      data-testid={`button-go-to-${index}`}
+                    >
+                      Go to {item.type === 'sub_award_monitoring' ? 'Sub Awards' : item.type === 'federal_report' ? 'Federal Reports' : 'Audit Prep'}
+                    </Button>
+                  </div>
+                ))}
+                {complianceAlerts.upcomingItems.length > 5 && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                    + {complianceAlerts.upcomingItems.length - 5} more items
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Missing Data Warnings */}
+          {complianceAlerts.missingDataWarnings.length > 0 && (
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950" data-testid="card-missing-data-warnings">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="h-5 w-5" />
+                  Missing Compliance Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                  The following items are missing required dates for compliance tracking:
+                </p>
+                {complianceAlerts.missingDataWarnings.slice(0, 5).map((warning, index) => (
+                  <div 
+                    key={`${warning.type}-${warning.id}`} 
+                    className="flex items-center justify-between p-2 rounded border border-amber-200 bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50"
+                    data-testid={`warning-missing-${index}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-amber-800 dark:text-amber-200 truncate" data-testid={`text-warning-title-${index}`}>
+                        {warning.title}
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        Missing: {warning.missingField}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 px-2 text-xs flex-shrink-0 ml-2"
+                      onClick={() => {
+                        if (warning.type === 'sub_award') setActiveTab('sub-awards');
+                        else if (warning.type === 'federal_report') setActiveTab('federal-reports');
+                        else if (warning.type === 'audit_item') setActiveTab('audit-prep');
+                      }}
+                      data-testid={`button-fix-${index}`}
+                    >
+                      Fix
+                    </Button>
+                  </div>
+                ))}
+                {complianceAlerts.missingDataWarnings.length > 5 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 text-center pt-2">
+                    + {complianceAlerts.missingDataWarnings.length - 5} more items need attention
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
