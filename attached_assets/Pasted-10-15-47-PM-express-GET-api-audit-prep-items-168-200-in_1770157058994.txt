@@ -1,0 +1,37 @@
+10:15:47 PM [express] GET /api/audit-prep-items/168 200 in 607ms :: [{"id":1,"organizationId":168,"au…
+10:15:47 PM [express] GET /api/time-effort-reports/168 200 in 604ms :: []
+10:15:47 PM [express] GET /api/federal-financial-reports/168 200 in 618ms :: []
+10:15:47 PM [express] GET /api/transactions/168 200 in 735ms :: {"transactions":[{"id":46374,"organiz…
+[GET]
+complybook.net/api/funds/168 clientIP="216.147.124.109" requestID="038722a3-68a4-4c38" responseTimeMS=245 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/fund-accounting/168 clientIP="216.147.124.109" requestID="599976fe-a0d3-4a53" responseTimeMS=365 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:15:49 PM [express] GET /api/funds/168 304 in 244ms :: [{"id":8,"organizationId":168,"name":"Genera…
+10:15:49 PM [express] GET /api/fund-accounting/168 304 in 361ms :: {"bankBalance":52673.63,"grantFund…
+[GET]
+complybook.net/api/programs/168 clientIP="216.147.124.109" requestID="2d371bab-faff-46b7" responseTimeMS=795 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:16:09 PM [express] GET /api/programs/168 304 in 793ms :: []
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="4d3bacef-5cc2-4edd" responseTimeMS=769 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:16:29 PM [express] GET /api/notifications/168/unread-count 304 in 767ms :: {"count":"0"}
+[POST]
+complybook.net/api/programs clientIP="216.147.124.109" requestID="4ccde2bc-6d75-4bca" responseTimeMS=559 responseBytes=1441 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/programs/168 clientIP="216.147.124.109" requestID="2aa27f3a-6038-469e" responseTimeMS=233 responseBytes=1445 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+10:16:38 PM [express] POST /api/programs 201 in 557ms :: {"id":5,"organizationId":168,"name":"BOCES",…
+10:16:38 PM [express] GET /api/programs/168 200 in 232ms :: [{"id":5,"organizationId":168,"name":"BOC…
+[PUT]
+complybook.net/api/programs/5 clientIP="216.147.124.109" requestID="8366454b-413b-4e44" responseTimeMS=237 responseBytes=1314 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error updating program: TypeError: value.toISOString is not a function
+    at PgTimestamp.mapToDriverValue (file:///opt/render/project/src/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:131:73
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+    at file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:95:21
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (file:///opt/render/project/src/node_modules/drizzle-orm/sql/sql.js:73:32)
+10:16:47 PM [express] PUT /api/programs/5 500 in 235ms :: {"message":"Failed to update program"}

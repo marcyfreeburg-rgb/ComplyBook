@@ -7701,8 +7701,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateProgram(id: number, updates: Partial<InsertProgram>): Promise<Program> {
+    // Parse date strings to Date objects for timestamp columns
+    const parsedUpdates = {
+      ...updates,
+      startDate: updates.startDate ? new Date(updates.startDate) : updates.startDate,
+      endDate: updates.endDate ? new Date(updates.endDate) : updates.endDate,
+      updatedAt: new Date()
+    };
     const [updated] = await db.update(programs)
-      .set({...updates, updatedAt: new Date()})
+      .set(parsedUpdates)
       .where(eq(programs.id, id))
       .returning();
     return updated;
