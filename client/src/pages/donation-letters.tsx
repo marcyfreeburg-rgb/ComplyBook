@@ -278,26 +278,32 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             <!-- Right Content -->
             <td class="content-cell">
               <div class="salutation">Dear ${selectedDonor.name},</div>
+              <br/>
 
-              <p class="paragraph">
+              <div class="paragraph">
                 Thank you for your generous support of ${currentOrganization.companyName || currentOrganization.name}. Your commitment to our mission makes a meaningful difference in the communities we serve.
-              </p>
+              </div>
+              <br/>
 
-              <p class="paragraph">
+              <div class="paragraph">
                 This letter acknowledges your charitable contribution of <span class="amount-highlight">${formatCurrency(selectedAmount)}</span> during the ${selectedYear} tax year. Please retain this document for your tax records.
-              </p>
+              </div>
+              <br/>
 
-              <p class="paragraph">
+              <div class="paragraph">
                 Your generosity enables us to continue our important work and expand our reach. We are truly grateful for your partnership and trust in our organization.
-              </p>
+              </div>
+              <br/>
 
-              <p class="tax-info">
+              <div class="tax-info">
                 ${currentOrganization.companyName || currentOrganization.name} is a 501(c)(3) tax-exempt organization${currentOrganization.taxId ? ` (EIN: ${currentOrganization.taxId})` : ''}. No goods or services were provided in exchange for this contribution.
-              </p>
+              </div>
+              <br/>
 
-              <p class="paragraph">
+              <div class="paragraph">
                 On behalf of everyone at ${currentOrganization.companyName || currentOrganization.name}, thank you for your continued support.
-              </p>
+              </div>
+              <br/><br/>
 
               <div class="closing">
                 <div class="closing-text">Sincerely,</div>
