@@ -1,0 +1,36 @@
+[GET]
+complybook.net/api/fund-accounting/168 clientIP="216.147.124.109" requestID="bb07a287-ec75-4b6d" responseTimeMS=744 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/funds/168 clientIP="216.147.124.109" requestID="a8489e51-c76c-40e1" responseTimeMS=235 responseBytes=1448 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:03:57 PM [express] GET /api/funds/168 200 in 232ms :: [{"id":8,"organizationId":168,"name":"Genera…
+10:03:57 PM [express] GET /api/fund-accounting/168 304 in 741ms :: {"bankBalance":52673.63,"grantFund…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="9f5d0d2d-5189-4ffa" responseTimeMS=850 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:04:21 PM [express] GET /api/notifications/168/unread-count 304 in 849ms :: {"count":"0"}
+[DELETE]
+complybook.net/api/grants/19 clientIP="216.147.124.109" requestID="6ac524b3-fe0f-44b4" responseTimeMS=848 responseBytes=1313 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error deleting grant: error: update or delete on table "grants" violates foreign key constraint "audit_prep_items_grant_id_grants_id_fk" on table "audit_prep_items"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Menu
+    at async DatabaseStorage.deleteGrant (file:///opt/render/project/src/dist/index.js:9146:9)
+    at async file:///opt/render/project/src/dist/index.js:19235:7 {
+  length: 336,
+  severity: 'ERROR',
+  code: '23503',
+  detail: 'Key (id)=(19) is still referenced from table "audit_prep_items".',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'audit_prep_items',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'audit_prep_items_grant_id_grants_id_fk',
+  file: 'ri_triggers.c',
+  line: '2621',
+  routine: 'ri_ReportViolation'
+}
+10:04:43 PM [express] DELETE /api/grants/19 500 in 845ms :: {"message":"Failed to delete grant"}

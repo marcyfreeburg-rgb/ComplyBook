@@ -8268,6 +8268,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGrant(id: number): Promise<void> {
+    // Delete related records first (cascade delete)
+    // These tables have foreign key constraints on grants
+    await db.delete(timeEffortReports).where(eq(timeEffortReports.grantId, id));
+    await db.delete(costAllowabilityChecks).where(eq(costAllowabilityChecks.grantId, id));
+    await db.delete(subAwards).where(eq(subAwards.grantId, id));
+    await db.delete(federalFinancialReports).where(eq(federalFinancialReports.grantId, id));
+    // auditPrepItems has nullable grantId, set to null instead of deleting
+    await db.update(auditPrepItems).set({ grantId: null }).where(eq(auditPrepItems.grantId, id));
+    
+    // Now delete the grant itself
     await db.delete(grants).where(eq(grants.id, id));
   }
 
