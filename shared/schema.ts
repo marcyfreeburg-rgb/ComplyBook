@@ -71,7 +71,7 @@ export const revenueRecognitionMethodEnum = pgEnum('revenue_recognition_method',
 
 // New feature enums
 export const inKindDonationTypeEnum = pgEnum('in_kind_donation_type', ['goods', 'services', 'volunteer_hours']);
-export const campaignStatusEnum = pgEnum('campaign_status', ['active', 'completed', 'cancelled']);
+export const campaignStatusEnum = pgEnum('campaign_status', ['planning', 'active', 'completed', 'cancelled']);
 export const donorTierEnum = pgEnum('donor_tier', ['bronze', 'silver', 'gold', 'platinum', 'none']);
 export const proposalStatusEnum = pgEnum('proposal_status', ['draft', 'submitted', 'under_review', 'won', 'lost', 'cancelled']);
 export const subcontractorComplianceEnum = pgEnum('subcontractor_compliance', ['compliant', 'expiring_soon', 'non_compliant']);
