@@ -100,11 +100,18 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [filterGrantId, setFilterGrantId] = useState<number | undefined>(urlGrantId);
   
   // Keep filterGrantId in sync with URL changes (back/forward navigation, external links)
+  // Also clear date/search filters when navigating with a grant filter to show all grant transactions
   useEffect(() => {
     const newGrantId = urlGrantIdStr ? parseInt(urlGrantIdStr) : undefined;
     // Only update if the value is different and valid
     if (newGrantId !== filterGrantId && (newGrantId === undefined || !isNaN(newGrantId))) {
       setFilterGrantId(newGrantId);
+      // When navigating to a grant-filtered view, clear other filters to show all transactions for that grant
+      if (newGrantId !== undefined) {
+        setSearchQuery("");
+        setStartDate("");
+        setEndDate("");
+      }
     }
   }, [urlGrantIdStr]);
   
