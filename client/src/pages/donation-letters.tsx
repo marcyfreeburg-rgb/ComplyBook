@@ -144,7 +144,6 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       : "";
     
     const primaryColor = currentOrganization.invoicePrimaryColor || '#3b82f6';
-    const accentColor = currentOrganization.invoiceAccentColor || '#1e40af';
     const fontFamily = currentOrganization.invoiceFontFamily || 'Inter, sans-serif';
     
     const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -153,86 +152,75 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       day: 'numeric' 
     });
 
+    // Use table layout for html2pdf compatibility (flexbox doesn't work well)
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
           body {
             font-family: ${fontFamily};
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px;
-            line-height: 1.6;
-            color: #1f2937;
             font-size: 14px;
+            line-height: 1.5;
+            color: #374151;
+            margin: 0;
+            padding: 32px 40px;
           }
-          
-          /* Header - Matching Invoice Style */
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 24px;
+          table {
+            border-collapse: collapse;
+          }
+          .header-table {
+            width: 100%;
+            margin-bottom: 24px;
             padding-bottom: 24px;
-            margin-bottom: 32px;
-            border-bottom: 1px solid ${primaryColor}30;
+            border-bottom: 1px solid #e5e7eb;
           }
-          .header-left {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
+          .logo-cell {
+            width: 70px;
+            vertical-align: top;
+            padding-right: 16px;
           }
-          .logo {
-            max-width: 180px;
-            max-height: 60px;
-            width: auto;
-            height: auto;
+          .logo-cell img {
+            width: 60px;
+            height: 60px;
             object-fit: contain;
           }
-          .org-info {
-            line-height: 1.5;
+          .org-cell {
+            vertical-align: top;
           }
           .org-name {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: #111827;
-            margin-bottom: 4px;
+            margin: 0 0 4px 0;
           }
           .org-details {
             font-size: 13px;
             color: #6b7280;
+            line-height: 1.4;
           }
-          .org-details p {
-            margin: 2px 0;
-          }
-          .header-right {
+          .title-cell {
+            vertical-align: top;
             text-align: right;
           }
           .letter-title {
             font-size: 28px;
             font-weight: 700;
             color: ${primaryColor};
-            margin-bottom: 8px;
+            margin: 0 0 8px 0;
           }
           .letter-meta {
             font-size: 13px;
             color: #6b7280;
           }
-          .letter-meta span {
+          .letter-meta-value {
             color: #374151;
             font-weight: 500;
           }
           
-          /* Recipient Section */
           .recipient-section {
-            margin-bottom: 32px;
+            margin-bottom: 28px;
           }
           .recipient-label {
             font-size: 12px;
@@ -240,105 +228,106 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 8px;
-          }
-          .recipient-info {
-            font-size: 14px;
-            line-height: 1.6;
+            margin-bottom: 6px;
           }
           .recipient-name {
             font-weight: 600;
             color: #111827;
           }
+          .recipient-info {
+            font-size: 14px;
+            color: #374151;
+            line-height: 1.5;
+          }
           
-          /* Letter Body */
-          .letter-content {
-            margin-bottom: 32px;
+          .letter-body {
+            margin-bottom: 24px;
           }
           .salutation {
-            font-size: 14px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
           }
           .paragraph {
-            margin-bottom: 16px;
-            text-align: left;
-            line-height: 1.7;
+            margin: 0 0 14px 0;
+            line-height: 1.6;
           }
           
-          /* Donation Summary Box */
-          .donation-box {
+          .donation-table {
+            width: 100%;
+            margin: 20px 0;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
+          }
+          .donation-table td {
+            padding: 16px 20px;
             border-left: 4px solid ${primaryColor};
-            padding: 20px 24px;
-            margin: 24px 0;
           }
           .donation-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
           }
           .donation-amount {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
             color: ${primaryColor};
           }
           .donation-year {
-            font-size: 13px;
+            font-size: 12px;
             color: #64748b;
-            margin-top: 4px;
+            margin-top: 2px;
           }
           
-          /* Tax Notice */
-          .tax-notice {
+          .tax-notice-table {
+            width: 100%;
+            margin: 20px 0;
             background: #fefce8;
             border: 1px solid #fde047;
-            padding: 16px 20px;
-            margin: 24px 0;
-            font-size: 13px;
-            line-height: 1.6;
+          }
+          .tax-notice-table td {
+            padding: 14px 18px;
           }
           .tax-notice-title {
             font-weight: 600;
             color: #854d0e;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
           }
           .tax-notice-text {
             color: #713f12;
+            font-size: 12px;
+            line-height: 1.5;
           }
           
-          /* Closing */
           .closing-section {
-            margin-top: 32px;
+            margin-top: 28px;
           }
           .closing-text {
-            margin-bottom: 32px;
+            margin-bottom: 24px;
           }
-          .signature-line {
+          .signature-name {
             font-weight: 600;
             color: #111827;
-            margin-bottom: 4px;
           }
           .signature-title {
             font-size: 13px;
             color: #6b7280;
+            margin-top: 2px;
           }
           .ein-info {
             font-size: 12px;
             color: #6b7280;
             margin-top: 12px;
-            padding-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid #e5e7eb;
           }
           
-          /* Footer */
           .footer {
-            margin-top: 48px;
-            padding-top: 20px;
-            border-top: 1px solid ${primaryColor}20;
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
             text-align: center;
             font-size: 11px;
             color: #9ca3af;
@@ -346,42 +335,47 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
         </style>
       </head>
       <body>
-        <!-- Header - Matching Invoice Style -->
-        <div class="header">
-          <div class="header-left">
-            ${logoUrl ? `<img src="${logoUrl}" alt="${currentOrganization.name}" class="logo" />` : ''}
-            <div class="org-info">
+        <!-- Header - Table Layout for PDF compatibility -->
+        <table class="header-table">
+          <tr>
+            ${logoUrl ? `
+            <td class="logo-cell">
+              <img src="${logoUrl}" alt="Logo" />
+            </td>
+            ` : ''}
+            <td class="org-cell">
               <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
               <div class="org-details">
-                ${currentOrganization.companyAddress ? `<p>${currentOrganization.companyAddress}</p>` : ''}
-                ${currentOrganization.companyPhone ? `<p>${currentOrganization.companyPhone}</p>` : ''}
-                ${currentOrganization.companyEmail ? `<p>${currentOrganization.companyEmail}</p>` : ''}
-                ${currentOrganization.companyWebsite ? `<p>${currentOrganization.companyWebsite}</p>` : ''}
-                ${currentOrganization.taxId ? `<p>Tax ID: ${currentOrganization.taxId}</p>` : ''}
+                ${currentOrganization.companyName && currentOrganization.companyName !== currentOrganization.name ? `${currentOrganization.name}<br/>` : ''}
+                ${currentOrganization.companyAddress ? `${currentOrganization.companyAddress.replace(/\n/g, '<br/>')}<br/>` : ''}
+                ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
+                ${currentOrganization.companyEmail ? `${currentOrganization.companyEmail}<br/>` : ''}
+                ${currentOrganization.companyWebsite ? `${currentOrganization.companyWebsite}<br/>` : ''}
+                ${currentOrganization.taxId ? `Tax ID: ${currentOrganization.taxId}` : ''}
               </div>
-            </div>
-          </div>
-          <div class="header-right">
-            <div class="letter-title">DONATION RECEIPT</div>
-            <div class="letter-meta">
-              <p>Date: <span>${currentDate}</span></p>
-              <p>Tax Year: <span>${selectedYear}</span></p>
-            </div>
-          </div>
-        </div>
+            </td>
+            <td class="title-cell">
+              <div class="letter-title">DONATION RECEIPT</div>
+              <div class="letter-meta">
+                Date: <span class="letter-meta-value">${currentDate}</span><br/>
+                Tax Year: <span class="letter-meta-value">${selectedYear}</span>
+              </div>
+            </td>
+          </tr>
+        </table>
 
         <!-- Recipient Section -->
         <div class="recipient-section">
           <div class="recipient-label">Donor Information</div>
           <div class="recipient-info">
-            <div class="recipient-name">${selectedDonor.name}</div>
-            ${selectedDonor.address ? `<div>${selectedDonor.address}</div>` : ''}
-            ${selectedDonor.email ? `<div>${selectedDonor.email}</div>` : ''}
+            <span class="recipient-name">${selectedDonor.name}</span><br/>
+            ${selectedDonor.address ? `${selectedDonor.address}<br/>` : ''}
+            ${selectedDonor.email ? `${selectedDonor.email}` : ''}
           </div>
         </div>
 
-        <!-- Letter Content -->
-        <div class="letter-content">
+        <!-- Letter Body -->
+        <div class="letter-body">
           <div class="salutation">Dear ${selectedDonor.name},</div>
           
           <p class="paragraph">
@@ -392,24 +386,32 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             This letter serves as your official acknowledgment of the charitable contribution(s) you made during the ${selectedYear} tax year. Please retain this document for your tax records.
           </p>
 
-          <!-- Donation Summary -->
-          <div class="donation-box">
-            <div class="donation-label">Total Charitable Contribution</div>
-            <div class="donation-amount">${formatCurrency(selectedAmount)}</div>
-            <div class="donation-year">Tax Year ${selectedYear}</div>
-          </div>
+          <!-- Donation Summary - Table for PDF -->
+          <table class="donation-table">
+            <tr>
+              <td>
+                <div class="donation-label">Total Charitable Contribution</div>
+                <div class="donation-amount">${formatCurrency(selectedAmount)}</div>
+                <div class="donation-year">Tax Year ${selectedYear}</div>
+              </td>
+            </tr>
+          </table>
 
           <p class="paragraph">
             Your generosity enables us to continue our important work and expand our reach. We are truly grateful for your partnership and trust in our organization.
           </p>
 
-          <!-- Tax Notice -->
-          <div class="tax-notice">
-            <div class="tax-notice-title">Important Tax Information</div>
-            <div class="tax-notice-text">
-              ${currentOrganization.companyName || currentOrganization.name} is a tax-exempt organization under Section 501(c)(3) of the Internal Revenue Code. No goods or services were provided in exchange for this contribution. The full amount of your donation is tax-deductible to the extent allowed by law. Please consult with a qualified tax professional regarding the deductibility of your contribution.
-            </div>
-          </div>
+          <!-- Tax Notice - Table for PDF -->
+          <table class="tax-notice-table">
+            <tr>
+              <td>
+                <div class="tax-notice-title">Important Tax Information</div>
+                <div class="tax-notice-text">
+                  ${currentOrganization.companyName || currentOrganization.name} is a tax-exempt organization under Section 501(c)(3) of the Internal Revenue Code. No goods or services were provided in exchange for this contribution. The full amount of your donation is tax-deductible to the extent allowed by law. Please consult with a qualified tax professional regarding the deductibility of your contribution.
+                </div>
+              </td>
+            </tr>
+          </table>
 
           <p class="paragraph">
             On behalf of everyone at ${currentOrganization.companyName || currentOrganization.name}, thank you for your continued support. We look forward to keeping you informed about the impact of your generosity.
@@ -418,8 +420,8 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
 
         <!-- Closing -->
         <div class="closing-section">
-          <p class="closing-text">With sincere gratitude,</p>
-          <div class="signature-line">${currentOrganization.companyName || currentOrganization.name}</div>
+          <div class="closing-text">With sincere gratitude,</div>
+          <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
           <div class="signature-title">Development Department</div>
           ${currentOrganization.taxId ? `<div class="ein-info">Federal Tax Identification Number (EIN): ${currentOrganization.taxId}</div>` : ''}
         </div>
