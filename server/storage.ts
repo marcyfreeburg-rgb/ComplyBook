@@ -265,6 +265,14 @@ import {
   complianceEvents,
   type ComplianceEvent,
   type InsertComplianceEvent,
+  // Fundraising
+  fundraisingCampaigns,
+  type FundraisingCampaign,
+  type InsertFundraisingCampaign,
+  inKindDonations,
+  type InKindDonation,
+  type InsertInKindDonation,
+  donorTiers,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gt, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -1216,6 +1224,26 @@ export interface IStorage {
   getFormResponse(id: number): Promise<FormResponse | undefined>;
   createFormResponse(response: InsertFormResponse): Promise<FormResponse>;
   deleteFormResponse(id: number): Promise<void>;
+
+  // Nonprofit-specific: Fundraising Campaign operations
+  getFundraisingCampaigns(organizationId: number, includeArchived?: boolean): Promise<FundraisingCampaign[]>;
+  getFundraisingCampaign(id: number): Promise<FundraisingCampaign | undefined>;
+  createFundraisingCampaign(campaign: InsertFundraisingCampaign): Promise<FundraisingCampaign>;
+  updateFundraisingCampaign(id: number, updates: Partial<InsertFundraisingCampaign>): Promise<FundraisingCampaign>;
+  deleteFundraisingCampaign(id: number): Promise<void>;
+  archiveFundraisingCampaign(id: number): Promise<FundraisingCampaign>;
+  getCampaignProgress(campaignId: number): Promise<{ raised: string; donationCount: number }>;
+
+  // Nonprofit-specific: In-Kind Donation operations
+  getInKindDonations(organizationId: number, includeArchived?: boolean): Promise<Array<InKindDonation & { donorName?: string }>>;
+  getInKindDonation(id: number): Promise<InKindDonation | undefined>;
+  createInKindDonation(donation: InsertInKindDonation): Promise<InKindDonation>;
+  updateInKindDonation(id: number, updates: Partial<InsertInKindDonation>): Promise<InKindDonation>;
+  deleteInKindDonation(id: number): Promise<void>;
+
+  // Nonprofit-specific: Donor Tier/Stewardship operations
+  getDonorTiers(organizationId: number): Promise<Array<{ tier: string; count: number; totalGiving: string; threshold: string }>>;
+  updateDonorTier(donorId: number, tier: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -9546,6 +9574,191 @@ export class DatabaseStorage implements IStorage {
 
   async deleteFormResponse(id: number): Promise<void> {
     await db.delete(formResponses).where(eq(formResponses.id, id));
+  }
+
+  // Nonprofit-specific: Fundraising Campaign operations
+  async getFundraisingCampaigns(organizationId: number, includeArchived: boolean = false): Promise<FundraisingCampaign[]> {
+    const conditions = [eq(fundraisingCampaigns.organizationId, organizationId)];
+    if (!includeArchived) {
+      conditions.push(sql`${fundraisingCampaigns.status} != 'cancelled'`);
+    }
+    return await db.select().from(fundraisingCampaigns)
+      .where(and(...conditions))
+      .orderBy(desc(fundraisingCampaigns.createdAt));
+  }
+
+  async getFundraisingCampaign(id: number): Promise<FundraisingCampaign | undefined> {
+    const [campaign] = await db.select().from(fundraisingCampaigns).where(eq(fundraisingCampaigns.id, id));
+    return campaign;
+  }
+
+  async createFundraisingCampaign(campaign: InsertFundraisingCampaign): Promise<FundraisingCampaign> {
+    const [newCampaign] = await db.insert(fundraisingCampaigns).values(campaign).returning();
+    return newCampaign;
+  }
+
+  async updateFundraisingCampaign(id: number, updates: Partial<InsertFundraisingCampaign>): Promise<FundraisingCampaign> {
+    const [updated] = await db.update(fundraisingCampaigns)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(fundraisingCampaigns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFundraisingCampaign(id: number): Promise<void> {
+    await db.delete(fundraisingCampaigns).where(eq(fundraisingCampaigns.id, id));
+  }
+
+  async archiveFundraisingCampaign(id: number): Promise<FundraisingCampaign> {
+    const [archived] = await db.update(fundraisingCampaigns)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(fundraisingCampaigns.id, id))
+      .returning();
+    return archived;
+  }
+
+  async getCampaignProgress(campaignId: number): Promise<{ raised: string; donationCount: number }> {
+    // Get the campaign to find its name for matching in transaction descriptions
+    const campaign = await this.getFundraisingCampaign(campaignId);
+    if (!campaign) {
+      return { raised: '0', donationCount: 0 };
+    }
+
+    // Calculate total from income transactions that mention the campaign name in description
+    const result = await db.select({
+      totalRaised: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+      donationCount: sql<number>`COUNT(*)::int`
+    })
+    .from(transactions)
+    .where(and(
+      eq(transactions.organizationId, campaign.organizationId),
+      eq(transactions.type, 'income'),
+      sql`LOWER(${transactions.description}) LIKE LOWER(${'%' + campaign.name + '%'})`
+    ));
+
+    return {
+      raised: result[0]?.totalRaised || '0',
+      donationCount: result[0]?.donationCount || 0
+    };
+  }
+
+  // Nonprofit-specific: In-Kind Donation operations
+  async getInKindDonations(organizationId: number, includeArchived: boolean = false): Promise<Array<InKindDonation & { donorName?: string }>> {
+    const results = await db.select({
+      id: inKindDonations.id,
+      organizationId: inKindDonations.organizationId,
+      donorId: inKindDonations.donorId,
+      donationType: inKindDonations.donationType,
+      description: inKindDonations.description,
+      fairMarketValue: inKindDonations.fairMarketValue,
+      quantity: inKindDonations.quantity,
+      unitOfMeasure: inKindDonations.unitOfMeasure,
+      volunteerHours: inKindDonations.volunteerHours,
+      hourlyRate: inKindDonations.hourlyRate,
+      donationDate: inKindDonations.donationDate,
+      programId: inKindDonations.programId,
+      receiptIssued: inKindDonations.receiptIssued,
+      receiptNumber: inKindDonations.receiptNumber,
+      notes: inKindDonations.notes,
+      createdBy: inKindDonations.createdBy,
+      createdAt: inKindDonations.createdAt,
+      updatedAt: inKindDonations.updatedAt,
+      donorName: donors.name,
+    })
+    .from(inKindDonations)
+    .leftJoin(donors, eq(inKindDonations.donorId, donors.id))
+    .where(eq(inKindDonations.organizationId, organizationId))
+    .orderBy(desc(inKindDonations.donationDate));
+    
+    return results;
+  }
+
+  async getInKindDonation(id: number): Promise<InKindDonation | undefined> {
+    const [donation] = await db.select().from(inKindDonations).where(eq(inKindDonations.id, id));
+    return donation;
+  }
+
+  async createInKindDonation(donation: InsertInKindDonation): Promise<InKindDonation> {
+    const [newDonation] = await db.insert(inKindDonations).values(donation).returning();
+    return newDonation;
+  }
+
+  async updateInKindDonation(id: number, updates: Partial<InsertInKindDonation>): Promise<InKindDonation> {
+    const [updated] = await db.update(inKindDonations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(inKindDonations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInKindDonation(id: number): Promise<void> {
+    await db.delete(inKindDonations).where(eq(inKindDonations.id, id));
+  }
+
+  // Nonprofit-specific: Donor Tier/Stewardship operations
+  async getDonorTiers(organizationId: number): Promise<Array<{ tier: string; count: number; totalGiving: string; threshold: string }>> {
+    // Calculate donor tiers based on total lifetime giving
+    const donorGiving = await db.select({
+      donorId: transactions.donorId,
+      totalGiving: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`
+    })
+    .from(transactions)
+    .where(and(
+      eq(transactions.organizationId, organizationId),
+      isNotNull(transactions.donorId)
+    ))
+    .groupBy(transactions.donorId);
+
+    // Define tier thresholds
+    const tierThresholds = [
+      { tier: 'platinum', min: 25000, threshold: '$25,000+' },
+      { tier: 'gold', min: 10000, threshold: '$10,000 - $24,999' },
+      { tier: 'silver', min: 5000, threshold: '$5,000 - $9,999' },
+      { tier: 'bronze', min: 1000, threshold: '$1,000 - $4,999' },
+    ];
+
+    const tierCounts: Array<{ tier: string; count: number; totalGiving: string; threshold: string }> = [];
+
+    for (const t of tierThresholds) {
+      let count = 0;
+      let total = 0;
+      for (const d of donorGiving) {
+        const giving = parseFloat(d.totalGiving || '0');
+        const nextTier = tierThresholds.find(tt => tt.min > t.min);
+        if (giving >= t.min && (!nextTier || giving < nextTier.min)) {
+          count++;
+          total += giving;
+        }
+      }
+      tierCounts.push({
+        tier: t.tier.charAt(0).toUpperCase() + t.tier.slice(1),
+        count,
+        totalGiving: total.toFixed(2),
+        threshold: t.threshold
+      });
+    }
+
+    return tierCounts;
+  }
+
+  async updateDonorTier(donorId: number, tier: string): Promise<void> {
+    // Update or insert into donor_tiers table
+    const [existing] = await db.select().from(donorTiers).where(eq(donorTiers.donorId, donorId));
+    if (existing) {
+      await db.update(donorTiers)
+        .set({ tier: tier as any, updatedAt: new Date() })
+        .where(eq(donorTiers.donorId, donorId));
+    } else {
+      const donor = await this.getDonor(donorId);
+      if (donor) {
+        await db.insert(donorTiers).values({
+          donorId,
+          organizationId: donor.organizationId,
+          tier: tier as any,
+          lifetimeGiving: '0',
+        });
+      }
+    }
   }
 }
 
