@@ -920,6 +920,25 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
         </div>
       </div>
 
+      {grants.length === 0 && (
+        <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200" data-testid="text-no-government-grants-notice">
+                  No Government Grants Found
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  To use government grant compliance features, you need to mark at least one grant as a government grant. 
+                  Go to <strong>Grants</strong> and check the "Government Grant" checkbox when creating or editing a grant.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid grid-cols-5 w-full" data-testid="tabs-government-grants">
           <TabsTrigger value="time-effort" data-testid="tab-time-effort">
