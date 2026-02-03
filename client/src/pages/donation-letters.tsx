@@ -188,30 +188,14 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             line-height: 1.5;
           }
           
-          /* Main two-column layout */
-          .main-table {
-            width: 100%;
-          }
-          .sidebar-cell {
-            width: 160px;
-            vertical-align: top;
-            padding-right: 32px;
-          }
-          .content-cell {
-            vertical-align: top;
+          /* Letter body */
+          .letter-body {
+            margin-top: 32px;
           }
           
-          /* Sidebar content */
           .date-text {
-            font-size: 10pt;
-            color: #666;
-            margin-bottom: 24px;
-          }
-          .sidebar-org {
-            font-size: 9pt;
-            color: #888;
-            line-height: 1.6;
-            margin-top: 16px;
+            font-size: 11pt;
+            color: #333;
           }
           
           /* Letter content */
@@ -258,27 +242,19 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             </td>
             <td class="contact-cell">
               ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
-              ${currentOrganization.companyEmail ? currentOrganization.companyEmail : ''}
+              ${currentOrganization.companyEmail ? `${currentOrganization.companyEmail}<br/>` : ''}
+              ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
             </td>
           </tr>
         </table>
 
-        <!-- Main Two-Column Layout -->
-        <table class="main-table">
-          <tr>
-            <!-- Left Sidebar -->
-            <td class="sidebar-cell">
-              <div class="date-text">${currentDate}</div>
-              <div class="sidebar-org">
-                ${currentOrganization.companyName || currentOrganization.name}<br/>
-                ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
-              </div>
-            </td>
-            
-            <!-- Right Content -->
-            <td class="content-cell">
-              <div class="salutation">Dear ${selectedDonor.name},</div>
-              <br/>
+        <!-- Letter Content -->
+        <div class="letter-body">
+          <div class="date-text">${currentDate}</div>
+          <br/>
+          
+          <div class="salutation">Dear ${selectedDonor.name},</div>
+          <br/>
 
               <div class="paragraph">
                 Thank you for your generous support of ${currentOrganization.companyName || currentOrganization.name}. Your commitment to our mission makes a meaningful difference in the communities we serve.
@@ -305,13 +281,11 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
               </div>
               <br/><br/>
 
-              <div class="closing">
-                <div class="closing-text">Sincerely,</div>
-                <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
-              </div>
-            </td>
-          </tr>
-        </table>
+          <div class="closing">
+            <div class="closing-text">Sincerely,</div>
+            <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
+          </div>
+        </div>
       </body>
       </html>
     `;
@@ -368,28 +342,13 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             line-height: 1.5;
           }
           
-          .main-table {
-            width: 100%;
-          }
-          .sidebar-cell {
-            width: 160px;
-            vertical-align: top;
-            padding-right: 32px;
-          }
-          .content-cell {
-            vertical-align: top;
+          .letter-body {
+            margin-top: 32px;
           }
           
           .date-text {
-            font-size: 10pt;
-            color: #666;
-            margin-bottom: 24px;
-          }
-          .sidebar-org {
-            font-size: 9pt;
-            color: #888;
-            line-height: 1.6;
-            margin-top: 16px;
+            font-size: 11pt;
+            color: #333;
           }
           
           .letter-content {
@@ -412,28 +371,21 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             </td>
             <td class="contact-cell">
               ${currentOrganization.companyPhone ? `${currentOrganization.companyPhone}<br/>` : ''}
-              ${currentOrganization.companyEmail ? currentOrganization.companyEmail : ''}
+              ${currentOrganization.companyEmail ? `${currentOrganization.companyEmail}<br/>` : ''}
+              ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
             </td>
           </tr>
         </table>
 
-        <!-- Main Two-Column Layout -->
-        <table class="main-table">
-          <tr>
-            <td class="sidebar-cell">
-              <div class="date-text">${currentDate}</div>
-              <div class="sidebar-org">
-                ${currentOrganization.companyName || currentOrganization.name}<br/>
-                ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
-              </div>
-            </td>
-            <td class="content-cell">
-              <div class="letter-content">
-                ${bodyContent}
-              </div>
-            </td>
-          </tr>
-        </table>
+        <!-- Letter Content -->
+        <div class="letter-body">
+          <div class="date-text">${currentDate}</div>
+          <br/>
+          
+          <div class="letter-content">
+            ${bodyContent}
+          </div>
+        </div>
       </body>
       </html>
     `;
