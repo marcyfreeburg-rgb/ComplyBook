@@ -142,6 +142,12 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     const logoUrl = currentOrganization.logoUrl 
       ? `${window.location.origin}${currentOrganization.logoUrl}`
       : "";
+    
+    const currentDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
 
     return `
       <!DOCTYPE html>
@@ -150,73 +156,183 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
         <meta charset="UTF-8">
         <style>
           body {
-            font-family: ${currentOrganization.invoiceFontFamily || 'Inter, sans-serif'};
-            max-width: 800px;
+            font-family: ${currentOrganization.invoiceFontFamily || 'Georgia, Times, serif'};
+            max-width: 700px;
             margin: 0 auto;
-            padding: 40px;
-            line-height: 1.6;
+            padding: 50px 60px;
+            line-height: 1.7;
+            color: #1a1a1a;
+            font-size: 14px;
           }
-          .header {
-            text-align: left;
+          .letterhead {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
             margin-bottom: 40px;
             padding-bottom: 20px;
-            border-bottom: 2px solid ${currentOrganization.invoicePrimaryColor || '#3b82f6'};
+            border-bottom: 1px solid #d1d5db;
           }
           .logo {
-            max-width: 48px;
-            max-height: 48px;
-            width: auto;
-            height: auto;
+            width: 40px;
+            height: 40px;
             object-fit: contain;
-            margin-bottom: 15px;
+            flex-shrink: 0;
+          }
+          .org-info {
+            flex: 1;
           }
           .org-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: ${currentOrganization.invoicePrimaryColor || '#3b82f6'};
-            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 4px 0;
+            letter-spacing: 0.3px;
           }
-          .letter-content {
-            margin: 30px 0;
+          .org-details {
+            font-size: 11px;
+            color: #6b7280;
+            line-height: 1.5;
           }
-          .signature {
-            margin-top: 60px;
+          .date-line {
+            text-align: right;
+            margin-bottom: 30px;
+            color: #374151;
+          }
+          .recipient-block {
+            margin-bottom: 30px;
+            line-height: 1.6;
+          }
+          .recipient-name {
+            font-weight: 500;
+          }
+          .subject-line {
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #111827;
+          }
+          .salutation {
+            margin-bottom: 20px;
+          }
+          .letter-body {
+            margin-bottom: 25px;
+          }
+          .letter-body p {
+            margin: 0 0 16px 0;
+            text-align: justify;
+          }
+          .donation-summary {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin: 20px 0;
+          }
+          .donation-summary-title {
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            margin-bottom: 8px;
+          }
+          .donation-amount {
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+          }
+          .tax-notice {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin: 25px 0;
+            font-size: 12px;
+            color: #92400e;
+          }
+          .closing {
+            margin-top: 35px;
+          }
+          .signature-block {
+            margin-top: 40px;
+          }
+          .signature-name {
+            font-weight: 600;
+            color: #111827;
+          }
+          .signature-title {
+            font-size: 13px;
+            color: #6b7280;
+          }
+          .ein-line {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 8px;
           }
           .footer {
-            margin-top: 40px;
+            margin-top: 50px;
             padding-top: 20px;
             border-top: 1px solid #e5e7eb;
             text-align: center;
-            font-size: 12px;
-            color: #6b7280;
+            font-size: 11px;
+            color: #9ca3af;
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          ${logoUrl ? `<img src="${logoUrl}" alt="${currentOrganization.name}" class="logo" />` : ''}
-          <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
-          ${currentOrganization.companyAddress ? `<div>${currentOrganization.companyAddress}</div>` : ''}
-          ${currentOrganization.companyPhone ? `<div>Phone: ${currentOrganization.companyPhone}</div>` : ''}
-          ${currentOrganization.companyEmail ? `<div>Email: ${currentOrganization.companyEmail}</div>` : ''}
+        <div class="letterhead">
+          ${logoUrl ? `<img src="${logoUrl}" alt="" class="logo" />` : ''}
+          <div class="org-info">
+            <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
+            <div class="org-details">
+              ${currentOrganization.companyAddress ? `${currentOrganization.companyAddress}<br/>` : ''}
+              ${currentOrganization.companyPhone ? `Tel: ${currentOrganization.companyPhone}` : ''}
+              ${currentOrganization.companyPhone && currentOrganization.companyEmail ? ' | ' : ''}
+              ${currentOrganization.companyEmail ? `Email: ${currentOrganization.companyEmail}` : ''}
+            </div>
+          </div>
         </div>
 
-        <div class="letter-content">
-          <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          
-          <p>Dear ${selectedDonor.name}:</p>
-          
-          <p>Thank you for your donation of <strong>${formatCurrency(selectedAmount)}</strong>.</p>
-          
-          <p>This letter confirms that you have received no material benefit from this donation. This donation is 100% tax deductible by the 501(c)(3) laws. Please contact your tax advisor for additional information.</p>
-          
-          <p>We truly appreciate your generosity and support of our mission.</p>
+        <div class="date-line">${currentDate}</div>
+
+        <div class="recipient-block">
+          <div class="recipient-name">${selectedDonor.name}</div>
+          ${selectedDonor.address ? `<div>${selectedDonor.address}</div>` : ''}
+          ${selectedDonor.email ? `<div>${selectedDonor.email}</div>` : ''}
         </div>
 
-        <div class="signature">
-          <p>Sincerely,</p>
-          <p><strong>${currentOrganization.companyName || currentOrganization.name}</strong></p>
-          ${currentOrganization.taxId ? `<p>Tax ID (EIN): ${currentOrganization.taxId}</p>` : ''}
+        <div class="subject-line">Re: Tax Deductible Donation Receipt for ${selectedYear}</div>
+
+        <div class="salutation">Dear ${selectedDonor.name},</div>
+
+        <div class="letter-body">
+          <p>
+            On behalf of ${currentOrganization.companyName || currentOrganization.name}, I would like to express our sincere gratitude for your generous contribution during the ${selectedYear} tax year.
+          </p>
+
+          <div class="donation-summary">
+            <div class="donation-summary-title">Total Tax-Deductible Donation</div>
+            <div class="donation-amount">${formatCurrency(selectedAmount)}</div>
+          </div>
+
+          <p>
+            Your support plays a vital role in advancing our mission and enabling us to serve our community. We are deeply grateful for your commitment to our cause.
+          </p>
+
+          <div class="tax-notice">
+            <strong>Tax Deduction Notice:</strong> This letter serves as your official receipt for tax purposes. ${currentOrganization.companyName || currentOrganization.name} is a registered 501(c)(3) nonprofit organization. No goods or services were provided in exchange for this contribution. Please retain this letter for your tax records and consult with a qualified tax professional regarding the deductibility of your donation.
+          </div>
+
+          <p>
+            Thank you again for your generosity and continued support. Your investment in our work makes a meaningful difference.
+          </p>
+        </div>
+
+        <div class="closing">With warm regards,</div>
+
+        <div class="signature-block">
+          <div class="signature-name">${currentOrganization.companyName || currentOrganization.name}</div>
+          <div class="signature-title">Development Office</div>
+          ${currentOrganization.taxId ? `<div class="ein-line">Federal Tax ID (EIN): ${currentOrganization.taxId}</div>` : ''}
         </div>
 
         ${currentOrganization.invoiceFooter ? `
@@ -276,6 +392,58 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       toast({
         title: "Error",
         description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGenerateAndEmail = async () => {
+    if (!selectedDonor) return;
+
+    if (!selectedDonor.email) {
+      toast({
+        title: "No email address",
+        description: "This donor does not have an email address on file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const html = letterType === 'general' 
+      ? generateGeneralLetterHTML()
+      : customContent;
+
+    if (!html || (letterType === 'custom' && !customContent.trim())) {
+      toast({
+        title: "Error",
+        description: "Please provide letter content",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // First create and finalize the letter
+      const result = await createLetterMutation.mutateAsync({
+        donorId: selectedDonor.id,
+        year: selectedYear,
+        letterType,
+        donationAmount: selectedAmount,
+        customContent: letterType === 'custom' ? customContent : null,
+        renderedHtml: html,
+      });
+
+      // Then email it
+      if (result.data?.id) {
+        await emailLetterMutation.mutateAsync(result.data.id);
+      }
+
+      setIsLetterDialogOpen(false);
+    } catch (error) {
+      console.error("Error emailing letter:", error);
+      toast({
+        title: "Error",
+        description: "Failed to email donation letter",
         variant: "destructive",
       });
     }
@@ -535,7 +703,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => setIsLetterDialogOpen(false)}
@@ -544,14 +712,28 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
                 Cancel
               </Button>
               <Button
+                variant="outline"
                 onClick={handleDownloadPDF}
-                disabled={createLetterMutation.isPending || (letterType === 'custom' && !customContent.trim())}
+                disabled={createLetterMutation.isPending || emailLetterMutation.isPending || (letterType === 'custom' && !customContent.trim())}
                 data-testid="button-download-letter-pdf"
               >
                 <FileDown className="w-4 h-4 mr-2" />
-                {createLetterMutation.isPending ? "Generating..." : "Generate & Download PDF"}
+                {createLetterMutation.isPending && !emailLetterMutation.isPending ? "Generating..." : "Download PDF"}
+              </Button>
+              <Button
+                onClick={handleGenerateAndEmail}
+                disabled={!selectedDonor?.email || createLetterMutation.isPending || emailLetterMutation.isPending || (letterType === 'custom' && !customContent.trim())}
+                data-testid="button-email-letter"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                {emailLetterMutation.isPending ? "Sending..." : "Email to Donor"}
               </Button>
             </div>
+            {selectedDonor && !selectedDonor.email && (
+              <p className="text-xs text-muted-foreground text-right mt-2">
+                Add an email address to this donor to enable email delivery.
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
