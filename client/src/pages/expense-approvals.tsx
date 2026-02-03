@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,8 +35,15 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
   const [selectedApprovalIds, setSelectedApprovalIds] = useState<Set<number>>(new Set());
   const [bulkReviewNotes, setBulkReviewNotes] = useState("");
 
+  const formSchema = insertExpenseApprovalSchema.omit({ organizationId: true, requestedBy: true }).extend({
+    amount: z.string().min(1, "Amount is required").refine(
+      (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+      "Amount must be a positive number"
+    ),
+  });
+  
   const form = useForm<InsertExpenseApproval>({
-    resolver: zodResolver(insertExpenseApprovalSchema.omit({ organizationId: true, requestedBy: true })),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       description: "",
       amount: "",
