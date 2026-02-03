@@ -35,10 +35,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Search, Calendar, Sparkles, Check, X, Tag, Edit, Trash2, ArrowLeft, Paperclip, Download, Upload, FileDown, Trash, CheckSquare, Square, CheckCircle2, Split, Undo2, RefreshCw, Loader2, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import type { Organization, Transaction, Category, InsertTransaction, TransactionAttachment, Vendor, Client, Donor, Fund, Program, BankReconciliation, Grant } from "@shared/schema";
 
 interface GrantWithSpent extends Grant {
@@ -91,6 +91,23 @@ interface TransactionsProps {
 
 export default function Transactions({ currentOrganization, userId }: TransactionsProps) {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
+  
+  // Extract grantId from URL parameters - derive from location each render
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const urlGrantIdStr = urlParams.get('grantId');
+  const urlGrantId = urlGrantIdStr ? parseInt(urlGrantIdStr) : undefined;
+  const [filterGrantId, setFilterGrantId] = useState<number | undefined>(urlGrantId);
+  
+  // Keep filterGrantId in sync with URL changes (back/forward navigation, external links)
+  useEffect(() => {
+    const newGrantId = urlGrantIdStr ? parseInt(urlGrantIdStr) : undefined;
+    // Only update if the value is different and valid
+    if (newGrantId !== filterGrantId && (newGrantId === undefined || !isNaN(newGrantId))) {
+      setFilterGrantId(newGrantId);
+    }
+  }, [urlGrantIdStr]);
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTransactionId, setDeleteTransactionId] = useState<number | null>(null);
@@ -212,7 +229,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
     setLoadedTransactions([]);
     setHasMoreTransactions(true);
     setTotalTransactions(0);
-  }, [debouncedSearchQuery, currentOrganization.id, debouncedStartDate, debouncedEndDate]);
+  }, [debouncedSearchQuery, currentOrganization.id, debouncedStartDate, debouncedEndDate, filterGrantId]);
 
   interface PaginatedTransactionsResponse {
     transactions: Transaction[];
@@ -221,7 +238,7 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   }
 
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError, refetch: refetchTransactions } = useQuery<PaginatedTransactionsResponse>({
-    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate: debouncedStartDate, endDate: debouncedEndDate }],
+    queryKey: [`/api/transactions/${currentOrganization.id}`, { limit: TRANSACTIONS_PER_PAGE, offset: 0, search: debouncedSearchQuery, startDate: debouncedStartDate, endDate: debouncedEndDate, grantId: filterGrantId }],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: TRANSACTIONS_PER_PAGE.toString(),
@@ -235,6 +252,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       }
       if (debouncedEndDate) {
         params.append('endDate', debouncedEndDate);
+      }
+      if (filterGrantId) {
+        params.append('grantId', filterGrantId.toString());
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
@@ -271,6 +291,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       }
       if (debouncedEndDate) {
         params.append('endDate', debouncedEndDate);
+      }
+      if (filterGrantId) {
+        params.append('grantId', filterGrantId.toString());
       }
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch more transactions');
@@ -315,6 +338,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       }
       if (debouncedEndDate) {
         params.append('endDate', debouncedEndDate);
+      }
+      if (filterGrantId) {
+        params.append('grantId', filterGrantId.toString());
       }
       
       const response = await fetch(`/api/transactions/${currentOrganization.id}?${params}`);
@@ -2430,6 +2456,35 @@ export default function Transactions({ currentOrganization, userId }: Transactio
           </Button>
         </div>
       </div>
+      
+      {/* Grant Filter Indicator */}
+      {filterGrantId && (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-2" data-testid="badge-grant-filter">
+            <Filter className="h-3 w-3" />
+            Showing transactions for: {grants?.find(g => g.id === filterGrantId)?.name || `Grant #${filterGrantId}`}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 p-0 ml-1"
+              onClick={() => {
+                setFilterGrantId(undefined);
+                // Update URL to remove grantId param
+                setLocation('/transactions');
+              }}
+              data-testid="button-clear-grant-filter"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </Badge>
+          <Link href="/grants">
+            <Button variant="ghost" size="sm" data-testid="link-back-to-grants">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Grants
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Bulk Categorization */}
       {uncategorizedTransactions.length > 0 && !searchQuery && (

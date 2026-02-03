@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Gift, ArrowLeft, Edit, Trash2, TrendingUp, AlertTriangle, Calendar, DollarSign, PieChart, BarChart3 } from "lucide-react";
+import { Plus, Gift, ArrowLeft, Edit, Trash2, TrendingUp, AlertTriangle, Calendar, DollarSign, PieChart, BarChart3, List } from "lucide-react";
 import { format, differenceInDays, isAfter, isBefore, addDays } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { Link } from "wouter";
@@ -49,6 +49,8 @@ interface GrantsProps {
 
 interface GrantWithSpent extends Grant {
   totalSpent: string;
+  totalIncome: string;
+  remainingBalance: string;
 }
 
 export default function Grants({ currentOrganization }: GrantsProps) {
@@ -766,8 +768,11 @@ export default function Grants({ currentOrganization }: GrantsProps) {
           {grants.map((grant) => {
             const totalAmount = parseFloat(grant.amount);
             const totalSpent = parseFloat(grant.totalSpent);
-            const remaining = totalAmount - totalSpent;
-            const percentSpent = (totalSpent / totalAmount) * 100;
+            const totalIncome = parseFloat(grant.totalIncome || '0');
+            const remaining = parseFloat(grant.remainingBalance || (totalAmount - totalSpent).toFixed(2));
+            // Calculate effective total (original grant + any additional income received)
+            const effectiveTotal = totalAmount + totalIncome;
+            const percentSpent = effectiveTotal > 0 ? (totalSpent / effectiveTotal) * 100 : 0;
 
             return (
               <Card key={grant.id} data-testid={`grant-card-${grant.id}`}>
@@ -783,6 +788,16 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                       <Badge variant={getStatusVariant(grant.status)}>
                         {grant.status}
                       </Badge>
+                      <Link href={`/transactions?grantId=${grant.id}`}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="View grant transactions"
+                          data-testid={`button-transactions-${grant.id}`}
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -815,25 +830,33 @@ export default function Grants({ currentOrganization }: GrantsProps) {
                         {percentSpent.toFixed(1)}%
                       </span>
                     </div>
-                    <Progress value={percentSpent} className="h-2" />
+                    <Progress value={Math.min(percentSpent, 100)} className="h-2" />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 pt-2">
+                  <div className={`grid ${totalIncome > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-4 pt-2`}>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Total</p>
-                      <p className="text-base font-mono font-medium text-foreground">
+                      <p className="text-xs text-muted-foreground mb-1">Grant Amount</p>
+                      <p className="text-base font-mono font-medium text-foreground" data-testid={`text-grant-amount-${grant.id}`}>
                         ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
+                    {totalIncome > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">+ Income</p>
+                        <p className="text-base font-mono font-medium text-blue-600 dark:text-blue-400" data-testid={`text-grant-income-${grant.id}`}>
+                          ${totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Spent</p>
-                      <p className="text-base font-mono font-medium text-chart-3">
+                      <p className="text-base font-mono font-medium text-chart-3" data-testid={`text-grant-spent-${grant.id}`}>
                         ${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Remaining</p>
-                      <p className="text-base font-mono font-medium text-chart-2">
+                      <p className={`text-base font-mono font-medium ${remaining >= 0 ? 'text-chart-2' : 'text-destructive'}`} data-testid={`text-grant-remaining-${grant.id}`}>
                         ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </p>
                     </div>

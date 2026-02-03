@@ -393,7 +393,7 @@ export interface IStorage {
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
   getTransactionCount(organizationId: number): Promise<number>;
-  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
+  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string; grantId?: number }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
   getTransactionsByExternalIds(organizationId: number, externalIds: string[]): Promise<Map<string, Transaction>>;
@@ -2219,8 +2219,8 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count || 0;
   }
 
-  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
-    const { limit, offset, search, startDate, endDate } = options;
+  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string; grantId?: number }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
+    const { limit, offset, search, startDate, endDate, grantId } = options;
     
     // Build where conditions array
     const conditions: any[] = [eq(transactions.organizationId, organizationId)];
@@ -2246,6 +2246,11 @@ export class DatabaseStorage implements IStorage {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
       conditions.push(sql`${transactions.date} <= ${end}`);
+    }
+    
+    // Add grant filtering
+    if (grantId) {
+      conditions.push(eq(transactions.grantId, grantId));
     }
     
     const whereConditions = conditions.length > 1 
