@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, Heart, Gift, Users, DollarSign, Plus, MoreHorizontal, Archive, Trash2, Edit, Loader2 } from "lucide-react";
+import { TrendingUp, Heart, Gift, Users, DollarSign, Plus, MoreHorizontal, Archive, Trash2, Edit, Loader2, AlertTriangle, Star, Mail, Eye, Calendar, ArrowUp, Award, TrendingDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Organization, FundraisingCampaign, InKindDonation, Donor } from "@shared/schema";
 
@@ -36,6 +37,47 @@ interface DonorTier {
   count: number;
   totalGiving: string;
   threshold: string;
+}
+
+interface DonorStewardshipData {
+  tiers: Array<{
+    tier: string;
+    count: number;
+    totalGiving: string;
+    threshold: string;
+    minAmount: number;
+    nextTierMin: number | null;
+    donors: Array<{
+      id: number;
+      name: string;
+      email: string | null;
+      totalGiving: number;
+      lastDonation: string | null;
+      donationCount: number;
+      progressToNextTier: number;
+      amountToNextTier: number;
+      daysSinceLastContact: number | null;
+      stewardshipHealth: 'good' | 'needs_attention' | 'at_risk';
+    }>;
+  }>;
+  topDonors: Array<{
+    id: number;
+    name: string;
+    totalGiving: number;
+    tier: string;
+  }>;
+  alerts: Array<{
+    type: 'lapsed' | 'anniversary' | 'upgrade_opportunity';
+    donorId: number;
+    donorName: string;
+    message: string;
+  }>;
+  summary: {
+    totalDonors: number;
+    totalLifetimeGiving: number;
+    repeatDonorRate: number;
+    avgDonationAmount: number;
+  };
 }
 
 export default function FundraisingHub({ currentOrganization, userId }: FundraisingHubProps) {
@@ -61,6 +103,11 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
   const { data: donorTiers = [], isLoading: tiersLoading } = useQuery<DonorTier[]>({
     queryKey: [`/api/donor-tiers/${currentOrganization.id}`],
+    enabled: !!currentOrganization.id,
+  });
+
+  const { data: stewardshipData, isLoading: stewardshipLoading } = useQuery<DonorStewardshipData>({
+    queryKey: [`/api/donor-stewardship/${currentOrganization.id}`],
     enabled: !!currentOrganization.id,
   });
 
@@ -474,57 +521,207 @@ export default function FundraisingHub({ currentOrganization, userId }: Fundrais
 
         <TabsContent value="donors" className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="text-xl font-semibold">Donor Stewardship</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Donor Stewardship</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Track relationships with supporters, recognize their generosity, and help them see the impact of their gifts.
+              </p>
+            </div>
           </div>
 
-          {tiersLoading ? (
+          {stewardshipLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : donorTiers.length === 0 || donorTiers.every(t => t.count === 0) ? (
+          ) : !stewardshipData || stewardshipData.summary.totalDonors === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Heart className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Donor Tiers Yet</h3>
+                <h3 className="text-lg font-semibold mb-2">No Donor Data Yet</h3>
                 <p className="text-muted-foreground text-center">Donor tiers are calculated automatically based on lifetime giving.</p>
                 <p className="text-sm text-muted-foreground text-center mt-2">
-                  Platinum: $25,000+ • Gold: $10,000-$24,999 • Silver: $5,000-$9,999 • Bronze: $1,000-$4,999
+                  Platinum: $25,000+ | Gold: $10,000-$24,999 | Silver: $5,000-$9,999 | Bronze: $1,000-$4,999
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-              {donorTiers.map((tier) => (
-                <Card key={tier.tier}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <CardTitle className="text-lg">{tier.tier} Tier</CardTitle>
-                      <Badge variant={
-                        tier.tier === "Platinum" ? "default" : 
-                        tier.tier === "Gold" ? "secondary" : 
-                        "outline"
-                      }>
-                        {tier.count} donors
-                      </Badge>
+            <div className="space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card data-testid="card-total-donors">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Total Donors</span>
                     </div>
-                    <CardDescription>{tier.threshold}</CardDescription>
+                    <p className="text-2xl font-bold mt-1" data-testid="text-total-donors">{stewardshipData.summary.totalDonors}</p>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-lifetime-giving">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Lifetime Giving</span>
+                    </div>
+                    <p className="text-2xl font-bold mt-1" data-testid="text-lifetime-giving">{formatCurrency(stewardshipData.summary.totalLifetimeGiving)}</p>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-repeat-donor-rate">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Repeat Donor Rate</span>
+                    </div>
+                    <p className="text-2xl font-bold mt-1" data-testid="text-repeat-donor-rate">{stewardshipData.summary.repeatDonorRate.toFixed(0)}%</p>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-avg-donation">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Avg Donation</span>
+                    </div>
+                    <p className="text-2xl font-bold mt-1" data-testid="text-avg-donation">{formatCurrency(stewardshipData.summary.avgDonationAmount)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Alerts Section */}
+              {stewardshipData.alerts.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      Stewardship Alerts
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm flex-wrap gap-1">
-                        <span className="text-muted-foreground">Total Lifetime Giving</span>
-                        <span className="font-semibold">{formatCurrency(tier.totalGiving)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm flex-wrap gap-1">
-                        <span className="text-muted-foreground">Average per Donor</span>
-                        <span className="font-semibold">
-                          {tier.count > 0 ? formatCurrency(parseFloat(tier.totalGiving) / tier.count) : '$0'}
-                        </span>
-                      </div>
+                      {stewardshipData.alerts.map((alert, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-md bg-muted/50" data-testid={`alert-stewardship-${idx}`}>
+                          <div className="flex items-center gap-2">
+                            {alert.type === 'lapsed' && <TrendingDown className="h-4 w-4 text-red-500" />}
+                            {alert.type === 'anniversary' && <Calendar className="h-4 w-4 text-blue-500" />}
+                            {alert.type === 'upgrade_opportunity' && <ArrowUp className="h-4 w-4 text-green-500" />}
+                            <span className="text-sm" data-testid={`text-alert-message-${idx}`}>{alert.message}</span>
+                          </div>
+                          <Link href={`/donors?id=${alert.donorId}`}>
+                            <Button size="icon" variant="ghost" data-testid={`button-view-donor-${alert.donorId}`}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )}
+
+              {/* Top Donors Spotlight */}
+              {stewardshipData.topDonors.length > 0 && (
+                <Card data-testid="card-top-donors">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Star className="h-4 w-4 text-amber-500" />
+                      Top Donors
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-5 gap-3">
+                      {stewardshipData.topDonors.map((donor, idx) => (
+                        <div key={donor.id} className="flex items-center gap-3 p-3 rounded-md bg-muted/50" data-testid={`card-top-donor-${donor.id}`}>
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
+                            {idx + 1}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate" data-testid={`text-top-donor-name-${donor.id}`}>{donor.name}</p>
+                            <p className="text-xs text-muted-foreground" data-testid={`text-top-donor-giving-${donor.id}`}>{formatCurrency(donor.totalGiving)}</p>
+                          </div>
+                          <Badge variant={donor.tier === 'Platinum' ? 'default' : donor.tier === 'Gold' ? 'secondary' : 'outline'} className="text-xs">
+                            {donor.tier}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Tier Cards with Donors */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {stewardshipData.tiers.map((tier) => (
+                  <Card key={tier.tier} className={tier.count === 0 ? 'opacity-60' : ''} data-testid={`card-tier-${tier.tier.toLowerCase()}`}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <Award className={`h-5 w-5 ${
+                            tier.tier === 'Platinum' ? 'text-slate-400' :
+                            tier.tier === 'Gold' ? 'text-amber-500' :
+                            tier.tier === 'Silver' ? 'text-slate-400' :
+                            'text-amber-700'
+                          }`} />
+                          <CardTitle className="text-lg">{tier.tier} Tier</CardTitle>
+                        </div>
+                        <Badge variant={
+                          tier.tier === "Platinum" ? "default" : 
+                          tier.tier === "Gold" ? "secondary" : 
+                          "outline"
+                        } data-testid={`badge-tier-count-${tier.tier.toLowerCase()}`}>
+                          {tier.count} donor{tier.count !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                      <CardDescription>{tier.threshold}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm flex-wrap gap-1">
+                          <span className="text-muted-foreground">Total Lifetime Giving</span>
+                          <span className="font-semibold" data-testid={`text-tier-giving-${tier.tier.toLowerCase()}`}>{formatCurrency(tier.totalGiving)}</span>
+                        </div>
+                        
+                        {tier.count > 0 && tier.donors.length > 0 && (
+                          <div className="border-t pt-3 mt-3 space-y-2">
+                            {tier.donors.slice(0, 3).map((donor) => (
+                              <div key={donor.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30" data-testid={`row-tier-donor-${donor.id}`}>
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    donor.stewardshipHealth === 'good' ? 'bg-green-500' :
+                                    donor.stewardshipHealth === 'needs_attention' ? 'bg-amber-500' :
+                                    'bg-red-500'
+                                  }`} title={`Health: ${donor.stewardshipHealth.replace('_', ' ')}`} data-testid={`status-health-${donor.id}`} />
+                                  <span className="text-sm font-medium truncate" data-testid={`text-tier-donor-name-${donor.id}`}>{donor.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground" data-testid={`text-tier-donor-giving-${donor.id}`}>{formatCurrency(donor.totalGiving)}</span>
+                                  {tier.nextTierMin && donor.progressToNextTier < 100 && (
+                                    <div className="w-16" data-testid={`progress-tier-${donor.id}`}>
+                                      <Progress value={donor.progressToNextTier} className="h-1" />
+                                    </div>
+                                  )}
+                                  {donor.email && (
+                                    <Button size="icon" variant="ghost" title="Send thank-you" data-testid={`button-email-donor-${donor.id}`}>
+                                      <Mail className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {tier.donors.length > 3 && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                +{tier.donors.length - 3} more donor{tier.donors.length - 3 !== 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {tier.count === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-2">No donors in this tier yet</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </TabsContent>

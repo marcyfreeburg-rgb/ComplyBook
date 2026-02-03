@@ -1730,6 +1730,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get comprehensive donor stewardship data
+  app.get('/api/donor-stewardship/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization || organization.type !== 'nonprofit') {
+        return res.status(403).json({ message: "Donor stewardship is only available for nonprofit organizations" });
+      }
+      
+      const stewardship = await storage.getDonorStewardship(organizationId);
+      res.json(stewardship);
+    } catch (error) {
+      console.error("Error fetching donor stewardship:", error);
+      res.status(400).json({ message: "Failed to fetch donor stewardship data" });
+    }
+  });
+
   // ============================================
   // DONOR PORTAL ROUTES (Public-facing for donors)
   // ============================================

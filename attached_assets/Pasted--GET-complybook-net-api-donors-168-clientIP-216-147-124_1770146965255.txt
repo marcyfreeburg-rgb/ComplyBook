@@ -1,0 +1,82 @@
+[GET]
+complybook.net/api/donors/168 clientIP="216.147.124.109" requestID="2d402d36-80e6-41e9" responseTimeMS=308 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/donor-tiers/168 clientIP="216.147.124.109" requestID="2cd2a9d2-1a7e-4840" responseTimeMS=310 responseBytes=1413 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/fundraising-campaigns clientIP="216.147.124.109" requestID="201f0a10-eec7-4e84" responseTimeMS=876 responseBytes=1480 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/fundraising-campaigns/168 clientIP="216.147.124.109" requestID="da4cc683-6c29-49b9" responseTimeMS=437 responseBytes=1494 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="6f13c173-66a2-46ee" responseTimeMS=807 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/in-kind-donations clientIP="216.147.124.109" requestID="b0c37313-c2f2-42cc" responseTimeMS=871 responseBytes=1530 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/in-kind-donations/168 clientIP="216.147.124.109" requestID="0513ff85-d3bb-4212" responseTimeMS=307 responseBytes=1545 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="a412bf10-332d-44ae" responseTimeMS=1372 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="fd2ffc3f-b543-454c" responseTimeMS=1398 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="cf62f16a-385a-49d5" responseTimeMS=776 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="35a76952-b6d4-4df0" responseTimeMS=784 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="13dc91a5-aa01-42c1" responseTimeMS=908 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[PATCH]
+complybook.net/api/fundraising-campaigns/4 clientIP="216.147.124.109" requestID="3b80570c-0f5d-4b3c" responseTimeMS=402 responseBytes=1311 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error updating fundraising campaign: error: invalid input value for enum campaign_status: "planning"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.updateFundraisingCampaign (file:///opt/render/project/src/dist/index.js:10101:27)
+    at async file:///opt/render/project/src/dist/index.js:15118:23 {
+  length: 143,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $6 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+7:28:00 PM [express] PATCH /api/fundraising-campaigns/4 400 in 398ms :: {"message":"Failed to update…
+[PATCH]
+complybook.net/api/fundraising-campaigns/4 clientIP="216.147.124.109" requestID="da3f2f84-3f89-4e73" responseTimeMS=911 responseBytes=1311 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error updating fundraising campaign: error: invalid input value for enum campaign_status: "planning"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.updateFundraisingCampaign (file:///opt/render/project/src/dist/index.js:10101:27)
+    at async file:///opt/render/project/src/dist/index.js:15118:23 {
+  length: 143,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+Menu
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $6 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+7:28:30 PM [express] PATCH /api/fundraising-campaigns/4 400 in 908ms :: {"message":"Failed to update…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="1fcce519-2aa7-4d42" responseTimeMS=792 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:29:00 PM [express] GET /api/notifications/168/unread-count 304 in 789ms :: {"count":"0"}

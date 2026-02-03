@@ -1245,6 +1245,46 @@ export interface IStorage {
 
   // Nonprofit-specific: Donor Tier/Stewardship operations
   getDonorTiers(organizationId: number): Promise<Array<{ tier: string; count: number; totalGiving: string; threshold: string }>>;
+  getDonorStewardship(organizationId: number): Promise<{
+    tiers: Array<{
+      tier: string;
+      count: number;
+      totalGiving: string;
+      threshold: string;
+      minAmount: number;
+      nextTierMin: number | null;
+      donors: Array<{
+        id: number;
+        name: string;
+        email: string | null;
+        totalGiving: number;
+        lastDonation: Date | null;
+        donationCount: number;
+        progressToNextTier: number;
+        amountToNextTier: number;
+        daysSinceLastContact: number | null;
+        stewardshipHealth: 'good' | 'needs_attention' | 'at_risk';
+      }>;
+    }>;
+    topDonors: Array<{
+      id: number;
+      name: string;
+      totalGiving: number;
+      tier: string;
+    }>;
+    alerts: Array<{
+      type: 'lapsed' | 'anniversary' | 'upgrade_opportunity';
+      donorId: number;
+      donorName: string;
+      message: string;
+    }>;
+    summary: {
+      totalDonors: number;
+      totalLifetimeGiving: number;
+      repeatDonorRate: number;
+      avgDonationAmount: number;
+    };
+  }>;
   updateDonorTier(donorId: number, tier: string): Promise<void>;
 }
 
@@ -9797,6 +9837,229 @@ export class DatabaseStorage implements IStorage {
     }
 
     return tierCounts;
+  }
+
+  async getDonorStewardship(organizationId: number): Promise<{
+    tiers: Array<{
+      tier: string;
+      count: number;
+      totalGiving: string;
+      threshold: string;
+      minAmount: number;
+      nextTierMin: number | null;
+      donors: Array<{
+        id: number;
+        name: string;
+        email: string | null;
+        totalGiving: number;
+        lastDonation: Date | null;
+        donationCount: number;
+        progressToNextTier: number;
+        amountToNextTier: number;
+        daysSinceLastContact: number | null;
+        stewardshipHealth: 'good' | 'needs_attention' | 'at_risk';
+      }>;
+    }>;
+    topDonors: Array<{
+      id: number;
+      name: string;
+      totalGiving: number;
+      tier: string;
+    }>;
+    alerts: Array<{
+      type: 'lapsed' | 'anniversary' | 'upgrade_opportunity';
+      donorId: number;
+      donorName: string;
+      message: string;
+    }>;
+    summary: {
+      totalDonors: number;
+      totalLifetimeGiving: number;
+      repeatDonorRate: number;
+      avgDonationAmount: number;
+    };
+  }> {
+    // Define tier thresholds (ordered from highest to lowest)
+    const tierThresholds = [
+      { tier: 'Platinum', min: 25000, threshold: '$25,000+', nextMin: null as number | null },
+      { tier: 'Gold', min: 10000, threshold: '$10,000 - $24,999', nextMin: 25000 },
+      { tier: 'Silver', min: 5000, threshold: '$5,000 - $9,999', nextMin: 10000 },
+      { tier: 'Bronze', min: 1000, threshold: '$1,000 - $4,999', nextMin: 5000 },
+    ];
+
+    // Get all donors with their giving stats
+    const donorStats = await db.select({
+      donorId: donors.id,
+      donorName: donors.name,
+      donorEmail: donors.email,
+      totalGiving: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN CAST(${transactions.amount} AS numeric) ELSE 0 END), 0)`,
+      donationCount: sql<number>`COUNT(CASE WHEN ${transactions.type} = 'income' THEN 1 END)`,
+      lastDonation: sql<Date | null>`MAX(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.date} END)`,
+    })
+    .from(donors)
+    .leftJoin(transactions, and(
+      eq(transactions.donorId, donors.id),
+      eq(transactions.organizationId, organizationId)
+    ))
+    .where(eq(donors.organizationId, organizationId))
+    .groupBy(donors.id, donors.name, donors.email);
+
+    const now = new Date();
+    const alerts: Array<{ type: 'lapsed' | 'anniversary' | 'upgrade_opportunity'; donorId: number; donorName: string; message: string }> = [];
+    const allDonorsWithTier: Array<{
+      id: number;
+      name: string;
+      email: string | null;
+      totalGiving: number;
+      lastDonation: Date | null;
+      donationCount: number;
+      tier: string;
+      progressToNextTier: number;
+      amountToNextTier: number;
+      daysSinceLastContact: number | null;
+      stewardshipHealth: 'good' | 'needs_attention' | 'at_risk';
+    }> = [];
+
+    // Process each donor
+    for (const d of donorStats) {
+      const giving = parseFloat(d.totalGiving || '0');
+      const lastDonationDate = d.lastDonation ? new Date(d.lastDonation) : null;
+      const daysSinceLastDonation = lastDonationDate 
+        ? Math.floor((now.getTime() - lastDonationDate.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      // Find tier for this donor
+      let donorTier = 'None';
+      let progressToNextTier = 0;
+      let amountToNextTier = 1000; // Default to bronze minimum
+      let nextTierMin: number | null = 1000;
+
+      for (const t of tierThresholds) {
+        if (giving >= t.min) {
+          donorTier = t.tier;
+          nextTierMin = t.nextMin;
+          if (t.nextMin) {
+            progressToNextTier = ((giving - t.min) / (t.nextMin - t.min)) * 100;
+            amountToNextTier = t.nextMin - giving;
+          } else {
+            progressToNextTier = 100; // Already at highest tier
+            amountToNextTier = 0;
+          }
+          break;
+        }
+      }
+
+      // Calculate stewardship health
+      let stewardshipHealth: 'good' | 'needs_attention' | 'at_risk' = 'good';
+      if (daysSinceLastDonation !== null) {
+        if (daysSinceLastDonation > 365) {
+          stewardshipHealth = 'at_risk';
+        } else if (daysSinceLastDonation > 180) {
+          stewardshipHealth = 'needs_attention';
+        }
+      } else if (d.donationCount === 0) {
+        stewardshipHealth = 'needs_attention';
+      }
+
+      // Generate alerts
+      if (donorTier !== 'None' && daysSinceLastDonation && daysSinceLastDonation > 90) {
+        alerts.push({
+          type: 'lapsed',
+          donorId: d.donorId,
+          donorName: d.donorName,
+          message: `No donation from ${d.donorName} (${donorTier}) in ${daysSinceLastDonation} days`
+        });
+      }
+
+      // Check for upgrade opportunity (close to next tier)
+      if (nextTierMin && amountToNextTier > 0 && progressToNextTier >= 75) {
+        const nextTierName = tierThresholds.find(t => t.min === nextTierMin)?.tier || 'next tier';
+        alerts.push({
+          type: 'upgrade_opportunity',
+          donorId: d.donorId,
+          donorName: d.donorName,
+          message: `${d.donorName} is $${amountToNextTier.toFixed(0)} away from ${nextTierName} tier`
+        });
+      }
+
+      // Check for anniversary (donation anniversary within next 30 days)
+      if (lastDonationDate) {
+        const anniversaryThisYear = new Date(lastDonationDate);
+        anniversaryThisYear.setFullYear(now.getFullYear());
+        if (anniversaryThisYear < now) {
+          anniversaryThisYear.setFullYear(now.getFullYear() + 1);
+        }
+        const daysToAnniversary = Math.floor((anniversaryThisYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysToAnniversary <= 30 && daysToAnniversary >= 0) {
+          alerts.push({
+            type: 'anniversary',
+            donorId: d.donorId,
+            donorName: d.donorName,
+            message: `${d.donorName}'s giving anniversary is in ${daysToAnniversary} days`
+          });
+        }
+      }
+
+      allDonorsWithTier.push({
+        id: d.donorId,
+        name: d.donorName,
+        email: d.donorEmail,
+        totalGiving: giving,
+        lastDonation: lastDonationDate,
+        donationCount: d.donationCount,
+        tier: donorTier,
+        progressToNextTier,
+        amountToNextTier,
+        daysSinceLastContact: daysSinceLastDonation,
+        stewardshipHealth
+      });
+    }
+
+    // Build tier summaries
+    const tiers = tierThresholds.map(t => {
+      const tieredDonors = allDonorsWithTier.filter(d => d.tier === t.tier);
+      const totalGiving = tieredDonors.reduce((sum, d) => sum + d.totalGiving, 0);
+      return {
+        tier: t.tier,
+        count: tieredDonors.length,
+        totalGiving: totalGiving.toFixed(2),
+        threshold: t.threshold,
+        minAmount: t.min,
+        nextTierMin: t.nextMin,
+        donors: tieredDonors.sort((a, b) => b.totalGiving - a.totalGiving)
+      };
+    });
+
+    // Top 5 donors overall
+    const topDonors = [...allDonorsWithTier]
+      .sort((a, b) => b.totalGiving - a.totalGiving)
+      .slice(0, 5)
+      .map(d => ({
+        id: d.id,
+        name: d.name,
+        totalGiving: d.totalGiving,
+        tier: d.tier
+      }));
+
+    // Summary stats
+    const totalDonors = allDonorsWithTier.length;
+    const totalLifetimeGiving = allDonorsWithTier.reduce((sum, d) => sum + d.totalGiving, 0);
+    const repeatDonors = allDonorsWithTier.filter(d => d.donationCount > 1).length;
+    const repeatDonorRate = totalDonors > 0 ? (repeatDonors / totalDonors) * 100 : 0;
+    const totalDonations = allDonorsWithTier.reduce((sum, d) => sum + d.donationCount, 0);
+    const avgDonationAmount = totalDonations > 0 ? totalLifetimeGiving / totalDonations : 0;
+
+    return {
+      tiers,
+      topDonors,
+      alerts: alerts.slice(0, 10), // Limit to 10 alerts
+      summary: {
+        totalDonors,
+        totalLifetimeGiving,
+        repeatDonorRate,
+        avgDonationAmount
+      }
+    };
   }
 
   async updateDonorTier(donorId: number, tier: string): Promise<void> {
