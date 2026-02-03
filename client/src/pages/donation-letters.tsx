@@ -153,12 +153,14 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     });
 
     // Clean, professional formal business letter template
+    // Note: html2pdf requires inline styles for reliable image sizing
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <style>
+          * { box-sizing: border-box; }
           body {
             font-family: ${fontFamily};
             font-size: 12pt;
@@ -169,49 +171,41 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           }
           table { border-collapse: collapse; }
           
-          /* Top header row - sender left, recipient right */
-          .top-header {
+          /* Header with logo and addresses */
+          .header-table {
             width: 100%;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
+          }
+          .logo-cell {
+            width: 70px;
+            vertical-align: top;
+            padding-right: 12px;
           }
           .sender-cell {
             vertical-align: top;
-            width: 50%;
             font-size: 11pt;
             color: #444;
             line-height: 1.6;
           }
           .recipient-cell {
             vertical-align: top;
-            width: 50%;
             text-align: right;
             font-size: 11pt;
             color: #444;
             line-height: 1.6;
           }
           
-          /* Logo and company name - centered, prominent */
-          .logo-section {
-            text-align: left;
-            margin-bottom: 40px;
-          }
-          .logo-img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            margin-bottom: 8px;
-          }
+          /* Company name - prominent */
           .company-name {
-            font-size: 24pt;
+            font-size: 22pt;
             font-weight: 700;
             color: ${primaryColor};
-            letter-spacing: 1px;
-            margin: 0;
+            margin: 24px 0 32px 0;
           }
           
           /* Date line */
           .date-line {
-            margin-bottom: 40px;
+            margin-bottom: 32px;
             font-size: 11pt;
             color: #444;
           }
@@ -225,7 +219,6 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           .paragraph {
             margin: 0 0 20px 0;
             line-height: 1.7;
-            text-align: justify;
           }
           
           /* Donation amount - simple, inline emphasis */
@@ -246,20 +239,15 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             margin-top: 40px;
           }
           .closing-text {
-            margin-bottom: 32px;
+            margin-bottom: 28px;
           }
           .signature-name {
             font-weight: 600;
-            margin-bottom: 2px;
-          }
-          .signature-title {
-            color: #666;
-            font-size: 11pt;
           }
           
           /* Footer - simple, at bottom */
           .footer-section {
-            margin-top: 60px;
+            margin-top: 48px;
             padding-top: 16px;
             border-top: 1px solid #ddd;
           }
@@ -276,16 +264,20 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             text-align: right;
             font-size: 10pt;
             color: #666;
-            line-height: 1.5;
           }
         </style>
       </head>
       <body>
-        <!-- Top Header: Sender on left, Donor address on right -->
-        <table class="top-header">
+        <!-- Header: Logo + Sender on left, Recipient on right -->
+        <table class="header-table">
           <tr>
+            ${logoUrl ? `
+            <td class="logo-cell">
+              <img src="${logoUrl}" width="50" height="50" style="width:50px;height:50px;max-width:50px;max-height:50px;object-fit:contain;display:block;" alt="" />
+            </td>
+            ` : ''}
             <td class="sender-cell">
-              ${currentOrganization.companyName || currentOrganization.name}<br/>
+              <strong>${currentOrganization.companyName || currentOrganization.name}</strong><br/>
               ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
             </td>
             <td class="recipient-cell">
@@ -296,11 +288,8 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           </tr>
         </table>
 
-        <!-- Logo and Company Name -->
-        <div class="logo-section">
-          ${logoUrl ? `<img class="logo-img" src="${logoUrl}" alt="" /><br/>` : ''}
-          <div class="company-name">${currentOrganization.companyName || currentOrganization.name}</div>
-        </div>
+        <!-- Company Name -->
+        <div class="company-name">${currentOrganization.companyName || currentOrganization.name}</div>
 
         <!-- Date -->
         <div class="date-line">${currentDate}</div>
@@ -372,12 +361,14 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
     });
 
     // Clean, professional formal business letter template for custom letters
+    // Note: html2pdf requires inline styles for reliable image sizing
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <style>
+          * { box-sizing: border-box; }
           body {
             font-family: ${fontFamily};
             font-size: 12pt;
@@ -388,46 +379,38 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           }
           table { border-collapse: collapse; }
           
-          .top-header {
+          .header-table {
             width: 100%;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
+          }
+          .logo-cell {
+            width: 70px;
+            vertical-align: top;
+            padding-right: 12px;
           }
           .sender-cell {
             vertical-align: top;
-            width: 50%;
             font-size: 11pt;
             color: #444;
             line-height: 1.6;
           }
           .recipient-cell {
             vertical-align: top;
-            width: 50%;
             text-align: right;
             font-size: 11pt;
             color: #444;
             line-height: 1.6;
           }
           
-          .logo-section {
-            text-align: left;
-            margin-bottom: 40px;
-          }
-          .logo-img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            margin-bottom: 8px;
-          }
           .company-name {
-            font-size: 24pt;
+            font-size: 22pt;
             font-weight: 700;
             color: ${primaryColor};
-            letter-spacing: 1px;
-            margin: 0;
+            margin: 24px 0 32px 0;
           }
           
           .date-line {
-            margin-bottom: 40px;
+            margin-bottom: 32px;
             font-size: 11pt;
             color: #444;
           }
@@ -437,11 +420,10 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           }
           .letter-content p {
             margin: 0 0 20px 0;
-            text-align: justify;
           }
           
           .footer-section {
-            margin-top: 60px;
+            margin-top: 48px;
             padding-top: 16px;
             border-top: 1px solid #ddd;
           }
@@ -458,16 +440,20 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             text-align: right;
             font-size: 10pt;
             color: #666;
-            line-height: 1.5;
           }
         </style>
       </head>
       <body>
-        <!-- Top Header: Sender on left, Donor address on right -->
-        <table class="top-header">
+        <!-- Header: Logo + Sender on left, Recipient on right -->
+        <table class="header-table">
           <tr>
+            ${logoUrl ? `
+            <td class="logo-cell">
+              <img src="${logoUrl}" width="50" height="50" style="width:50px;height:50px;max-width:50px;max-height:50px;object-fit:contain;display:block;" alt="" />
+            </td>
+            ` : ''}
             <td class="sender-cell">
-              ${currentOrganization.companyName || currentOrganization.name}<br/>
+              <strong>${currentOrganization.companyName || currentOrganization.name}</strong><br/>
               ${currentOrganization.companyAddress ? currentOrganization.companyAddress.replace(/\n/g, '<br/>') : ''}
             </td>
             <td class="recipient-cell">
@@ -478,11 +464,8 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           </tr>
         </table>
 
-        <!-- Logo and Company Name -->
-        <div class="logo-section">
-          ${logoUrl ? `<img class="logo-img" src="${logoUrl}" alt="" /><br/>` : ''}
-          <div class="company-name">${currentOrganization.companyName || currentOrganization.name}</div>
-        </div>
+        <!-- Company Name -->
+        <div class="company-name">${currentOrganization.companyName || currentOrganization.name}</div>
 
         <!-- Date -->
         <div class="date-line">${currentDate}</div>
