@@ -176,24 +176,29 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             padding-bottom: 24px;
             border-bottom: 1px solid #e5e7eb;
           }
-          .logo-cell {
+          .logo-row td {
+            padding-bottom: 12px;
+          }
+          .logo-img {
             width: 80px;
-            vertical-align: top;
-            padding-right: 12px;
+            height: 80px;
+            max-width: 80px;
+            max-height: 80px;
+            object-fit: contain;
           }
           .org-cell {
             vertical-align: top;
           }
           .org-name {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
             color: #111827;
-            margin: 0 0 4px 0;
+            margin: 0 0 6px 0;
           }
           .org-details {
             font-size: 13px;
             color: #6b7280;
-            line-height: 1.4;
+            line-height: 1.6;
           }
           .title-cell {
             vertical-align: top;
@@ -239,11 +244,11 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             margin-bottom: 24px;
           }
           .salutation {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
           }
           .paragraph {
-            margin: 0 0 14px 0;
-            line-height: 1.6;
+            margin: 0 0 24px 0;
+            line-height: 1.7;
           }
           
           .donation-table {
@@ -332,12 +337,14 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       <body>
         <!-- Header - Table Layout for PDF compatibility -->
         <table class="header-table">
-          <tr>
-            ${logoUrl ? `
-            <td class="logo-cell">
-              <img src="${logoUrl}" alt="Logo" width="60" height="60" style="width: 60px; height: 60px; max-width: 60px; max-height: 60px; object-fit: contain;" />
+          ${logoUrl ? `
+          <tr class="logo-row">
+            <td colspan="2">
+              <img class="logo-img" src="${logoUrl}" alt="Logo" width="80" height="80" />
             </td>
-            ` : ''}
+          </tr>
+          ` : ''}
+          <tr>
             <td class="org-cell">
               <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
               <div class="org-details">
@@ -468,22 +475,27 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             padding-bottom: 24px;
             border-bottom: 1px solid #e5e7eb;
           }
-          .logo-cell {
+          .logo-row td {
+            padding-bottom: 12px;
+          }
+          .logo-img {
             width: 80px;
-            vertical-align: top;
-            padding-right: 12px;
+            height: 80px;
+            max-width: 80px;
+            max-height: 80px;
+            object-fit: contain;
           }
           .org-cell { vertical-align: top; }
           .org-name {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
             color: #111827;
-            margin: 0 0 4px 0;
+            margin: 0 0 6px 0;
           }
           .org-details {
             font-size: 13px;
             color: #6b7280;
-            line-height: 1.4;
+            line-height: 1.6;
           }
           .title-cell {
             vertical-align: top;
@@ -507,7 +519,7 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
             line-height: 1.7;
           }
           .letter-content p {
-            margin: 0 0 14px 0;
+            margin: 0 0 24px 0;
           }
           .footer {
             margin-top: 40px;
@@ -521,12 +533,14 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
       </head>
       <body>
         <table class="header-table">
-          <tr>
-            ${logoUrl ? `
-            <td class="logo-cell">
-              <img src="${logoUrl}" alt="Logo" width="60" height="60" style="width: 60px; height: 60px; max-width: 60px; max-height: 60px; object-fit: contain;" />
+          ${logoUrl ? `
+          <tr class="logo-row">
+            <td colspan="2">
+              <img class="logo-img" src="${logoUrl}" alt="Logo" width="80" height="80" />
             </td>
-            ` : ''}
+          </tr>
+          ` : ''}
+          <tr>
             <td class="org-cell">
               <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
               <div class="org-details">
