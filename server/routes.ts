@@ -4599,6 +4599,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only owners and admins can approve/reject expenses" });
       }
 
+      // For bulk approve, reject any previously rejected expenses
+      // Rejected expenses require individual approval with a mandatory note
+      if (action === 'approve') {
+        const rejectedApprovals = approvals.filter(a => a.status === 'rejected');
+        if (rejectedApprovals.length > 0) {
+          return res.status(400).json({ 
+            message: "Cannot bulk approve previously rejected expenses. These must be approved individually with a note explaining the reversal.",
+            rejectedIds: rejectedApprovals.map(a => a.id)
+          });
+        }
+      }
+
       // Update all approvals
       const updatedApprovals = [];
       for (const id of approvalIds) {
@@ -10275,6 +10287,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only admins and owners can approve
       if (userRole.role !== 'owner' && userRole.role !== 'admin') {
         return res.status(403).json({ message: "Only admins and owners can approve expenses" });
+      }
+
+      // If approving a previously rejected expense, require a note explaining the reversal
+      if (approval.status === 'rejected') {
+        if (!notes || notes.trim() === '') {
+          return res.status(400).json({ 
+            message: "A note is required when approving a previously rejected expense. Please explain why this rejection is being reversed."
+          });
+        }
       }
 
       const updated = await storage.approveExpenseApproval(approvalId, userId, notes);
