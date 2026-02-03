@@ -991,14 +991,14 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                           <div className="flex items-center gap-2 mb-2">
                             <UserCheck className="h-5 w-5 text-primary" />
                             <h3 className="font-semibold" data-testid={`text-employee-name-${report.id}`}>
-                              {employees.find((e: any) => e.id === report.employeeId)?.fullName || "Unknown Employee"}
+                              {(() => { const emp = employees.find((e: any) => e.id === report.employeeId); return emp ? `${emp.firstName} ${emp.lastName}` : "Unknown Employee"; })()}
                             </h3>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <p className="text-muted-foreground">Grant</p>
                               <p className="font-medium" data-testid={`text-grant-name-${report.id}`}>
-                                {grants.find((g: any) => g.id === report.grantId)?.grantName || "N/A"}
+                                {grants.find((g: any) => g.id === report.grantId)?.name || "N/A"}
                               </p>
                             </div>
                             <div>
@@ -1115,7 +1115,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                             <div>
                               <p className="text-muted-foreground">Grant</p>
                               <p className="font-medium" data-testid={`text-grant-${check.id}`}>
-                                {grants.find((g: any) => g.id === check.grantId)?.grantName || "N/A"}
+                                {grants.find((g: any) => g.id === check.grantId)?.name || "N/A"}
                               </p>
                             </div>
                             <div>
@@ -1303,7 +1303,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                           <div className="flex items-center gap-2 mb-2">
                             <FileText className="h-5 w-5 text-primary" />
                             <h3 className="font-semibold" data-testid={`text-grant-${report.id}`}>
-                              {grants.find((g: any) => g.id === report.grantId)?.grantName || "Unknown Grant"}
+                              {grants.find((g: any) => g.id === report.grantId)?.name || "Unknown Grant"}
                             </h3>
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
                               report.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
@@ -1516,7 +1516,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                   </SelectTrigger>
                   <SelectContent>
                     {employees.map((emp: any) => (
-                      <SelectItem key={emp.id} value={emp.id.toString()}>{emp.fullName}</SelectItem>
+                      <SelectItem key={emp.id} value={emp.id.toString()}>{emp.firstName} {emp.lastName}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1529,7 +1529,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                   </SelectTrigger>
                   <SelectContent>
                     {grants.map((grant: any) => (
-                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1603,7 +1603,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                   </SelectTrigger>
                   <SelectContent>
                     {grants.map((grant: any) => (
-                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1689,7 +1689,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                 </SelectTrigger>
                 <SelectContent>
                   {grants.map((grant: any) => (
-                    <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                    <SelectItem key={grant.id} value={grant.id.toString()}>{grant.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1795,7 +1795,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                 </SelectTrigger>
                 <SelectContent>
                   {grants.map((grant: any) => (
-                    <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                    <SelectItem key={grant.id} value={grant.id.toString()}>{grant.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1920,7 +1920,7 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
                   </SelectTrigger>
                   <SelectContent>
                     {grants.map((grant: any) => (
-                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.grantName}</SelectItem>
+                      <SelectItem key={grant.id} value={grant.id.toString()}>{grant.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
