@@ -5803,6 +5803,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEPRECATED: This endpoint no longer generates actual transactions.
+  // Recurring transactions are now used for budgets/forecasts only.
+  // Actual transactions come from Plaid imports, which automatically mark bills as paid.
   app.post('/api/recurring-transactions/generate/:organizationId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -5815,43 +5818,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!hasPermission(userRole.role, userRole.permissions, 'edit_transactions')) {
-        return res.status(403).json({ message: "You don't have permission to generate transactions" });
+        return res.status(403).json({ message: "You don't have permission to manage recurring transactions" });
       }
 
       const recurringTransactions = await storage.getRecurringTransactions(organizationId);
       const activeRecurring = recurringTransactions.filter(rt => rt.isActive === 1);
       
       const now = new Date();
-      const generatedCount = { count: 0 };
+      const dueRecurring: Array<{ id: number; description: string; amount: string; type: string; nextDate: Date }> = [];
 
       for (const recurring of activeRecurring) {
         const nextDate = getNextOccurrence(recurring, now);
         
         if (nextDate && (!recurring.endDate || nextDate <= new Date(recurring.endDate))) {
-          // Create transaction
-          await storage.createTransaction({
-            organizationId: recurring.organizationId,
-            date: nextDate,
+          // Track which recurring transactions are due (for forecasting purposes)
+          dueRecurring.push({
+            id: recurring.id,
             description: recurring.description,
             amount: recurring.amount,
             type: recurring.type,
-            categoryId: recurring.categoryId,
-            createdBy: userId,
+            nextDate,
           });
           
-          // Update last generated date
+          // Update last generated date to track that this period has been processed
+          // NOTE: We no longer create actual transactions here. Transactions come from Plaid imports only.
           await storage.updateRecurringTransactionLastGenerated(recurring.id, nextDate);
-          generatedCount.count++;
         }
       }
 
       res.json({ 
-        message: `Generated ${generatedCount.count} transaction(s)`,
-        count: generatedCount.count
+        message: `Processed ${dueRecurring.length} recurring transaction(s) for forecasting. Actual transactions will be created when imported from bank.`,
+        count: dueRecurring.length,
+        dueRecurring,
       });
     } catch (error) {
-      console.error("Error generating transactions:", error);
-      res.status(500).json({ message: "Failed to generate transactions" });
+      console.error("Error processing recurring transactions:", error);
+      res.status(500).json({ message: "Failed to process recurring transactions" });
     }
   });
 
@@ -8155,11 +8157,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             storage.updateTransaction(id, updates)
           ));
 
-          // Execute batch creates (parallel chunks of 50)
+          // Execute batch creates and link to matching bills (sequential to avoid race conditions)
           const BATCH_SIZE = 50;
+          let billsLinked = 0;
+          
           for (let i = 0; i < transactionsToCreate.length; i += BATCH_SIZE) {
             const batch = transactionsToCreate.slice(i, i + BATCH_SIZE);
-            await Promise.all(batch.map(tx => storage.createTransaction(tx)));
+            
+            // Process each transaction sequentially within batch to avoid linking same bill twice
+            for (const tx of batch) {
+              const created = await storage.createTransaction(tx);
+              
+              // For expense transactions, try to match with pending bills and link atomically
+              if (tx.type === 'expense') {
+                const matchingBill = await storage.findMatchingPendingBill(
+                  tx.organizationId, 
+                  tx.amount, 
+                  tx.date
+                );
+                if (matchingBill) {
+                  // Atomically link - only succeeds if bill isn't already linked
+                  const linked = await storage.linkBillToTransaction(matchingBill.id, created.id);
+                  if (linked) {
+                    billsLinked++;
+                    console.log(`[Plaid Sync] Linked transaction ${created.id} to bill ${matchingBill.id} and marked as paid`);
+                  }
+                }
+              }
+            }
+          }
+          
+          if (billsLinked > 0) {
+            console.log(`[Plaid Sync] Successfully linked ${billsLinked} bills to imported transactions`);
           }
 
           // Handle modified transactions (batch lookup + parallel updates)

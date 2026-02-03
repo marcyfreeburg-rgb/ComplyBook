@@ -701,6 +701,8 @@ export interface IStorage {
   updateBillLineItem(id: number, updates: Partial<InsertBillLineItem>): Promise<BillLineItem>;
   deleteBillLineItem(id: number): Promise<void>;
   getTransactionIdsLinkedToBills(organizationId: number): Promise<number[]>;
+  findMatchingPendingBill(organizationId: number, amount: string, dueDate: Date): Promise<Bill | undefined>;
+  linkBillToTransaction(billId: number, transactionId: number): Promise<boolean>;
 
   // Dismissed pattern operations
   getDismissedPatterns(organizationId: number): Promise<DismissedPattern[]>;
@@ -5737,6 +5739,62 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBill(id: number): Promise<void> {
     await db.delete(bills).where(eq(bills.id, id));
+  }
+
+  async findMatchingPendingBill(organizationId: number, amount: string, dueDate: Date): Promise<Bill | undefined> {
+    // Find a pending/received bill that matches the amount and is within 7 days of the transaction date
+    const startDate = new Date(dueDate);
+    startDate.setDate(startDate.getDate() - 7);
+    const endDate = new Date(dueDate);
+    endDate.setDate(endDate.getDate() + 7);
+    
+    // Match by amount (normalize to 2 decimal places for comparison)
+    const normalizedAmount = parseFloat(amount).toFixed(2);
+    
+    // Fetch all candidates in the date window that aren't linked yet
+    const candidates = await db
+      .select()
+      .from(bills)
+      .where(
+        and(
+          eq(bills.organizationId, organizationId),
+          inArray(bills.status, ['received', 'approved']),
+          isNull(bills.transactionId), // Not already linked to a transaction
+          gte(bills.dueDate, startDate),
+          lte(bills.dueDate, endDate)
+        )
+      )
+      .orderBy(bills.dueDate);
+    
+    // Find the first bill that matches by amount (compare normalized amounts)
+    for (const bill of candidates) {
+      if (parseFloat(bill.totalAmount).toFixed(2) === normalizedAmount) {
+        return bill;
+      }
+    }
+    
+    return undefined;
+  }
+
+  async linkBillToTransaction(billId: number, transactionId: number): Promise<boolean> {
+    // Atomically link a bill to a transaction only if it's not already linked
+    // Returns true if the link was successful, false if already linked
+    const result = await db
+      .update(bills)
+      .set({ 
+        transactionId, 
+        status: 'paid',
+        updatedAt: new Date() 
+      })
+      .where(
+        and(
+          eq(bills.id, billId),
+          isNull(bills.transactionId) // Only update if not already linked
+        )
+      )
+      .returning();
+    
+    return result.length > 0;
   }
 
   async getBillLineItems(billId: number): Promise<BillLineItem[]> {
