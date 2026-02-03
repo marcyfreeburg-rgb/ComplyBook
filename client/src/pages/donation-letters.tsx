@@ -216,26 +216,30 @@ export default function DonationLetters({ currentOrganization, userId }: Donatio
           
           /* Letter content */
           .salutation {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            padding-bottom: 8px;
           }
           .paragraph {
-            margin: 0 0 16px 0;
-            line-height: 1.7;
+            margin: 0;
+            padding-bottom: 20px;
+            line-height: 1.8;
           }
           .amount-highlight {
             font-weight: 600;
           }
           .tax-info {
-            margin: 20px 0;
+            margin: 0;
+            padding: 16px 0 20px 0;
             font-size: 10pt;
             color: #666;
             font-style: italic;
           }
           .closing {
-            margin-top: 32px;
+            margin-top: 24px;
+            padding-top: 8px;
           }
           .closing-text {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
           }
           .signature-name {
             font-weight: 600;
