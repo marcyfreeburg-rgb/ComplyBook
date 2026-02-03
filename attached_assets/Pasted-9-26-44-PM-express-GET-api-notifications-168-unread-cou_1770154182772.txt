@@ -1,0 +1,47 @@
+9:26:44 PM [express] GET /api/notifications/168/unread-count 304 in 239ms :: {"count":"0"}
+[POST]
+complybook.net/api/time-effort-reports clientIP="216.147.124.109" requestID="6f5747bd-ffc7-445d" responseTimeMS=1207 responseBytes=1503 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/time-effort-reports/168 clientIP="216.147.124.109" requestID="ee480d4a-ea2c-4a04" responseTimeMS=243 responseBytes=1509 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="16042681-b9d8-4853" responseTimeMS=244 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+9:27:39 PM [express] POST /api/time-effort-reports 201 in 1196ms :: {"id":1,"organizationId":168,"em…
+9:27:40 PM [express] GET /api/time-effort-reports/168 200 in 241ms :: [{"id":1,"organizationId":168,…
+9:27:44 PM [express] GET /api/notifications/168/unread-count 304 in 242ms :: {"count":"0"}
+[POST]
+complybook.net/api/cost-allowability-checks clientIP="216.147.124.109" requestID="b92b1d00-eb45-402e" responseTimeMS=1092 responseBytes=1501 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/cost-allowability-checks/168 clientIP="216.147.124.109" requestID="ef6b2345-f4ff-4e8b" responseTimeMS=234 responseBytes=1503 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+9:28:17 PM [express] POST /api/cost-allowability-checks 201 in 1089ms :: {"id":1,"organizationId":16…
+9:28:18 PM [express] GET /api/cost-allowability-checks/168 200 in 232ms :: [{"id":1,"organizationId"…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.109" requestID="832f7e74-23e5-466c" responseTimeMS=797 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+9:28:45 PM [express] GET /api/notifications/168/unread-count 304 in 795ms :: {"count":"0"}
+[POST]
+complybook.net/api/sub-awards clientIP="216.147.124.109" requestID="8b4b5217-cf52-4ca7" responseTimeMS=854 responseBytes=1315 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error creating sub-award: error: value too long for type character varying(50)
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+Menu
+    at async DatabaseStorage.createSubAward (file:///opt/render/project/src/dist/index.js:9859:28)
+    at async file:///opt/render/project/src/dist/index.js:26183:21 {
+  length: 98,
+  severity: 'ERROR',
+  code: '22001',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'varchar.c',
+  line: '638',
+  routine: 'varchar'
+}
+9:29:04 PM [express] POST /api/sub-awards 500 in 851ms :: {"message":"Failed to create sub-award"}
