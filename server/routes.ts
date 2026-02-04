@@ -13820,23 +13820,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Form 990 report routes
-  app.get("/api/reports/form-990/:organizationId", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/reports/form-990/:organizationId/:taxYear", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const organizationId = parseInt(req.params.organizationId);
+      const taxYear = parseInt(req.params.taxYear);
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
 
-      const { taxYear } = req.query;
-      if (!taxYear) {
-        return res.status(400).json({ message: "Tax year is required" });
+      if (!taxYear || isNaN(taxYear)) {
+        return res.status(400).json({ message: "Valid tax year is required" });
       }
 
-      const year = parseInt(taxYear as string);
-      const report = await storage.getForm990Data(organizationId, year);
+      const report = await storage.getForm990Data(organizationId, taxYear);
       res.json(report);
     } catch (error) {
       console.error("Error generating Form 990 report:", error);
