@@ -185,7 +185,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
       h1 { color: ${primaryColor}; font-size: 24px; margin-bottom: 10px; font-weight: bold; }
       h2 { color: ${accentColor}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
       .header { margin-bottom: 30px; }
-      .logo { max-width: 48px; max-height: 48px; width: auto; height: auto; object-fit: contain; margin-bottom: 15px; }
+      .logo { max-width: 80px; max-height: 40px; width: auto; height: auto; object-fit: contain; margin-bottom: 10px; }
       .header-text { }
       .org-name { color: #666; font-size: 14px; margin-top: 5px; }
       .date-range { color: #888; font-size: 12px; margin-top: 3px; }
