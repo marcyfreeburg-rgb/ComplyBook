@@ -1,0 +1,49 @@
+
+[GET]
+complybook.net/api/forms/168/recent-responses clientIP="216.147.123.52" requestID="025db4bf-9e70-44b6" responseTimeMS=236 responseBytes=1311 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error fetching form: error: invalid input syntax for type integer: "NaN"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getForm (file:///opt/render/project/src/dist/index.js:10406:24)
+    at async file:///opt/render/project/src/dist/index.js:28017:20 {
+  length: 146,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '617',
+  routine: 'pg_strtoint32_safe'
+}
+6:57:34 PM [express] GET /api/forms/168/recent-responses 500 in 425ms :: {"message":"Failed to fetch…
+[GET]
+complybook.net/api/forms/168/recent-responses clientIP="216.147.123.52" requestID="c7677d10-7940-415b" responseTimeMS=428 responseBytes=1311 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:57:38 PM [express] GET /api/audit-logs/168 200 in 601ms :: [{"id":8592,"organizationId":168,"userI…
+[GET]
+complybook.net/api/audit-logs/168 clientIP="216.147.123.52" requestID="c69c541b-7c0c-4f13" responseTimeMS=607 responseBytes=15839 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:57:45 PM [express] GET /api/organizations/168/documents 200 in 309ms :: [{"id":6,"organizationId":…
+[GET]
+complybook.net/api/organizations/168/documents clientIP="216.147.123.52" requestID="13e1fdb8-3386-4287" responseTimeMS=315 responseBytes=1528 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:57:45 PM [express] GET /api/organizations/168/compliance-events 200 in 589ms :: []
+[GET]
+complybook.net/api/organizations/168/compliance-events clientIP="216.147.123.52" requestID="49a7bc95-02a7-454c" responseTimeMS=594 responseBytes=1278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:57:55 PM [express] GET /api/security/vulnerability-scan/summary 304 in 497ms :: {"lastScan":null,"…
+6:57:56 PM [express] GET /api/security/metrics/168 200 in 913ms :: {"totalEvents":18,"criticalEvents…
+[GET]
+complybook.net/api/security/vulnerability-scan/summary clientIP="216.147.123.52" requestID="4f298098-31b2-4691" responseTimeMS=498 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/api/security/metrics/168 clientIP="216.147.123.52" requestID="aba02172-5987-4fe7" responseTimeMS=914 responseBytes=2427 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="cd5e2e11-cc10-4790" responseTimeMS=795 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:58:21 PM [express] GET /api/notifications/168/unread-count 304 in 793ms :: {"count":"0"}
