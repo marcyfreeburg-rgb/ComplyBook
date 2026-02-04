@@ -3469,7 +3469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userRole = await storage.getUserRole(userId, paystub.organizationId);
-      if (!userRole || !['owner', 'admin'].includes(userRole.permissions)) {
+      if (!userRole || (!['owner', 'admin'].includes(userRole.role) && userRole.permissions !== 'full_access')) {
         return res.status(403).json({ message: "Access denied - admin permissions required" });
       }
 
