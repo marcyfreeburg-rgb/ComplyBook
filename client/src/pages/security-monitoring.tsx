@@ -138,12 +138,23 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
   const [newIpDescription, setNewIpDescription] = useState('');
   const [newIpType, setNewIpType] = useState<'allow' | 'block'>('allow');
   
-  // Mock MFA status and IP restrictions (would come from API in production)
-  const [mfaStatus] = useState<MfaStatus>({
-    enabled: false,
-    method: null,
-    enrolledAt: null,
+  // Fetch real MFA status from API
+  const { data: mfaApiStatus } = useQuery<{
+    mfaEnabled: boolean;
+    mfaRequired: boolean;
+    mfaGracePeriodEnd: string | null;
+    mfaVerifiedAt: string | null;
+    hasBackupCodes: boolean;
+    gracePeriodStatus: { isInGracePeriod: boolean; daysRemaining: number };
+  }>({
+    queryKey: ['/api/security/mfa/status'],
   });
+  
+  const mfaStatus: MfaStatus = {
+    enabled: mfaApiStatus?.mfaEnabled ?? false,
+    method: mfaApiStatus?.mfaEnabled ? 'Authenticator App' : null,
+    enrolledAt: mfaApiStatus?.mfaVerifiedAt || null,
+  };
   
   const [ipRestrictions, setIpRestrictions] = useState<IpRestriction[]>([]);
   
