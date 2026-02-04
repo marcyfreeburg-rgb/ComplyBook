@@ -2849,12 +2849,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBankReconciliation(id: number): Promise<void> {
-    // First delete all related reconciliation matches
+    // First, get all transaction IDs that were matched to this reconciliation
+    const matches = await db
+      .select({ transactionId: reconciliationMatches.transactionId })
+      .from(reconciliationMatches)
+      .where(eq(reconciliationMatches.reconciliationId, id));
+    
+    const transactionIds = matches
+      .map(m => m.transactionId)
+      .filter((id): id is number => id !== null);
+    
+    // Reset reconciliation status for affected transactions
+    if (transactionIds.length > 0) {
+      await db
+        .update(transactions)
+        .set({
+          reconciliationStatus: 'unreconciled',
+          reconciledDate: null,
+          reconciledBy: null,
+        })
+        .where(inArray(transactions.id, transactionIds));
+    }
+    
+    // Delete all related reconciliation matches
     await db
       .delete(reconciliationMatches)
       .where(eq(reconciliationMatches.reconciliationId, id));
     
-    // Then delete all bank statement entries
+    // Delete all bank statement entries
     await db
       .delete(bankStatementEntries)
       .where(eq(bankStatementEntries.reconciliationId, id));
