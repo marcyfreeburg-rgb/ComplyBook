@@ -2,20 +2,22 @@ import sgMail from '@sendgrid/mail';
 
 let connectionSettings: any;
 
-// Check if running on Replit
-const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+// Check if running on Replit with connector support
+// Requires both Replit environment vars AND the connector hostname to actually use connectors
+const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID && process.env.REPLIT_CONNECTORS_HOSTNAME);
 
 async function getCredentials() {
-  // For non-Replit environments (e.g., Render), use direct environment variables
-  if (!isReplitEnvironment) {
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
-    
-    if (!apiKey || !fromEmail) {
-      throw new Error('SendGrid credentials not configured. Set SENDGRID_API_KEY and SENDGRID_FROM_EMAIL environment variables.');
-    }
-    
+  // First, check if direct environment variables are set (works on any platform including Render)
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+  
+  if (apiKey && fromEmail) {
     return { apiKey, email: fromEmail };
+  }
+  
+  // If direct env vars not set, try Replit connector (only works on Replit)
+  if (!isReplitEnvironment) {
+    throw new Error('SendGrid credentials not configured. Set SENDGRID_API_KEY and SENDGRID_FROM_EMAIL environment variables.');
   }
 
   // For Replit environment, use the connector
