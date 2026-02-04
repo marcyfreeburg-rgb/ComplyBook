@@ -1,0 +1,22 @@
+7:03:36 PM [express] GET /api/plaid/accounts/168 304 in 437ms :: [{"id":18,"plaidItemId":9,"accountI…
+7:03:36 PM [express] GET /api/auth/mode 304 in 464ms :: {"mode":"local"}
+7:03:36 PM [express] GET /api/invitations/168 200 in 586ms :: []
+7:03:36 PM [express] GET /api/team/168 200 in 587ms :: [{"userId":"local_admin_default","email":"adm…
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="4c7048b4-c03f-4043" responseTimeMS=589 responseBytes=1278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/mode clientIP="216.147.123.52" requestID="776330bc-c361-4209" responseTimeMS=465 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/team/168 clientIP="216.147.123.52" requestID="f802e6a3-d9cf-4555" responseTimeMS=590 responseBytes=1410 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/plaid/accounts/168 clientIP="216.147.123.52" requestID="6aee1491-1c09-4e7f" responseTimeMS=438 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="0705c365-1cf2-4e2e" responseTimeMS=1323 responseBytes=1541 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="ce9bfc33-6543-4b8f" responseTimeMS=235 responseBytes=1522 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+7:04:07 PM [express] POST /api/invitations/168 201 in 1314ms :: {"id":14,"organizationId":168,"email…
+7:04:08 PM [express] GET /api/invitations/168 200 in 233ms :: [{"id":14,"organizationId":168,"email"…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="5ee0e3d0-01cb-4bbc" responseTimeMS=767 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:04:26 PM [express] GET /api/notifications/168/unread-count 304 in 765ms :: {"count":"0"}
