@@ -7,12 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart, Rocket, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Receipt, Target, BarChart3, PieChart, Rocket, Calendar, AlertTriangle, DollarSign } from "lucide-react";
 import { Link } from "wouter";
 import { format, startOfMonth, endOfMonth, isWithinInterval, subMonths } from "date-fns";
 import { safeFormatDate } from "@/lib/utils";
 import { useLocation } from "wouter";
-import type { Organization, Transaction, Budget } from "@shared/schema";
+import type { Organization, Transaction, Budget, PayrollRun } from "@shared/schema";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 type TimePeriod = 'current_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'year';
@@ -122,6 +123,12 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
   }>({
     queryKey: [`/api/dashboard/${currentOrganization.id}/category-breakdown`],
     staleTime: 60000, // Cache breakdown for 1 minute
+  });
+
+  // Query for processed (unpaid) payroll runs
+  const { data: pendingPayrollRuns = [] } = useQuery<PayrollRun[]>({
+    queryKey: [`/api/payroll-runs/${currentOrganization.id}/pending`],
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   useEffect(() => {
@@ -237,6 +244,40 @@ export default function Dashboard({ currentOrganization }: DashboardProps) {
           </Link>
         </div>
       </div>
+
+      {/* Pending Payroll Notice */}
+      {pendingPayrollRuns.length > 0 && (
+        <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20" data-testid="alert-pending-payroll">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">Payroll Awaiting Payment</AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            <p className="mb-2">
+              {pendingPayrollRuns.length === 1 
+                ? "There is 1 payroll run that has been processed but not yet paid."
+                : `There are ${pendingPayrollRuns.length} payroll runs that have been processed but not yet paid.`}
+            </p>
+            <div className="flex items-center gap-4 flex-wrap">
+              {pendingPayrollRuns.slice(0, 3).map((run) => (
+                <span key={run.id} className="text-sm">
+                  <DollarSign className="h-3 w-3 inline mr-1" />
+                  {format(new Date(run.payDate), 'MMM d, yyyy')} - ${parseFloat(run.totalNet || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              ))}
+              {pendingPayrollRuns.length > 3 && (
+                <span className="text-sm text-amber-600 dark:text-amber-400">
+                  +{pendingPayrollRuns.length - 3} more
+                </span>
+              )}
+            </div>
+            <Link href="/payroll">
+              <Button variant="outline" size="sm" className="mt-3" data-testid="button-view-pending-payroll">
+                <DollarSign className="h-4 w-4 mr-2" />
+                View Payroll
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

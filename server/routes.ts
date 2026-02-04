@@ -2778,6 +2778,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get pending (processed but not paid) payroll runs for dashboard notice
+  app.get('/api/payroll-runs/:organizationId/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Get all payroll runs and filter for 'processed' status (not paid yet)
+      const allPayrollRuns = await storage.getPayrollRuns(organizationId);
+      const pendingPayrollRuns = allPayrollRuns.filter(run => run.status === 'processed');
+      res.json(pendingPayrollRuns);
+    } catch (error) {
+      console.error("Error fetching pending payroll runs:", error);
+      res.status(500).json({ message: "Failed to fetch pending payroll runs" });
+    }
+  });
+
   app.post('/api/payroll-runs', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
