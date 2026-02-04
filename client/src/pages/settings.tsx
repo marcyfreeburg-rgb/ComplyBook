@@ -290,11 +290,12 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
   // Team management mutations
   const createInvitationMutation = useMutation({
     mutationFn: async (data: { email: string; permissions: string }) => {
-      return await apiRequest('POST', `/api/invitations/${currentOrganization.id}`, {
+      const response = await apiRequest('POST', `/api/invitations/${currentOrganization.id}`, {
         email: data.email,
         role: 'viewer',
         permissions: data.permissions,
       });
+      return response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/invitations/${currentOrganization.id}`] });

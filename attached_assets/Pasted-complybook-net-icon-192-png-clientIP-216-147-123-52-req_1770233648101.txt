@@ -1,0 +1,38 @@
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="3526883b-f9bf-457c" responseTimeMS=80 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:33:12 PM [express] GET /api/auth/user 200 in 359ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.123.52" requestID="d08e92c4-b6ba-4252" responseTimeMS=478 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/mode clientIP="216.147.123.52" requestID="d36afd04-17f6-4445" responseTimeMS=119 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/team/168 clientIP="216.147.123.52" requestID="379d3ec5-a36f-4aeb" responseTimeMS=605 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.123.52" requestID="826d1518-cbf5-4f8f" responseTimeMS=665 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="da3d1671-b278-4f3d" responseTimeMS=425 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/168 clientIP="216.147.123.52" requestID="c831b7ec-6159-442e" responseTimeMS=505 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="e3863636-3526-40ce" responseTimeMS=425 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/plaid/accounts/168 clientIP="216.147.123.52" requestID="234b81ba-e0d3-4c9f" responseTimeMS=264 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="d7579c6a-4534-4c36" responseTimeMS=352 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/plaid/create-link-token/168 clientIP="216.147.123.52" requestID="cea7d9e0-1aa9-4e1b" responseTimeMS=3 responseBytes=317 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:33:13 PM [express] GET /api/organizations 304 in 351ms :: [{"id":234,"name":"Test Organization LLC…
+7:33:13 PM [express] GET /api/security/mfa/status 304 in 664ms :: {"mfaEnabled":true,"mfaRequired":t…
+[CSRF] Token mismatch - Path: /plaid/create-link-token/168, Method: POST, IP: 172.68.3.142, Cookie: present, Header: missing
+7:33:13 PM [express] GET /api/auth/mode 304 in 117ms :: {"mode":"local"}
+7:33:13 PM [express] GET /api/plaid/accounts/168 304 in 264ms :: [{"id":18,"plaidItemId":9,"accountI…
+7:33:13 PM [express] GET /api/notifications/168/unread-count 304 in 421ms :: {"count":"0"}
+7:33:13 PM [express] GET /api/invitations/168 304 in 423ms :: []
+7:33:13 PM [express] GET /api/categories/168 304 in 501ms :: [{"id":185,"organizationId":168,"name":…
+7:33:13 PM [express] GET /api/team/168 304 in 603ms :: [{"userId":"local_admin_default","email":"adm…
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="7941e000-6ed6-4747" responseTimeMS=237 responseBytes=1521 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[POST]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="018c118f-b52d-41c4" responseTimeMS=1229 responseBytes=1542 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:33:28 PM [express] POST /api/invitations/168 201 in 1219ms :: {"id":17,"organizationId":168,"email…
+7:33:28 PM [express] GET /api/invitations/168 200 in 234ms :: [{"id":17,"organizationId":168,"email"…
