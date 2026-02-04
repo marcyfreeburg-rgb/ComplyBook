@@ -1,0 +1,80 @@
+[GET]
+complybook.net/api/reports/functional-expenses/168/[object%20Object] clientIP="216.147.123.52" requestID="9021527c-361f-4382" responseTimeMS=63 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:46:46 PM [express] GET /api/reports/functional-expenses/168/[object%20Object] 200 in 119ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="2f54a08d-cf39-47ba" responseTimeMS=801 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:47:11 PM [express] GET /api/notifications/168/unread-count 304 in 799ms :: {"count":"0"}
+[GET]
+complybook.net/api/reports/form-990/168/[object%20Object] clientIP="216.147.123.52" requestID="8b90e33b-5408-406c" responseTimeMS=422 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:47:40 PM [express] GET /api/reports/form-990/168/[object%20Object] 200 in 479ms
+Error generating Form 990 narrative: error: invalid input value for enum audit_action: "ai_narrative_generated"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1225:20) {
+  length: 154,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+6:47:53 PM [express] POST /api/form-990/generate-narrative 500 in 6279ms :: {"message":"invalid inpu…
+[POST]
+complybook.net/api/form-990/generate-narrative clientIP="216.147.123.52" requestID="2d5208cf-c449-4e27" responseTimeMS=6282 responseBytes=1343 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="bc87e606-c2c2-40cb" responseTimeMS=782 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:48:12 PM [express] GET /api/notifications/168/unread-count 304 in 780ms :: {"count":"0"}
+[POST]
+complybook.net/api/form-990/generate-narrative clientIP="216.147.123.52" requestID="e72cccc7-c614-42d2" responseTimeMS=5404 responseBytes=1343 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error generating Form 990 narrative: error: invalid input value for enum audit_action: "ai_narrative_generated"
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1225:20) {
+  length: 154,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+6:48:56 PM [express] POST /api/form-990/generate-narrative 500 in 5378ms :: {"message":"invalid inpu…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="fd20fe97-35a0-4ce5" responseTimeMS=780 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+6:49:13 PM [express] GET /api/notifications/168/unread-count 304 in 778ms :: {"count":"0"}
