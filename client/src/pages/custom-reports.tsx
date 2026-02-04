@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X, Mail, Clock, Calendar, LayoutTemplate, Copy } from "lucide-react";
+import { Plus, Play, Save, Download, Trash2, Edit, ChevronDown, X, Mail, Clock, Calendar, LayoutTemplate, Copy, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -451,6 +451,149 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
     } catch (error) {
       console.error("Error exporting report:", error);
       toast({ title: "Failed to export report", variant: "destructive" });
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (!executingReport || !reportResults || reportResults.length === 0) return;
+
+    const primaryColor = currentOrganization.invoicePrimaryColor || '#3b82f6';
+    const accentColor = currentOrganization.invoiceAccentColor || '#1e40af';
+    const fontFamily = currentOrganization.invoiceFontFamily || 'Arial';
+    
+    const logoHtml = currentOrganization.logoUrl 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" width="180" style="display: block; max-width: 180px; height: auto; margin-bottom: 10px;" />` 
+      : '';
+    
+    const dateRange = dateFrom && dateTo 
+      ? `${format(new Date(dateFrom), 'MMM dd, yyyy')} - ${format(new Date(dateTo), 'MMM dd, yyyy')}`
+      : `Generated on ${format(new Date(), 'MMM dd, yyyy')}`;
+
+    const hasAmountField = reportResults[0] && ('amount' in reportResults[0] || 'Amount' in reportResults[0]);
+    const hasTypeField = reportResults[0] && ('type' in reportResults[0] || 'Type' in reportResults[0]);
+    const amountKey = reportResults[0] && 'amount' in reportResults[0] ? 'amount' : 'Amount';
+    const typeKey = reportResults[0] && 'type' in reportResults[0] ? 'type' : 'Type';
+    
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let totalAmount = 0;
+    
+    if (hasAmountField) {
+      reportResults.forEach((row: any) => {
+        const amount = parseFloat(row[amountKey]) || 0;
+        totalAmount += amount;
+        
+        if (hasTypeField) {
+          const type = String(row[typeKey]).toLowerCase();
+          if (type === 'income') {
+            totalIncome += amount;
+          } else if (type === 'expense') {
+            totalExpenses += amount;
+          }
+        }
+      });
+    }
+
+    const formatAmount = (value: number) => {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    };
+
+    const tableHeaders = Object.keys(reportResults[0]).map(key => `<th>${key}</th>`).join('');
+    const tableRows = reportResults.map((row: any) => {
+      const cells = Object.entries(row).map(([key, value]: [string, any]) => {
+        const isAmountField = key.toLowerCase() === 'amount';
+        const displayValue = value instanceof Date 
+          ? format(value, 'MMM dd, yyyy')
+          : value ?? '-';
+        return `<td class="${isAmountField ? 'amount' : ''}">${displayValue}</td>`;
+      }).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    let summaryHtml = '';
+    if (hasAmountField && hasTypeField && (totalIncome > 0 || totalExpenses > 0)) {
+      const netAmount = totalIncome - totalExpenses;
+      summaryHtml = `
+        <div class="summary">
+          <h2>Summary</h2>
+          <div class="summary-row"><span>Total Income:</span><span class="income">${formatAmount(totalIncome)}</span></div>
+          <div class="summary-row"><span>Total Expenses:</span><span class="expense">${formatAmount(totalExpenses)}</span></div>
+          <div class="summary-row total"><span>Net Amount:</span><span class="${netAmount >= 0 ? 'income' : 'expense'}">${formatAmount(netAmount)}</span></div>
+        </div>
+      `;
+    } else if (hasAmountField) {
+      summaryHtml = `
+        <div class="summary">
+          <h2>Summary</h2>
+          <div class="summary-row total"><span>Total:</span><span>${formatAmount(totalAmount)}</span></div>
+        </div>
+      `;
+    }
+
+    const footerHtml = currentOrganization.invoiceFooter 
+      ? `<div class="footer">${currentOrganization.invoiceFooter}</div>`
+      : '';
+
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            body { font-family: ${fontFamily}, sans-serif; margin: 40px; }
+            h1 { color: ${primaryColor}; font-size: 24px; margin-bottom: 10px; font-weight: bold; }
+            h2 { color: ${accentColor}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
+            .header { margin-bottom: 30px; }
+            .org-name { color: #666; font-size: 14px; margin-top: 5px; }
+            .date-range { color: #888; font-size: 12px; margin-top: 3px; }
+            .description { color: #666; font-size: 13px; margin-top: 8px; font-style: italic; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { text-align: left; padding: 8px; background-color: ${primaryColor}15; border-bottom: 2px solid ${primaryColor}; color: ${primaryColor}; font-weight: 600; font-size: 12px; }
+            td { padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; }
+            .amount { text-align: right; font-family: monospace; }
+            .summary { margin-top: 30px; padding: 15px; background-color: #f9f9f9; border-radius: 4px; }
+            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+            .summary-row.total { font-weight: bold; border-top: 2px solid ${primaryColor}; border-bottom: none; margin-top: 10px; padding-top: 15px; }
+            .income { color: #16a34a; }
+            .expense { color: #dc2626; }
+            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #888; white-space: pre-line; }
+            @media print { body { margin: 20px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${logoHtml}
+            <h1>${executingReport.name}</h1>
+            <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
+            <div class="date-range">${dateRange}</div>
+            ${executingReport.description ? `<div class="description">${executingReport.description}</div>` : ''}
+          </div>
+          
+          <table>
+            <thead>
+              <tr>${tableHeaders}</tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          
+          ${summaryHtml}
+          ${footerHtml}
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+      toast({
+        title: "PDF Ready",
+        description: "Use the print dialog to save as PDF",
+      });
     }
   };
 
@@ -1003,14 +1146,24 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
                 Run Report
               </Button>
               {reportResults && reportResults.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={handleExportCSV}
-                  data-testid="button-export-csv"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Export CSV
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportCSV}
+                    data-testid="button-export-csv"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportPDF}
+                    data-testid="button-export-pdf"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export PDF
+                  </Button>
+                </>
               )}
             </div>
             {executeMutation.isPending && (
