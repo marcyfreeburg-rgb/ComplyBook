@@ -1,0 +1,40 @@
+complybook.net/api/analytics/168/financial-health clientIP="216.147.123.52" requestID="0b9188db-7b7d-4649" responseTimeMS=923 responseBytes=1430 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:45:06 PM [express] GET /api/analytics/168/financial-health 200 in 920ms :: {"burnRate":"0","runway…
+6:45:06 PM [express] GET /api/analytics/168/spending-insights 200 in 1271ms :: {"topExpenseCategorie…
+[GET]
+complybook.net/api/analytics/168/year-over-year clientIP="216.147.123.52" requestID="7c133c9d-b036-40ad" responseTimeMS=3853 responseBytes=1696 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:45:08 PM [express] GET /api/analytics/168/year-over-year 200 in 3846ms :: {"currentYear":{"income"…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="1b2403be-0ceb-4d85" responseTimeMS=240 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:45:10 PM [express] GET /api/notifications/168/unread-count 304 in 239ms :: {"count":"0"}
+[GET]
+complybook.net/api/custom-reports/168 clientIP="216.147.123.52" requestID="2d5bc42c-cee5-414d" responseTimeMS=816 responseBytes=1593 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/168 clientIP="216.147.123.52" requestID="1af82339-6700-461d" responseTimeMS=866 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:45:31 PM [express] GET /api/custom-reports/168 200 in 812ms :: [{"id":9,"organizationId":168,"name…
+6:45:31 PM [express] GET /api/categories/168 304 in 864ms :: [{"id":185,"organizationId":168,"name":…
+[POST]
+complybook.net/api/custom-reports/168/9/execute clientIP="216.147.123.52" requestID="5213a70f-0f12-4e78" responseTimeMS=973 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:45:47 PM [express] POST /api/custom-reports/168/9/execute 200 in 969ms :: [{"description":"Safeway…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="ff510160-0d97-4218" responseTimeMS=239 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/custom-reports/168/8/execute clientIP="216.147.123.52" requestID="6bd82fa1-3b86-43f5" responseTimeMS=911 responseBytes=1405 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:46:10 PM [express] POST /api/custom-reports/168/8/execute 200 in 909ms :: [{"amount":"21.50","date…
+6:46:10 PM [express] GET /api/notifications/168/unread-count 304 in 237ms :: {"count":"0"}
+[POST]
+complybook.net/api/custom-reports/168 clientIP="216.147.123.52" requestID="68c196bf-0cfd-45f0" responseTimeMS=808 responseBytes=1526 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/custom-reports/168 clientIP="216.147.123.52" requestID="37d1c5af-4baf-4adc" responseTimeMS=254 responseBytes=1715 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:46:29 PM [express] POST /api/custom-reports/168 201 in 804ms :: {"id":12,"organizationId":168,"nam…
+6:46:29 PM [express] GET /api/custom-reports/168 200 in 246ms :: [{"id":12,"organizationId":168,"nam…
+[POST]
+complybook.net/api/custom-reports/168/12/execute clientIP="216.147.123.52" requestID="b8e27ea5-ddcf-47c9" responseTimeMS=366 responseBytes=1278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:46:38 PM [express] POST /api/custom-reports/168/12/execute 200 in 364ms :: []
+[GET]
+complybook.net/api/reports/functional-expenses/168/[object%20Object] clientIP="216.147.123.52" requestID="9021527c-361f-4382" responseTimeMS=63 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+6:46:46 PM [express] GET /api/reports/functional-expenses/168/[object%20Object] 200 in 119ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="2f54a08d-cf39-47ba" responseTimeMS=801 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+6:47:11 PM [express] GET /api/notifications/168/unread-count 304 in 799ms :: {"count":"0"}
