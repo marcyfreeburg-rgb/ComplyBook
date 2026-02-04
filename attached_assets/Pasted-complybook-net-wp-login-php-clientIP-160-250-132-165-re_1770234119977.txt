@@ -1,0 +1,27 @@
+complybook.net/wp-login.php clientIP="160.250.132.165" requestID="c24c3f09-5fd8-494e" responseTimeMS=4 responseBytes=1863 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15"
+[GET]
+complybook.net/wp-admin/ clientIP="160.250.132.165" requestID="8ab087f9-2e11-4b55" responseTimeMS=3 responseBytes=1863 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15"
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+[GET]
+complybook.net/api/reports/form-990/168/[object%20Object] clientIP="216.147.123.52" requestID="77209839-5632-44ea" responseTimeMS=60 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="3900f81f-511c-41c1" responseTimeMS=3638 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:38:22 PM [express] GET /api/reports/form-990/168/[object%20Object] 200 in 124ms
+7:38:22 PM [express] GET /api/notifications/168/unread-count 304 in 3636ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="b9ada815-a485-4535" responseTimeMS=770 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:39:23 PM [express] GET /api/notifications/168/unread-count 304 in 768ms :: {"count":"0"}
+[POST]
+complybook.net/api/form-990/generate-narrative clientIP="216.147.123.52" requestID="1dbbf13c-2a5e-47bd" responseTimeMS=4792 responseBytes=1567 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:39:26 PM [express] POST /api/form-990/generate-narrative 200 in 4789ms :: {"narrative":"C Cubed Tr…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="9976e7d1-6ae2-4309" responseTimeMS=768 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:40:24 PM [express] GET /api/notifications/168/unread-count 304 in 767ms :: {"count":"0"}
+[POST]
+complybook.net/api/form-990/generate-narrative clientIP="216.147.123.52" requestID="4e2c7b7f-4b73-40ab" responseTimeMS=6909 responseBytes=2220 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+7:40:42 PM [express] POST /api/form-990/generate-narrative 200 in 6904ms :: {"narrative":"**Program …
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="3748b137-f77a-4ff7" responseTimeMS=786 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:41:25 PM [express] GET /api/notifications/168/unread-count 304 in 767ms :: {"count":"0"}

@@ -66,7 +66,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
   const [customContext, setCustomContext] = useState("");
 
   const { data: reportData, isLoading, error, refetch } = useQuery<Form990Data>({
-    queryKey: [`/api/reports/form-990/${currentOrganization.id}`, { taxYear }],
+    queryKey: [`/api/reports/form-990/${currentOrganization.id}/${taxYear}`],
   });
 
   const generateNarrativeMutation = useMutation({
