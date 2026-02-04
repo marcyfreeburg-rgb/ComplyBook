@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Download, BarChart3, PieChart, TrendingUp, AlertCircle } from "lucide-react";
+import { Download, BarChart3, PieChart, TrendingUp, AlertCircle, FileText } from "lucide-react";
 import type { Organization } from "@shared/schema";
 import { formatCurrency } from "@/lib/utils";
 
@@ -87,6 +87,155 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
     });
   };
 
+  const handleExportPDF = () => {
+    if (!reportData) return;
+
+    const primaryColor = currentOrganization.invoicePrimaryColor || '#3b82f6';
+    const accentColor = currentOrganization.invoiceAccentColor || '#1e40af';
+    const fontFamily = currentOrganization.invoiceFontFamily || 'Arial';
+    
+    const logoHtml = currentOrganization.logoUrl 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" style="max-width: 120px; max-height: 60px; width: auto; height: auto; object-fit: contain; margin-bottom: 10px;" />` 
+      : '';
+    
+    const footerText = currentOrganization.invoiceFooter || '';
+    const footerHtml = footerText 
+      ? `<div style="border-top: 1px solid #ddd; padding-top: 20px; margin-top: 40px; text-align: center; font-size: 10px; color: #888; white-space: pre-line;">${footerText}</div>`
+      : '';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Functional Expense Report</title>
+          <style>
+            body { font-family: ${fontFamily}, sans-serif; margin: 40px; }
+            h1 { color: ${primaryColor}; font-size: 24px; margin-bottom: 10px; font-weight: bold; }
+            h2 { color: ${accentColor}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
+            .header { margin-bottom: 30px; }
+            .org-name { color: #666; font-size: 14px; margin-top: 5px; }
+            .date-range { color: #888; font-size: 12px; margin-top: 3px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { text-align: left; padding: 8px; background-color: ${primaryColor}15; border-bottom: 2px solid ${primaryColor}; color: ${primaryColor}; font-weight: 600; }
+            td { padding: 8px; border-bottom: 1px solid #eee; }
+            .amount { text-align: right; font-family: monospace; }
+            .percentage { text-align: right; }
+            .total { font-weight: bold; border-top: 2px solid ${primaryColor}; }
+            .summary-box { background-color: ${primaryColor}10; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+            .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center; }
+            .summary-item { }
+            .summary-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+            .summary-value { font-size: 24px; font-weight: bold; color: ${primaryColor}; }
+            .summary-percent { font-size: 14px; color: #888; }
+            @media print { body { margin: 20px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            ${logoHtml}
+            <h1>Functional Expense Report</h1>
+            <div class="org-name">${currentOrganization.companyName || currentOrganization.name}</div>
+            <div class="date-range">${new Date(dateRange.startDate).toLocaleDateString()} - ${new Date(dateRange.endDate).toLocaleDateString()}</div>
+          </div>
+
+          <div class="summary-box">
+            <h2 style="margin-top: 0;">Summary by Function</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Function</th>
+                  <th class="amount">Amount</th>
+                  <th class="percentage">Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Program Services</td>
+                  <td class="amount">${formatCurrency(reportData.programExpenses)}</td>
+                  <td class="percentage">${reportData.programPercentage.toFixed(2)}%</td>
+                </tr>
+                <tr>
+                  <td>Management & General</td>
+                  <td class="amount">${formatCurrency(reportData.administrativeExpenses)}</td>
+                  <td class="percentage">${reportData.administrativePercentage.toFixed(2)}%</td>
+                </tr>
+                <tr>
+                  <td>Fundraising</td>
+                  <td class="amount">${formatCurrency(reportData.fundraisingExpenses)}</td>
+                  <td class="percentage">${reportData.fundraisingPercentage.toFixed(2)}%</td>
+                </tr>
+                <tr class="total">
+                  <td>Total Expenses</td>
+                  <td class="amount">${formatCurrency(reportData.totalExpenses)}</td>
+                  <td class="percentage">100.00%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          ${reportData.expensesByProgram.length > 0 ? `
+            <h2>Expenses by Program</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th class="amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${reportData.expensesByProgram.map(p => `
+                  <tr>
+                    <td>${p.programName}</td>
+                    <td class="amount">${formatCurrency(p.amount)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${reportData.expensesByCategory.length > 0 ? `
+            <h2>Expenses by Category</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Function</th>
+                  <th>Category</th>
+                  <th class="amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${reportData.expensesByCategory.map(c => `
+                  <tr>
+                    <td>${c.functionalCategory}</td>
+                    <td>${c.categoryName}</td>
+                    <td class="amount">${formatCurrency(c.amount)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${footerHtml}
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+      toast({
+        title: "PDF Ready",
+        description: "Use the print dialog to save as PDF",
+      });
+    }
+  };
+
   const calculateColor = (percentage: number, type: string) => {
     if (type === 'program') {
       // Program expenses should be high (good if > 70%)
@@ -137,10 +286,16 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
           </p>
         </div>
         {reportData && (
-          <Button onClick={handleExportCSV} data-testid="button-export-csv">
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportPDF} data-testid="button-export-pdf">
+              <FileText className="mr-2 h-4 w-4" />
+              Export PDF
+            </Button>
+            <Button onClick={handleExportCSV} data-testid="button-export-csv">
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         )}
       </div>
 
