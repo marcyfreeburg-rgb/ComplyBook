@@ -1932,6 +1932,86 @@ export const insertPayrollItemDeductionSchema = createInsertSchema(payrollItemDe
 export type InsertPayrollItemDeduction = z.infer<typeof insertPayrollItemDeductionSchema>;
 export type PayrollItemDeduction = typeof payrollItemDeductions.$inferSelect;
 
+// PAYSTUBS - Colorado-compliant pay statements
+export const paystubs = pgTable("paystubs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  payrollRunId: integer("payroll_run_id").notNull().references(() => payrollRuns.id, { onDelete: 'cascade' }),
+  payrollItemId: integer("payroll_item_id").notNull().references(() => payrollItems.id, { onDelete: 'cascade' }),
+  employeeId: integer("employee_id").notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Employee Info
+  employeeName: varchar("employee_name", { length: 255 }).notNull(),
+  employeeAddress: text("employee_address"),
+  ssnLastFour: varchar("ssn_last_four", { length: 4 }),
+  
+  // Employer Info
+  employerName: varchar("employer_name", { length: 255 }).notNull(),
+  employerAddress: text("employer_address"),
+  employerEin: varchar("employer_ein", { length: 20 }),
+  
+  // Pay Period Info
+  payPeriodStart: timestamp("pay_period_start").notNull(),
+  payPeriodEnd: timestamp("pay_period_end").notNull(),
+  payDate: timestamp("pay_date").notNull(),
+  payFrequency: varchar("pay_frequency", { length: 50 }),
+  checkNumber: varchar("check_number", { length: 50 }),
+  
+  // Hours (for hourly/non-exempt employees)
+  isHourly: integer("is_hourly").notNull().default(0), // 1 = hourly, 0 = salary
+  regularHours: numeric("regular_hours", { precision: 8, scale: 2 }),
+  overtimeHours: numeric("overtime_hours", { precision: 8, scale: 2 }),
+  hourlyRate: numeric("hourly_rate", { precision: 12, scale: 2 }),
+  
+  // Earnings
+  regularPay: numeric("regular_pay", { precision: 12, scale: 2 }).notNull(),
+  overtimePay: numeric("overtime_pay", { precision: 12, scale: 2 }).default('0'),
+  bonuses: numeric("bonuses", { precision: 12, scale: 2 }).default('0'),
+  commissions: numeric("commissions", { precision: 12, scale: 2 }).default('0'),
+  otherEarnings: numeric("other_earnings", { precision: 12, scale: 2 }).default('0'),
+  grossPay: numeric("gross_pay", { precision: 12, scale: 2 }).notNull(),
+  
+  // Itemized Deductions (stored as JSON for flexibility)
+  deductionsDetail: jsonb("deductions_detail").notNull().default('[]'), // Array of {name, type, amount}
+  
+  // Tax Withholdings (separate for clarity on paystub)
+  federalIncomeTax: numeric("federal_income_tax", { precision: 12, scale: 2 }).default('0'),
+  stateIncomeTax: numeric("state_income_tax", { precision: 12, scale: 2 }).default('0'),
+  socialSecurityTax: numeric("social_security_tax", { precision: 12, scale: 2 }).default('0'),
+  medicareTax: numeric("medicare_tax", { precision: 12, scale: 2 }).default('0'),
+  
+  // Other Deductions
+  otherDeductions: numeric("other_deductions", { precision: 12, scale: 2 }).default('0'),
+  totalDeductions: numeric("total_deductions", { precision: 12, scale: 2 }).notNull(),
+  
+  // Net Pay
+  netPay: numeric("net_pay", { precision: 12, scale: 2 }).notNull(),
+  
+  // Year-to-Date Totals
+  ytdGrossPay: numeric("ytd_gross_pay", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdFederalTax: numeric("ytd_federal_tax", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdStateTax: numeric("ytd_state_tax", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdSocialSecurity: numeric("ytd_social_security", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdMedicare: numeric("ytd_medicare", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdOtherDeductions: numeric("ytd_other_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdNetPay: numeric("ytd_net_pay", { precision: 12, scale: 2 }).notNull().default('0'),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_paystubs_payroll_run_id").on(table.payrollRunId),
+  index("idx_paystubs_employee_id").on(table.employeeId),
+  index("idx_paystubs_org_id").on(table.organizationId),
+  index("idx_paystubs_pay_date").on(table.payDate),
+]);
+
+export const insertPaystubSchema = createInsertSchema(paystubs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPaystub = z.infer<typeof insertPaystubSchema>;
+export type Paystub = typeof paystubs.$inferSelect;
+
 // ============================================
 // NONPROFIT-SPECIFIC FEATURES
 // ============================================

@@ -126,6 +126,9 @@ import {
   payrollItemDeductions,
   type PayrollItemDeduction,
   type InsertPayrollItemDeduction,
+  paystubs,
+  type Paystub,
+  type InsertPaystub,
   // Nonprofit-specific types
   funds,
   type Fund,
@@ -894,6 +897,21 @@ export interface IStorage {
   getPayrollItemDeductions(payrollItemId: number): Promise<Array<PayrollItemDeduction & { deductionName: string }>>;
   createPayrollItemDeduction(deduction: InsertPayrollItemDeduction): Promise<PayrollItemDeduction>;
   deletePayrollItemDeduction(id: number): Promise<void>;
+
+  // Paystub operations
+  getPaystubsByPayrollRun(payrollRunId: number): Promise<Paystub[]>;
+  getPaystubsByEmployee(employeeId: number): Promise<Paystub[]>;
+  getPaystub(id: number): Promise<Paystub | undefined>;
+  createPaystub(paystub: InsertPaystub): Promise<Paystub>;
+  getEmployeeYtdTotals(employeeId: number, year: number): Promise<{
+    ytdGrossPay: string;
+    ytdFederalTax: string;
+    ytdStateTax: string;
+    ytdSocialSecurity: string;
+    ytdMedicare: string;
+    ytdOtherDeductions: string;
+    ytdNetPay: string;
+  }>;
 
   // Nonprofit-specific: Fund operations
   getFunds(organizationId: number): Promise<Fund[]>;
@@ -7569,6 +7587,68 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayrollItemDeduction(id: number): Promise<void> {
     await db.delete(payrollItemDeductions).where(eq(payrollItemDeductions.id, id));
+  }
+
+  // Paystub operations
+  async getPaystubsByPayrollRun(payrollRunId: number): Promise<Paystub[]> {
+    return await db.select().from(paystubs)
+      .where(eq(paystubs.payrollRunId, payrollRunId))
+      .orderBy(paystubs.employeeName);
+  }
+
+  async getPaystubsByEmployee(employeeId: number): Promise<Paystub[]> {
+    return await db.select().from(paystubs)
+      .where(eq(paystubs.employeeId, employeeId))
+      .orderBy(desc(paystubs.payDate));
+  }
+
+  async getPaystub(id: number): Promise<Paystub | undefined> {
+    const [paystub] = await db.select().from(paystubs).where(eq(paystubs.id, id));
+    return paystub;
+  }
+
+  async createPaystub(paystub: InsertPaystub): Promise<Paystub> {
+    const [newPaystub] = await db.insert(paystubs).values(paystub).returning();
+    return newPaystub;
+  }
+
+  async getEmployeeYtdTotals(employeeId: number, year: number): Promise<{
+    ytdGrossPay: string;
+    ytdFederalTax: string;
+    ytdStateTax: string;
+    ytdSocialSecurity: string;
+    ytdMedicare: string;
+    ytdOtherDeductions: string;
+    ytdNetPay: string;
+  }> {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+    
+    const result = await db.select({
+      ytdGrossPay: sql<string>`COALESCE(SUM(${paystubs.grossPay}), 0)`,
+      ytdFederalTax: sql<string>`COALESCE(SUM(${paystubs.federalIncomeTax}), 0)`,
+      ytdStateTax: sql<string>`COALESCE(SUM(${paystubs.stateIncomeTax}), 0)`,
+      ytdSocialSecurity: sql<string>`COALESCE(SUM(${paystubs.socialSecurityTax}), 0)`,
+      ytdMedicare: sql<string>`COALESCE(SUM(${paystubs.medicareTax}), 0)`,
+      ytdOtherDeductions: sql<string>`COALESCE(SUM(${paystubs.otherDeductions}), 0)`,
+      ytdNetPay: sql<string>`COALESCE(SUM(${paystubs.netPay}), 0)`,
+    })
+    .from(paystubs)
+    .where(and(
+      eq(paystubs.employeeId, employeeId),
+      gte(paystubs.payDate, startOfYear),
+      lte(paystubs.payDate, endOfYear)
+    ));
+
+    return result[0] || {
+      ytdGrossPay: '0',
+      ytdFederalTax: '0',
+      ytdStateTax: '0',
+      ytdSocialSecurity: '0',
+      ytdMedicare: '0',
+      ytdOtherDeductions: '0',
+      ytdNetPay: '0',
+    };
   }
 
   // ============================================

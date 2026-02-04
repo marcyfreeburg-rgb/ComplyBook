@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { PayrollRun, PayrollItem, Employee, Deduction, Organization, Document as DocumentType } from "@shared/schema";
+import type { PayrollRun, PayrollItem, Employee, Deduction, Organization, Document as DocumentType, Paystub } from "@shared/schema";
 
 interface PayrollProps {
   currentOrganization: Organization;
@@ -40,6 +40,8 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
   const [selectedPayrollRun, setSelectedPayrollRun] = useState<PayrollRun | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [hoursWorked, setHoursWorked] = useState<string>("");
+  const [isPaystubDialogOpen, setIsPaystubDialogOpen] = useState(false);
+  const [selectedPaystub, setSelectedPaystub] = useState<Paystub | null>(null);
   
   const [formData, setFormData] = useState({
     payPeriodStart: "",
@@ -180,6 +182,23 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
     queryKey: [`/api/payroll-items/${selectedPayrollRun?.id}`],
     enabled: !!selectedPayrollRun,
   });
+
+  const { data: paystubs = [] } = useQuery<Paystub[]>({
+    queryKey: ['/api/paystubs/payroll-run', selectedPayrollRun?.id],
+    queryFn: async () => {
+      if (!selectedPayrollRun?.id) return [];
+      const response = await fetch(`/api/paystubs/payroll-run/${selectedPayrollRun.id}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!selectedPayrollRun && selectedPayrollRun.status !== 'draft',
+  });
+
+  const getPaystubForItem = (payrollItemId: number): Paystub | undefined => {
+    return paystubs.find(p => p.payrollItemId === payrollItemId);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -754,25 +773,51 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
                           <TableHead>Gross Pay</TableHead>
                           <TableHead>Deductions</TableHead>
                           <TableHead>Net Pay</TableHead>
+                          {selectedPayrollRun.status !== 'draft' && (
+                            <TableHead>Paystub</TableHead>
+                          )}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {payrollItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{item.employeeName}</p>
-                                {item.employeeNumber && (
-                                  <p className="text-xs text-muted-foreground">#{item.employeeNumber}</p>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>{item.hoursWorked || '-'}</TableCell>
-                            <TableCell>${parseFloat(item.grossPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell>${parseFloat(item.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="font-semibold">${parseFloat(item.netPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                          </TableRow>
-                        ))}
+                        {payrollItems.map((item) => {
+                          const paystub = getPaystubForItem(item.id);
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{item.employeeName}</p>
+                                  {item.employeeNumber && (
+                                    <p className="text-xs text-muted-foreground">#{item.employeeNumber}</p>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>{item.hoursWorked || '-'}</TableCell>
+                              <TableCell>${parseFloat(item.grossPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell>${parseFloat(item.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell className="font-semibold">${parseFloat(item.netPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                              {selectedPayrollRun.status !== 'draft' && (
+                                <TableCell>
+                                  {paystub ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedPaystub(paystub);
+                                        setIsPaystubDialogOpen(true);
+                                      }}
+                                      data-testid={`button-view-paystub-${item.id}`}
+                                    >
+                                      <FileText className="h-4 w-4 mr-1" />
+                                      View
+                                    </Button>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
@@ -900,6 +945,216 @@ export default function Payroll({ currentOrganization, userId }: PayrollProps) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Paystub Viewing Dialog */}
+      <Dialog open={isPaystubDialogOpen} onOpenChange={setIsPaystubDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-paystub">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Pay Statement
+            </DialogTitle>
+            <DialogDescription>
+              Colorado-compliant paycheck stub
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPaystub && (
+            <div className="space-y-6 mt-4">
+              {/* Header Section */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Employer</h4>
+                    <p className="font-medium">{selectedPaystub.employerName}</p>
+                    {selectedPaystub.employerAddress && (
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedPaystub.employerAddress}</p>
+                    )}
+                    {selectedPaystub.employerEin && (
+                      <p className="text-sm text-muted-foreground">EIN: {selectedPaystub.employerEin}</p>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Employee</h4>
+                    <p className="font-medium">{selectedPaystub.employeeName}</p>
+                    {selectedPaystub.employeeAddress && (
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedPaystub.employeeAddress}</p>
+                    )}
+                    {selectedPaystub.ssnLastFour && (
+                      <p className="text-sm text-muted-foreground">SSN: XXX-XX-{selectedPaystub.ssnLastFour}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Pay Period Info */}
+              <div className="grid grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Pay Period</p>
+                  <p className="font-medium text-sm">
+                    {new Date(selectedPaystub.payPeriodStart).toLocaleDateString()} - {new Date(selectedPaystub.payPeriodEnd).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Pay Date</p>
+                  <p className="font-medium text-sm">{new Date(selectedPaystub.payDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Pay Frequency</p>
+                  <p className="font-medium text-sm">{selectedPaystub.payFrequency || '-'}</p>
+                </div>
+                {selectedPaystub.checkNumber && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Check #</p>
+                    <p className="font-medium text-sm">{selectedPaystub.checkNumber}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Earnings Section */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted px-4 py-2">
+                  <h4 className="font-semibold text-sm">Earnings</h4>
+                </div>
+                <div className="p-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        {selectedPaystub.isHourly === 1 && (
+                          <>
+                            <TableHead className="text-right">Hours</TableHead>
+                            <TableHead className="text-right">Rate</TableHead>
+                          </>
+                        )}
+                        <TableHead className="text-right">Current</TableHead>
+                        <TableHead className="text-right">YTD</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>Regular Pay</TableCell>
+                        {selectedPaystub.isHourly === 1 && (
+                          <>
+                            <TableCell className="text-right">{selectedPaystub.regularHours || '-'}</TableCell>
+                            <TableCell className="text-right">${parseFloat(selectedPaystub.hourlyRate || '0').toFixed(2)}</TableCell>
+                          </>
+                        )}
+                        <TableCell className="text-right">${parseFloat(selectedPaystub.regularPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">-</TableCell>
+                      </TableRow>
+                      {parseFloat(selectedPaystub.overtimePay || '0') > 0 && (
+                        <TableRow>
+                          <TableCell>Overtime Pay</TableCell>
+                          {selectedPaystub.isHourly === 1 && (
+                            <>
+                              <TableCell className="text-right">{selectedPaystub.overtimeHours || '-'}</TableCell>
+                              <TableCell className="text-right">-</TableCell>
+                            </>
+                          )}
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.overtimePay || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">-</TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>Gross Pay</TableCell>
+                        {selectedPaystub.isHourly === 1 && (
+                          <>
+                            <TableCell></TableCell>
+                            <TableCell></TableCell>
+                          </>
+                        )}
+                        <TableCell className="text-right">${parseFloat(selectedPaystub.grossPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">${parseFloat(selectedPaystub.ytdGrossPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Deductions Section */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted px-4 py-2">
+                  <h4 className="font-semibold text-sm">Deductions & Withholdings</h4>
+                </div>
+                <div className="p-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Current</TableHead>
+                        <TableHead className="text-right">YTD</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {parseFloat(selectedPaystub.federalIncomeTax || '0') > 0 && (
+                        <TableRow>
+                          <TableCell>Federal Income Tax</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.federalIncomeTax || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.ytdFederalTax).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      )}
+                      {parseFloat(selectedPaystub.stateIncomeTax || '0') > 0 && (
+                        <TableRow>
+                          <TableCell>Colorado State Tax</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.stateIncomeTax || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.ytdStateTax).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      )}
+                      {parseFloat(selectedPaystub.socialSecurityTax || '0') > 0 && (
+                        <TableRow>
+                          <TableCell>Social Security (6.2%)</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.socialSecurityTax || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.ytdSocialSecurity).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      )}
+                      {parseFloat(selectedPaystub.medicareTax || '0') > 0 && (
+                        <TableRow>
+                          <TableCell>Medicare (1.45%)</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.medicareTax || '0').toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(selectedPaystub.ytdMedicare).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      )}
+                      {/* Itemized other deductions */}
+                      {Array.isArray(selectedPaystub.deductionsDetail) && (selectedPaystub.deductionsDetail as Array<{name: string; type: string; amount: string}>)
+                        .filter(d => d.type !== 'tax')
+                        .map((ded, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>{ded.name}</TableCell>
+                            <TableCell className="text-right">${parseFloat(ded.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-right">-</TableCell>
+                          </TableRow>
+                        ))}
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>Total Deductions</TableCell>
+                        <TableCell className="text-right">${parseFloat(selectedPaystub.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">-</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Net Pay Summary */}
+              <div className="border-2 border-primary/30 rounded-lg p-4 bg-primary/5">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Net Pay (Take Home)</p>
+                    <p className="text-2xl font-bold" data-testid="text-paystub-net-pay">${parseFloat(selectedPaystub.netPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">YTD Net Pay</p>
+                    <p className="text-lg font-semibold" data-testid="text-paystub-ytd-net">${parseFloat(selectedPaystub.ytdNetPay).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground text-center">
+                This statement is for informational purposes. Retain for your records.
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

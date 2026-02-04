@@ -2892,6 +2892,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const processedPayrollRun = await storage.processPayrollRun(payrollRunId, userId);
       await storage.logUpdate(payrollRun.organizationId, userId, 'payroll_run', String(payrollRunId), payrollRun, processedPayrollRun);
+
+      // Generate paystubs for all employees in this payroll run
+      const payrollItems = await storage.getPayrollItems(payrollRunId);
+      const organization = await storage.getOrganization(payrollRun.organizationId);
+      
+      if (organization) {
+        const payYear = new Date(payrollRun.payDate).getFullYear();
+        
+        for (const item of payrollItems) {
+          const employee = await storage.getEmployee(item.employeeId);
+          if (!employee) continue;
+
+          // Get itemized deductions for this payroll item
+          const itemDeductions = await storage.getPayrollItemDeductions(item.id);
+          
+          // Categorize deductions
+          let federalTax = 0;
+          let stateTax = 0;
+          let socialSecurity = 0;
+          let medicare = 0;
+          let otherDeductions = 0;
+          const deductionsDetail: Array<{name: string; type: string; amount: string}> = [];
+          
+          for (const ded of itemDeductions) {
+            const deduction = await storage.getDeduction(ded.deductionId);
+            if (!deduction) continue;
+            
+            const amount = parseFloat(ded.amount);
+            const dedName = deduction.name.toLowerCase();
+            
+            deductionsDetail.push({
+              name: deduction.name,
+              type: deduction.type,
+              amount: ded.amount,
+            });
+            
+            // Categorize by type and name for tax reporting
+            if (deduction.type === 'tax') {
+              if (dedName.includes('federal') || dedName.includes('fit')) {
+                federalTax += amount;
+              } else if (dedName.includes('state') || dedName.includes('colorado') || dedName.includes('sit')) {
+                stateTax += amount;
+              } else if (dedName.includes('social security') || dedName.includes('oasdi') || dedName.includes('ss tax')) {
+                socialSecurity += amount;
+              } else if (dedName.includes('medicare') || dedName.includes('med tax')) {
+                medicare += amount;
+              } else {
+                otherDeductions += amount;
+              }
+            } else {
+              otherDeductions += amount;
+            }
+          }
+          
+          // Get YTD totals (before this paystub)
+          const ytdTotals = await storage.getEmployeeYtdTotals(item.employeeId, payYear);
+          
+          // Calculate new YTD values including current pay
+          const grossPay = parseFloat(item.grossPay);
+          const netPay = parseFloat(item.netPay);
+          const newYtdGross = parseFloat(ytdTotals.ytdGrossPay) + grossPay;
+          const newYtdFederal = parseFloat(ytdTotals.ytdFederalTax) + federalTax;
+          const newYtdState = parseFloat(ytdTotals.ytdStateTax) + stateTax;
+          const newYtdSS = parseFloat(ytdTotals.ytdSocialSecurity) + socialSecurity;
+          const newYtdMedicare = parseFloat(ytdTotals.ytdMedicare) + medicare;
+          const newYtdOther = parseFloat(ytdTotals.ytdOtherDeductions) + otherDeductions;
+          const newYtdNet = parseFloat(ytdTotals.ytdNetPay) + netPay;
+          
+          // Determine pay frequency label
+          const payFrequencyLabels: Record<string, string> = {
+            weekly: 'Weekly',
+            biweekly: 'Bi-Weekly',
+            semimonthly: 'Semi-Monthly',
+            monthly: 'Monthly',
+          };
+          
+          // Create paystub
+          await storage.createPaystub({
+            payrollRunId: payrollRunId,
+            payrollItemId: item.id,
+            employeeId: item.employeeId,
+            organizationId: payrollRun.organizationId,
+            
+            // Employee Info
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            employeeAddress: employee.address || null,
+            ssnLastFour: null, // Would need to be stored/extracted securely
+            
+            // Employer Info
+            employerName: organization.name,
+            employerAddress: organization.address || null,
+            employerEin: organization.ein || null,
+            
+            // Pay Period Info
+            payPeriodStart: payrollRun.payPeriodStart,
+            payPeriodEnd: payrollRun.payPeriodEnd,
+            payDate: payrollRun.payDate,
+            payFrequency: payFrequencyLabels[employee.paySchedule] || employee.paySchedule,
+            checkNumber: null,
+            
+            // Hours (for hourly employees)
+            isHourly: employee.payType === 'hourly' ? 1 : 0,
+            regularHours: item.hoursWorked || null,
+            overtimeHours: null, // Would need to track overtime separately
+            hourlyRate: employee.payType === 'hourly' ? employee.payRate : null,
+            
+            // Earnings
+            regularPay: item.grossPay,
+            overtimePay: '0',
+            bonuses: '0',
+            commissions: '0',
+            otherEarnings: '0',
+            grossPay: item.grossPay,
+            
+            // Itemized Deductions
+            deductionsDetail: deductionsDetail,
+            
+            // Tax Withholdings
+            federalIncomeTax: federalTax.toFixed(2),
+            stateIncomeTax: stateTax.toFixed(2),
+            socialSecurityTax: socialSecurity.toFixed(2),
+            medicareTax: medicare.toFixed(2),
+            
+            // Other Deductions
+            otherDeductions: otherDeductions.toFixed(2),
+            totalDeductions: item.totalDeductions,
+            
+            // Net Pay
+            netPay: item.netPay,
+            
+            // YTD Totals (including current pay)
+            ytdGrossPay: newYtdGross.toFixed(2),
+            ytdFederalTax: newYtdFederal.toFixed(2),
+            ytdStateTax: newYtdState.toFixed(2),
+            ytdSocialSecurity: newYtdSS.toFixed(2),
+            ytdMedicare: newYtdMedicare.toFixed(2),
+            ytdOtherDeductions: newYtdOther.toFixed(2),
+            ytdNetPay: newYtdNet.toFixed(2),
+          });
+        }
+      }
+
       res.status(200).json(processedPayrollRun);
     } catch (error) {
       console.error("Error processing payroll run:", error);
@@ -3219,6 +3361,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching payroll item deductions:", error);
       res.status(500).json({ message: "Failed to fetch payroll item deductions" });
+    }
+  });
+
+  // Paystub routes
+  app.get('/api/paystubs/payroll-run/:payrollRunId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const payrollRunId = parseInt(req.params.payrollRunId);
+      
+      const payrollRun = await storage.getPayrollRun(payrollRunId);
+      if (!payrollRun) {
+        return res.status(404).json({ message: "Payroll run not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, payrollRun.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const paystubs = await storage.getPaystubsByPayrollRun(payrollRunId);
+      res.json(paystubs);
+    } catch (error) {
+      console.error("Error fetching paystubs:", error);
+      res.status(500).json({ message: "Failed to fetch paystubs" });
+    }
+  });
+
+  app.get('/api/paystubs/employee/:employeeId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const employeeId = parseInt(req.params.employeeId);
+      
+      const employee = await storage.getEmployee(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, employee.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const paystubs = await storage.getPaystubsByEmployee(employeeId);
+      res.json(paystubs);
+    } catch (error) {
+      console.error("Error fetching employee paystubs:", error);
+      res.status(500).json({ message: "Failed to fetch employee paystubs" });
+    }
+  });
+
+  app.get('/api/paystubs/:paystubId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paystubId = parseInt(req.params.paystubId);
+      
+      const paystub = await storage.getPaystub(paystubId);
+      if (!paystub) {
+        return res.status(404).json({ message: "Paystub not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, paystub.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(paystub);
+    } catch (error) {
+      console.error("Error fetching paystub:", error);
+      res.status(500).json({ message: "Failed to fetch paystub" });
     }
   });
 
