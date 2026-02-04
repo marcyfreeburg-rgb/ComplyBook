@@ -2952,12 +2952,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Calculate new YTD values including current pay
           const grossPay = parseFloat(item.grossPay);
           const netPay = parseFloat(item.netPay);
+          const totalDeductionsAmount = parseFloat(item.totalDeductions);
           const newYtdGross = parseFloat(ytdTotals.ytdGrossPay) + grossPay;
           const newYtdFederal = parseFloat(ytdTotals.ytdFederalTax) + federalTax;
           const newYtdState = parseFloat(ytdTotals.ytdStateTax) + stateTax;
           const newYtdSS = parseFloat(ytdTotals.ytdSocialSecurity) + socialSecurity;
           const newYtdMedicare = parseFloat(ytdTotals.ytdMedicare) + medicare;
           const newYtdOther = parseFloat(ytdTotals.ytdOtherDeductions) + otherDeductions;
+          const newYtdTotalDeductions = parseFloat(ytdTotals.ytdTotalDeductions) + totalDeductionsAmount;
           const newYtdNet = parseFloat(ytdTotals.ytdNetPay) + netPay;
           
           // Determine pay frequency label
@@ -3029,6 +3031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ytdSocialSecurity: newYtdSS.toFixed(2),
             ytdMedicare: newYtdMedicare.toFixed(2),
             ytdOtherDeductions: newYtdOther.toFixed(2),
+            ytdTotalDeductions: newYtdTotalDeductions.toFixed(2),
             ytdNetPay: newYtdNet.toFixed(2),
           });
         }
@@ -3430,6 +3433,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching paystub:", error);
       res.status(500).json({ message: "Failed to fetch paystub" });
+    }
+  });
+
+  // Email paystub to employee
+  app.post('/api/paystubs/:paystubId/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const paystubId = parseInt(req.params.paystubId);
+      
+      const paystub = await storage.getPaystub(paystubId);
+      if (!paystub) {
+        return res.status(404).json({ message: "Paystub not found" });
+      }
+      
+      const userRole = await storage.getUserRole(userId, paystub.organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.permissions)) {
+        return res.status(403).json({ message: "Access denied - admin permissions required" });
+      }
+
+      // Get employee email
+      const employee = await storage.getEmployee(paystub.employeeId);
+      if (!employee || !employee.email) {
+        return res.status(400).json({ message: "Employee email not found" });
+      }
+
+      // Get organization branding
+      const organization = await storage.getOrganization(paystub.organizationId);
+      const branding = organization?.branding as {
+        primaryColor?: string;
+        accentColor?: string;
+        fontFamily?: string;
+        logoUrl?: string;
+        footer?: string;
+      } | undefined;
+
+      // Import and send email
+      const { sendPaystubEmail } = await import('./email');
+      
+      await sendPaystubEmail({
+        to: employee.email,
+        employeeName: paystub.employeeName,
+        payPeriodStart: new Date(paystub.payPeriodStart).toLocaleDateString(),
+        payPeriodEnd: new Date(paystub.payPeriodEnd).toLocaleDateString(),
+        payDate: new Date(paystub.payDate).toLocaleDateString(),
+        grossPay: paystub.grossPay,
+        netPay: paystub.netPay,
+        employerName: paystub.employerName,
+        employerAddress: paystub.employerAddress,
+        employerEin: paystub.employerEin,
+        employeeAddress: paystub.employeeAddress,
+        ssnLastFour: paystub.ssnLastFour,
+        isHourly: paystub.isHourly === 1,
+        regularHours: paystub.regularHours,
+        overtimeHours: paystub.overtimeHours,
+        hourlyRate: paystub.hourlyRate,
+        regularPay: paystub.regularPay,
+        overtimePay: paystub.overtimePay || '0',
+        federalIncomeTax: paystub.federalIncomeTax || '0',
+        stateIncomeTax: paystub.stateIncomeTax || '0',
+        socialSecurityTax: paystub.socialSecurityTax || '0',
+        medicareTax: paystub.medicareTax || '0',
+        otherDeductions: paystub.otherDeductions || '0',
+        totalDeductions: paystub.totalDeductions,
+        deductionsDetail: (paystub.deductionsDetail as Array<{name: string; type: string; amount: string}>) || [],
+        ytdGrossPay: paystub.ytdGrossPay,
+        ytdTotalDeductions: paystub.ytdTotalDeductions || '0',
+        ytdNetPay: paystub.ytdNetPay,
+        branding: branding,
+      });
+
+      res.json({ message: "Paystub emailed successfully", to: employee.email });
+    } catch (error) {
+      console.error("Error emailing paystub:", error);
+      res.status(500).json({ message: "Failed to email paystub" });
     }
   });
 

@@ -7619,6 +7619,7 @@ export class DatabaseStorage implements IStorage {
     ytdSocialSecurity: string;
     ytdMedicare: string;
     ytdOtherDeductions: string;
+    ytdTotalDeductions: string;
     ytdNetPay: string;
   }> {
     const startOfYear = new Date(year, 0, 1);
@@ -7631,6 +7632,7 @@ export class DatabaseStorage implements IStorage {
       ytdSocialSecurity: sql<string>`COALESCE(SUM(${paystubs.socialSecurityTax}), 0)`,
       ytdMedicare: sql<string>`COALESCE(SUM(${paystubs.medicareTax}), 0)`,
       ytdOtherDeductions: sql<string>`COALESCE(SUM(${paystubs.otherDeductions}), 0)`,
+      ytdTotalDeductions: sql<string>`COALESCE(SUM(${paystubs.totalDeductions}), 0)`,
       ytdNetPay: sql<string>`COALESCE(SUM(${paystubs.netPay}), 0)`,
     })
     .from(paystubs)
@@ -7647,6 +7649,7 @@ export class DatabaseStorage implements IStorage {
       ytdSocialSecurity: '0',
       ytdMedicare: '0',
       ytdOtherDeductions: '0',
+      ytdTotalDeductions: '0',
       ytdNetPay: '0',
     };
   }

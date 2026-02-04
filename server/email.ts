@@ -1199,3 +1199,301 @@ This invitation was sent by ${organizationName} via ComplyBook.
   await client.send(msg);
   console.log(`Form invitation email sent to ${to} for "${formTitle}"`);
 }
+
+// Paystub Email - Colorado-compliant pay statement
+interface PaystubEmailParams {
+  to: string;
+  employeeName: string;
+  payPeriodStart: string;
+  payPeriodEnd: string;
+  payDate: string;
+  grossPay: string;
+  netPay: string;
+  employerName: string;
+  employerAddress?: string | null;
+  employerEin?: string | null;
+  employeeAddress?: string | null;
+  ssnLastFour?: string | null;
+  isHourly: boolean;
+  regularHours?: string | null;
+  overtimeHours?: string | null;
+  hourlyRate?: string | null;
+  regularPay: string;
+  overtimePay?: string;
+  federalIncomeTax: string;
+  stateIncomeTax: string;
+  socialSecurityTax: string;
+  medicareTax: string;
+  otherDeductions: string;
+  totalDeductions: string;
+  deductionsDetail: Array<{name: string; type: string; amount: string}>;
+  ytdGrossPay: string;
+  ytdTotalDeductions: string;
+  ytdNetPay: string;
+  branding?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    footer?: string;
+  };
+}
+
+export async function sendPaystubEmail({
+  to,
+  employeeName,
+  payPeriodStart,
+  payPeriodEnd,
+  payDate,
+  grossPay,
+  netPay,
+  employerName,
+  employerAddress,
+  employerEin,
+  employeeAddress,
+  ssnLastFour,
+  isHourly,
+  regularHours,
+  overtimeHours,
+  hourlyRate,
+  regularPay,
+  overtimePay,
+  federalIncomeTax,
+  stateIncomeTax,
+  socialSecurityTax,
+  medicareTax,
+  otherDeductions,
+  totalDeductions,
+  deductionsDetail,
+  ytdGrossPay,
+  ytdTotalDeductions,
+  ytdNetPay,
+  branding
+}: PaystubEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const primaryColor = branding?.primaryColor || '#1a365d';
+  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  const logoHtml = branding?.logoUrl 
+    ? `<img src="${branding.logoUrl}" alt="${employerName}" style="max-width: 150px; max-height: 50px; object-fit: contain;" />`
+    : '';
+  const footerHtml = branding?.footer
+    ? `<div style="text-align: center; color: #666; font-size: 11px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e5e7eb;">${branding.footer}</div>`
+    : '';
+
+  const formatMoney = (val: string) => parseFloat(val || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Build earnings rows
+  let earningsHtml = `
+    <tr>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb;">Regular</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${isHourly ? `$${formatMoney(hourlyRate || '0')}` : '-'}</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${isHourly ? (regularHours || '0.00') : '-'}</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 500;">$${formatMoney(regularPay)}</td>
+    </tr>`;
+
+  if (overtimePay && parseFloat(overtimePay) > 0) {
+    earningsHtml += `
+    <tr>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb;">Overtime</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">-</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${overtimeHours || '-'}</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 500;">$${formatMoney(overtimePay)}</td>
+    </tr>`;
+  }
+
+  // Build statutory deductions
+  const statutoryDeductions = [
+    { name: 'FICA-Medicare', amount: medicareTax },
+    { name: 'FICA-Social Security', amount: socialSecurityTax },
+    { name: 'Federal tax', amount: federalIncomeTax },
+    { name: 'State tax', amount: stateIncomeTax },
+  ];
+
+  // Add non-tax deductions
+  const otherDeds = deductionsDetail.filter(d => d.type !== 'tax');
+
+  let deductionsHtml = statutoryDeductions.map(d => `
+    <tr>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${d.name}</td>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; text-align: right; font-size: 13px;">$${formatMoney(d.amount)}</td>
+    </tr>
+  `).join('');
+
+  otherDeds.forEach(d => {
+    deductionsHtml += `
+    <tr>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">${d.name}</td>
+      <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; text-align: right; font-size: 13px;">$${formatMoney(d.amount)}</td>
+    </tr>`;
+  });
+
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `Pay Statement - ${payPeriodStart} to ${payPeriodEnd} - ${employerName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Pay Statement</title>
+        </head>
+        <body style="font-family: ${fontFamily}; line-height: 1.5; color: #1a1a1a; max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 30px;">
+            
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 2px solid ${primaryColor}; padding-bottom: 20px;">
+              <div>
+                ${logoHtml || `<h2 style="margin: 0; color: ${primaryColor}; font-size: 18px;">${employerName}</h2>`}
+                ${employerAddress ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #666; white-space: pre-line;">${employerAddress}</p>` : ''}
+                ${employerEin ? `<p style="margin: 3px 0 0 0; font-size: 11px; color: #888;">EIN: ${employerEin}</p>` : ''}
+              </div>
+              <div style="text-align: right;">
+                <h1 style="margin: 0; font-size: 24px; color: ${primaryColor}; font-weight: 700;">EARNINGS STATEMENT</h1>
+              </div>
+            </div>
+
+            <!-- Employee and Period Info Grid -->
+            <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background-color: #1a365d; color: white;">
+                  <th style="padding: 10px; text-align: left; font-weight: 600; border: 1px solid #1a365d;">EMPLOYEE NAME/ADDRESS</th>
+                  <th style="padding: 10px; text-align: center; font-weight: 600; border: 1px solid #1a365d;">EMPLOYEE NO.</th>
+                  <th style="padding: 10px; text-align: center; font-weight: 600; border: 1px solid #1a365d;">REPORTING PERIOD</th>
+                  <th style="padding: 10px; text-align: center; font-weight: 600; border: 1px solid #1a365d;">PAY DATE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding: 12px 10px; border: 1px solid #e5e7eb; vertical-align: top;">
+                    <strong>${employeeName}</strong>
+                    ${employeeAddress ? `<br/><span style="color: #666; font-size: 11px; white-space: pre-line;">${employeeAddress}</span>` : ''}
+                    ${ssnLastFour ? `<br/><span style="color: #888; font-size: 11px;">SSN: XXX-XX-${ssnLastFour}</span>` : ''}
+                  </td>
+                  <td style="padding: 12px 10px; border: 1px solid #e5e7eb; text-align: center; vertical-align: top;">-</td>
+                  <td style="padding: 12px 10px; border: 1px solid #e5e7eb; text-align: center; vertical-align: top;">
+                    ${payPeriodStart} — ${payPeriodEnd}
+                  </td>
+                  <td style="padding: 12px 10px; border: 1px solid #e5e7eb; text-align: center; vertical-align: top;">
+                    ${payDate}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- Main Content: Earnings and Deductions side by side -->
+            <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+              <tr>
+                <!-- Earnings Column -->
+                <td style="width: 55%; vertical-align: top; padding-right: 10px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                      <tr style="background-color: #f3f4f6;">
+                        <th style="padding: 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #d1d5db;">INCOME</th>
+                        <th style="padding: 10px; text-align: right; font-weight: 600; border-bottom: 2px solid #d1d5db;">RATE</th>
+                        <th style="padding: 10px; text-align: right; font-weight: 600; border-bottom: 2px solid #d1d5db;">HOURS</th>
+                        <th style="padding: 10px; text-align: right; font-weight: 600; border-bottom: 2px solid #d1d5db;">CURRENT PAY</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${earningsHtml}
+                    </tbody>
+                  </table>
+                </td>
+                
+                <!-- Deductions Column -->
+                <td style="width: 45%; vertical-align: top; padding-left: 10px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                      <tr style="background-color: #f3f4f6;">
+                        <th colspan="2" style="padding: 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #d1d5db;">STATUTORY DEDUCTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${deductionsHtml}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Totals Footer -->
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background-color: #f9fafb; border: 2px solid #1a365d;">
+              <tr style="font-size: 13px; font-weight: 600;">
+                <td style="padding: 12px; text-align: center; border-right: 1px solid #d1d5db;">
+                  <div style="color: #666; font-size: 11px; margin-bottom: 3px;">GROSS</div>
+                  <div style="color: #1a1a1a; font-size: 15px;">$${formatMoney(grossPay)}</div>
+                </td>
+                <td style="padding: 12px; text-align: center; border-right: 1px solid #d1d5db;">
+                  <div style="color: #666; font-size: 11px; margin-bottom: 3px;">YTD DEDUCTION</div>
+                  <div style="color: #1a1a1a; font-size: 15px;">$${formatMoney(ytdTotalDeductions)}</div>
+                </td>
+                <td style="padding: 12px; text-align: center; border-right: 1px solid #d1d5db;">
+                  <div style="color: #666; font-size: 11px; margin-bottom: 3px;">YTD NET PAY</div>
+                  <div style="color: #1a1a1a; font-size: 15px;">$${formatMoney(ytdNetPay)}</div>
+                </td>
+                <td style="padding: 12px; text-align: center; border-right: 1px solid #d1d5db;">
+                  <div style="color: #666; font-size: 11px; margin-bottom: 3px;">TOTAL</div>
+                  <div style="color: #1a1a1a; font-size: 15px;">$${formatMoney(grossPay)}</div>
+                </td>
+                <td style="padding: 12px; text-align: center; border-right: 1px solid #d1d5db;">
+                  <div style="color: #666; font-size: 11px; margin-bottom: 3px;">DEDUCTION</div>
+                  <div style="color: #dc2626; font-size: 15px;">$${formatMoney(totalDeductions)}</div>
+                </td>
+                <td style="padding: 12px; text-align: center; background-color: #dcfce7;">
+                  <div style="color: #166534; font-size: 11px; margin-bottom: 3px;">NET PAY</div>
+                  <div style="color: #166534; font-size: 18px; font-weight: 700;">$${formatMoney(netPay)}</div>
+                </td>
+              </tr>
+            </table>
+
+            <p style="text-align: center; font-size: 11px; color: #888; margin-top: 20px;">
+              This statement is for informational purposes. Please retain for your records.
+            </p>
+            
+            ${footerHtml}
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+EARNINGS STATEMENT
+${employerName}
+${employerAddress || ''}
+
+Employee: ${employeeName}
+${employeeAddress || ''}
+${ssnLastFour ? `SSN: XXX-XX-${ssnLastFour}` : ''}
+
+Pay Period: ${payPeriodStart} - ${payPeriodEnd}
+Pay Date: ${payDate}
+
+EARNINGS:
+Regular Pay: $${formatMoney(regularPay)}${isHourly ? ` (${regularHours} hrs @ $${formatMoney(hourlyRate || '0')}/hr)` : ''}
+${overtimePay && parseFloat(overtimePay) > 0 ? `Overtime Pay: $${formatMoney(overtimePay)}` : ''}
+Gross Pay: $${formatMoney(grossPay)}
+
+DEDUCTIONS:
+FICA-Medicare: $${formatMoney(medicareTax)}
+FICA-Social Security: $${formatMoney(socialSecurityTax)}
+Federal Tax: $${formatMoney(federalIncomeTax)}
+State Tax: $${formatMoney(stateIncomeTax)}
+${otherDeds.map(d => `${d.name}: $${formatMoney(d.amount)}`).join('\n')}
+Total Deductions: $${formatMoney(totalDeductions)}
+
+NET PAY: $${formatMoney(netPay)}
+
+YTD TOTALS:
+YTD Gross: $${formatMoney(ytdGrossPay)}
+YTD Deductions: $${formatMoney(ytdTotalDeductions)}
+YTD Net Pay: $${formatMoney(ytdNetPay)}
+
+This statement is for informational purposes. Please retain for your records.
+    `.trim()
+  };
+
+  await client.send(msg);
+  console.log(`Paystub email sent to ${to} for pay period ${payPeriodStart} - ${payPeriodEnd}`);
+}

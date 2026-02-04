@@ -1994,6 +1994,7 @@ export const paystubs = pgTable("paystubs", {
   ytdSocialSecurity: numeric("ytd_social_security", { precision: 12, scale: 2 }).notNull().default('0'),
   ytdMedicare: numeric("ytd_medicare", { precision: 12, scale: 2 }).notNull().default('0'),
   ytdOtherDeductions: numeric("ytd_other_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
+  ytdTotalDeductions: numeric("ytd_total_deductions", { precision: 12, scale: 2 }).notNull().default('0'),
   ytdNetPay: numeric("ytd_net_pay", { precision: 12, scale: 2 }).notNull().default('0'),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
