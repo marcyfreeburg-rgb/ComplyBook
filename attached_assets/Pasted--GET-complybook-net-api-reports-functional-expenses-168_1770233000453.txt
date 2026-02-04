@@ -1,0 +1,59 @@
+[GET]
+complybook.net/api/reports/functional-expenses/168?startDate=2026-01-01&endDate=2026-12-31 clientIP="216.147.123.52" requestID="fe253ae7-0c62-4c0e" responseTimeMS=618 responseBytes=1984 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:18:40 PM [express] GET /api/reports/functional-expenses/168 200 in 613ms :: {"programExpenses":"53…
+[GET]
+complybook.net/api/reports/functional-expenses/168?startDate=2025-01-01&endDate=2026-12-31 clientIP="216.147.123.52" requestID="9e39b644-6b8b-4d4f" responseTimeMS=1134 responseBytes=2660 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:19:08 PM [express] GET /api/reports/functional-expenses/168 200 in 1132ms :: {"programExpenses":"8…
+[GET]
+complybook.net/api/reports/functional-expenses/168?startDate=2025-01-01&endDate=2025-12-31 clientIP="216.147.123.52" requestID="8a11fd25-6548-41b4" responseTimeMS=529 responseBytes=2520 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:19:15 PM [express] GET /api/reports/functional-expenses/168 200 in 527ms :: {"programExpenses":"82…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="47b73c30-0a21-4d0a" responseTimeMS=778 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:19:34 PM [express] GET /api/notifications/168/unread-count 304 in 776ms :: {"count":"0"}
+[GET]
+complybook.net/api/reports/form-990/168/[object%20Object] clientIP="216.147.123.52" requestID="2068b493-da65-4905" responseTimeMS=431 responseBytes=1862 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:20:23 PM [express] GET /api/reports/form-990/168/[object%20Object] 200 in 468ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="9b1cbc94-9882-4c62" responseTimeMS=769 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:20:34 PM [express] GET /api/notifications/168/unread-count 304 in 766ms :: {"count":"0"}
+[POST]
+complybook.net/api/form-990/generate-narrative clientIP="216.147.123.52" requestID="bae451ec-6138-4ba5" responseTimeMS=3370 responseBytes=1366 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error generating Form 990 narrative: error: null value in column "entity_type" of relation "audit_logs" violates not-null constraint
+    at cn.parseErrorMessage (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1182:6)
+    at cn.handlePacket (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1143:13)
+    at cn.parse (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1127:36)
+    at v.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1190:16)
+    at v.emit (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:987:80)
+    at callListener (/opt/render/project/src/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onMessage (/opt/render/project/src/node_modules/ws/lib/event-target.js:209:9)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/opt/render/project/src/node_modules/ws/lib/websocket.js:1225:20) {
+  length: 477,
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (8593, 168, 43852944, ai_narrative_generated, null, null, null, null, null, 172.71.146.119, Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KH..., 2026-02-04 19:21:23.710912, a8b26136a25c292964a1d5bf4fa6a8274d8419dd401fbfff7524b398261be859, null, f, null).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'audit_logs',
+Menu
+  column: 'entity_type',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2067',
+  routine: 'ExecConstraints'
+}
+7:21:23 PM [express] POST /api/form-990/generate-narrative 500 in 3366ms :: {"message":"null value i…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="fb1de2b6-93fc-4666" responseTimeMS=764 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:21:35 PM [express] GET /api/notifications/168/unread-count 304 in 761ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="ba4b7c31-63fe-4f4f" responseTimeMS=769 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:22:36 PM [express] GET /api/notifications/168/unread-count 304 in 766ms :: {"count":"0"}
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
