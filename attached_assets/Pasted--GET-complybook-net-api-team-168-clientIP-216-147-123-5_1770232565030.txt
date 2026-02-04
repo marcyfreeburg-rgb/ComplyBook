@@ -1,0 +1,23 @@
+[GET]
+complybook.net/api/team/168 clientIP="216.147.123.52" requestID="f5e2e719-e4a5-4ceb" responseTimeMS=424 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="0f3f3331-90bb-4a2b" responseTimeMS=587 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/plaid/accounts/168 clientIP="216.147.123.52" requestID="61d5a7d0-1216-460c" responseTimeMS=604 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="a8da7bd0-4abd-4406" responseTimeMS=426 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/mode clientIP="216.147.123.52" requestID="40f9d9f1-3d2e-420d" responseTimeMS=469 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:15:00 PM [express] GET /api/notifications/168/unread-count 304 in 423ms :: {"count":"0"}
+7:15:00 PM [express] GET /api/team/168 304 in 423ms :: [{"userId":"local_admin_default","email":"adm…
+7:15:00 PM [express] GET /api/auth/mode 304 in 467ms :: {"mode":"local"}
+7:15:00 PM [express] GET /api/invitations/168 304 in 586ms :: []
+7:15:00 PM [express] GET /api/plaid/accounts/168 304 in 602ms :: [{"id":18,"plaidItemId":9,"accountI…
+7:15:00 PM [express] GET /api/categories/168 304 in 645ms :: [{"id":185,"organizationId":168,"name":…
+[GET]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="caf638fc-0e85-4b05" responseTimeMS=237 responseBytes=1521 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[POST]
+complybook.net/api/invitations/168 clientIP="216.147.123.52" requestID="9a038b40-6714-46e7" responseTimeMS=1328 responseBytes=1541 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:15:14 PM [express] POST /api/invitations/168 201 in 1318ms :: {"id":15,"organizationId":168,"email…
+7:15:14 PM [express] GET /api/invitations/168 200 in 234ms :: [{"id":15,"organizationId":168,"email"…
