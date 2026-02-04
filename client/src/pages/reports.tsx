@@ -185,7 +185,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
       h1 { color: ${primaryColor}; font-size: 24px; margin-bottom: 10px; font-weight: bold; }
       h2 { color: ${accentColor}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
       .header { margin-bottom: 30px; }
-      .logo { max-width: 120px !important; max-height: 60px !important; width: auto !important; height: auto !important; object-fit: contain; margin-bottom: 10px; }
+      .logo { display: block !important; max-width: 120px !important; max-height: 60px !important; width: 120px !important; height: auto !important; object-fit: contain !important; margin-bottom: 10px; }
       .header-text { }
       .org-name { color: #666; font-size: 14px; margin-top: 5px; }
       .date-range { color: #888; font-size: 12px; margin-top: 3px; }
@@ -201,7 +201,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
 
   const getBrandedHeader = (title: string, dateInfo: string) => {
     const logoHtml = currentOrganization.logoUrl 
-      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" class="logo" style="max-width: 120px; max-height: 60px; width: auto; height: auto; object-fit: contain;" />` 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" class="logo" width="120" height="60" style="display: block; max-width: 120px; max-height: 60px; width: 120px; height: auto; object-fit: contain;" />` 
       : '';
     
     return `

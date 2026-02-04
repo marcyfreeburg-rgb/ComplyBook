@@ -95,7 +95,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
     const fontFamily = currentOrganization.invoiceFontFamily || 'Arial';
     
     const logoHtml = currentOrganization.logoUrl 
-      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" style="max-width: 120px; max-height: 60px; width: auto; height: auto; object-fit: contain; margin-bottom: 10px;" />` 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" width="120" height="60" style="display: block; max-width: 120px; max-height: 60px; width: 120px; height: auto; object-fit: contain; margin-bottom: 10px;" />` 
       : '';
     
     const footerText = currentOrganization.invoiceFooter || '';
