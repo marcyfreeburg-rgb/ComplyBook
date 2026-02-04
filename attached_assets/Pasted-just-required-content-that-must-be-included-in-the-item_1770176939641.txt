@@ -1,0 +1,38 @@
+just required content that must be included in the itemized statement provided to every employee at the time of each wage payment (or at least monthly), per Colorado Revised Statutes §8-4-103 and the Colorado Department of Labor and Employment (CDLE) rules (7 CCR 1103-7).
+The same basic requirements apply to both salaried and hourly employees, with one key practical difference: hours worked.
+Core Requirements (Same for All Employees)
+Every pay stub/statement must include:
+
+Gross wages earned
+All withholdings and deductions (itemized)
+Net wages earned
+Inclusive dates of the pay period
+Employee's name or Social Security number (full or last 4 digits often used)
+Employer's name and address
+
+Key Difference: Hours Worked
+
+Hourly (non-exempt) employees: You must show the total hours worked (including regular and overtime hours separately if applicable). This is because they are subject to minimum wage, overtime, and accurate time tracking under the Colorado Overtime and Minimum Pay Standards (COMPS) Order.
+Salaried (exempt) employees: Hours worked do not need to be shown on the pay stub. This aligns with both federal FLSA and Colorado rules — exempt employees (e.g., executive, administrative, professional) are not entitled to overtime and are paid a fixed salary regardless of hours, so listing hours isn't required. Many payroll systems simply omit or note "exempt" or "salary basis" for these employees.
+
+Practical Layout Recommendations
+Most employers (and payroll providers like ADP, Gusto, QuickBooks, Paychex) use a single standardized pay stub format for all employees, with conditional fields:
+
+Earnings section: Shows regular pay (hourly rate × hours for non-exempt; flat salary amount for exempt).
+Hours: Displayed for hourly employees; left blank or labeled "N/A – Exempt" for salaried exempt employees.
+YTD totals: Included for everyone (gross, taxes, net) — highly recommended even if not required.
+
+Why One Format Works
+
+The law requires an itemized statement but doesn't dictate separate forms or layouts.
+Using one template simplifies compliance, record-keeping (must retain for at least 3 years), and avoids errors.
+If an employee is misclassified (e.g., treated as exempt but actually non-exempt), missing hours could be an issue in a wage claim — but that's a classification problem, not a stub format problem.
+
+Bottom Line for Your Setup in Rye/Huerfano County
+Use the same pay stub template for both salary and hourly employees. Just ensure:
+
+Hours are accurately shown for hourly/non-exempt staff.
+All other required items are present.
+For exempt salaried employees, no hours are needed (and often not included).
+
+Payroll software handles this automatically based on employee classification (exempt vs. non-exempt). If you're setting this up manually or for a small operation, grab a compliant template from a provider and customize it accordingly — no need for separate "salary" and "hourly" versions.

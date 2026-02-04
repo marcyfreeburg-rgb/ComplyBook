@@ -1,0 +1,97 @@
+What form should a payroll stub follow?In Colorado (including Rye in Huerfano County), employers are required by state law to provide employees with an itemized pay statement (commonly called a pay stub or paycheck stub) at the time of each wage payment (or at least monthly). This comes from the Colorado Wage Act (Colorado Revised Statutes §8-4-103) and related rules from the Colorado Department of Labor and Employment (Division of Labor Standards and Statistics, 7 CCR 1103-7).
+Federal law under the Fair Labor Standards Act (FLSA) does not require providing pay stubs to employees, but it does require accurate record-keeping of hours, wages, and other details — so pay stubs help satisfy those records and are standard practice nationwide.
+There is no specific mandated "form" or official template from the state or federal government — no required layout, design, or official form number like a W-4. Employers have flexibility in format (paper, electronic/digital, or via payroll software), as long as the required information is clearly itemized, accurate, and provided to the employee.
+Required Information on a Colorado Pay Stub
+Colorado law requires the pay statement to include at least these key elements (itemized where applicable):
+
+Employee's name (or Social Security Number / last 4 digits of SSN in some interpretations for identification).
+Employer's name and address.
+Inclusive dates of the pay period (start and end dates).
+Gross wages earned (total earnings before deductions, including regular pay, overtime, bonuses, commissions, etc.).
+All withholdings and deductions (itemized separately), including:
+Federal income tax.
+State income tax (Colorado flat rate).
+FICA taxes (Social Security 6.2% + Medicare 1.45%).
+Any other deductions (e.g., health insurance premiums, retirement contributions, garnishments, voluntary items).
+
+Net wages (take-home pay after all deductions).
+Hours worked (especially important for hourly/non-exempt employees; include regular hours and overtime hours separately if applicable).
+
+Many pay stubs also include helpful (but not strictly required) extras for clarity and compliance:
+
+Pay date.
+Pay frequency (e.g., bi-weekly, monthly).
+Year-to-date (YTD) totals for gross pay, taxes, deductions, and net pay (useful for tax season and W-2 preparation).
+Hourly rate (for hourly employees).
+Any additional state-specific items (e.g., FAMLI contributions if applicable).
+
+Recommended Structure / Format
+A typical, compliant pay stub follows this logical layout (often divided into sections):
+
+Header / Identifying Info
+Employer name, address, EIN (optional but common).
+Employee name, address, SSN (full or last 4 digits).
+Pay period dates, pay date, check/direct deposit number.
+
+Earnings Section
+Hours worked (regular + overtime if applicable).
+Rate of pay.
+Gross pay breakdown (regular, overtime, bonuses, etc.).
+Total gross wages.
+
+Deductions / Withholdings Section
+Itemized list: Federal tax, Colorado state tax, Social Security, Medicare, other deductions (with descriptions).
+Total deductions.
+
+Net Pay
+Amount paid (net wages).
+
+Year-to-Date (YTD) Summary (very common and recommended)
+Cumulative totals for the year.
+
+
+Many payroll providers (e.g., ADP, QuickBooks, Gusto, Paychex) generate stubs in this format automatically and ensure compliance. If you're doing payroll manually or with simple software, free or low-cost templates from sites like SecurePayStubs, Patriot Software, or Smartsheet can be customized to meet Colorado requirements.
+Additional Notes
+
+Electronic Delivery — Allowed if employees have access and can print/view them easily (many employers use email or portals).
+Record Retention — Keep copies (or electronic equivalents) for at least 3 years (Colorado requirement) or 4 years (federal IRS/FLSA recommendation).
+Non-Compliance Risks — Failure to provide itemized statements can lead to complaints to the Colorado Department of Labor, potential fines, or wage claims.
+
+For your small/non-profit or consulting setup in Rye, using a standard payroll service is the easiest way to stay compliant without creating a custom form from scratch. If you share more details (e.g., hourly vs. salaried employees, or if you're using specific software), I can suggest exact templates or refinements!1.9sFast80 sourcesIs there a form for salary and hourly employees?No, Colorado does not have separate or different official forms/templates for pay stubs (itemized wage statements) based on whether the employee is salaried or hourly. There is no state-mandated form at all — just required content that must be included in the itemized statement provided to every employee at the time of each wage payment (or at least monthly), per Colorado Revised Statutes §8-4-103 and the Colorado Department of Labor and Employment (CDLE) rules (7 CCR 1103-7).
+The same basic requirements apply to both salaried and hourly employees, with one key practical difference: hours worked.
+Core Requirements (Same for All Employees)
+Every pay stub/statement must include:
+
+Gross wages earned
+All withholdings and deductions (itemized)
+Net wages earned
+Inclusive dates of the pay period
+Employee's name or Social Security number (full or last 4 digits often used)
+Employer's name and address
+
+Key Difference: Hours Worked
+
+Hourly (non-exempt) employees: You must show the total hours worked (including regular and overtime hours separately if applicable). This is because they are subject to minimum wage, overtime, and accurate time tracking under the Colorado Overtime and Minimum Pay Standards (COMPS) Order.
+Salaried (exempt) employees: Hours worked do not need to be shown on the pay stub. This aligns with both federal FLSA and Colorado rules — exempt employees (e.g., executive, administrative, professional) are not entitled to overtime and are paid a fixed salary regardless of hours, so listing hours isn't required. Many payroll systems simply omit or note "exempt" or "salary basis" for these employees.
+
+Practical Layout Recommendations
+Most employers (and payroll providers like ADP, Gusto, QuickBooks, Paychex) use a single standardized pay stub format for all employees, with conditional fields:
+
+Earnings section: Shows regular pay (hourly rate × hours for non-exempt; flat salary amount for exempt).
+Hours: Displayed for hourly employees; left blank or labeled "N/A – Exempt" for salaried exempt employees.
+YTD totals: Included for everyone (gross, taxes, net) — highly recommended even if not required.
+
+Why One Format Works
+
+The law requires an itemized statement but doesn't dictate separate forms or layouts.
+Using one template simplifies compliance, record-keeping (must retain for at least 3 years), and avoids errors.
+If an employee is misclassified (e.g., treated as exempt but actually non-exempt), missing hours could be an issue in a wage claim — but that's a classification problem, not a stub format problem.
+
+Bottom Line for Your Setup in Rye/Huerfano County
+Use the same pay stub template for both salary and hourly employees. Just ensure:
+
+Hours are accurately shown for hourly/non-exempt staff.
+All other required items are present.
+For exempt salaried employees, no hours are needed (and often not included).
+
+Payroll software handles this automatically based on employee classification (exempt vs. non-exempt). If you're setting this up manually or for a small operation, grab a compliant template from a provider and customize it accordingly — no need for separate "salary" and "hourly" versions.
