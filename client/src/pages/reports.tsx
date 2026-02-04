@@ -201,7 +201,7 @@ export default function Reports({ currentOrganization }: ReportsProps) {
 
   const getBrandedHeader = (title: string, dateInfo: string) => {
     const logoHtml = currentOrganization.logoUrl 
-      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" class="logo" style="max-width: 180px; max-height: 60px; width: auto; height: auto; object-fit: contain;" />` 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" style="display: block !important; max-width: 180px !important; max-height: 60px !important; width: auto !important; height: auto !important; object-fit: contain !important; margin-bottom: 10px;" />` 
       : '';
     
     return `
