@@ -167,7 +167,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
   });
 
   const runScanMutation = useMutation({
-    mutationFn: () => apiRequest('/api/security/vulnerability-scan', 'POST', {}),
+    mutationFn: () => apiRequest('POST', '/api/security/vulnerability-scan', {}),
     onSuccess: () => {
       toast({
         title: "Scan Started",

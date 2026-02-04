@@ -1,0 +1,47 @@
+[GET]
+complybook.net/api/transactions/168?startDate=2025-01-01&endDate=2025-12-31 clientIP="216.147.123.52" requestID="6f25ab43-2c8e-4092" responseTimeMS=603 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:00 PM [express] GET /api/transactions/168 304 in 600ms :: [{"id":46377,"organizationId":168,"da…
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="66123ed6-2954-4886" responseTimeMS=117 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_168_1765911218461.png clientIP="216.147.123.52" requestID="5d43c71a-6b6d-4d06" responseTimeMS=118 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/programs/168 clientIP="216.147.123.52" requestID="e0afe62f-8af5-402b" responseTimeMS=419 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/forms/168?type=survey clientIP="216.147.123.52" requestID="c31529f3-93ca-4bf8" responseTimeMS=442 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:10 PM [express] GET /api/programs/168 304 in 417ms :: [{"id":6,"organizationId":168,"name":"Aft…
+7:24:10 PM [express] GET /api/forms/168 304 in 439ms :: {"data":[]}
+[GET]
+complybook.net/api/audit-logs/168 clientIP="216.147.123.52" requestID="06a1f58b-c097-4edf" responseTimeMS=467 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:13 PM [express] GET /api/audit-logs/168 304 in 465ms :: [{"id":8592,"organizationId":168,"userI…
+[GET]
+complybook.net/api/organizations/168/compliance-events clientIP="216.147.123.52" requestID="49e90222-3d46-4102" responseTimeMS=242 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:21 PM [express] GET /api/organizations/168/compliance-events 304 in 239ms :: []
+[GET]
+complybook.net/api/organizations/168/documents clientIP="216.147.123.52" requestID="aa684071-9e25-4363" responseTimeMS=645 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:22 PM [express] GET /api/organizations/168/documents 304 in 642ms :: [{"id":6,"organizationId":…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="15f10d24-fa26-41c2" responseTimeMS=810 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:38 PM [express] GET /api/notifications/168/unread-count 304 in 808ms :: {"count":"0"}
+[POST]
+complybook.net/api/compliance-events clientIP="216.147.123.52" requestID="515b36d4-2e4d-4efd" responseTimeMS=250 responseBytes=1486 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations/168/compliance-events clientIP="216.147.123.52" requestID="c2cfe2de-cef6-4f99" responseTimeMS=233 responseBytes=1489 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:41 PM [express] POST /api/compliance-events 201 in 246ms :: {"id":3,"organizationId":168,"title…
+7:24:41 PM [express] GET /api/organizations/168/compliance-events 200 in 231ms :: [{"id":3,"organiza…
+[DELETE]
+complybook.net/api/compliance-events/3 clientIP="216.147.123.52" requestID="141e6435-48c7-4dad" responseTimeMS=294 responseBytes=1293 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:47 PM [express] DELETE /api/compliance-events/3 200 in 291ms :: {"success":true}
+[GET]
+complybook.net/api/organizations/168/compliance-events clientIP="216.147.123.52" requestID="492fe56d-8836-4223" responseTimeMS=241 responseBytes=1278 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:24:48 PM [express] GET /api/organizations/168/compliance-events 200 in 238ms :: []
+[GET]
+complybook.net/api/security/vulnerability-scan/summary clientIP="216.147.123.52" requestID="31e3c0f2-c7ff-4e87" responseTimeMS=347 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/metrics/168 clientIP="216.147.123.52" requestID="15f840fc-223f-4ec5" responseTimeMS=1144 responseBytes=2383 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+7:24:53 PM [express] GET /api/security/vulnerability-scan/summary 304 in 345ms :: {"lastScan":null,"…
+7:24:53 PM [express] GET /api/security/metrics/168 200 in 1141ms :: {"totalEvents":16,"criticalEvent…
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="e9fef3cb-41d0-4895" responseTimeMS=838 responseBytes=1180 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+7:25:39 PM [express] GET /api/notifications/168/unread-count 304 in 825ms :: {"count":"0"}
