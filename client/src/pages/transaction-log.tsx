@@ -272,20 +272,34 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     mutationFn: async (id: number) => {
       return await apiRequest('DELETE', `/api/transactions/${id}`, {});
     },
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>([`/api/transactions/${currentOrganization.id}?all=true`]);
+      queryClient.setQueryData<Transaction[]>(
+        [`/api/transactions/${currentOrganization.id}?all=true`],
+        (old) => old?.filter((t) => t.id !== id) ?? []
+      );
+      return { previousTransactions };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction Deleted",
         description: "The transaction has been removed.",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _id, context) => {
+      if (context?.previousTransactions) {
+        queryClient.setQueryData([`/api/transactions/${currentOrganization.id}?all=true`], context.previousTransactions);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to delete transaction.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
     },
   });
 
@@ -296,22 +310,37 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         transactionIds,
       });
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+    onMutate: async (transactionIds: number[]) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>([`/api/transactions/${currentOrganization.id}?all=true`]);
+      const idsSet = new Set(transactionIds);
+      queryClient.setQueryData<Transaction[]>(
+        [`/api/transactions/${currentOrganization.id}?all=true`],
+        (old) => old?.filter((t) => !idsSet.has(t.id)) ?? []
+      );
       setSelectedTransactions(new Set());
       setIsDeleteDialogOpen(false);
+      return { previousTransactions };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transactions Deleted",
         description: `Successfully deleted ${variables.length} transactions.`,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _ids, context) => {
+      if (context?.previousTransactions) {
+        queryClient.setQueryData([`/api/transactions/${currentOrganization.id}?all=true`], context.previousTransactions);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to delete transactions.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
     },
   });
 
