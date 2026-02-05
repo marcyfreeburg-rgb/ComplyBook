@@ -1,0 +1,20 @@
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="b41f7a2f-a138-42fb" responseTimeMS=798 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:42:04 PM [express] GET /api/notifications/167/unread-count 304 in 797ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="ea02d2fb-9317-4df6" responseTimeMS=814 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:43:06 PM [express] GET /api/notifications/167/unread-count 304 in 793ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="113e5e6a-35e6-4e89" responseTimeMS=787 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+4:44:07 PM [express] GET /api/notifications/167/unread-count 304 in 785ms :: {"count":"0"}
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="bb753e39-f5f3-4de6" responseTimeMS=3431 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:46:05 PM [express] GET /api/notifications/167/unread-count 304 in 3426ms :: {"count":"0"}
+[POST]
+complybook.net/api/transactions/bulk-delete clientIP="216.147.123.52" requestID="d1528f71-d1bf-435c" responseTimeMS=9586 responseBytes=1327 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:46:43 PM [express] POST /api/transactions/bulk-delete 200 in 9569ms :: {"message":"Successfully de…
+[GET]
+complybook.net/api/transactions/167?all=true clientIP="216.147.123.52" requestID="09c8e100-47a9-4da7" responseTimeMS=791 responseBytes=106778 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:46:44 PM [express] GET /api/transactions/167 200 in 781ms :: [{"id":46379,"organizationId":167,"da…

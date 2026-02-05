@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -729,7 +729,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
-  const filteredTransactions = transactions
+  const filteredTransactions = useMemo(() => transactions
     .filter(transaction => {
       const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm.toLowerCase());
@@ -772,55 +772,58 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
-    });
+    }), [transactions, searchTerm, sourceFilter, typeFilter, accountFilter, startDate, endDate, sortColumn, sortDirection, categories]);
+
+  // Get selected account for balance calculations and display
+  const selectedAccount = useMemo(() => 
+    accountFilter !== "all" && accountFilter !== "unlinked"
+      ? plaidAccounts.find(a => a.id.toString() === accountFilter)
+      : null,
+    [accountFilter, plaidAccounts]
+  );
 
   // Calculate running balance for each transaction (like a check register)
   // Balance is always calculated chronologically regardless of display sort
-  const chronologicalTransactions = [...filteredTransactions].sort((a, b) => 
-    new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-  
-  // Get starting balance based on selected account filter
-  const selectedAccount = accountFilter !== "all" && accountFilter !== "unlinked"
-    ? plaidAccounts.find(a => a.id.toString() === accountFilter)
-    : null;
-  const startingBalance = selectedAccount?.initialBalance 
-    ? parseFloat(selectedAccount.initialBalance) 
-    : 0;
-  const startingBalanceDate = selectedAccount?.initialBalanceDate
-    ? new Date(selectedAccount.initialBalanceDate + 'T00:00:00')
-    : null;
-  
-  const balanceMap = new Map<number, number>();
-  let runningBalance = 0;
-  let hasSeenBalanceDate = false;
-  
-  chronologicalTransactions.forEach(t => {
-    const amount = parseFloat(t.amount);
-    const transactionDate = new Date(t.date);
+  const { transactionsWithBalance, runningBalance } = useMemo(() => {
+    const chronologicalTransactions = [...filteredTransactions].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
     
-    // If we have a starting balance date and this is the first transaction on or after it,
-    // reset the running balance to the starting balance
-    if (startingBalanceDate && !hasSeenBalanceDate && transactionDate >= startingBalanceDate) {
-      runningBalance = startingBalance;
-      hasSeenBalanceDate = true;
-    }
+    const startingBalance = selectedAccount?.initialBalance 
+      ? parseFloat(selectedAccount.initialBalance) 
+      : 0;
+    const startingBalanceDate = selectedAccount?.initialBalanceDate
+      ? new Date(selectedAccount.initialBalanceDate + 'T00:00:00')
+      : null;
     
-    // Add the transaction to running balance
-    runningBalance += t.type === 'income' ? amount : -amount;
-    balanceMap.set(t.id, runningBalance);
-  });
-  
-  // If we never saw the balance date (all transactions are before it), still apply starting balance
-  if (startingBalanceDate && !hasSeenBalanceDate && chronologicalTransactions.length > 0) {
-    // All visible transactions are before the starting balance date
-    // Show them with their own running total, as the starting balance isn't applicable yet
-  }
+    const balanceMap = new Map<number, number>();
+    let currentRunningBalance = 0;
+    let hasSeenBalanceDate = false;
+    
+    chronologicalTransactions.forEach(t => {
+      const amount = parseFloat(t.amount);
+      const transactionDate = new Date(t.date);
+      
+      // If we have a starting balance date and this is the first transaction on or after it,
+      // reset the running balance to the starting balance
+      if (startingBalanceDate && !hasSeenBalanceDate && transactionDate >= startingBalanceDate) {
+        currentRunningBalance = startingBalance;
+        hasSeenBalanceDate = true;
+      }
+      
+      // Add the transaction to running balance
+      currentRunningBalance += t.type === 'income' ? amount : -amount;
+      balanceMap.set(t.id, currentRunningBalance);
+    });
 
-  const transactionsWithBalance = filteredTransactions.map(transaction => ({
-    ...transaction,
-    runningBalance: balanceMap.get(transaction.id) || 0
-  }));
+    return {
+      transactionsWithBalance: filteredTransactions.map(transaction => ({
+        ...transaction,
+        runningBalance: balanceMap.get(transaction.id) || 0
+      })),
+      runningBalance: currentRunningBalance
+    };
+  }, [filteredTransactions, selectedAccount]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -837,10 +840,13 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     }
   };
 
-  const isAllSelected = filteredTransactions.length > 0 && 
-    filteredTransactions.every(t => selectedTransactions.has(t.id));
+  const isAllSelected = useMemo(() => 
+    filteredTransactions.length > 0 && 
+    filteredTransactions.every(t => selectedTransactions.has(t.id)),
+    [filteredTransactions, selectedTransactions]
+  );
 
-  const totals = filteredTransactions.reduce(
+  const totals = useMemo(() => filteredTransactions.reduce(
     (acc, t) => {
       const amount = parseFloat(t.amount);
       if (t.type === "income") {
@@ -851,26 +857,28 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return acc;
     },
     { income: 0, expense: 0 }
-  );
+  ), [filteredTransactions]);
 
   // Calculate monthly totals (current month to date) for for-profit orgs
-  const currentMonth = new Date();
-  const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const monthlyTotals = transactions.reduce(
-    (acc, t) => {
-      const transactionDate = new Date(t.date);
-      if (transactionDate >= monthStart && transactionDate <= currentMonth) {
-        const amount = parseFloat(t.amount);
-        if (t.type === "income") {
-          acc.income += amount;
-        } else {
-          acc.expense += amount;
+  const currentMonth = useMemo(() => new Date(), []);
+  const monthlyTotals = useMemo(() => {
+    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    return transactions.reduce(
+      (acc, t) => {
+        const transactionDate = new Date(t.date);
+        if (transactionDate >= monthStart && transactionDate <= currentMonth) {
+          const amount = parseFloat(t.amount);
+          if (t.type === "income") {
+            acc.income += amount;
+          } else {
+            acc.expense += amount;
+          }
         }
-      }
-      return acc;
-    },
-    { income: 0, expense: 0 }
-  );
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+  }, [transactions, currentMonth]);
 
   // Get bank balance - use Plaid current_balance if available, otherwise use running balance
   const getCurrentBankBalance = (): number | null => {
