@@ -70,10 +70,18 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isBulkUpdateDialogOpen, setIsBulkUpdateDialogOpen] = useState(false);
+  const [bulkUpdateForm, setBulkUpdateForm] = useState({
+    fundId: "" as string,
+    programId: "" as string,
+    grantId: "" as string,
+    functionalCategory: "" as "" | "program" | "administrative" | "fundraising",
+  });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [addForm, setAddForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -343,6 +351,65 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
     },
   });
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async (data: { transactionIds: number[]; fundId?: number | null; programId?: number | null; grantId?: number | null; functionalCategory?: string | null }) => {
+      return await apiRequest('POST', `/api/transactions/bulk-categorize`, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
+      setSelectedTransactions(new Set());
+      setIsBulkUpdateDialogOpen(false);
+      setBulkUpdateForm({ fundId: "", programId: "", grantId: "", functionalCategory: "" });
+      toast({
+        title: "Transactions Updated",
+        description: `Successfully updated ${variables.transactionIds.length} transactions.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update transactions.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleBulkUpdate = () => {
+    const ids = Array.from(selectedTransactions);
+    if (ids.length === 0) return;
+    
+    const updates: { transactionIds: number[]; fundId?: number | null; programId?: number | null; grantId?: number | null; functionalCategory?: string | null } = {
+      transactionIds: ids,
+    };
+    
+    if (bulkUpdateForm.fundId && bulkUpdateForm.fundId !== "none") {
+      updates.fundId = parseInt(bulkUpdateForm.fundId);
+    } else if (bulkUpdateForm.fundId === "none") {
+      updates.fundId = null;
+    }
+    
+    if (bulkUpdateForm.programId && bulkUpdateForm.programId !== "none") {
+      updates.programId = parseInt(bulkUpdateForm.programId);
+    } else if (bulkUpdateForm.programId === "none") {
+      updates.programId = null;
+    }
+    
+    if (bulkUpdateForm.grantId && bulkUpdateForm.grantId !== "none") {
+      updates.grantId = parseInt(bulkUpdateForm.grantId);
+    } else if (bulkUpdateForm.grantId === "none") {
+      updates.grantId = null;
+    }
+    
+    if (bulkUpdateForm.functionalCategory) {
+      updates.functionalCategory = bulkUpdateForm.functionalCategory;
+    }
+    
+    bulkUpdateMutation.mutate(updates);
+  };
 
   const createTransactionMutation = useMutation({
     mutationFn: async (data: {
@@ -738,13 +805,16 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       const matchesAccount = accountFilter === "all" || 
         (accountFilter === "unlinked" && !transaction.bankAccountId) ||
         (transaction.bankAccountId?.toString() === accountFilter);
+      const matchesCategory = categoryFilter === "all" || 
+        (categoryFilter === "uncategorized" && !transaction.categoryId) ||
+        (transaction.categoryId?.toString() === categoryFilter);
       
       // Date range filter
       const transactionDate = new Date(transaction.date);
       const matchesStartDate = !startDate || transactionDate >= new Date(startDate);
       const matchesEndDate = !endDate || transactionDate <= new Date(endDate + 'T23:59:59');
       
-      return matchesSearch && matchesSource && matchesType && matchesAccount && matchesStartDate && matchesEndDate;
+      return matchesSearch && matchesSource && matchesType && matchesAccount && matchesCategory && matchesStartDate && matchesEndDate;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -772,7 +842,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
           break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
-    }), [transactions, searchTerm, sourceFilter, typeFilter, accountFilter, startDate, endDate, sortColumn, sortDirection, categories]);
+    }), [transactions, searchTerm, sourceFilter, typeFilter, accountFilter, categoryFilter, startDate, endDate, sortColumn, sortDirection, categories]);
 
   // Get selected account for balance calculations and display
   const selectedAccount = useMemo(() => 
@@ -995,6 +1065,21 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
+              {selectedTransactions.size > 0 && currentOrganization.type === 'nonprofit' && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsBulkUpdateDialogOpen(true)}
+                  disabled={bulkUpdateMutation.isPending}
+                  data-testid="button-bulk-update"
+                >
+                  {bulkUpdateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Edit2 className="h-4 w-4 mr-2" />
+                  )}
+                  Update {selectedTransactions.size} Selected
+                </Button>
+              )}
               {selectedTransactions.size > 0 && (
                 <Button
                   variant="destructive"
@@ -1041,6 +1126,20 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="income">Income</SelectItem>
                   <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px]" data-testid="select-category-filter">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.parentCategoryId ? `  └ ${category.name}` : category.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {plaidAccounts.length > 0 && (
@@ -1567,6 +1666,122 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete {selectedTransactions.size} Transactions
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Update Dialog for Nonprofits */}
+      <Dialog open={isBulkUpdateDialogOpen} onOpenChange={setIsBulkUpdateDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Update {selectedTransactions.size} Transactions</DialogTitle>
+            <DialogDescription>
+              Apply changes to Fund, Program, Grant, or Functional Category for the selected transactions. Only fields you select will be updated.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="bulk-fund">Fund</Label>
+              <Select 
+                value={bulkUpdateForm.fundId} 
+                onValueChange={(value) => setBulkUpdateForm({ ...bulkUpdateForm, fundId: value })}
+              >
+                <SelectTrigger id="bulk-fund" data-testid="select-bulk-fund">
+                  <SelectValue placeholder="Select a fund (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Clear Fund</SelectItem>
+                  {funds.map((fund) => (
+                    <SelectItem key={fund.id} value={fund.id.toString()}>
+                      {fund.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="bulk-program">Program</Label>
+              <Select 
+                value={bulkUpdateForm.programId} 
+                onValueChange={(value) => setBulkUpdateForm({ ...bulkUpdateForm, programId: value })}
+              >
+                <SelectTrigger id="bulk-program" data-testid="select-bulk-program">
+                  <SelectValue placeholder="Select a program (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Clear Program</SelectItem>
+                  {programs.map((program) => (
+                    <SelectItem key={program.id} value={program.id.toString()}>
+                      {program.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="bulk-grant">Grant</Label>
+              <Select 
+                value={bulkUpdateForm.grantId} 
+                onValueChange={(value) => setBulkUpdateForm({ ...bulkUpdateForm, grantId: value })}
+              >
+                <SelectTrigger id="bulk-grant" data-testid="select-bulk-grant">
+                  <SelectValue placeholder="Select a grant (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Clear Grant</SelectItem>
+                  {grants.map((grant) => (
+                    <SelectItem key={grant.id} value={grant.id.toString()}>
+                      {grant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="bulk-functional">Functional Category (Form 990)</Label>
+              <Select 
+                value={bulkUpdateForm.functionalCategory} 
+                onValueChange={(value: "" | "program" | "administrative" | "fundraising") => setBulkUpdateForm({ ...bulkUpdateForm, functionalCategory: value })}
+              >
+                <SelectTrigger id="bulk-functional" data-testid="select-bulk-functional">
+                  <SelectValue placeholder="Select functional category (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="program">Program Services</SelectItem>
+                  <SelectItem value="administrative">Management & General</SelectItem>
+                  <SelectItem value="fundraising">Fundraising</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsBulkUpdateDialogOpen(false);
+                setBulkUpdateForm({ fundId: "", programId: "", grantId: "", functionalCategory: "" });
+              }}
+              data-testid="button-cancel-bulk-update"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkUpdate}
+              disabled={bulkUpdateMutation.isPending || (!bulkUpdateForm.fundId && !bulkUpdateForm.programId && !bulkUpdateForm.grantId && !bulkUpdateForm.functionalCategory)}
+              data-testid="button-confirm-bulk-update"
+            >
+              {bulkUpdateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Update {selectedTransactions.size} Transactions
                 </>
               )}
             </Button>
