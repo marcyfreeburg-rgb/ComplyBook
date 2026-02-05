@@ -325,6 +325,8 @@ export class PlaidWebhookHandlers {
             categoryId: null,
             vendorId: null,
             createdBy: plaidItem.createdBy,
+            source: 'plaid',
+            externalId: plaidTx.transaction_id,
           });
           imported++;
         }
