@@ -1,0 +1,41 @@
+
+complybook.net/ clientIP="216.147.123.52" requestID="cd99f05c-5ab9-45fe" responseTimeMS=70 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="ce32cb7b-7c82-4ee8" responseTimeMS=63 responseBytes=17646 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="74a6f17b-d04d-43a0" responseTimeMS=115 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.123.52" requestID="2c8a5b6c-c80a-43dd" responseTimeMS=79 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CUzYmkjc.js clientIP="216.147.123.52" requestID="939cb77f-5bfd-4dad" responseTimeMS=270 responseBytes=945290 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="3a3706f4-55c8-4d8a" responseTimeMS=187 responseBytes=2250 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="3d395573-3ba9-4dd1" responseTimeMS=3 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="8f8eaa47-30f0-4b57" responseTimeMS=77 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+9:51:51 PM [express] GET /api/auth/user 200 in 186ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="0eaa9f1a-90f8-4d2d" responseTimeMS=256 responseBytes=1318 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.123.52" requestID="b051c98c-31a9-460e" responseTimeMS=665 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+Decryption error: TypeError: Invalid authentication tag length: 0
+    at Decipheriv.setAuthTag (node:internal/crypto/cipher:211:22)
+    at decryptField (file:///opt/render/project/src/dist/index.js:3565:14)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30 {
+  code: 'ERR_CRYPTO_INVALID_AUTH_TAG'
+}
+Error fetching organizations: Error: Failed to decrypt sensitive field. Data may be corrupted or encryption key changed.
+    at decryptField (file:///opt/render/project/src/dist/index.js:3571:11)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+9:51:52 PM [express] GET /api/organizations 500 in 250ms :: {"message":"Failed to fetch organization…
+9:51:52 PM [express] GET /api/security/mfa/status 304 in 665ms :: {"mfaEnabled":true,"mfaRequired":t…
