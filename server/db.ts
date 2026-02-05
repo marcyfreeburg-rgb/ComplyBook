@@ -5,15 +5,28 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-const isReplit = !!process.env.REPL_ID;
+function sanitizePoolerUrl(url: string): string {
+  if (url.includes('-pooler')) {
+    return url.replace('-pooler', '');
+  }
+  return url;
+}
 
 function getConnectionString(): string {
-  if (isReplit && process.env.NEON_PRODUCTION_DATABASE_URL) {
-    let url = process.env.NEON_PRODUCTION_DATABASE_URL;
-    if (url.includes('-pooler')) {
-      url = url.replace('-pooler', '');
+  const isReplit = !!process.env.REPL_ID;
+  const nodeEnv = process.env.NODE_ENV || 'development';
+
+  if (isReplit) {
+    const devUrl = process.env.NEON_PRODUCTION_DATABASE_URL;
+    if (!devUrl) {
+      console.warn('[DB] WARNING: On Replit but NEON_PRODUCTION_DATABASE_URL not set. Falling back to DATABASE_URL.');
+      if (!process.env.DATABASE_URL) {
+        throw new Error('No database URL configured. Set NEON_PRODUCTION_DATABASE_URL or DATABASE_URL.');
+      }
+      return sanitizePoolerUrl(process.env.DATABASE_URL);
     }
-    console.log('[DB] Development mode: using dev database (ep-round-firefly)');
+    const url = sanitizePoolerUrl(devUrl);
+    console.log('[DB] Development mode (Replit): using dev database');
     return url;
   }
 
@@ -23,7 +36,7 @@ function getConnectionString(): string {
     );
   }
 
-  console.log('[DB] Production mode: using production database');
+  console.log(`[DB] Production mode: using production database (NODE_ENV=${nodeEnv})`);
   return process.env.DATABASE_URL;
 }
 
