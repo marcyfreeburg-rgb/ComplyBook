@@ -37,7 +37,7 @@ function getConnectionString(): string {
   }
 
   console.log(`[DB] Production mode: using production database (NODE_ENV=${nodeEnv})`);
-  return process.env.DATABASE_URL;
+  return sanitizePoolerUrl(process.env.DATABASE_URL);
 }
 
 const connectionString = getConnectionString();
