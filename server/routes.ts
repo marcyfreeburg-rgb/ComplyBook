@@ -12044,6 +12044,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { decryptField } = await import('./encryption');
       
       const secret = decryptField(encryptedSecret);
+      if (!secret) {
+        console.error('[MFA] Failed to decrypt MFA secret for user', userId, '- ENCRYPTION_KEY may not match');
+        return res.status(500).json({ message: "MFA configuration error. The encryption key may have changed. Please disable and re-enable MFA in your security settings." });
+      }
       const isValid = verifyTotp(secret, code);
       
       if (!isValid) {
@@ -12168,6 +12172,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { decryptField } = await import('./encryption');
         
         const secret = decryptField(encryptedSecret);
+        if (!secret) {
+          console.error('[MFA] Failed to decrypt MFA secret for user', userId, '- ENCRYPTION_KEY may not match');
+          return res.status(500).json({ message: "MFA configuration error. The encryption key may have changed. Please disable and re-enable MFA in your security settings." });
+        }
         const isValid = verifyTotp(secret, code);
         
         if (!isValid) {
@@ -12300,6 +12308,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { decryptField } = await import('./encryption');
         
         const secret = decryptField(encryptedSecret);
+        if (!secret) {
+          console.error('[MFA] Failed to decrypt MFA secret for user', userId, '- ENCRYPTION_KEY may not match');
+          return res.status(500).json({ message: "MFA configuration error. The encryption key may have changed. Please disable and re-enable MFA in your security settings." });
+        }
         const isValid = verifyTotp(secret, code);
         
         if (!isValid) {
@@ -12393,6 +12405,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { decryptField } = await import('./encryption');
       
       const secret = decryptField(encryptedSecret);
+      if (!secret) {
+        console.error('[MFA] Failed to decrypt MFA secret for user', userId, '- ENCRYPTION_KEY may not match');
+        return res.status(500).json({ message: "MFA configuration error. The encryption key may have changed. Please disable and re-enable MFA in your security settings." });
+      }
       const isValid = verifyTotp(secret, code);
       
       if (!isValid) {
@@ -12447,6 +12463,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { decryptField } = await import('./encryption');
       
       const secret = decryptField(encryptedSecret);
+      if (!secret) {
+        console.error('[MFA] Failed to decrypt MFA secret for user', userId, '- ENCRYPTION_KEY may not match');
+        return res.status(500).json({ message: "MFA configuration error. The encryption key may have changed. Please disable and re-enable MFA in your security settings." });
+      }
       const isValid = verifyTotp(secret, code);
       
       if (!isValid) {

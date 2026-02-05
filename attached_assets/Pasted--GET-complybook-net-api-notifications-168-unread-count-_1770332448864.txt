@@ -1,0 +1,47 @@
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.123.52" requestID="4f5ff729-78f6-496c" responseTimeMS=6 responseBytes=1116 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:59:49 PM [express] GET /api/notifications/168/unread-count 401 in 4ms :: {"message":"Unauthorized"}
+[GET]
+complybook.net/transaction-log clientIP="216.147.123.52" requestID="f7b9ae3e-e26c-420d" responseTimeMS=13 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CUzYmkjc.js clientIP="216.147.123.52" requestID="af905d5b-18b8-4765" responseTimeMS=268 responseBytes=945290 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="0343ebd1-2590-4ff9" responseTimeMS=49 responseBytes=17646 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="989d1ffc-53cb-4a6d" responseTimeMS=29 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="e1246203-e9ed-419a" responseTimeMS=6 responseBytes=1116 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:59:57 PM [express] GET /api/auth/user 401 in 4ms :: {"message":"Unauthorized"}
+[GET]
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="d461f3ee-f880-444f" responseTimeMS=4 responseBytes=1766 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="b9de02d6-a789-4f17" responseTimeMS=19 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.123.52" requestID="c489c18a-78c2-4064" responseTimeMS=25 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/mode clientIP="216.147.123.52" requestID="30e876d6-12eb-40a3" responseTimeMS=5 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+11:00:02 PM [express] GET /api/auth/mode 304 in 3ms :: {"mode":"local"}
+[POST]
+complybook.net/api/login clientIP="216.147.123.52" requestID="81e33616-aa30-4bbc" responseTimeMS=288 responseBytes=1393 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="0a808567-8044-485e" responseTimeMS=9 responseBytes=1162 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/mfa/login-status clientIP="216.147.123.52" requestID="ab96fb5a-df35-4ca5" responseTimeMS=17 responseBytes=1164 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+11:00:04 PM [express] POST /api/login 200 in 268ms :: {"success":true,"mfaRequired":true,"mfaSetupReq…
+11:00:04 PM [express] GET /api/auth/user 403 in 7ms :: {"message":"MFA verification required","code":…
+11:00:04 PM [express] GET /api/auth/mfa/login-status 200 in 14ms :: {"mfaPending":true,"mfaVerified":…
+[POST]
+complybook.net/api/auth/mfa/verify-login clientIP="216.147.123.52" requestID="8d70e5b3-e629-41fa" responseTimeMS=132 responseBytes=1124 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Decryption error: Error: Unsupported state or unable to authenticate data
+    at Decipheriv.final (node:internal/crypto/cipher:184:29)
+    at decryptField (file:///opt/render/project/src/dist/index.js:3593:27)
+    at file:///opt/render/project/src/dist/index.js:24016:24
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Menu
+Error verifying login MFA: TypeError: Cannot read properties of null (reading 'replace')
+    at base32Decode (file:///opt/render/project/src/node_modules/otpauth/dist/otpauth.node.mjs:107:15)
+    at Secret.fromBase32 (file:///opt/render/project/src/node_modules/otpauth/dist/otpauth.node.mjs:274:21)
+    at verifyTotp (file:///opt/render/project/src/dist/index.js:11274:28)
+    at file:///opt/render/project/src/dist/index.js:24017:25
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+11:00:18 PM [express] POST /api/auth/mfa/verify-login 500 in 129ms :: {"message":"Failed to verify MF…
