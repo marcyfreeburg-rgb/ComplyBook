@@ -160,7 +160,7 @@ export default function RecurringTransactions({ currentOrganization, userId }: R
       return await apiRequest('POST', `/api/recurring-transactions/generate/${currentOrganization.id}`, {});
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       queryClient.invalidateQueries({ queryKey: [`/api/recurring-transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
       toast({

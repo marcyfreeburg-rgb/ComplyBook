@@ -129,7 +129,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   } | null>(null);
 
   const { data: transactions = [], isLoading, refetch: refetchTransactions } = useQuery<Transaction[]>({
-    queryKey: [`/api/transactions/${currentOrganization.id}`],
+    queryKey: [`/api/transactions/${currentOrganization.id}?all=true`],
   });
   
   // Refresh transactions - preserves scroll position
@@ -225,7 +225,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       setIsSyncingPlaid(true);
     },
     onSuccess: (data: { imported?: number; message?: string }) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       toast({
         title: "Transactions Synced",
         description: `Successfully synced ${data.imported || 0} new transactions from your bank accounts.`,
@@ -248,7 +248,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return await apiRequest('PATCH', `/api/transactions/${data.id}`, data.updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
@@ -273,7 +273,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return await apiRequest('DELETE', `/api/transactions/${id}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction Deleted",
@@ -297,7 +297,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       });
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       setSelectedTransactions(new Set());
       setIsDeleteDialogOpen(false);
@@ -333,7 +333,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return await apiRequest('POST', '/api/transactions', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
       setIsAddDialogOpen(false);
@@ -449,7 +449,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     },
     onSuccess: (data) => {
       if (data.applied && data.suggestion) {
-        queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
         toast({
           title: "Category Applied",
           description: `Applied "${data.suggestion.categoryName}" (${data.suggestion.confidence}% confidence)`,
