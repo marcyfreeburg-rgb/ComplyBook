@@ -31,14 +31,17 @@ PostgreSQL (Neon Serverless) is the primary relational database, managed with Dr
 
 ## Deployment Architecture
 
-### Two-Database Setup
--   **Production (Render):** Neon database `ep-cool-leaf` — contains all real organization data (J & M Solutions, C Cubed Training, demo orgs)
--   **Development (Replit):** Neon database `ep-round-firefly` — copy of schema and reference data for safe development/testing
+### Three-Database Setup
+-   **Production (Render):** Neon database — contains all real organization data, accessed via `DATABASE_URL`
+-   **Development App (Replit):** Neon database — accessed via `NEON_PRODUCTION_DATABASE_URL` (the app connects to this)
+-   **Replit Built-in PostgreSQL:** Accessed via `DATABASE_URL` on Replit — used by the SQL tool but NOT by the running app
+
+**CRITICAL:** The app running on Replit uses the Neon database (`NEON_PRODUCTION_DATABASE_URL`), NOT the Replit built-in PostgreSQL (`DATABASE_URL`). The SQL tool connects to the built-in PostgreSQL. When data appears in the SQL tool but not in the app, it means the data is in the wrong database. Data must be in the Neon database for the app to display it.
 
 ### Environment Detection
 The app auto-detects which database to use in `server/db.ts`:
--   On Replit (REPL_ID exists): Uses `NEON_PRODUCTION_DATABASE_URL` (with `-pooler` removed for reliable connections) → connects to dev database
--   On Render (no REPL_ID): Uses `DATABASE_URL` → connects to production database
+-   On Replit (REPL_ID exists): Uses `NEON_PRODUCTION_DATABASE_URL` (with `-pooler` removed for reliable connections) → connects to Neon dev database
+-   On Render (no REPL_ID): Uses `DATABASE_URL` → connects to Neon production database
 
 ### Authentication
 -   **Replit (development):** Replit OIDC authentication (supports Google login)
