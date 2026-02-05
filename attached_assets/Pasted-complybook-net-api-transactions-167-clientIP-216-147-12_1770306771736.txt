@@ -1,0 +1,21 @@
+complybook.net/api/transactions/167 clientIP="216.147.123.52" requestID="5653ba79-472d-4c89" responseTimeMS=821 responseBytes=109601 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:50:14 PM [express] GET /api/transactions/167 200 in 814ms :: [{"id":46379,"organizationId":167,"da…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="46e3142a-b32c-40ab" responseTimeMS=233 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:50:16 PM [express] GET /api/notifications/167/unread-count 304 in 231ms :: {"count":"0"}
+[DELETE]
+complybook.net/api/transactions/46342 clientIP="216.147.123.52" requestID="aa37ee65-7bb6-437c" responseTimeMS=1142 responseBytes=1317 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:50:55 PM [express] DELETE /api/transactions/46342 200 in 1137ms :: {"message":"Transaction deleted…
+[GET]
+complybook.net/api/transactions/167 clientIP="216.147.123.52" requestID="c87d8624-8e8a-4bc4" responseTimeMS=746 responseBytes=109534 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+3:50:57 PM [express] GET /api/transactions/167 200 in 742ms :: [{"id":46379,"organizationId":167,"da…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="c1125444-137e-47ce" responseTimeMS=781 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:51:35 PM [express] GET /api/notifications/167/unread-count 304 in 775ms :: {"count":"0"}
+[DELETE]
+complybook.net/api/transactions/46351 clientIP="216.147.123.52" requestID="afb81c92-7339-47ee" responseTimeMS=612 responseBytes=1317 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:51:43 PM [express] DELETE /api/transactions/46351 200 in 607ms :: {"message":"Transaction deleted …
+[GET]
+complybook.net/api/transactions/167 clientIP="216.147.123.52" requestID="d6519eef-1c9a-48cb" responseTimeMS=860 responseBytes=109435 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+3:51:46 PM [express] GET /api/transactions/167 200 in 852ms :: [{"id":46379,"organizationId":167,"da…

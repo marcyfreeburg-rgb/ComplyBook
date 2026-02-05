@@ -3543,22 +3543,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      // Check if pagination is requested
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      // Always use pagination with a default limit for performance
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       const search = req.query.search as string | undefined;
       const startDate = req.query.startDate as string | undefined;
       const endDate = req.query.endDate as string | undefined;
       const grantId = req.query.grantId ? parseInt(req.query.grantId as string) : undefined;
 
-      if (limit !== undefined) {
-        // Paginated response
-        const result = await storage.getTransactionsPaginated(organizationId, { limit, offset, search, startDate, endDate, grantId });
-        res.json(result);
-      } else {
-        // Legacy: return all transactions (for backwards compatibility)
+      // Check if legacy mode is explicitly requested (for backwards compatibility)
+      if (req.query.all === 'true') {
         const transactions = await storage.getTransactions(organizationId);
         res.json(transactions);
+      } else {
+        // Paginated response (default)
+        const result = await storage.getTransactionsPaginated(organizationId, { limit, offset, search, startDate, endDate, grantId });
+        res.json(result);
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);
