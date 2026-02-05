@@ -214,7 +214,7 @@ function AuthenticatedApp() {
                   </span>
                 ) : (
                   <span>
-                    <strong>Multi-factor authentication will be required.</strong> You have {mfaStatus.daysRemaining} day{mfaStatus.daysRemaining !== 1 ? 's' : ''} remaining 
+                    <strong>Multi-factor authentication will be required.</strong> You have {mfaStatus.daysRemaining ?? 0} day{mfaStatus.daysRemaining !== 1 ? 's' : ''} remaining 
                     to set up MFA before access to administrative functions is restricted.
                   </span>
                 )}

@@ -60,8 +60,8 @@ export default function MfaSetup({ currentOrganization, user }: MfaSetupProps) {
 
   const setupMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('/api/security/mfa/setup', { method: 'POST' });
-      return response as SetupResponse;
+      const response = await apiRequest('POST', '/api/security/mfa/setup');
+      return await response.json() as SetupResponse;
     },
     onSuccess: (data) => {
       setSetupData(data);
@@ -78,12 +78,8 @@ export default function MfaSetup({ currentOrganization, user }: MfaSetupProps) {
 
   const verifySetupMutation = useMutation({
     mutationFn: async (code: string) => {
-      const response = await apiRequest('/api/security/mfa/verify-setup', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      return response as VerifySetupResponse;
+      const response = await apiRequest('POST', '/api/security/mfa/verify-setup', { code });
+      return await response.json() as VerifySetupResponse;
     },
     onSuccess: (data) => {
       setBackupCodes(data.backupCodes);
@@ -106,12 +102,8 @@ export default function MfaSetup({ currentOrganization, user }: MfaSetupProps) {
 
   const disableMutation = useMutation({
     mutationFn: async (code: string) => {
-      const response = await apiRequest('/api/security/mfa/disable', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      return response;
+      const response = await apiRequest('POST', '/api/security/mfa/disable', { code });
+      return await response.json();
     },
     onSuccess: () => {
       setIsDisableDialogOpen(false);
@@ -135,12 +127,8 @@ export default function MfaSetup({ currentOrganization, user }: MfaSetupProps) {
 
   const regenerateBackupCodesMutation = useMutation({
     mutationFn: async (code: string) => {
-      const response = await apiRequest('/api/security/mfa/regenerate-backup-codes', {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      return response as { success: boolean; backupCodes: string[] };
+      const response = await apiRequest('POST', '/api/security/mfa/regenerate-backup-codes', { code });
+      return await response.json() as { success: boolean; backupCodes: string[] };
     },
     onSuccess: (data) => {
       setBackupCodes(data.backupCodes);
@@ -239,7 +227,7 @@ export default function MfaSetup({ currentOrganization, user }: MfaSetupProps) {
                 <AlertDescription>
                   {mfaStatus.gracePeriodExpired
                     ? "Your grace period has expired. Please set up MFA immediately to regain access to administrative functions."
-                    : `You have ${mfaStatus.daysRemaining} day${mfaStatus.daysRemaining !== 1 ? 's' : ''} remaining to set up MFA.`}
+                    : `You have ${mfaStatus.daysRemaining ?? 0} day${mfaStatus.daysRemaining !== 1 ? 's' : ''} remaining to set up MFA.`}
                 </AlertDescription>
               </Alert>
             )}
