@@ -81,7 +81,7 @@ export function decryptField(ciphertext: string | null): string | null {
     return decrypted;
   } catch (error) {
     console.error('Decryption error:', error);
-    throw new Error('Failed to decrypt sensitive field. Data may be corrupted or encryption key changed.');
+    return null;
   }
 }
 

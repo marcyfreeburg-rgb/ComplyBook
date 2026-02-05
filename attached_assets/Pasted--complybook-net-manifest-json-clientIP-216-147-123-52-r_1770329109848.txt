@@ -1,0 +1,139 @@
+
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="4ff079b8-0fae-4894" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="c3a80cc4-dce4-41b0" responseTimeMS=181 responseBytes=2250 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.123.52" requestID="ee9bda8f-8c34-4c4d" responseTimeMS=72 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="831735fb-b6bb-4713" responseTimeMS=129 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="31a09376-8cd8-447f" responseTimeMS=116 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="14262455-ca7a-45b6" responseTimeMS=598 responseBytes=1318 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Error fetching organizations: Error: Failed to decrypt sensitive field. Data may be corrupted or encryption key changed.
+    at decryptField (file:///opt/render/project/src/dist/index.js:3571:11)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+10:02:57 PM [express] GET /api/organizations 500 in 592ms :: {"message":"Failed to fetch organization…
+[GET]
+complybook.net/ clientIP="216.147.123.52" requestID="7a348272-ed30-45d4" responseTimeMS=493 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="c867c238-05a4-41bf" responseTimeMS=120 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/ clientIP="216.147.123.52" requestID="d4fae8c8-65a7-40c5" responseTimeMS=122 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.123.52" requestID="d53c3f98-545b-41b1" responseTimeMS=62 responseBytes=2243 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CUzYmkjc.js clientIP="216.147.123.52" requestID="b311d4ce-76b4-4292" responseTimeMS=483 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="2c3aef49-2207-413c" responseTimeMS=127 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="1bdb57ba-f86e-40bc" responseTimeMS=368 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="a9f52535-da62-49cb" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="6b261cee-0f37-4630" responseTimeMS=465 responseBytes=1318 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="3a1bf75b-acea-4220" responseTimeMS=489 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.123.52" requestID="45215643-1a87-41a9" responseTimeMS=298 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:03:10 PM [express] GET /api/auth/user 304 in 367ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+10:03:10 PM [express] GET /api/security/mfa/status 304 in 297ms :: {"mfaEnabled":true,"mfaRequired":t…
+Decryption error: Error: Unsupported state or unable to authenticate data
+    at Decipheriv.final (node:internal/crypto/cipher:184:29)
+    at decryptField (file:///opt/render/project/src/dist/index.js:3567:27)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+Error fetching organizations: Error: Failed to decrypt sensitive field. Data may be corrupted or encryption key changed.
+    at decryptField (file:///opt/render/project/src/dist/index.js:3571:11)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+10:03:10 PM [express] GET /api/organizations 500 in 464ms :: {"message":"Failed to fetch organization…
+[GET]
+complybook.net/sw.js clientIP="216.147.123.52" requestID="45d1c539-7e7a-4494" responseTimeMS=118 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/ clientIP="216.147.123.52" requestID="f1376c91-ffa0-42f5" responseTimeMS=541 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CUzYmkjc.js clientIP="216.147.123.52" requestID="1deec82e-8fa3-4678" responseTimeMS=484 responseBytes=1084 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="9f775376-0829-428a" responseTimeMS=135 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="cb394371-5018-45e9" responseTimeMS=120 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:03:55 PM [express] GET /api/auth/user 304 in 380ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+Decryption error: Error: Unsupported state or unable to authenticate data
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="83b1b12e-5d6c-4389" responseTimeMS=381 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.123.52" requestID="2d644e9d-b5fb-47e3" responseTimeMS=509 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="f8d98e6a-302d-48b4" responseTimeMS=133 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="409a31a5-58d4-4050" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="294c2314-781b-4d3a" responseTimeMS=245 responseBytes=1318 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+    at Decipheriv.final (node:internal/crypto/cipher:184:29)
+    at decryptField (file:///opt/render/project/src/dist/index.js:3567:27)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+Error fetching organizations: Error: Failed to decrypt sensitive field. Data may be corrupted or encryption key changed.
+    at decryptField (file:///opt/render/project/src/dist/index.js:3571:11)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+10:03:56 PM [express] GET /api/organizations 500 in 241ms :: {"message":"Failed to fetch organization…
+10:03:56 PM [express] GET /api/security/mfa/status 304 in 504ms :: {"mfaEnabled":true,"mfaRequired":t…
+[GET]
+complybook.net/sw.js clientIP="216.147.123.52" requestID="10582814-e412-4682" responseTimeMS=133 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/ clientIP="216.147.123.52" requestID="3111103b-2f28-4286" responseTimeMS=423 responseBytes=1863 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CUzYmkjc.js clientIP="216.147.123.52" requestID="0f41809b-34c3-4d38" responseTimeMS=355 responseBytes=945290 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="20aea850-56f1-412d" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="b99215cd-c19b-435f" responseTimeMS=108 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="6c4156b7-dd22-47eb" responseTimeMS=472 responseBytes=17646 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="e462dbca-f7c8-4926" responseTimeMS=130 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.123.52" requestID="f8cc52c7-6f45-4bba" responseTimeMS=163 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="38be944d-5757-4512" responseTimeMS=379 responseBytes=2250 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="489d83fb-852c-4549" responseTimeMS=632 responseBytes=1318 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.123.52" requestID="9eb6af74-a52f-4d83" responseTimeMS=304 responseBytes=994 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:04:12 PM [express] GET /api/auth/user 200 in 377ms :: {"id":"43852944","email":"marcy.freeburg@gma…
+10:04:12 PM [express] GET /api/security/mfa/status 304 in 303ms :: {"mfaEnabled":true,"mfaRequired":t…
+Decryption error: Error: Unsupported state or unable to authenticate data
+    at Decipheriv.final (node:internal/crypto/cipher:184:29)
+    at decryptField (file:///opt/render/project/src/dist/index.js:3567:27)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+Menu
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+Error fetching organizations: Error: Failed to decrypt sensitive field. Data may be corrupted or encryption key changed.
+    at decryptField (file:///opt/render/project/src/dist/index.js:3571:11)
+    at file:///opt/render/project/src/dist/index.js:5363:32
+    at Array.map (<anonymous>)
+    at DatabaseStorage.getOrganizations (file:///opt/render/project/src/dist/index.js:5361:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///opt/render/project/src/dist/index.js:14797:30
+10:04:12 PM [express] GET /api/organizations 500 in 630ms :: {"message":"Failed to fetch organization…
