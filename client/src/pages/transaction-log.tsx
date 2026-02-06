@@ -174,7 +174,6 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       if (!res.ok) throw new Error('Failed to fetch transactions');
       return res.json();
     },
-    staleTime: 60000,
     placeholderData: (prev) => prev,
   });
   
@@ -217,53 +216,43 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
-    staleTime: 60000,
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: [`/api/vendors/${currentOrganization.id}`],
-    staleTime: 60000,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: [`/api/clients/${currentOrganization.id}`],
-    staleTime: 60000,
   });
 
   const { data: donors = [] } = useQuery<Donor[]>({
     queryKey: [`/api/donors/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
-    staleTime: 60000,
   });
 
   type GrantWithBalances = Grant & { totalSpent: string; totalIncome: string; remainingBalance: string };
   const { data: grants = [] } = useQuery<GrantWithBalances[]>({
     queryKey: [`/api/grants/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
-    staleTime: 30000, // Refresh more frequently to get accurate remaining balances
-    refetchOnWindowFocus: true,
   });
 
   const { data: funds = [] } = useQuery<Fund[]>({
     queryKey: ['/api/funds', currentOrganization.id],
     enabled: currentOrganization.type === 'nonprofit',
-    staleTime: 60000,
   });
 
   const { data: programs = [] } = useQuery<Program[]>({
     queryKey: ['/api/programs', currentOrganization.id],
     enabled: currentOrganization.type === 'nonprofit',
-    staleTime: 60000,
   });
 
   const { data: plaidItems = [] } = useQuery<{ id: number; itemId: string; institutionName: string }[]>({
     queryKey: [`/api/plaid/items/${currentOrganization.id}`],
-    staleTime: 60000,
   });
 
   const { data: plaidAccounts = [] } = useQuery<PlaidAccountWithInitialBalance[]>({
     queryKey: [`/api/plaid/accounts/${currentOrganization.id}`],
-    staleTime: 60000,
   });
 
   const syncPlaidTransactionsMutation = useMutation({

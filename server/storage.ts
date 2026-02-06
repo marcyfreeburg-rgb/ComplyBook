@@ -2322,6 +2322,21 @@ export class DatabaseStorage implements IStorage {
           ? [sql`${transactions.type} ASC`, sql`${transactions.id} DESC`]
           : [sql`${transactions.type} DESC`, sql`${transactions.id} DESC`];
         break;
+      case 'category':
+        orderByClause = sortDirection === 'asc'
+          ? [sql`${transactions.categoryId} ASC NULLS LAST`, sql`${transactions.id} DESC`]
+          : [sql`${transactions.categoryId} DESC NULLS LAST`, sql`${transactions.id} DESC`];
+        break;
+      case 'source':
+        orderByClause = sortDirection === 'asc'
+          ? [sql`${transactions.source} ASC NULLS LAST`, sql`${transactions.id} DESC`]
+          : [sql`${transactions.source} DESC NULLS LAST`, sql`${transactions.id} DESC`];
+        break;
+      case 'grant':
+        orderByClause = sortDirection === 'asc'
+          ? [sql`${transactions.grantId} ASC NULLS LAST`, sql`${transactions.id} DESC`]
+          : [sql`${transactions.grantId} DESC NULLS LAST`, sql`${transactions.id} DESC`];
+        break;
       default:
         orderByClause = sortDirection === 'asc'
           ? [sql`${transactions.date} ASC`, sql`${transactions.id} ASC`]
