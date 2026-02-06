@@ -5862,7 +5862,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(bills.organizationId, organizationId),
-          inArray(bills.status, ['received', 'approved']),
+          inArray(bills.status, ['received', 'scheduled']),
           isNull(bills.transactionId), // Not already linked to a transaction
           gte(bills.dueDate, startDate),
           lte(bills.dueDate, endDate)

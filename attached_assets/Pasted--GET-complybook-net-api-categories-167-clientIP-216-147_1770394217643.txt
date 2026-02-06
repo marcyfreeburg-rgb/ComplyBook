@@ -1,0 +1,62 @@
+[GET]
+complybook.net/api/categories/167 clientIP="216.147.126.82" requestID="bf2e7091-9650-49b5" responseTimeMS=51 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/clients/167 clientIP="216.147.126.82" requestID="74b32397-f60a-4774" responseTimeMS=538 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/vendors/167 clientIP="216.147.126.82" requestID="c55b9a06-efdc-42d5" responseTimeMS=560 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/transactions/167?all=true clientIP="216.147.126.82" requestID="209dd6fd-3f19-4ca6" responseTimeMS=566 responseBytes=106504 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.82" requestID="a647e327-4a5d-48c9" responseTimeMS=69 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:07:55 PM [express] GET /api/notifications/167/unread-count 304 in 67ms :: {"count":"0"}
+[POST]
+complybook.net/api/ai/suggest-category/167 clientIP="216.147.126.82" requestID="c948a9da-fc87-4918" responseTimeMS=2994 responseBytes=1537 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[PATCH]
+complybook.net/api/transactions/46375 clientIP="216.147.126.82" requestID="434b64aa-6d6f-4db5" responseTimeMS=51 responseBytes=1671 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[AI Categorization] Raw AI response for "Visa Check TWILIO SENDGRID WWW. (Ent Credit Union)": {
+  "categoryId": 336,
+  "categoryName": "Sendgrid",
+  "confidence": 95,
+  "reasoning": "The transaction description 'Visa Check TWILIO SENDGRID WWW. (Ent Credit Union)' closely matches the example descriptions in the category 'Sendgrid', indicating that this expense is related to a service provided by Twilio SendGrid. Given the high similarity, this category is the most appropriate for this transaction."
+}
+[AI Categorization] Suggested category "Sendgrid" with 95% confidence
+4:08:14 PM [express] POST /api/ai/suggest-category/167 200 in 2991ms :: {"categoryId":336,"categoryN…
+4:08:14 PM [express] PATCH /api/transactions/46375 200 in 48ms :: {"id":46375,"organizationId":167,"…
+[GET]
+complybook.net/api/transactions/167?all=true clientIP="216.147.126.82" requestID="1ff01345-4696-429a" responseTimeMS=397 responseBytes=106523 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:08:15 PM [express] GET /api/transactions/167 200 in 368ms :: [{"id":46379,"organizationId":167,"da…
+[POST]
+complybook.net/api/plaid/sync-transactions/167 clientIP="216.147.126.82" requestID="b3c54ade-9968-416b" responseTimeMS=882 responseBytes=1394 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/transactions/167?all=true clientIP="216.147.126.82" requestID="bb303622-0314-4995" responseTimeMS=333 responseBytes=106806 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[Plaid Sync] item_id: 4qk8N0yZwgIjY7xeN0o7U3OZx3bkDmCkJRvNE, added: 153, modified: 0, removed: 0
+Error syncing transactions for item 4qk8N0yZwgIjY7xeN0o7U3OZx3bkDmCkJRvNE: error: invalid input value for enum bill_status: "approved"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.findMatchingPendingBill (file:///opt/render/project/src/dist/index.js:7849:28)
+    at async file:///opt/render/project/src/dist/index.js:21063:38 {
+  length: 139,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+Menu
+  where: "unnamed portal parameter $3 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+4:08:31 PM [express] POST /api/plaid/sync-transactions/167 207 in 880ms :: {"imported":79,"errors":[…
+4:08:31 PM [express] GET /api/transactions/167 200 in 310ms :: [{"id":46379,"organizationId":167,"da…
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.126.82" requestID="3d5930b9-6c05-47c1" responseTimeMS=68 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+4:09:06 PM [express] GET /api/notifications/167/unread-count 304 in 67ms :: {"count":"0"}
