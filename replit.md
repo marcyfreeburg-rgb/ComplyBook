@@ -74,6 +74,27 @@ The app auto-detects which database to use in `server/db.ts`:
 -   The Neon pooler URL (`-pooler` in hostname) has search_path issues — the app auto-strips `-pooler` from URLs for reliable connections
 -   Tax ID fields use AES-256-GCM encryption — clearing corrupted values requires re-entry through the UI
 
+## Security Architecture
+
+### Webhook Verification
+-   **Plaid Webhooks:** JWT-based signature verification using ES256 via `server/plaidWebhookVerification.ts`. Decodes JWT from `Plaid-Verification` header, fetches the signing key from Plaid's `webhookVerificationKeyGet` API, verifies the ES256 signature, checks `iat` timestamp (5-minute max age), and validates `request_body_sha256` against the raw request body bytes. Raw body is captured via `express.json({ verify })` callback before JSON parsing.
+-   **Stripe Webhooks:** Signature verification required via `STRIPE_WEBHOOK_SECRET`. Raw body captured in `server/index.ts` and passed to `stripe.webhooks.constructEvent()`. Webhooks are rejected with 500 if `STRIPE_WEBHOOK_SECRET` is not configured — no fallback processing of unverified events.
+
+### Log Sanitization
+-   MFA token values are never logged (server/mfa.ts)
+-   Finch connection IDs and company IDs are not logged (server/finch.ts)
+-   Plaid link token values are not logged (server/routes.ts)
+-   API response bodies containing PII/financial data are not logged (request logger in server/index.ts)
+
+### Encryption
+-   Field-level encryption using AES-256-GCM for sensitive fields (tax IDs)
+-   `ENCRYPTION_KEY` must be identical across all environments to avoid data corruption
+
+### Important Security Notes
+-   `STRIPE_WEBHOOK_SECRET` must be configured in all environments or Stripe webhook processing will fail with 500 errors
+-   Plaid webhook verification requires valid Plaid API credentials (`PLAID_CLIENT_ID`, `PLAID_SECRET`) to fetch verification keys
+-   Database performance indexes: `idx_transactions_org_source`, `idx_transactions_org_bank_account`, `idx_transactions_org_description`
+
 ## External Dependencies
 
 ### Authentication
