@@ -3543,21 +3543,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to this organization" });
       }
 
-      // Always use pagination with a default limit for performance
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       const search = req.query.search as string | undefined;
       const startDate = req.query.startDate as string | undefined;
       const endDate = req.query.endDate as string | undefined;
       const grantId = req.query.grantId ? parseInt(req.query.grantId as string) : undefined;
+      const type = req.query.type as string | undefined;
+      const source = req.query.source as string | undefined;
+      const sortBy = req.query.sortBy as string | undefined;
+      const sortDirection = req.query.sortDirection as string | undefined;
+      
+      let categoryId: number | null | undefined = undefined;
+      if (req.query.categoryId === 'uncategorized') {
+        categoryId = null;
+      } else if (req.query.categoryId) {
+        categoryId = parseInt(req.query.categoryId as string);
+      }
+      
+      let bankAccountId: number | null | undefined = undefined;
+      if (req.query.bankAccountId === 'unlinked') {
+        bankAccountId = null;
+      } else if (req.query.bankAccountId) {
+        bankAccountId = parseInt(req.query.bankAccountId as string);
+      }
 
-      // Check if legacy mode is explicitly requested (for backwards compatibility)
       if (req.query.all === 'true') {
         const transactions = await storage.getTransactions(organizationId);
         res.json(transactions);
       } else {
-        // Paginated response (default)
-        const result = await storage.getTransactionsPaginated(organizationId, { limit, offset, search, startDate, endDate, grantId });
+        const result = await storage.getTransactionsPaginated(organizationId, { 
+          limit, offset, search, startDate, endDate, grantId,
+          type, source, categoryId, bankAccountId, sortBy, sortDirection
+        });
         res.json(result);
       }
     } catch (error) {

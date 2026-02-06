@@ -396,7 +396,7 @@ export interface IStorage {
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(organizationId: number): Promise<Transaction[]>;
   getTransactionCount(organizationId: number): Promise<number>;
-  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string; grantId?: number }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
+  getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string; grantId?: number; type?: string; source?: string; categoryId?: number | null; bankAccountId?: number | null; sortBy?: string; sortDirection?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }>;
   getTransactionsByDateRange(organizationId: number, startDate: Date, endDate: Date): Promise<Transaction[]>;
   getTransactionByExternalId(organizationId: number, externalId: string): Promise<Transaction | undefined>;
   getTransactionsByExternalIds(organizationId: number, externalIds: string[]): Promise<Map<string, Transaction>>;
@@ -2238,10 +2238,9 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count || 0;
   }
 
-  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string; grantId?: number }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
-    const { limit, offset, search, startDate, endDate, grantId } = options;
+  async getTransactionsPaginated(organizationId: number, options: { limit: number; offset: number; search?: string; startDate?: string; endDate?: string; grantId?: number; type?: string; source?: string; categoryId?: number | null; bankAccountId?: number | null; sortBy?: string; sortDirection?: string }): Promise<{ transactions: Transaction[]; total: number; hasMore: boolean }> {
+    const { limit, offset, search, startDate, endDate, grantId, type: txType, source, categoryId, bankAccountId, sortBy, sortDirection } = options;
     
-    // Build where conditions array
     const conditions: any[] = [eq(transactions.organizationId, organizationId)];
     
     if (search && search.trim()) {
@@ -2254,7 +2253,6 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
-    // Add date range filtering
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -2267,16 +2265,38 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${transactions.date} <= ${end}`);
     }
     
-    // Add grant filtering
     if (grantId) {
       conditions.push(eq(transactions.grantId, grantId));
+    }
+    
+    if (txType && txType !== 'all') {
+      conditions.push(eq(transactions.type, txType));
+    }
+    
+    if (source && source !== 'all') {
+      if (source === 'manual') {
+        conditions.push(or(eq(transactions.source, 'manual'), sql`${transactions.source} IS NULL`));
+      } else {
+        conditions.push(eq(transactions.source, source));
+      }
+    }
+    
+    if (categoryId !== undefined && categoryId !== null) {
+      conditions.push(eq(transactions.categoryId, categoryId));
+    } else if (categoryId === null) {
+      conditions.push(sql`${transactions.categoryId} IS NULL`);
+    }
+    
+    if (bankAccountId !== undefined && bankAccountId !== null) {
+      conditions.push(eq(transactions.bankAccountId, bankAccountId));
+    } else if (bankAccountId === null) {
+      conditions.push(sql`${transactions.bankAccountId} IS NULL`);
     }
     
     const whereConditions = conditions.length > 1 
       ? and(...conditions) as any
       : conditions[0];
     
-    // Get total count
     const [countResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(transactions)
@@ -2284,12 +2304,35 @@ export class DatabaseStorage implements IStorage {
     
     const total = countResult?.count || 0;
     
-    // Get paginated transactions
+    let orderByClause;
+    const dir = sortDirection === 'asc' ? sql`ASC` : sql`DESC`;
+    switch (sortBy) {
+      case 'amount':
+        orderByClause = sortDirection === 'asc' 
+          ? [sql`${transactions.amount} ASC`, sql`${transactions.id} DESC`]
+          : [sql`${transactions.amount} DESC`, sql`${transactions.id} DESC`];
+        break;
+      case 'description':
+        orderByClause = sortDirection === 'asc'
+          ? [sql`${transactions.description} ASC`, sql`${transactions.id} DESC`]
+          : [sql`${transactions.description} DESC`, sql`${transactions.id} DESC`];
+        break;
+      case 'type':
+        orderByClause = sortDirection === 'asc'
+          ? [sql`${transactions.type} ASC`, sql`${transactions.id} DESC`]
+          : [sql`${transactions.type} DESC`, sql`${transactions.id} DESC`];
+        break;
+      default:
+        orderByClause = sortDirection === 'asc'
+          ? [sql`${transactions.date} ASC`, sql`${transactions.id} ASC`]
+          : [sql`${transactions.date} DESC`, sql`${transactions.id} DESC`];
+    }
+    
     const result = await db
       .select()
       .from(transactions)
       .where(whereConditions)
-      .orderBy(desc(transactions.date), desc(transactions.id))
+      .orderBy(...orderByClause)
       .limit(limit)
       .offset(offset);
     

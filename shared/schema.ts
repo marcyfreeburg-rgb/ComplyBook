@@ -982,6 +982,8 @@ export const transactions = pgTable("transactions", {
   uniqueIndex("idx_transactions_external_id").on(table.organizationId, table.externalId).where(sql`external_id IS NOT NULL`),
   index("idx_transactions_duplicate_check").on(table.organizationId, table.date, table.amount, table.type),
   index("idx_transactions_monthly_trends").on(table.organizationId, table.type, table.date),
+  index("idx_transactions_org_source").on(table.organizationId, table.source),
+  index("idx_transactions_org_bank_account").on(table.organizationId, table.bankAccountId),
 ]);
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({

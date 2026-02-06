@@ -44,7 +44,12 @@ export function OrganizationSwitcher({
       staleTime: 60000,
     });
     queryClient.prefetchQuery({
-      queryKey: [`/api/transactions/${orgId}?all=true`],
+      queryKey: [`/api/transactions/${orgId}`, `limit=100&offset=0`],
+      queryFn: async () => {
+        const res = await fetch(`/api/transactions/${orgId}?limit=100&offset=0`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      },
       staleTime: 60000,
     });
     queryClient.prefetchQuery({

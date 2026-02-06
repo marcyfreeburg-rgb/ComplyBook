@@ -136,6 +136,8 @@ function AuthenticatedApp() {
   }, [currentOrgId]);
 
   const handleOrganizationSwitch = (orgId: number) => {
+    if (orgId === currentOrgId) return;
+    queryClient.cancelQueries();
     setCurrentOrgId(orgId);
     setLocation('/');
   };

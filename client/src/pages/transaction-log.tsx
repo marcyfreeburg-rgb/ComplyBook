@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,15 +119,25 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
   const [suggestingForTransaction, setSuggestingForTransaction] = useState<number | null>(null);
   const [isSyncingPlaid, setIsSyncingPlaid] = useState(false);
   
-  // Date range filter state
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 100;
   
-  // Ref for scroll position preservation
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  useEffect(() => { setPage(0); }, [sourceFilter, typeFilter, accountFilter, categoryFilter, startDate, endDate, sortColumn, sortDirection]);
+  
   const transactionListRef = useRef<HTMLDivElement>(null);
   
-  // Grant overspending prevention state
   const [grantOverspendWarning, setGrantOverspendWarning] = useState<{
     grantId: number;
     grantName: string;
@@ -136,26 +146,53 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     formType: 'add' | 'edit';
   } | null>(null);
 
-  const { data: transactions = [], isLoading, refetch: refetchTransactions } = useQuery<Transaction[]>({
-    queryKey: [`/api/transactions/${currentOrganization.id}?all=true`],
+  const buildQueryParams = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('limit', PAGE_SIZE.toString());
+    params.set('offset', (page * PAGE_SIZE).toString());
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    if (typeFilter !== 'all') params.set('type', typeFilter);
+    if (sourceFilter !== 'all') params.set('source', sourceFilter);
+    if (categoryFilter === 'uncategorized') params.set('categoryId', 'uncategorized');
+    else if (categoryFilter !== 'all') params.set('categoryId', categoryFilter);
+    if (accountFilter === 'unlinked') params.set('bankAccountId', 'unlinked');
+    else if (accountFilter !== 'all') params.set('bankAccountId', accountFilter);
+    if (sortColumn !== 'date') params.set('sortBy', sortColumn);
+    if (sortDirection !== 'desc') params.set('sortDirection', sortDirection);
+    return params.toString();
+  }, [page, debouncedSearch, startDate, endDate, typeFilter, sourceFilter, categoryFilter, accountFilter, sortColumn, sortDirection]);
+
+  const queryParams = buildQueryParams();
+  const txQueryKey = [`/api/transactions/${currentOrganization.id}`, queryParams];
+
+  const { data: paginatedData, isLoading, refetch: refetchTransactions } = useQuery<{ transactions: Transaction[]; total: number; hasMore: boolean }>({
+    queryKey: txQueryKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/transactions/${currentOrganization.id}?${queryParams}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch transactions');
+      return res.json();
+    },
     staleTime: 60000,
+    placeholderData: (prev) => prev,
   });
   
-  // Refresh transactions - preserves scroll position
+  const transactions = paginatedData?.transactions ?? [];
+  const totalTransactions = paginatedData?.total ?? 0;
+  const hasMore = paginatedData?.hasMore ?? false;
+  
   const refreshTransactions = async () => {
-    // Capture scroll position before refresh
     const scrollContainer = transactionListRef.current;
     const savedScrollTop = scrollContainer?.scrollTop || 0;
     
     setIsRefreshing(true);
     try {
       await refetchTransactions();
-      // Also refresh grants for accurate remaining balances
       if (currentOrganization.type === 'nonprofit') {
         queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       }
       
-      // Restore scroll position after state updates
       requestAnimationFrame(() => {
         if (scrollContainer) {
           scrollContainer.scrollTop = savedScrollTop;
@@ -238,7 +275,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       setIsSyncingPlaid(true);
     },
     onSuccess: (data: { imported?: number; message?: string; errors?: Array<{ institution: string; error: string }> }) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       if (data.errors && data.errors.length > 0) {
         const errorMessages = data.errors.map(e => `${e.institution}: ${e.error}`).join('\n');
         toast({
@@ -270,7 +307,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return await apiRequest('PATCH', `/api/transactions/${data.id}`, data.updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
@@ -294,34 +331,20 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     mutationFn: async (id: number) => {
       return await apiRequest('DELETE', `/api/transactions/${id}`, {});
     },
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
-      const previousTransactions = queryClient.getQueryData<Transaction[]>([`/api/transactions/${currentOrganization.id}?all=true`]);
-      queryClient.setQueryData<Transaction[]>(
-        [`/api/transactions/${currentOrganization.id}?all=true`],
-        (old) => old?.filter((t) => t.id !== id) ?? []
-      );
-      return { previousTransactions };
-    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transaction Deleted",
         description: "The transaction has been removed.",
       });
     },
-    onError: (error: Error, _id, context) => {
-      if (context?.previousTransactions) {
-        queryClient.setQueryData([`/api/transactions/${currentOrganization.id}?all=true`], context.previousTransactions);
-      }
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to delete transaction.",
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
     },
   });
 
@@ -332,37 +355,22 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
         transactionIds,
       });
     },
-    onMutate: async (transactionIds: number[]) => {
-      await queryClient.cancelQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
-      const previousTransactions = queryClient.getQueryData<Transaction[]>([`/api/transactions/${currentOrganization.id}?all=true`]);
-      const idsSet = new Set(transactionIds);
-      queryClient.setQueryData<Transaction[]>(
-        [`/api/transactions/${currentOrganization.id}?all=true`],
-        (old) => old?.filter((t) => !idsSet.has(t.id)) ?? []
-      );
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       setSelectedTransactions(new Set());
       setIsDeleteDialogOpen(false);
-      return { previousTransactions };
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       toast({
         title: "Transactions Deleted",
         description: `Successfully deleted ${variables.length} transactions.`,
       });
     },
-    onError: (error: Error, _ids, context) => {
-      if (context?.previousTransactions) {
-        queryClient.setQueryData([`/api/transactions/${currentOrganization.id}?all=true`], context.previousTransactions);
-      }
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to delete transactions.",
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
     },
   });
 
@@ -371,7 +379,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return await apiRequest('POST', `/api/transactions/bulk-categorize`, data);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
@@ -443,7 +451,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       return await apiRequest('POST', '/api/transactions', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
       setIsAddDialogOpen(false);
@@ -559,7 +567,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     },
     onSuccess: (data) => {
       if (data.applied && data.suggestion) {
-        queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
         toast({
           title: "Category Applied",
           description: `Applied "${data.suggestion.categoryName}" (${data.suggestion.confidence}% confidence)`,
@@ -810,53 +818,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       : <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
-  const filteredTransactions = useMemo(() => transactions
-    .filter(transaction => {
-      const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSource = sourceFilter === "all" || (transaction.source || "manual") === sourceFilter;
-      const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-      const matchesAccount = accountFilter === "all" || 
-        (accountFilter === "unlinked" && !transaction.bankAccountId) ||
-        (transaction.bankAccountId?.toString() === accountFilter);
-      const matchesCategory = categoryFilter === "all" || 
-        (categoryFilter === "uncategorized" && !transaction.categoryId) ||
-        (transaction.categoryId?.toString() === categoryFilter);
-      
-      // Date range filter
-      const transactionDate = new Date(transaction.date);
-      const matchesStartDate = !startDate || transactionDate >= new Date(startDate);
-      const matchesEndDate = !endDate || transactionDate <= new Date(endDate + 'T23:59:59');
-      
-      return matchesSearch && matchesSource && matchesType && matchesAccount && matchesCategory && matchesStartDate && matchesEndDate;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      switch (sortColumn) {
-        case 'date':
-          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-          break;
-        case 'description':
-          comparison = a.description.localeCompare(b.description);
-          break;
-        case 'category':
-          comparison = getCategoryName(a.categoryId).localeCompare(getCategoryName(b.categoryId));
-          break;
-        case 'grant':
-          comparison = getGrantName(a.grantId).localeCompare(getGrantName(b.grantId));
-          break;
-        case 'type':
-          comparison = a.type.localeCompare(b.type);
-          break;
-        case 'source':
-          comparison = (a.source || 'manual').localeCompare(b.source || 'manual');
-          break;
-        case 'amount':
-          comparison = parseFloat(a.amount) - parseFloat(b.amount);
-          break;
-      }
-      return sortDirection === 'asc' ? comparison : -comparison;
-    }), [transactions, searchTerm, sourceFilter, typeFilter, accountFilter, categoryFilter, startDate, endDate, sortColumn, sortDirection, categories]);
+  const filteredTransactions = transactions;
 
   // Get selected account for balance calculations and display
   const selectedAccount = useMemo(() => 
@@ -1074,8 +1036,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               <CardTitle>All Transactions</CardTitle>
               <CardDescription>
                 {selectedTransactions.size > 0 
-                  ? `${selectedTransactions.size} of ${filteredTransactions.length} selected`
-                  : `${filteredTransactions.length} transactions found`}
+                  ? `${selectedTransactions.size} of ${totalTransactions} selected`
+                  : `${totalTransactions} transactions${totalTransactions > PAGE_SIZE ? ` (showing ${page * PAGE_SIZE + 1}-${Math.min((page + 1) * PAGE_SIZE, totalTransactions)})` : ''}`}
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -1245,7 +1207,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
             <div className="text-center py-8 text-muted-foreground">
               No transactions found. Import transactions or connect your bank.
             </div>
-          ) : (
+          ) : (<>
             <div ref={transactionListRef} className="overflow-auto max-h-[60vh]">
               <table className="w-full">
                 <thead className="sticky top-0 bg-card z-20">
@@ -1398,7 +1360,34 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
                 </tbody>
               </table>
             </div>
-          )}
+            {totalTransactions > PAGE_SIZE && (
+              <div className="flex items-center justify-between pt-4 border-t mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Page {page + 1} of {Math.ceil(totalTransactions / PAGE_SIZE)}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    data-testid="button-prev-page"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={!hasMore}
+                    data-testid="button-next-page"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>)}
         </CardContent>
       </Card>
 
