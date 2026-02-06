@@ -95,7 +95,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
     const fontFamily = currentOrganization.invoiceFontFamily || 'Arial';
     
     const logoHtml = currentOrganization.logoUrl 
-      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" style="max-width: 180px; max-height: 60px; width: auto; height: auto; object-fit: contain; margin-bottom: 10px;" />` 
+      ? `<img src="${currentOrganization.logoUrl}" alt="Logo" width="180" style="display: block; max-width: 180px; max-height: 60px; width: 180px; height: auto; object-fit: contain; margin-bottom: 10px;" />` 
       : '';
     
     const footerText = currentOrganization.invoiceFooter || '';
@@ -114,6 +114,7 @@ export default function FunctionalExpenseReport({ currentOrganization, userId }:
             h1 { color: ${primaryColor}; font-size: 24px; margin-bottom: 10px; font-weight: bold; }
             h2 { color: ${accentColor}; font-size: 18px; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
             .header { margin-bottom: 30px; }
+            .header img { max-width: 180px !important; max-height: 60px !important; width: 180px !important; height: auto !important; object-fit: contain; }
             .org-name { color: #666; font-size: 14px; margin-top: 5px; }
             .date-range { color: #888; font-size: 12px; margin-top: 3px; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
