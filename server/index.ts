@@ -8,6 +8,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { PlaidWebhookHandlers, PlaidWebhookPayload } from './plaidWebhookHandlers';
+import { verifyPlaidWebhook } from './plaidWebhookVerification';
 import { runAuditRetentionPolicies } from './auditRetention';
 
 const app = express();
@@ -131,26 +132,18 @@ app.post(
         return res.status(500).json({ error: 'Webhook processing error' });
       }
 
-      // Verify webhook signature using STRIPE_WEBHOOK_SECRET
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      console.log('Stripe webhook: secret configured:', !!webhookSecret);
       
-      if (webhookSecret) {
-        const Stripe = (await import('stripe')).default;
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-01-27.acacia' as any });
-        const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        console.log('Stripe webhook received:', event.type, '- session:', event.data?.object?.id);
-        await WebhookHandlers.handleEvent(event, stripe);
-        console.log('Stripe webhook: handleEvent completed');
-      } else {
-        // Fallback: process without signature verification (not recommended for production)
-        const event = JSON.parse(req.body.toString());
-        console.log('Stripe webhook received (unverified):', event.type);
-        const { getUncachableStripeClient } = await import('./stripeClient');
-        const stripe = await getUncachableStripeClient();
-        await WebhookHandlers.handleEvent(event, stripe);
-        console.log('Stripe webhook: handleEvent completed (unverified)');
+      if (!webhookSecret) {
+        console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured - rejecting unverified webhook');
+        return res.status(500).json({ error: 'Webhook secret not configured' });
       }
+
+      const Stripe = (await import('stripe')).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-01-27.acacia' as any });
+      const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      console.log(`[Stripe Webhook] Verified: ${event.type}`);
+      await WebhookHandlers.handleEvent(event, stripe);
 
       res.status(200).json({ received: true });
     } catch (error: any) {
@@ -160,25 +153,35 @@ app.post(
   }
 );
 
-// Plaid webhook endpoint (registered before express.json())
 app.post(
   '/api/plaid/webhook',
-  express.json(),
-  async (req, res) => {
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.plaidRawBody = buf.toString('utf8');
+    }
+  }),
+  async (req: any, res) => {
     try {
+      const rawBody = req.plaidRawBody as string;
+      const isVerified = await verifyPlaidWebhook(req.headers, rawBody);
+      if (!isVerified) {
+        console.warn('[Plaid Webhook] Signature verification failed - rejecting request');
+        return res.status(401).json({ error: 'Webhook signature verification failed' });
+      }
+
       const payload = req.body as PlaidWebhookPayload;
 
       if (!payload.webhook_type || !payload.item_id) {
         return res.status(400).json({ error: 'Invalid webhook payload' });
       }
 
-      console.log(`Received Plaid webhook: ${payload.webhook_type}/${payload.webhook_code} for item ${payload.item_id}`);
+      console.log(`[Plaid Webhook] Verified: ${payload.webhook_type}/${payload.webhook_code}`);
 
       await PlaidWebhookHandlers.processWebhook(payload);
 
       res.status(200).json({ received: true });
     } catch (error: any) {
-      console.error('Plaid webhook error:', error.message);
+      console.error('[Plaid Webhook] Processing error:', error.message);
       res.status(500).json({ error: 'Webhook processing error' });
     }
   }
@@ -379,27 +382,11 @@ app.use('/api', (req, res, next) => {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
 

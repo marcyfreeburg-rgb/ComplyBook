@@ -187,10 +187,7 @@ router.get('/callback', async (req: Request, res: Response) => {
       products: string[];
     };
 
-    console.log('[Finch] Token exchange successful');
-    console.log('[Finch] connection_id:', tokenData.connection_id);
-    console.log('[Finch] company_id:', tokenData.company_id);
-    console.log('[Finch] provider_id:', tokenData.provider_id);
+    console.log('[Finch] Token exchange successful for provider:', tokenData.provider_id);
 
     const providerName = PROVIDER_NAMES[tokenData.provider_id] || tokenData.provider_id;
 

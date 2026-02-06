@@ -7952,8 +7952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const response = await plaidClient.linkTokenCreate(linkConfig);
 
-      // Log for troubleshooting (Plaid recommended identifiers)
-      console.log(`[Plaid] Link token created - link_session_id: ${response.data.link_token.substring(0, 20)}..., org: ${organizationId}, request_id: ${response.data.request_id}`);
+      console.log(`[Plaid] Link token created - org: ${organizationId}, request_id: ${response.data.request_id}`);
 
       res.json({ link_token: response.data.link_token });
     } catch (error: any) {

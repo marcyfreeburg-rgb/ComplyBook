@@ -44,7 +44,7 @@ export function verifyTotp(secret: string, token: string): boolean {
   
   // Allow window of 2 for time drift tolerance (+/- 60 seconds)
   const delta = totp.validate({ token, window: 2 });
-  console.log(`[MFA] TOTP validation result: delta=${delta}, token=${token.substring(0, 2)}****, serverTime=${new Date().toISOString()}`);
+  console.log(`[MFA] TOTP validation result: delta=${delta}, valid=${delta !== null}, serverTime=${new Date().toISOString()}`);
   return delta !== null;
 }
 
