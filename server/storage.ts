@@ -5289,10 +5289,14 @@ export class DatabaseStorage implements IStorage {
       .from(plaidItems)
       .where(eq(plaidItems.organizationId, organizationId))
       .orderBy(desc(plaidItems.createdAt));
-    return items.map(item => ({
-      ...item,
-      accessToken: decryptAccessToken(item.accessToken),
-    }));
+    return items.map(item => {
+      try {
+        return { ...item, accessToken: decryptAccessToken(item.accessToken) };
+      } catch (e) {
+        console.warn(`Plaid item ${item.id} (${item.institutionName}): token decryption failed - encryption key may not match`);
+        return { ...item, accessToken: '[encrypted]' };
+      }
+    });
   }
 
   async getPlaidItem(itemId: string): Promise<PlaidItem | undefined> {
@@ -5302,7 +5306,12 @@ export class DatabaseStorage implements IStorage {
       .from(plaidItems)
       .where(eq(plaidItems.itemId, itemId));
     if (!item) return undefined;
-    return { ...item, accessToken: decryptAccessToken(item.accessToken) };
+    try {
+      return { ...item, accessToken: decryptAccessToken(item.accessToken) };
+    } catch (e) {
+      console.warn(`Plaid item ${item.id}: token decryption failed - encryption key may not match`);
+      return { ...item, accessToken: '[encrypted]' };
+    }
   }
 
   async getPlaidItemByPlaidId(plaidItemId: string): Promise<PlaidItem | undefined> {
@@ -5312,7 +5321,12 @@ export class DatabaseStorage implements IStorage {
       .from(plaidItems)
       .where(eq(plaidItems.itemId, plaidItemId));
     if (!item) return undefined;
-    return { ...item, accessToken: decryptAccessToken(item.accessToken) };
+    try {
+      return { ...item, accessToken: decryptAccessToken(item.accessToken) };
+    } catch (e) {
+      console.warn(`Plaid item ${item.id}: token decryption failed - encryption key may not match`);
+      return { ...item, accessToken: '[encrypted]' };
+    }
   }
 
   async updatePlaidItemStatus(id: number, updates: { status?: 'active' | 'login_required' | 'error' | 'pending'; errorCode?: string | null; errorMessage?: string | null; lastSyncedAt?: Date }): Promise<void> {

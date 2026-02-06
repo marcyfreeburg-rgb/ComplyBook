@@ -138,6 +138,7 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
 
   const { data: transactions = [], isLoading, refetch: refetchTransactions } = useQuery<Transaction[]>({
     queryKey: [`/api/transactions/${currentOrganization.id}?all=true`],
+    staleTime: 60000,
   });
   
   // Refresh transactions - preserves scroll position
@@ -179,19 +180,23 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: [`/api/categories/${currentOrganization.id}`],
+    staleTime: 60000,
   });
 
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: [`/api/vendors/${currentOrganization.id}`],
+    staleTime: 60000,
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: [`/api/clients/${currentOrganization.id}`],
+    staleTime: 60000,
   });
 
   const { data: donors = [] } = useQuery<Donor[]>({
     queryKey: [`/api/donors/${currentOrganization.id}`],
     enabled: currentOrganization.type === 'nonprofit',
+    staleTime: 60000,
   });
 
   type GrantWithBalances = Grant & { totalSpent: string; totalIncome: string; remainingBalance: string };
@@ -214,14 +219,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     staleTime: 60000,
   });
 
-  // Check if organization has connected bank accounts
   const { data: plaidItems = [] } = useQuery<{ id: number; itemId: string; institutionName: string }[]>({
     queryKey: [`/api/plaid/items/${currentOrganization.id}`],
+    staleTime: 60000,
   });
 
-  // Fetch Plaid accounts with initial balance info for running balance calculation
   const { data: plaidAccounts = [] } = useQuery<PlaidAccountWithInitialBalance[]>({
     queryKey: [`/api/plaid/accounts/${currentOrganization.id}`],
+    staleTime: 60000,
   });
 
   const syncPlaidTransactionsMutation = useMutation({

@@ -43,6 +43,18 @@ export function OrganizationSwitcher({
       queryKey: [`/api/dashboard/${orgId}/category-breakdown`],
       staleTime: 60000,
     });
+    queryClient.prefetchQuery({
+      queryKey: [`/api/transactions/${orgId}?all=true`],
+      staleTime: 60000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: [`/api/categories/${orgId}`],
+      staleTime: 60000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: [`/api/vendors/${orgId}`],
+      staleTime: 60000,
+    });
   };
 
   return (
