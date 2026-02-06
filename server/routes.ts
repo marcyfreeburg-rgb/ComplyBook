@@ -435,6 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const data = insertOrganizationSchema.parse(req.body);
       const organization = await storage.createOrganization(data, userId);
+      try { await storage.logCreate(organization.id, userId, 'organization', String(organization.id), organization); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(201).json(organization);
     } catch (error) {
       console.error("Error creating organization:", error);
@@ -489,6 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updated = await storage.updateOrganization(organizationId, updates);
+      try { await storage.logUpdate(organizationId, userId, 'organization_invoice_settings', String(organizationId), existingOrg, updated); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       console.log(`[Invoice Settings] Update successful`);
       res.json(updated);
     } catch (error: any) {
@@ -560,6 +562,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timestamp: new Date().toISOString(),
         },
       });
+
+      try { await storage.logDelete(organizationId, userId, 'organization', String(organizationId), organization); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
 
       // Delete the organization (cascades to all related data)
       await storage.deleteOrganization(organizationId);
@@ -648,6 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      try { await storage.logCreate(organizationId, userId, 'invitation', String(invitation.id), invitation); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(201).json({ ...invitation, inviteLink, emailSent });
     } catch (error) {
       console.error("Error creating invitation:", error);
@@ -794,6 +799,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, we'll trust the user has permission - in production, add proper check
       
       await storage.deleteInvitation(invitationId);
+      if (invitation?.organizationId) {
+        try { await storage.logDelete(invitation.organizationId, userId, 'invitation', String(invitationId), invitation); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
+      }
       res.json({ message: "Invitation cancelled" });
     } catch (error) {
       console.error("Error deleting invitation:", error);
@@ -834,7 +842,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { permissions } = req.body;
+      const oldPermissions = await storage.getUserRole(targetUserId, organizationId);
       await storage.updateUserPermissions(targetUserId, organizationId, permissions);
+      try { await storage.logUpdate(organizationId, currentUserId, 'team_permissions', targetUserId, { permissions: oldPermissions?.permissions }, { permissions }); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.json({ message: "Permissions updated successfully" });
     } catch (error) {
       console.error("Error updating permissions:", error);
@@ -924,7 +934,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot remove yourself as owner" });
       }
 
+      const targetUserRole = await storage.getUserRole(targetUserId, organizationId);
       await storage.removeTeamMember(targetUserId, organizationId);
+      try { await storage.logDelete(organizationId, currentUserId, 'team_member', targetUserId, { userId: targetUserId, role: targetUserRole?.role, permissions: targetUserRole?.permissions }); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.json({ message: "Team member removed successfully" });
     } catch (error) {
       console.error("Error removing team member:", error);
@@ -1109,6 +1121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const vendor = await storage.createVendor(data);
+      try { await storage.logCreate(data.organizationId, userId, 'vendor', String(vendor.id), vendor); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(201).json(vendor);
     } catch (error) {
       console.error("Error creating vendor:", error);
@@ -1137,6 +1150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedVendor = await storage.updateVendor(vendorId, updates);
+      try { await storage.logUpdate(vendor.organizationId, userId, 'vendor', String(vendorId), vendor, updatedVendor); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(200).json(updatedVendor);
     } catch (error) {
       console.error("Error updating vendor:", error);
@@ -1164,6 +1178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteVendor(vendorId);
+      try { await storage.logDelete(vendor.organizationId, userId, 'vendor', String(vendorId), vendor); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(200).json({ message: "Vendor deleted successfully" });
     } catch (error) {
       console.error("Error deleting vendor:", error);
@@ -1205,6 +1220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const client = await storage.createClient(data);
+      try { await storage.logCreate(data.organizationId, userId, 'client', String(client.id), client); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(201).json(client);
     } catch (error) {
       console.error("Error creating client:", error);
@@ -1233,6 +1249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedClient = await storage.updateClient(clientId, updates);
+      try { await storage.logUpdate(client.organizationId, userId, 'client', String(clientId), client, updatedClient); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(200).json(updatedClient);
     } catch (error) {
       console.error("Error updating client:", error);
@@ -1260,6 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteClient(clientId);
+      try { await storage.logDelete(client.organizationId, userId, 'client', String(clientId), client); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(200).json({ message: "Client deleted successfully" });
     } catch (error) {
       console.error("Error deleting client:", error);
@@ -1311,6 +1329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const donor = await storage.createDonor(data);
+      try { await storage.logCreate(data.organizationId, userId, 'donor', String(donor.id), donor); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(201).json(donor);
     } catch (error) {
       console.error("Error creating donor:", error);
@@ -1344,6 +1363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedDonor = await storage.updateDonor(donorId, updates);
+      try { await storage.logUpdate(donor.organizationId, userId, 'donor', String(donorId), donor, updatedDonor); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(200).json(updatedDonor);
     } catch (error) {
       console.error("Error updating donor:", error);
@@ -1376,6 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteDonor(donorId);
+      try { await storage.logDelete(donor.organizationId, userId, 'donor', String(donorId), donor); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(200).json({ message: "Donor deleted successfully" });
     } catch (error) {
       console.error("Error deleting donor:", error);
@@ -7354,6 +7375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const budget = await storage.createBudget(data);
+      try { await storage.logCreate(data.organizationId, userId, 'budget', String(budget.id), budget); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(201).json(budget);
     } catch (error) {
       console.error("Error creating budget:", error);
@@ -7386,6 +7408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await storage.updateBudget(budgetId, updateData);
+      try { await storage.logUpdate(budget.organizationId, userId, 'budget', String(budgetId), budget, updated); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.json(updated);
     } catch (error) {
       console.error("Error updating budget:", error);
@@ -7409,6 +7432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteBudget(budgetId);
+      try { await storage.logDelete(budget.organizationId, userId, 'budget', String(budgetId), budget); } catch (auditErr) { console.error('[Audit] Logging failed:', (auditErr as Error).message); }
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting budget:", error);

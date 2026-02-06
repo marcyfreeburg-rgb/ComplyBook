@@ -90,6 +90,34 @@ The app auto-detects which database to use in `server/db.ts`:
 -   Field-level encryption using AES-256-GCM for sensitive fields (tax IDs)
 -   `ENCRYPTION_KEY` must be identical across all environments to avoid data corruption
 
+### CSRF Protection
+-   Double-submit cookie pattern via `server/index.ts`
+-   CSRF token generated per session, validated on all POST/PATCH/PUT/DELETE requests
+-   Exempt paths: auth endpoints, webhooks (which use their own signature verification), public forms
+-   Frontend sends CSRF token in `x-csrf-token` header via `queryClient.ts`
+
+### Security Headers (NIST 800-53 SC-7)
+-   HSTS with 1-year max-age and preload
+-   Content-Security-Policy with dev/prod modes (Plaid CDN, WebSocket support)
+-   X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection
+-   Permissions-Policy restricting geolocation, microphone, camera
+-   Rate limiting for API endpoints with in-memory store
+
+### Audit Logging (NIST 800-53 AU-2, AU-3, AU-11)
+-   Immutable audit log with HMAC-SHA256 chain integrity (`server/auditChain.ts`)
+-   Covers RBAC-sensitive mutations: organization CRUD, team invitations/removals, role/permission changes, financial operations (transactions, invoices, bills), vendor/client/donor management, budgets, payroll
+-   Audit entries capture: userId, organizationId, action, entityType, entityId, oldValues, newValues, IP address, user agent
+-   90-day active retention, 7-year archival per NIST 800-53 AU-11 (`server/auditRetention.ts`)
+-   Chain verification and repair capabilities for tamper detection
+
+### Accessibility (WCAG 2.1 AA)
+-   Skip navigation link (`client/src/components/skip-link.tsx`)
+-   Route change announcer with aria-live regions (`client/src/components/route-announcer.tsx`)
+-   Global live announcer context for dynamic content (`client/src/components/live-announcer.tsx`)
+-   Focus management: main content receives focus on route change
+-   Document title updates on navigation
+-   Semantic landmarks: role="banner" on header, role="main" on main content area
+
 ### Important Security Notes
 -   `STRIPE_WEBHOOK_SECRET` must be configured in all environments or Stripe webhook processing will fail with 500 errors
 -   Plaid webhook verification requires valid Plaid API credentials (`PLAID_CLIENT_ID`, `PLAID_SECRET`) to fetch verification keys
