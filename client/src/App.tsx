@@ -10,6 +10,9 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { OrganizationSwitcher } from "@/components/organization-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { SkipLink } from "@/components/skip-link";
+import { RouteAnnouncer } from "@/components/route-announcer";
+import { LiveAnnouncerProvider } from "@/components/live-announcer";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -180,11 +183,13 @@ function AuthenticatedApp() {
 
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <SkipLink />
+      <RouteAnnouncer />
       <div className="flex h-screen w-full">
         <AppSidebar user={user!} currentOrganization={currentOrganization} />
         
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border flex-wrap">
+          <header className="flex items-center justify-between gap-4 px-6 py-3 border-b border-border flex-wrap" role="banner">
             <div className="flex items-center gap-3">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <OrganizationSwitcher
@@ -229,7 +234,7 @@ function AuthenticatedApp() {
             </Alert>
           )}
           
-          <main className="flex-1 overflow-y-auto p-8">
+          <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-8 outline-none" role="main" aria-label="Main content">
             <Switch>
               <Route path="/">
                 <Dashboard currentOrganization={currentOrganization} />
@@ -613,8 +618,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
-        <Toaster />
+        <LiveAnnouncerProvider>
+          <Router />
+          <Toaster />
+        </LiveAnnouncerProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
