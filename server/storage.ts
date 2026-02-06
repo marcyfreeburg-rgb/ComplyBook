@@ -626,6 +626,7 @@ export interface IStorage {
 
   // Plaid operations
   getPlaidItems(organizationId: number): Promise<PlaidItem[]>;
+  getPlaidItemsRaw(organizationId: number): Promise<PlaidItem[]>;
   getPlaidItem(itemId: string): Promise<PlaidItem | undefined>;
   getPlaidItemByPlaidId(plaidItemId: string): Promise<PlaidItem | undefined>;
   createPlaidItem(item: InsertPlaidItem): Promise<PlaidItem>;
@@ -5282,13 +5283,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Plaid operations
-  async getPlaidItems(organizationId: number): Promise<PlaidItem[]> {
-    const { decryptAccessToken } = await import('./encryption');
-    const items = await db
+  async getPlaidItemsRaw(organizationId: number): Promise<PlaidItem[]> {
+    return await db
       .select()
       .from(plaidItems)
       .where(eq(plaidItems.organizationId, organizationId))
       .orderBy(desc(plaidItems.createdAt));
+  }
+
+  async getPlaidItems(organizationId: number): Promise<PlaidItem[]> {
+    const { decryptAccessToken } = await import('./encryption');
+    const items = await this.getPlaidItemsRaw(organizationId);
     return items.map(item => {
       try {
         return { ...item, accessToken: decryptAccessToken(item.accessToken) };

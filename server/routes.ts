@@ -8362,6 +8362,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sync transactions for each plaid item using cursor-based incremental sync
       for (const plaidItem of plaidItems) {
         try {
+          if (!plaidItem.accessToken || plaidItem.accessToken === '[encrypted]') {
+            console.error(`[Plaid Sync] item_id: ${plaidItem.itemId} - access token could not be decrypted. The ENCRYPTION_KEY may have changed since this bank was connected.`);
+            errors.push({
+              institution: plaidItem.institutionName || 'Unknown',
+              error: 'Bank connection token could not be decrypted. The bank account may need to be reconnected. Please contact support if this persists.'
+            });
+            continue;
+          }
+
           let cursor = plaidItem.cursor || undefined;
           let hasMore = true;
           let addedTransactions: any[] = [];
@@ -8622,6 +8631,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error syncing transactions:", error);
       res.status(500).json({ message: "Failed to sync transactions" });
+    }
+  });
+
+  app.get('/api/plaid/token-health/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole || !['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { decryptAccessToken } = await import('./encryption');
+      const items = await storage.getPlaidItemsRaw(organizationId);
+      
+      const results = items.map(item => {
+        let canDecrypt = false;
+        try {
+          const decrypted = decryptAccessToken(item.accessToken);
+          canDecrypt = !!decrypted && decrypted !== '[encrypted]';
+        } catch {
+          canDecrypt = false;
+        }
+        return {
+          id: item.id,
+          itemId: item.itemId,
+          institution: item.institutionName,
+          canDecrypt,
+          status: item.status,
+        };
+      });
+
+      const allHealthy = results.every(r => r.canDecrypt);
+      res.json({
+        healthy: allHealthy,
+        items: results,
+        message: allHealthy 
+          ? 'All bank connection tokens are working correctly.'
+          : 'Some bank connection tokens cannot be decrypted. The ENCRYPTION_KEY may have changed. These connections need to be re-established.',
+      });
+    } catch (error) {
+      console.error("Error checking token health:", error);
+      res.status(500).json({ message: "Failed to check token health" });
     }
   });
 

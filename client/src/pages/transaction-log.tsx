@@ -237,12 +237,21 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     onMutate: () => {
       setIsSyncingPlaid(true);
     },
-    onSuccess: (data: { imported?: number; message?: string }) => {
+    onSuccess: (data: { imported?: number; message?: string; errors?: Array<{ institution: string; error: string }> }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}?all=true`] });
-      toast({
-        title: "Transactions Synced",
-        description: `Successfully synced ${data.imported || 0} new transactions from your bank accounts.`,
-      });
+      if (data.errors && data.errors.length > 0) {
+        const errorMessages = data.errors.map(e => `${e.institution}: ${e.error}`).join('\n');
+        toast({
+          title: "Sync Completed with Errors",
+          description: `Imported ${data.imported || 0} transactions. Issues: ${errorMessages}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Transactions Synced",
+          description: `Successfully synced ${data.imported || 0} new transactions from your bank accounts.`,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
