@@ -7,7 +7,6 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-// Helper to get CSRF token from cookie
 export function getCsrfToken(): string | null {
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
@@ -15,6 +14,22 @@ export function getCsrfToken(): string | null {
     if (name === 'csrf_token') {
       return value;
     }
+  }
+  return null;
+}
+
+async function ensureCsrfToken(): Promise<string | null> {
+  let token = getCsrfToken();
+  if (token) return token;
+
+  try {
+    const res = await fetch('/api/csrf-token', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      token = getCsrfToken() || data.token;
+      return token;
+    }
+  } catch {
   }
   return null;
 }
@@ -30,9 +45,8 @@ export async function apiRequest(
     headers["Content-Type"] = "application/json";
   }
   
-  // Add CSRF token for state-changing requests
   if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-    const csrfToken = getCsrfToken();
+    const csrfToken = await ensureCsrfToken();
     if (csrfToken) {
       headers["x-csrf-token"] = csrfToken;
     }
@@ -65,7 +79,6 @@ export const getQueryFn: <T>(options: {
 
     await throwIfResNotOk(res);
     const json = await res.json();
-    // Extract data property from API responses
     return json.data !== undefined ? json.data : json;
   };
 

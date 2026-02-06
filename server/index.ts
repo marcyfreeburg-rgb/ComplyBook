@@ -12,6 +12,8 @@ import { runAuditRetentionPolicies } from './auditRetention';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
@@ -209,11 +211,27 @@ app.use((req, res, next) => {
     res.cookie(CSRF_COOKIE_NAME, csrfToken, {
       httpOnly: false, // Must be readable by JavaScript
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
+      path: '/',
       maxAge: 12 * 60 * 60 * 1000, // 12 hours (match session duration)
     });
   }
   next();
+});
+
+app.get('/api/csrf-token', (req, res) => {
+  let token = req.cookies?.[CSRF_COOKIE_NAME];
+  if (!token) {
+    token = crypto.randomBytes(32).toString('hex');
+    res.cookie(CSRF_COOKIE_NAME, token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 12 * 60 * 60 * 1000,
+    });
+  }
+  res.json({ token });
 });
 
 // CSRF validation middleware for state-changing requests
