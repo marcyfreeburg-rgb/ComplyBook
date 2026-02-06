@@ -1,0 +1,52 @@
+[express] GET /api/plaid/items/167 304 in 31ms :: []
+12:03:17 AM [express] GET /api/clients/167 304 in 19ms :: []
+[GET]
+complybook.net/transactions clientIP="216.147.123.52" requestID="355085c0-344d-4473" responseTimeMS=7 responseBytes=1864 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-8BI7Ie9o.css clientIP="216.147.123.52" requestID="5da23d35-aae5-4a6e" responseTimeMS=10 responseBytes=17646 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CYzLkF7I.js clientIP="216.147.123.52" requestID="e929af1c-d36f-407a" responseTimeMS=285 responseBytes=945204 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="216.147.123.52" requestID="3f1781b9-70b1-4967" responseTimeMS=19 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.123.52" requestID="db4f72ea-9b1d-4f50" responseTimeMS=15 responseBytes=2222 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/mfa/status clientIP="216.147.123.52" requestID="c6d1f5f9-f331-46cc" responseTimeMS=22 responseBytes=1217 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/organizations clientIP="216.147.123.52" requestID="1437a623-a22a-48ee" responseTimeMS=14 responseBytes=3264 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:03:21 AM [express] GET /api/auth/user 200 in 13ms :: {"id":"43852944","email":"marcy.freeburg@gmai…
+12:03:21 AM [express] GET /api/security/mfa/status 200 in 20ms :: {"mfaEnabled":true,"mfaRequired":tr…
+12:03:21 AM [express] GET /api/organizations 200 in 13ms :: [{"id":167,"name":"J & M SOLUTIONS, LLC",…
+[GET]
+complybook.net/api/matched-transaction-ids/167 clientIP="216.147.123.52" requestID="fbe6f46f-bb9b-4d51" responseTimeMS=14 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/plaid/items/167 clientIP="216.147.123.52" requestID="9f1c6793-49c7-4023" responseTimeMS=14 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/categories/167 clientIP="216.147.123.52" requestID="2a3bf5ab-8c74-4a5b" responseTimeMS=93 responseBytes=1181 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/vendors/167 clientIP="216.147.123.52" requestID="8bc0e06c-c547-4b52" responseTimeMS=14 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/transactions/167?limit=100&offset=0 clientIP="216.147.123.52" requestID="b35785d0-9b96-4b7f" responseTimeMS=99 responseBytes=1179 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/bank-reconciliations/167/last clientIP="216.147.123.52" requestID="406e5282-5856-4d1f" responseTimeMS=16 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.123.52" requestID="cfc8f9e7-717c-43ac" responseTimeMS=12 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/favicon.png clientIP="216.147.123.52" requestID="660f7d42-c0fb-4a7b" responseTimeMS=76 responseBytes=231776 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/notifications/167/unread-count clientIP="216.147.123.52" requestID="4fa05a24-c8f2-4db9" responseTimeMS=93 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/clients/167 clientIP="216.147.123.52" requestID="50dceb4d-97e9-440a" responseTimeMS=19 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.123.52" requestID="24d11495-8017-48e0" responseTimeMS=89 responseBytes=1083 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.123.52" requestID="a4cb7f13-e9f1-40d7" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+12:03:22 AM [express] GET /api/vendors/167 304 in 13ms :: []
+12:03:22 AM [express] GET /api/plaid/items/167 304 in 13ms :: []
+12:03:22 AM [express] GET /api/matched-transaction-ids/167 304 in 13ms :: []
+12:03:22 AM [express] GET /api/bank-reconciliations/167/last 304 in 15ms
+12:03:22 AM [express] GET /api/clients/167 304 in 19ms :: []
+12:03:22 AM [express] GET /api/transactions/167 304 in 98ms :: {"transactions":[],"total":"0","hasMor…
+12:03:22 AM [express] GET /api/categories/167 304 in 92ms :: [{"id":269,"organizationId":167,"name":"…
+12:03:22 AM [express] GET /api/notifications/167/unread-count 304 in 93ms :: {"count":"0"}
