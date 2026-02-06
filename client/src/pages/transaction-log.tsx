@@ -295,11 +295,11 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     mutationFn: async (data: { id: number; updates: Partial<Transaction> }) => {
       return await apiRequest('PATCH', `/api/transactions/${data.id}`, data.updates);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
+      if (variables.updates.grantId !== undefined) {
+        queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      }
       setIsEditDialogOpen(false);
       setEditingTransaction(null);
       toast({
@@ -369,9 +369,9 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/funds', currentOrganization.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/programs', currentOrganization.id] });
+      if (variables.grantId !== undefined) {
+        queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+      }
       setSelectedTransactions(new Set());
       setIsBulkUpdateDialogOpen(false);
       setBulkUpdateForm({ fundId: "", programId: "", grantId: "", functionalCategory: "" });
