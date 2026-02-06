@@ -8442,10 +8442,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Build lookup maps for fast duplicate checking
+          // Normalize amounts to 2 decimal places so "100" and "100.00" match
           const duplicatesByKey = new Map<string, any[]>();
           for (const tx of potentialDuplicates) {
             const dateKey = new Date(tx.date).toISOString().split('T')[0];
-            const key = `${dateKey}|${tx.amount}|${tx.type}`;
+            const normalizedAmount = parseFloat(tx.amount).toFixed(2);
+            const key = `${dateKey}|${normalizedAmount}|${tx.type}`;
             if (!duplicatesByKey.has(key)) duplicatesByKey.set(key, []);
             duplicatesByKey.get(key)!.push(tx);
           }
@@ -8462,7 +8464,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const amount = Math.abs(plaidTx.amount);
             const transactionDate = new Date(plaidTx.date);
             const dateKey = transactionDate.toISOString().split('T')[0];
-            const key = `${dateKey}|${amount.toString()}|${isIncome ? 'income' : 'expense'}`;
+            const normalizedAmount = amount.toFixed(2);
+            const key = `${dateKey}|${normalizedAmount}|${isIncome ? 'income' : 'expense'}`;
 
             const plaidAccount = plaidAccountsMap.get(plaidTx.account_id);
 
