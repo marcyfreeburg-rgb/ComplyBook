@@ -10,6 +10,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { sendNewUserNotificationEmail } from "./email";
 
 const scryptAsync = promisify(scrypt);
 
@@ -74,7 +75,12 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
+const SIGNUP_NOTIFY_EMAIL = "tech@jandmsolutions.com";
+
 async function upsertUser(claims: any) {
+  const existingUser = claims["email"] ? await storage.getUserByEmail(claims["email"]) : null;
+  const isNewUser = !existingUser;
+
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -82,6 +88,20 @@ async function upsertUser(claims: any) {
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+
+  if (isNewUser && claims["email"]) {
+    const userName = [claims["first_name"], claims["last_name"]].filter(Boolean).join(" ") || "Unknown";
+    try {
+      await sendNewUserNotificationEmail({
+        notifyEmail: SIGNUP_NOTIFY_EMAIL,
+        userName,
+        userEmail: claims["email"],
+        signupTime: new Date().toLocaleString("en-US", { timeZone: "America/Denver" }),
+      });
+    } catch (err) {
+      console.error("[Auth] Failed to send new user notification email:", (err as Error).message);
+    }
+  }
 }
 
 async function setupReplitAuth(app: Express) {

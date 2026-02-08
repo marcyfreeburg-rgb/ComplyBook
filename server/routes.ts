@@ -356,6 +356,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const isAdminOrOwner = userOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "Admin or owner access required" });
+      }
+
+      const allUsers = await storage.getAllUsers();
+      const safeUsers = allUsers.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        profileImageUrl: u.profileImageUrl,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+        mfaEnabled: u.mfaEnabled,
+        subscriptionTier: u.subscriptionTier,
+        subscriptionStatus: u.subscriptionStatus,
+      }));
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // Password change route (for local auth only)
   app.post('/api/auth/change-password', isAuthenticated, async (req: any, res) => {
     try {

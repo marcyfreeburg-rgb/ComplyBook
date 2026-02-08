@@ -1499,3 +1499,54 @@ This statement is for informational purposes. Please retain for your records.
   await client.send(msg);
   console.log(`Paystub email sent to ${to} for pay period ${payPeriodStart} - ${payPeriodEnd}`);
 }
+
+export async function sendNewUserNotificationEmail({
+  notifyEmail,
+  userName,
+  userEmail,
+  signupTime,
+}: {
+  notifyEmail: string;
+  userName: string;
+  userEmail: string;
+  signupTime: string;
+}): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const msg = {
+    to: notifyEmail,
+    from: fromEmail,
+    subject: `[ComplyBook] New User Signup: ${userName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+          <div style="background: #ffffff; border-radius: 8px; padding: 30px; border: 1px solid #e9ecef;">
+            <h2 style="color: #1a365d; margin-top: 0;">New User Signup</h2>
+            <p style="color: #495057;">A new user has signed up for ComplyBook:</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #6c757d; font-weight: 600;">Name</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #212529;">${userName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #6c757d; font-weight: 600;">Email</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #212529;">${userEmail}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #6c757d; font-weight: 600;">Signed Up</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #212529;">${signupTime}</td>
+              </tr>
+            </table>
+            <p style="color: #6c757d; font-size: 12px; margin-bottom: 0;">This is an automated notification from ComplyBook.</p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `New User Signup\n\nName: ${userName}\nEmail: ${userEmail}\nSigned Up: ${signupTime}\n\nThis is an automated notification from ComplyBook.`
+  };
+
+  await client.send(msg);
+  console.log(`[Email] New user notification sent to ${notifyEmail} for user ${userEmail}`);
+}

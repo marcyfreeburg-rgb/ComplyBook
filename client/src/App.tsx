@@ -74,6 +74,7 @@ import Surveys from "@/pages/surveys";
 import Forms from "@/pages/forms";
 import PublicForm from "@/pages/public-form";
 import InvoicePaid from "@/pages/invoice-paid";
+import AdminUsers from "@/pages/admin-users";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -523,6 +524,9 @@ function AuthenticatedApp() {
                   currentOrganization={currentOrganization}
                   user={user!}
                 />
+              </Route>
+              <Route path="/admin/users">
+                <AdminUsers />
               </Route>
               <Route path="/pricing" component={Pricing} />
               <Route path="/checkout/success" component={Pricing} />

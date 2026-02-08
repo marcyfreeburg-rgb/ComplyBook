@@ -165,6 +165,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: Cog,
       items: [
         { title: "Organizations", url: "/organization-management", icon: Building2 },
+        { title: "Registered Users", url: "/admin/users", icon: UserCog },
         { title: "Brand Settings", url: "/brand-settings", icon: FileSliders },
         { title: "Settings", url: "/settings", icon: Settings },
       ],
@@ -278,6 +279,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: Cog,
       items: [
         { title: "Organizations", url: "/organization-management", icon: Building2 },
+        { title: "Registered Users", url: "/admin/users", icon: UserCog },
         { title: "Brand Settings", url: "/brand-settings", icon: FileSliders },
         { title: "Settings", url: "/settings", icon: Settings },
       ],
