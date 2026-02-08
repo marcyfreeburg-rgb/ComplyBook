@@ -75,11 +75,14 @@ import Forms from "@/pages/forms";
 import PublicForm from "@/pages/public-form";
 import InvoicePaid from "@/pages/invoice-paid";
 import AdminUsers from "@/pages/admin-users";
+import BugReport from "@/pages/bug-report";
+import AdminBugReports from "@/pages/admin-bug-reports";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
+import { ReportBugButton } from "@/components/report-bug-button";
 
 // Organization with user role
 type OrganizationWithRole = Organization & { userRole: string };
@@ -166,6 +169,15 @@ function AuthenticatedApp() {
           onSelectOrganization={handleOrganizationSwitch}
           userId={user?.id || ''}
         />
+      </div>
+    );
+  }
+
+  // Bug report page works without organization context
+  if (!currentOrganization && location === '/bug-report') {
+    return (
+      <div className="min-h-screen bg-background">
+        <BugReport />
       </div>
     );
   }
@@ -528,6 +540,12 @@ function AuthenticatedApp() {
               <Route path="/admin/users">
                 <AdminUsers />
               </Route>
+              <Route path="/admin/bug-reports">
+                <AdminBugReports />
+              </Route>
+              <Route path="/bug-report">
+                <BugReport />
+              </Route>
               <Route path="/pricing" component={Pricing} />
               <Route path="/checkout/success" component={Pricing} />
               <Route path="/donor-portal" component={DonorPortal} />
@@ -624,6 +642,7 @@ export default function App() {
       <TooltipProvider>
         <LiveAnnouncerProvider>
           <Router />
+          <ReportBugButton />
           <Toaster />
         </LiveAnnouncerProvider>
       </TooltipProvider>

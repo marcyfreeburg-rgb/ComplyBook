@@ -276,6 +276,9 @@ import {
   type InKindDonation,
   type InsertInKindDonation,
   donorTiers,
+  bugReports,
+  type BugReport,
+  type InsertBugReport,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gt, gte, lte, lt, sql, desc, inArray, or, isNull, isNotNull } from "drizzle-orm";
@@ -1306,6 +1309,12 @@ export interface IStorage {
     };
   }>;
   updateDonorTier(donorId: number, tier: string): Promise<void>;
+
+  // Bug Report operations
+  createBugReport(report: InsertBugReport): Promise<BugReport>;
+  getBugReports(): Promise<BugReport[]>;
+  getBugReport(id: number): Promise<BugReport | undefined>;
+  updateBugReport(id: number, updates: Partial<{ status: string; priority: string; adminNotes: string }>): Promise<BugReport>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -10289,6 +10298,29 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  // Bug Report operations
+  async createBugReport(report: InsertBugReport): Promise<BugReport> {
+    const [bugReport] = await db.insert(bugReports).values(report).returning();
+    return bugReport;
+  }
+
+  async getBugReports(): Promise<BugReport[]> {
+    return await db.select().from(bugReports).orderBy(desc(bugReports.createdAt));
+  }
+
+  async getBugReport(id: number): Promise<BugReport | undefined> {
+    const [bugReport] = await db.select().from(bugReports).where(eq(bugReports.id, id));
+    return bugReport;
+  }
+
+  async updateBugReport(id: number, updates: Partial<{ status: string; priority: string; adminNotes: string }>): Promise<BugReport> {
+    const [bugReport] = await db.update(bugReports)
+      .set({ ...updates as any, updatedAt: new Date() })
+      .where(eq(bugReports.id, id))
+      .returning();
+    return bugReport;
   }
 }
 

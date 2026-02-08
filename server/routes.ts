@@ -17870,6 +17870,223 @@ Keep the response approximately 100-150 words.`;
     }
   });
 
+  // ============================================
+  // BUG REPORT ROUTES
+  // ============================================
+
+  const bugScreenshotUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    }
+  });
+
+  app.post('/api/bug-reports', isAuthenticated, bugScreenshotUpload.single('screenshot'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!req.body.stepsToReproduce || !req.body.stepsToReproduce.trim()) {
+        return res.status(400).json({ message: "Steps to reproduce is required" });
+      }
+
+      let screenshotUrl: string | null = null;
+
+      if (req.file) {
+        if (isObjectStorageAvailable) {
+          const objectStorageService = new ObjectStorageService();
+          const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: req.file.buffer,
+            headers: { 'Content-Type': req.file.mimetype },
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload screenshot to object storage');
+          }
+
+          const rawPath = uploadUrl.split('?')[0];
+          screenshotUrl = await objectStorageService.trySetObjectEntityAclPolicy(rawPath, {
+            owner: userId,
+            visibility: 'public',
+          });
+        } else {
+          const uploadsDir = path.join(process.cwd(), 'uploads', 'bug-screenshots');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const fileExt = path.extname(req.file.originalname) || '.png';
+          const fileName = `bug_${Date.now()}${fileExt}`;
+          const filePath = path.join(uploadsDir, fileName);
+          fs.writeFileSync(filePath, req.file.buffer);
+          screenshotUrl = `/uploads/bug-screenshots/${fileName}`;
+        }
+      }
+
+      const reportData: any = {
+        reporterUserId: userId,
+        reporterName: req.body.reporterName || (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : null),
+        reporterEmail: req.body.reporterEmail || user?.email || null,
+        deviceInfo: req.body.deviceInfo ? String(req.body.deviceInfo).slice(0, 500) : null,
+        appVersion: req.body.appVersion ? String(req.body.appVersion).slice(0, 100) : null,
+        errorTimestamp: req.body.errorTimestamp ? new Date(req.body.errorTimestamp) : null,
+        errorMessage: req.body.errorMessage ? String(req.body.errorMessage) : null,
+        stepsToReproduce: String(req.body.stepsToReproduce),
+        screenshotUrl,
+        additionalComments: req.body.additionalComments ? String(req.body.additionalComments) : null,
+        pageUrl: req.body.pageUrl ? String(req.body.pageUrl).slice(0, 1000) : null,
+        browserInfo: req.body.browserInfo ? String(req.body.browserInfo).slice(0, 500) : null,
+      };
+
+      const bugReport = await storage.createBugReport(reportData);
+
+      try {
+        const { getUncachableSendGridClient } = await import("./email");
+        const { client, fromEmail } = await getUncachableSendGridClient();
+
+        const esc = (s: string | null | undefined): string => {
+          if (!s) return '';
+          return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        };
+
+        const screenshotSection = screenshotUrl
+          ? `<div style="margin-bottom: 15px;"><p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Screenshot</p><p style="margin: 0;"><a href="${esc(screenshotUrl)}" style="color: #0070f3;">View Screenshot</a></p></div>`
+          : '';
+
+        const msg = {
+          to: 'tech@jandmsolutions.com',
+          from: fromEmail,
+          subject: `[BUG REPORT #${bugReport.id}] New Bug Report from ${(reportData.reporterName || reportData.reporterEmail || 'Unknown User').replace(/[<>"]/g, '')}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border-radius: 8px; padding: 30px; margin-bottom: 20px; color: white;">
+                <h1 style="color: white; margin: 0 0 10px 0; font-size: 24px;">Bug Report #${bugReport.id}</h1>
+                <p style="color: rgba(255,255,255,0.95); margin: 0; font-size: 16px;">A new bug report has been submitted</p>
+              </div>
+              <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px; margin-bottom: 20px;">
+                <div style="margin-bottom: 15px;">
+                  <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Reporter</p>
+                  <p style="color: #1a1a1a; margin: 0; font-size: 16px; font-weight: 500;">${esc(reportData.reporterName) || 'N/A'} (${esc(reportData.reporterEmail) || 'N/A'})</p>
+                </div>
+                ${reportData.deviceInfo ? `<div style="margin-bottom: 15px;"><p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Device / App Version</p><p style="color: #1a1a1a; margin: 0; font-size: 16px;">${esc(reportData.deviceInfo)}${reportData.appVersion ? ' - ' + esc(reportData.appVersion) : ''}</p></div>` : ''}
+                ${reportData.errorTimestamp ? `<div style="margin-bottom: 15px;"><p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Error Timestamp</p><p style="color: #1a1a1a; margin: 0; font-size: 16px;">${new Date(reportData.errorTimestamp).toLocaleString()}</p></div>` : ''}
+                ${reportData.errorMessage ? `<div style="margin-bottom: 15px;"><p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Error Message</p><pre style="background-color: #f3f4f6; padding: 10px; border-radius: 4px; font-size: 13px; overflow-x: auto; margin: 0;">${esc(reportData.errorMessage)}</pre></div>` : ''}
+                ${reportData.pageUrl ? `<div style="margin-bottom: 15px;"><p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Page URL</p><p style="color: #1a1a1a; margin: 0; font-size: 16px;">${esc(reportData.pageUrl)}</p></div>` : ''}
+                <div style="margin-bottom: 15px;">
+                  <p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Steps to Reproduce</p>
+                  <p style="color: #1a1a1a; margin: 0; font-size: 16px; white-space: pre-line;">${esc(reportData.stepsToReproduce)}</p>
+                </div>
+                ${screenshotSection}
+                ${reportData.additionalComments ? `<div style="margin-bottom: 15px;"><p style="color: #666; margin: 0 0 5px 0; font-size: 14px;">Additional Comments</p><p style="color: #1a1a1a; margin: 0; font-size: 16px; white-space: pre-line;">${esc(reportData.additionalComments)}</p></div>` : ''}
+              </div>
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+                <p style="color: #666; font-size: 14px; margin: 0;">This is an automated bug report notification from ComplyBook.</p>
+              </div>
+            </body>
+            </html>
+          `,
+          text: `Bug Report #${bugReport.id}\n\nReporter: ${reportData.reporterName || 'N/A'} (${reportData.reporterEmail || 'N/A'})\n${reportData.deviceInfo ? 'Device: ' + reportData.deviceInfo + '\n' : ''}${reportData.errorMessage ? 'Error: ' + reportData.errorMessage + '\n' : ''}Steps to Reproduce:\n${reportData.stepsToReproduce}\n${reportData.additionalComments ? '\nAdditional Comments:\n' + reportData.additionalComments : ''}`,
+        };
+
+        await client.send(msg);
+      } catch (emailError) {
+        console.error("Failed to send bug report email notification:", emailError);
+      }
+
+      res.status(201).json(bugReport);
+    } catch (error: any) {
+      console.error("Error creating bug report:", error);
+      res.status(500).json({ message: "Failed to submit bug report" });
+    }
+  });
+
+  app.get('/api/bug-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const userOrgs = await storage.getOrganizations(userId);
+      const isAdminOrOwner = userOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "Admin or owner access required" });
+      }
+
+      const reports = await storage.getBugReports();
+      res.json(reports);
+    } catch (error: any) {
+      console.error("Error fetching bug reports:", error);
+      res.status(500).json({ message: "Failed to fetch bug reports" });
+    }
+  });
+
+  app.get('/api/bug-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userOrgs = await storage.getOrganizations(userId);
+      const isAdminOrOwner = userOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "Admin or owner access required" });
+      }
+
+      const report = await storage.getBugReport(parseInt(req.params.id));
+      if (!report) {
+        return res.status(404).json({ message: "Bug report not found" });
+      }
+      res.json(report);
+    } catch (error: any) {
+      console.error("Error fetching bug report:", error);
+      res.status(500).json({ message: "Failed to fetch bug report" });
+    }
+  });
+
+  app.patch('/api/bug-reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userOrgs = await storage.getOrganizations(userId);
+      const isAdminOrOwner = userOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "Admin or owner access required" });
+      }
+
+      const { status, priority, adminNotes } = req.body;
+      const validStatuses = ['new', 'in_progress', 'resolved', 'closed', 'wont_fix'];
+      const validPriorities = ['low', 'medium', 'high', 'critical'];
+      const updates: any = {};
+      if (status) {
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({ message: "Invalid status value" });
+        }
+        updates.status = status;
+      }
+      if (priority) {
+        if (!validPriorities.includes(priority)) {
+          return res.status(400).json({ message: "Invalid priority value" });
+        }
+        updates.priority = priority;
+      }
+      if (adminNotes !== undefined) updates.adminNotes = String(adminNotes).slice(0, 5000);
+
+      const report = await storage.updateBugReport(parseInt(req.params.id), updates);
+      res.json(report);
+    } catch (error: any) {
+      console.error("Error updating bug report:", error);
+      res.status(500).json({ message: "Failed to update bug report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

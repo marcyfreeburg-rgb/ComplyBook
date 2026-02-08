@@ -3998,3 +3998,43 @@ export const grantsRelations = relations(grants, ({ one, many }) => ({
   }),
   transactions: many(transactions),
 }));
+
+// ============================================
+// BUG REPORTS
+// ============================================
+
+export const bugReportStatusEnum = pgEnum('bug_report_status', ['new', 'in_progress', 'resolved', 'closed', 'wont_fix']);
+export const bugReportPriorityEnum = pgEnum('bug_report_priority', ['low', 'medium', 'high', 'critical']);
+
+export const bugReports = pgTable("bug_reports", {
+  id: serial("id").primaryKey(),
+  reporterUserId: varchar("reporter_user_id").references(() => users.id),
+  reporterName: varchar("reporter_name", { length: 255 }),
+  reporterEmail: varchar("reporter_email", { length: 255 }),
+  deviceInfo: varchar("device_info", { length: 500 }),
+  appVersion: varchar("app_version", { length: 100 }),
+  errorTimestamp: timestamp("error_timestamp"),
+  errorMessage: text("error_message"),
+  stepsToReproduce: text("steps_to_reproduce").notNull(),
+  screenshotUrl: text("screenshot_url"),
+  additionalComments: text("additional_comments"),
+  status: bugReportStatusEnum("status").default('new').notNull(),
+  priority: bugReportPriorityEnum("priority").default('medium'),
+  adminNotes: text("admin_notes"),
+  pageUrl: varchar("page_url", { length: 1000 }),
+  browserInfo: varchar("browser_info", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBugReportSchema = createInsertSchema(bugReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  priority: true,
+  adminNotes: true,
+});
+
+export type InsertBugReport = z.infer<typeof insertBugReportSchema>;
+export type BugReport = typeof bugReports.$inferSelect;
