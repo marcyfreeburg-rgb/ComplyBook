@@ -67,6 +67,11 @@ export function decryptField(ciphertext: string | null): string | null {
     const key = getEncryptionKey();
     const buffer = Buffer.from(ciphertext, 'base64');
     
+    const minEncryptedLength = IV_LENGTH + AUTH_TAG_LENGTH + 1;
+    if (buffer.length < minEncryptedLength) {
+      return ciphertext;
+    }
+    
     // Parse format: [IV][Auth Tag][Ciphertext]
     const iv = buffer.subarray(0, IV_LENGTH);
     const authTag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
@@ -80,8 +85,7 @@ export function decryptField(ciphertext: string | null): string | null {
     
     return decrypted;
   } catch (error) {
-    console.error('Decryption error:', error);
-    return null;
+    return ciphertext;
   }
 }
 
