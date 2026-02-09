@@ -222,7 +222,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
     setEditingPledge(pledge);
     setFormData({
       donorId: pledge.donorId.toString(),
-      fundId: pledge.fundId?.toString() || "",
+      fundId: pledge.fundId?.toString() || "none",
       amount: pledge.amount,
       pledgeDate: new Date(pledge.pledgeDate).toISOString().split('T')[0],
       dueDate: pledge.dueDate ? new Date(pledge.dueDate).toISOString().split('T')[0] : "",
@@ -660,7 +660,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
                   <SelectValue placeholder="Select fund (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {funds.map((fund) => (
                     <SelectItem key={fund.id} value={fund.id.toString()}>
                       {fund.name}
