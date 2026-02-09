@@ -1,0 +1,25 @@
+10:11:59 PM [express] GET /api/notifications/246/unread-count 304 in 62ms
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+[GET]
+complybook.net/api/payroll-runs/246/pending clientIP="216.147.126.82" requestID="13019112-7602-4dd3" responseTimeMS=69 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/budgets/246 clientIP="216.147.126.82" requestID="6bd8c4f9-31e0-4155" responseTimeMS=36 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/dashboard/246?period=current_month clientIP="216.147.126.82" requestID="f44e7412-8751-4401" responseTimeMS=97 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/dashboard/246/monthly-trends clientIP="216.147.126.82" requestID="d3c84537-ca37-4775" responseTimeMS=73 responseBytes=1184 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/api/dashboard/246/category-breakdown clientIP="216.147.126.82" requestID="a894b24d-c9ad-417d" responseTimeMS=33 responseBytes=1183 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:12:10 PM [express] GET /api/payroll-runs/246/pending 304 in 67ms
+10:12:10 PM [express] GET /api/dashboard/246 304 in 94ms
+10:12:10 PM [express] GET /api/dashboard/246/monthly-trends 304 in 69ms
+10:12:10 PM [express] GET /api/budgets/246 304 in 16ms
+10:12:10 PM [express] GET /api/dashboard/246/category-breakdown 304 in 32ms
+[POST]
+complybook.net/api/pledges clientIP="216.147.126.82" requestID="3b92403a-b7e7-4271" responseTimeMS=174 responseBytes=1456 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:12:31 PM [express] POST /api/pledges 201 in 152ms
+[GET]
+complybook.net/api/pledges/246 clientIP="216.147.126.82" requestID="81c19529-f9f2-4c84" responseTimeMS=18 responseBytes=1883 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+10:12:32 PM [express] GET /api/pledges/246 200 in 16ms

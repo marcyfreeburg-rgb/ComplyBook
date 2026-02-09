@@ -225,7 +225,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
       fundId: pledge.fundId?.toString() || "",
       amount: pledge.amount,
       pledgeDate: new Date(pledge.pledgeDate).toISOString().split('T')[0],
-      dueDate: new Date(pledge.dueDate).toISOString().split('T')[0],
+      dueDate: pledge.dueDate ? new Date(pledge.dueDate).toISOString().split('T')[0] : "",
       status: pledge.status as any,
       notes: pledge.notes || "",
       paymentSchedule: pledge.paymentSchedule || "",
@@ -251,8 +251,8 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
     setIsPaymentHistoryDialogOpen(true);
   };
 
-  const getStatusColor = (status: string, dueDate: Date) => {
-    const isOverdue = new Date(dueDate) < new Date() && status !== 'fulfilled' && status !== 'cancelled';
+  const getStatusColor = (status: string, dueDate: Date | null) => {
+    const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'fulfilled' && status !== 'cancelled';
     
     if (isOverdue) {
       return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
@@ -271,16 +271,16 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
     }
   };
 
-  const getStatusIcon = (status: string, dueDate: Date) => {
-    const isOverdue = new Date(dueDate) < new Date() && status !== 'fulfilled' && status !== 'cancelled';
+  const getStatusIcon = (status: string, dueDate: Date | null) => {
+    const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'fulfilled' && status !== 'cancelled';
     
     if (isOverdue) return <AlertCircle className="h-4 w-4" />;
     if (status === "fulfilled") return <CheckCircle2 className="h-4 w-4" />;
     return <Clock className="h-4 w-4" />;
   };
 
-  const getStatusLabel = (status: string, dueDate: Date) => {
-    const isOverdue = new Date(dueDate) < new Date() && status !== 'fulfilled' && status !== 'cancelled';
+  const getStatusLabel = (status: string, dueDate: Date | null) => {
+    const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'fulfilled' && status !== 'cancelled';
     if (isOverdue) return "Overdue";
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
@@ -290,7 +290,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
   const totalReceived = pledges.reduce((sum, p) => sum + parseFloat(p.amountPaid), 0);
   const totalOutstanding = totalPledged - totalReceived;
   const overduePledges = pledges.filter(p => 
-    new Date(p.dueDate) < new Date() && 
+    p.dueDate && new Date(p.dueDate) < new Date() && 
     p.status !== 'fulfilled' && 
     p.status !== 'cancelled'
   ).length;
@@ -441,7 +441,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-pledged">
-              {formatCurrency(totalPledged, currentOrganization.currency)}
+              {formatCurrency(totalPledged)}
             </div>
           </CardContent>
         </Card>
@@ -452,7 +452,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-received">
-              {formatCurrency(totalReceived, currentOrganization.currency)}
+              {formatCurrency(totalReceived)}
             </div>
           </CardContent>
         </Card>
@@ -463,7 +463,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-total-outstanding">
-              {formatCurrency(totalOutstanding, currentOrganization.currency)}
+              {formatCurrency(totalOutstanding)}
             </div>
           </CardContent>
         </Card>
@@ -524,7 +524,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
                         </Badge>
                       </div>
                       <CardDescription className="mt-1">
-                        Due: {new Date(pledge.dueDate).toLocaleDateString()}
+                        Due: {pledge.dueDate ? new Date(pledge.dueDate).toLocaleDateString() : 'Not set'}
                       </CardDescription>
                     </div>
                   </div>
@@ -535,13 +535,13 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
                       <div>
                         <p className="text-sm text-muted-foreground">Pledge Amount</p>
                         <p className="text-lg font-bold" data-testid={`text-pledge-amount-${pledge.id}`}>
-                          {formatCurrency(parseFloat(pledge.amount), currentOrganization.currency)}
+                          {formatCurrency(parseFloat(pledge.amount))}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Amount Paid</p>
                         <p className="text-lg font-bold text-green-600" data-testid={`text-amount-paid-${pledge.id}`}>
-                          {formatCurrency(parseFloat(pledge.amountPaid), currentOrganization.currency)}
+                          {formatCurrency(parseFloat(pledge.amountPaid))}
                         </p>
                       </div>
                     </div>
@@ -559,7 +559,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
                           />
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Remaining: {formatCurrency(remainingAmount, currentOrganization.currency)}
+                          Remaining: {formatCurrency(remainingAmount)}
                         </p>
                       </div>
                     )}
@@ -873,19 +873,19 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <p className="font-medium text-lg" data-testid={`payment-amount-${payment.id}`}>
-                          {formatCurrency(parseFloat(payment.amount), currentOrganization.currency)}
+                          {formatCurrency(parseFloat(payment.amount))}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(payment.paymentDate).toLocaleDateString()}
                         </p>
-                        {payment.paymentMethod && (
+                        {(payment as any).paymentMethod && (
                           <p className="text-sm" data-testid={`payment-method-${payment.id}`}>
-                            Method: {payment.paymentMethod}
+                            Method: {(payment as any).paymentMethod}
                           </p>
                         )}
-                        {payment.transactionReference && (
+                        {(payment as any).transactionReference && (
                           <p className="text-sm" data-testid={`payment-reference-${payment.id}`}>
-                            Ref: {payment.transactionReference}
+                            Ref: {(payment as any).transactionReference}
                           </p>
                         )}
                         {payment.notes && (
