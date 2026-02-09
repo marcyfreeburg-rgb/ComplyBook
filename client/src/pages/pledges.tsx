@@ -65,8 +65,9 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
   });
 
   const { data: pledgePayments = [], isLoading: isLoadingPayments } = useQuery<PledgePayment[]>({
-    queryKey: [`/api/pledges/${viewingPaymentsFor}/payments`],
+    queryKey: ['/api/pledges', viewingPaymentsFor, 'payments'],
     enabled: !!viewingPaymentsFor && isPaymentHistoryDialogOpen,
+    staleTime: 0,
   });
 
   const resetForm = () => {
@@ -200,7 +201,7 @@ export default function Pledges({ currentOrganization, userId }: PledgesProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/pledges`, currentOrganization.id] });
-      queryClient.invalidateQueries({ queryKey: [`/api/pledges/${recordingPaymentFor?.id}/payments`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pledges', recordingPaymentFor?.id, 'payments'] });
       toast({
         title: "Payment recorded",
         description: "The payment has been recorded successfully.",
