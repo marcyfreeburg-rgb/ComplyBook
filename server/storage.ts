@@ -294,7 +294,7 @@ export interface IStorage {
   getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
-  upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string }): Promise<User>;
+  upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string; subscriptionTier?: string; subscriptionStatus?: string; subscriptionCurrentPeriodEnd?: Date }): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
   updateUser(userId: string, updates: Partial<{
     stripeSubscriptionId: string | null;
@@ -1360,26 +1360,40 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string }): Promise<User> {
+  async upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string; subscriptionTier?: string; subscriptionStatus?: string; subscriptionCurrentPeriodEnd?: Date }): Promise<User> {
+    const values: any = {
+      id: userData.id,
+      email: userData.email,
+      passwordHash: userData.passwordHash,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      role: userData.role || 'member',
+    };
+    const updateSet: any = {
+      passwordHash: userData.passwordHash,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      role: userData.role || 'member',
+      updatedAt: new Date(),
+    };
+    if (userData.subscriptionTier) {
+      values.subscriptionTier = userData.subscriptionTier;
+      updateSet.subscriptionTier = userData.subscriptionTier;
+    }
+    if (userData.subscriptionStatus) {
+      values.subscriptionStatus = userData.subscriptionStatus;
+      updateSet.subscriptionStatus = userData.subscriptionStatus;
+    }
+    if (userData.subscriptionCurrentPeriodEnd) {
+      values.subscriptionCurrentPeriodEnd = userData.subscriptionCurrentPeriodEnd;
+      updateSet.subscriptionCurrentPeriodEnd = userData.subscriptionCurrentPeriodEnd;
+    }
     const [user] = await db
       .insert(users)
-      .values({
-        id: userData.id,
-        email: userData.email,
-        passwordHash: userData.passwordHash,
-        firstName: userData.firstName || null,
-        lastName: userData.lastName || null,
-        role: userData.role || 'member',
-      })
+      .values(values)
       .onConflictDoUpdate({
         target: users.email,
-        set: {
-          passwordHash: userData.passwordHash,
-          firstName: userData.firstName || null,
-          lastName: userData.lastName || null,
-          role: userData.role || 'member',
-          updatedAt: new Date(),
-        },
+        set: updateSet,
       })
       .returning();
     return user;

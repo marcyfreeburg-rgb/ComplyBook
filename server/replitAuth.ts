@@ -541,6 +541,66 @@ export async function createDefaultAdminUser() {
       console.error(`[Auth] Failed to create default admin user ${admin.email}:`, error);
     }
   }
+
+  const enterpriseUsers = [
+    {
+      email: "julielp66@gmail.com",
+      password: "ComplyBook2025!",
+      id: "local_enterprise_julie",
+      firstName: "Julie",
+      lastName: "LP",
+      tier: "enterprise" as const,
+      durationMonths: 6,
+    },
+    {
+      email: "bowmanh.l.jr@gmail.com",
+      password: "ComplyBook2025!",
+      id: "local_enterprise_bowman",
+      firstName: "Bowman",
+      lastName: "H",
+      tier: "enterprise" as const,
+      durationMonths: 6,
+    },
+  ];
+
+  for (const invitee of enterpriseUsers) {
+    try {
+      const existingUser = await storage.getUserByEmail(invitee.email);
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + invitee.durationMonths);
+
+      if (!existingUser) {
+        const hashedPassword = await hashPassword(invitee.password);
+
+        await storage.upsertLocalUser({
+          id: invitee.id,
+          email: invitee.email,
+          passwordHash: hashedPassword,
+          firstName: invitee.firstName,
+          lastName: invitee.lastName,
+          role: "member",
+          subscriptionTier: invitee.tier,
+          subscriptionStatus: "active",
+          subscriptionCurrentPeriodEnd: endDate,
+        });
+
+        console.log(`[Auth] Enterprise user created: ${invitee.email} (expires ${endDate.toISOString()})`);
+      } else {
+        await storage.updateUser(existingUser.id, {
+          subscriptionTier: invitee.tier,
+          subscriptionStatus: "active",
+          subscriptionCurrentPeriodEnd: endDate,
+        });
+        if (!existingUser.passwordHash) {
+          const hashedPassword = await hashPassword(invitee.password);
+          await storage.updateUserPassword(existingUser.id, hashedPassword);
+        }
+        console.log(`[Auth] Enterprise user updated: ${invitee.email} (expires ${endDate.toISOString()})`);
+      }
+    } catch (error) {
+      console.error(`[Auth] Failed to create enterprise user ${invitee.email}:`, error);
+    }
+  }
 }
 
 export async function setupAuth(app: Express) {
