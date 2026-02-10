@@ -77,6 +77,11 @@ function updateUserSession(
 
 const SIGNUP_NOTIFY_EMAIL = "tech@jandmsolutions.com";
 
+const PENDING_ENTERPRISE_INVITES: Record<string, { tier: 'enterprise' | 'professional' | 'growth' | 'core'; durationMonths: number }> = {
+  "julielp66@gmail.com": { tier: "enterprise", durationMonths: 6 },
+  "bowmanh.l.jr@gmail.com": { tier: "enterprise", durationMonths: 6 },
+};
+
 async function upsertUser(claims: any) {
   const existingUser = claims["email"] ? await storage.getUserByEmail(claims["email"]) : null;
   const isNewUser = !existingUser;
@@ -90,6 +95,28 @@ async function upsertUser(claims: any) {
   });
 
   if (isNewUser && claims["email"]) {
+    const email = claims["email"].toLowerCase();
+    const invite = PENDING_ENTERPRISE_INVITES[email];
+    if (invite) {
+      try {
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + invite.durationMonths);
+        await storage.upsertUser({
+          id: claims["sub"],
+          email: claims["email"],
+          firstName: claims["first_name"],
+          lastName: claims["last_name"],
+          profileImageUrl: claims["profile_image_url"],
+          subscriptionTier: invite.tier,
+          subscriptionStatus: 'active',
+          subscriptionCurrentPeriodEnd: endDate,
+        });
+        console.log(`[Auth] Activated ${invite.tier} account for ${email} (expires ${endDate.toISOString()})`);
+      } catch (err) {
+        console.error(`[Auth] Failed to activate enterprise invite for ${email}:`, (err as Error).message);
+      }
+    }
+
     const userName = [claims["first_name"], claims["last_name"]].filter(Boolean).join(" ") || "Unknown";
     try {
       await sendNewUserNotificationEmail({
