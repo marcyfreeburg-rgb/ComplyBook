@@ -265,6 +265,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     },
     onSuccess: (data: { imported?: number; message?: string; errors?: Array<{ institution: string; error: string }> }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/plaid/accounts/${currentOrganization.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/dashboard/${currentOrganization.id}`] });
       if (data.errors && data.errors.length > 0) {
         const errorMessages = data.errors.map(e => `${e.institution}: ${e.error}`).join('\n');
         toast({
