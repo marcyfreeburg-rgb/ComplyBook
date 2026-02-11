@@ -17329,15 +17329,17 @@ Keep the response approximately 100-150 words.`;
       // Get recipients based on type (donors for nonprofit, clients for for-profit)
       let selectedRecipients: { id: number; name: string; email: string | null }[] = [];
       
-      if (recipientType === 'client') {
-        const clients = await storage.getClients(form.organizationId);
-        selectedRecipients = clients.filter(c => donorIds.includes(c.id) && c.email);
-      } else {
-        const donors = await storage.getDonors(form.organizationId);
-        selectedRecipients = donors.filter(d => donorIds.includes(d.id) && d.email);
+      if (Array.isArray(donorIds) && donorIds.length > 0) {
+        if (recipientType === 'client') {
+          const clients = await storage.getClients(form.organizationId);
+          selectedRecipients = clients.filter(c => donorIds.includes(c.id) && c.email);
+        } else {
+          const donors = await storage.getDonors(form.organizationId);
+          selectedRecipients = donors.filter(d => donorIds.includes(d.id) && d.email);
+        }
       }
 
-      if (selectedRecipients.length === 0) {
+      if (selectedRecipients.length === 0 && (!Array.isArray(additionalEmails) || additionalEmails.length === 0)) {
         return res.status(400).json({ message: "No recipients with valid email addresses found" });
       }
 
