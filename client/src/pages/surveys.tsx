@@ -110,6 +110,8 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   const [isSendInvitationsOpen, setIsSendInvitationsOpen] = useState(false);
   const [selectedDonorIds, setSelectedDonorIds] = useState<number[]>([]);
   const [personalMessage, setPersonalMessage] = useState("");
+  const [additionalEmails, setAdditionalEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
 
   const { data: surveysResponse, isLoading } = useQuery<{ data: Form[] }>({
     queryKey: ["/api/forms", organization?.id, "survey"],
@@ -324,17 +326,20 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
   });
 
   const sendInvitationsMutation = useMutation({
-    mutationFn: async ({ formId, donorIds, personalMessage, recipientType }: { formId: number; donorIds: number[]; personalMessage: string; recipientType: 'donor' | 'client' }) => {
+    mutationFn: async ({ formId, donorIds, personalMessage, recipientType, additionalEmails }: { formId: number; donorIds: number[]; personalMessage: string; recipientType: 'donor' | 'client'; additionalEmails: string[] }) => {
       const response = await apiRequest("POST", `/api/forms/${formId}/send-invitations`, {
         donorIds,
         personalMessage,
         recipientType,
+        additionalEmails,
       });
       return response.json();
     },
     onSuccess: (data) => {
       setIsSendInvitationsOpen(false);
       setSelectedDonorIds([]);
+      setAdditionalEmails([]);
+      setEmailInput("");
       setPersonalMessage("");
       toast({ 
         title: "Invitations Sent",
@@ -1615,6 +1620,8 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
         if (!open) {
           setSelectedDonorIds([]);
           setPersonalMessage("");
+          setAdditionalEmails([]);
+          setEmailInput("");
         }
       }}>
         <DialogContent className="max-w-lg">
@@ -1704,6 +1711,61 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
             </div>
 
             <div className="space-y-2">
+              <Label>Add Email Addresses</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter email address..."
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const email = emailInput.trim().toLowerCase();
+                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                      if (email && emailRegex.test(email) && !additionalEmails.includes(email)) {
+                        setAdditionalEmails([...additionalEmails, email]);
+                        setEmailInput("");
+                      }
+                    }
+                  }}
+                  data-testid="input-additional-email"
+                />
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={() => {
+                    const email = emailInput.trim().toLowerCase();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (email && emailRegex.test(email) && !additionalEmails.includes(email)) {
+                      setAdditionalEmails([...additionalEmails, email]);
+                      setEmailInput("");
+                    }
+                  }}
+                  data-testid="button-add-email"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+              {additionalEmails.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {additionalEmails.map((email) => (
+                    <Badge key={email} variant="secondary" className="gap-1">
+                      {email}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setAdditionalEmails(additionalEmails.filter(e => e !== email))}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Send to any email address — they don't need to be in your {recipientType} list
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="personal-message">Personal Message (Optional)</Label>
               <Textarea
                 id="personal-message"
@@ -1729,16 +1791,18 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
             </Button>
             <Button
               onClick={() => {
-                if (selectedSurvey && selectedDonorIds.length > 0) {
+                const totalRecipients = selectedDonorIds.length + additionalEmails.length;
+                if (selectedSurvey && totalRecipients > 0) {
                   sendInvitationsMutation.mutate({
                     formId: selectedSurvey.id,
                     donorIds: selectedDonorIds,
                     personalMessage,
                     recipientType: organization?.type === 'nonprofit' ? 'donor' : 'client',
+                    additionalEmails,
                   });
                 }
               }}
-              disabled={selectedDonorIds.length === 0 || sendInvitationsMutation.isPending}
+              disabled={(selectedDonorIds.length === 0 && additionalEmails.length === 0) || sendInvitationsMutation.isPending}
               data-testid="button-send-invitations"
             >
               {sendInvitationsMutation.isPending ? (
@@ -1749,7 +1813,7 @@ export default function Surveys({ currentOrganization, userId }: SurveysProps) {
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Send to {selectedDonorIds.length} {selectedDonorIds.length === 1 ? (organization?.type === 'nonprofit' ? 'Donor' : 'Client') : (organization?.type === 'nonprofit' ? 'Donors' : 'Clients')}
+                  Send to {selectedDonorIds.length + additionalEmails.length} Recipient{(selectedDonorIds.length + additionalEmails.length) !== 1 ? 's' : ''}
                 </>
               )}
             </Button>

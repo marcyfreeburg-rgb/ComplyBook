@@ -17304,10 +17304,11 @@ Keep the response approximately 100-150 words.`;
     try {
       const userId = req.user.claims.sub;
       const formId = parseInt(req.params.formId);
-      const { donorIds, personalMessage, recipientType = 'donor' } = req.body;
+      const { donorIds = [], personalMessage, recipientType = 'donor', additionalEmails = [] } = req.body;
 
-      if (!donorIds || !Array.isArray(donorIds) || donorIds.length === 0) {
-        return res.status(400).json({ message: "Please select at least one recipient" });
+      const hasRecipients = (Array.isArray(donorIds) && donorIds.length > 0) || (Array.isArray(additionalEmails) && additionalEmails.length > 0);
+      if (!hasRecipients) {
+        return res.status(400).json({ message: "Please select at least one recipient or enter an email address" });
       }
 
       const form = await storage.getForm(formId);
@@ -17380,6 +17381,33 @@ Keep the response approximately 100-150 words.`;
           results.failed++;
           results.errors.push(`Failed to send to ${recipient.email}: ${error.message}`);
           console.error(`Error sending form invitation to ${recipient.email}:`, error);
+        }
+      }
+
+      if (Array.isArray(additionalEmails)) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (const entry of additionalEmails) {
+          const email = (typeof entry === 'string' ? entry : entry?.email || '').trim().toLowerCase();
+          const name = (typeof entry === 'object' && entry?.name) ? entry.name : email.split('@')[0];
+          if (!email || !emailRegex.test(email)) continue;
+          try {
+            await sendFormInvitationEmail({
+              to: email,
+              recipientName: name,
+              organizationName: organization.name,
+              formTitle: form.title,
+              formDescription: form.description || undefined,
+              formType: form.formType as 'form' | 'survey',
+              formUrl,
+              personalMessage: personalMessage || undefined,
+              branding,
+            });
+            results.sent++;
+          } catch (error: any) {
+            results.failed++;
+            results.errors.push(`Failed to send to ${email}: ${error.message}`);
+            console.error(`Error sending form invitation to ${email}:`, error);
+          }
         }
       }
 
