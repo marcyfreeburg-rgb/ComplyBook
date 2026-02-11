@@ -872,7 +872,7 @@ export default function Forms({ currentOrganization, userId }: FormsProps) {
                       <Link2 className="w-4 h-4 mr-2" />
                       Copy Link
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.open(getPublicUrl(form.publicId), "_blank")}>
+                    <DropdownMenuItem onClick={() => window.open(`${getPublicUrl(form.publicId)}?preview=true`, "_blank")}>
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Preview
                     </DropdownMenuItem>

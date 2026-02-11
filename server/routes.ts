@@ -17707,7 +17707,9 @@ Keep the response approximately 100-150 words.`;
         return res.status(404).json({ message: "Form not found" });
       }
 
-      if (form.status !== 'active') {
+      const isPreview = req.query.preview === 'true';
+
+      if (form.status !== 'active' && !isPreview) {
         return res.status(403).json({ message: "This form is not currently accepting responses" });
       }
 

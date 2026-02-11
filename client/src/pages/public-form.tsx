@@ -53,10 +53,10 @@ export default function PublicForm({ formType }: PublicFormProps) {
   const pathPrefix = formType === 'survey' ? '/s/' : '/f/';
   const pathname = window.location.pathname.replace(/\/$/, ''); // Remove trailing slash
   const segments = pathname.split('/');
-  // The publicId is the last segment after /f/ or /s/
   const publicId = segments.length >= 2 && pathname.startsWith(pathPrefix.slice(0, -1)) 
     ? segments[segments.length - 1] 
     : '';
+  const isPreview = new URLSearchParams(window.location.search).get('preview') === 'true';
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -69,9 +69,12 @@ export default function PublicForm({ formType }: PublicFormProps) {
   const [respondentEmailError, setRespondentEmailError] = useState<string>("");
 
   const { data: formResponse, isLoading, error } = useQuery<{ data: PublicFormData }>({
-    queryKey: ["/api/public/forms", publicId],
+    queryKey: ["/api/public/forms", publicId, isPreview ? "preview" : "live"],
     queryFn: async () => {
-      const response = await fetch(`/api/public/forms/${publicId}`);
+      const url = isPreview 
+        ? `/api/public/forms/${publicId}?preview=true`
+        : `/api/public/forms/${publicId}`;
+      const response = await fetch(url);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to load form");
@@ -549,6 +552,11 @@ export default function PublicForm({ formType }: PublicFormProps) {
       }}
     >
       <div className="max-w-2xl mx-auto space-y-6">
+        {isPreview && (
+          <div className="bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-md p-3 text-center text-sm text-amber-800 dark:text-amber-200" data-testid="text-preview-banner">
+            Preview Mode — This form is not yet published. Responses will not be saved.
+          </div>
+        )}
         {branding.logoUrl && (
           <div className="flex justify-center">
             <img 
