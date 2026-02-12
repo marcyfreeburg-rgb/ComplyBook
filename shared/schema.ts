@@ -1471,6 +1471,7 @@ export const expenseApprovals = pgTable("expense_approvals", {
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"),
   receiptUrl: varchar("receipt_url"),
+  transactionId: integer("transaction_id").references(() => transactions.id, { onDelete: 'set null' }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

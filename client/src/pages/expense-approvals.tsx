@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,9 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock, Plus, AlertCircle, Check, X } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Plus, AlertCircle, Check, X, Upload, FileText, Link2, Unlink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Organization, ExpenseApproval, Category, Vendor, InsertExpenseApproval } from "@shared/schema";
+import type { Organization, ExpenseApproval, Category, Vendor, InsertExpenseApproval, Transaction } from "@shared/schema";
 import { insertExpenseApprovalSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { CategoryCombobox } from "@/components/category-combobox";
@@ -34,6 +34,11 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
   const [reviewNotes, setReviewNotes] = useState("");
   const [selectedApprovalIds, setSelectedApprovalIds] = useState<Set<number>>(new Set());
   const [bulkReviewNotes, setBulkReviewNotes] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkApprovalId, setLinkApprovalId] = useState<number | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string>("");
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const formSchema = insertExpenseApprovalSchema.omit({ organizationId: true, requestedBy: true }).extend({
     amount: z.string().min(1, "Amount is required").refine(
@@ -70,9 +75,15 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
 
   const createApprovalMutation = useMutation({
     mutationFn: async (data: InsertExpenseApproval) => {
-      return await apiRequest('POST', `/api/expense-approvals/${currentOrganization.id}`, data);
+      const res = await apiRequest('POST', `/api/expense-approvals/${currentOrganization.id}`, data);
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: async (result: any) => {
+      if (receiptFile && result?.id) {
+        uploadReceiptMutation.mutate({ approvalId: result.id, file: receiptFile });
+        setReceiptFile(null);
+        if (receiptInputRef.current) receiptInputRef.current.value = '';
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
       toast({ title: "Expense approval request submitted successfully" });
       setIsDialogOpen(false);
@@ -150,6 +161,53 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
     },
     onError: (error: any) => {
       toast({ title: "Bulk rejection failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: transactions } = useQuery<Transaction[]>({
+    queryKey: ['/api/transactions', currentOrganization.id],
+    enabled: !!currentOrganization.id && linkDialogOpen,
+  });
+
+  const uploadReceiptMutation = useMutation({
+    mutationFn: async ({ approvalId, file }: { approvalId: number; file: File }) => {
+      const formData = new FormData();
+      formData.append('receipt', file);
+      const csrfToken = document.cookie.split(';').find(c => c.trim().startsWith('csrf_token='))?.split('=')[1];
+      const res = await fetch(`/api/expense-approvals/${approvalId}/upload-receipt`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+        headers: csrfToken ? { 'x-csrf-token': csrfToken } : {},
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Upload failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
+      toast({ title: "Receipt uploaded successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to upload receipt", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const linkTransactionMutation = useMutation({
+    mutationFn: async ({ approvalId, transactionId }: { approvalId: number; transactionId: number | null }) => {
+      return await apiRequest('POST', `/api/expense-approvals/${approvalId}/link-transaction`, { transactionId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/expense-approvals', currentOrganization.id] });
+      setLinkDialogOpen(false);
+      setLinkApprovalId(null);
+      setSelectedTransactionId("");
+      toast({ title: "Transaction link updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to link transaction", variant: "destructive" });
     },
   });
 
@@ -376,6 +434,25 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                   )}
                 />
 
+                <div>
+                  <label className="text-sm font-medium">Receipt (Optional)</label>
+                  <div className="mt-2">
+                    <input
+                      ref={receiptInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                      className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
+                      data-testid="input-receipt-file"
+                    />
+                    {receiptFile && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Selected: {receiptFile.name} ({(receiptFile.size / 1024).toFixed(1)} KB)
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancel
@@ -552,11 +629,25 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                               </div>
                             )}
                           </div>
+                          {approval.receiptUrl && (
+                            <div className="mt-2">
+                              <a
+                                href={approval.receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                                data-testid={`link-receipt-${approval.id}`}
+                              >
+                                <FileText className="h-3 w-3" />
+                                View Receipt
+                              </a>
+                            </div>
+                          )}
                           {approval.notes && (
                             <p className="text-sm text-muted-foreground mt-2">{approval.notes}</p>
                           )}
                         </div>
-                        <div>
+                        <div className="flex flex-col gap-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -565,6 +656,34 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                           >
                             Review
                           </Button>
+                          {!approval.receiptUrl && (
+                            <>
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                className="hidden"
+                                id={`pending-receipt-${approval.id}`}
+                                data-testid={`input-upload-receipt-${approval.id}`}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    uploadReceiptMutation.mutate({ approvalId: approval.id, file });
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => document.getElementById(`pending-receipt-${approval.id}`)?.click()}
+                                disabled={uploadReceiptMutation.isPending}
+                                data-testid={`button-upload-receipt-${approval.id}`}
+                              >
+                                <Upload className="h-4 w-4 mr-1" />
+                                Receipt
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -605,6 +724,70 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                           <span className="text-muted-foreground">Date:</span>{" "}
                           <span>{format(new Date(approval.requestDate), 'MMM d, yyyy')}</span>
                         </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 mt-2">
+                        {approval.receiptUrl ? (
+                          <a
+                            href={approval.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                            data-testid={`my-link-receipt-${approval.id}`}
+                          >
+                            <FileText className="h-3 w-3" />
+                            View Receipt
+                          </a>
+                        ) : approval.status === 'pending' ? (
+                          <>
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              id={`my-receipt-${approval.id}`}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  uploadReceiptMutation.mutate({ approvalId: approval.id, file });
+                                  e.target.value = '';
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => document.getElementById(`my-receipt-${approval.id}`)?.click()}
+                              disabled={uploadReceiptMutation.isPending}
+                              data-testid={`button-my-upload-receipt-${approval.id}`}
+                            >
+                              <Upload className="h-4 w-4 mr-1" />
+                              Add Receipt
+                            </Button>
+                          </>
+                        ) : null}
+                        {approval.status === 'approved' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setLinkApprovalId(approval.id);
+                              setSelectedTransactionId(approval.transactionId?.toString() || "");
+                              setLinkDialogOpen(true);
+                            }}
+                            data-testid={`button-link-transaction-${approval.id}`}
+                          >
+                            {approval.transactionId ? (
+                              <>
+                                <Link2 className="h-4 w-4 mr-1" />
+                                Linked
+                              </>
+                            ) : (
+                              <>
+                                <Unlink className="h-4 w-4 mr-1" />
+                                Link Transaction
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
                       {approval.reviewNotes && (
                         <div className="mt-3 p-3 bg-muted rounded-md">
@@ -661,6 +844,26 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                           </div>
                         )}
                       </div>
+                      <div className="flex flex-wrap items-center gap-3 mt-2">
+                        {approval.receiptUrl && (
+                          <a
+                            href={approval.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                            data-testid={`reviewed-link-receipt-${approval.id}`}
+                          >
+                            <FileText className="h-3 w-3" />
+                            View Receipt
+                          </a>
+                        )}
+                        {approval.transactionId && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Link2 className="h-3 w-3" />
+                            Linked to Transaction
+                          </Badge>
+                        )}
+                      </div>
                       {approval.reviewNotes && (
                         <div className="mt-3 p-3 bg-muted rounded-md">
                           <p className="text-sm font-medium">Review Notes:</p>
@@ -677,6 +880,58 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={linkDialogOpen} onOpenChange={(open) => {
+        setLinkDialogOpen(open);
+        if (!open) {
+          setLinkApprovalId(null);
+          setSelectedTransactionId("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link to Transaction</DialogTitle>
+            <DialogDescription>
+              Link this approved expense to an existing transaction for tracking
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select
+              value={selectedTransactionId}
+              onValueChange={setSelectedTransactionId}
+            >
+              <SelectTrigger data-testid="select-link-transaction">
+                <SelectValue placeholder="Select a transaction" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No transaction</SelectItem>
+                {transactions?.filter(t => t.type === 'expense').map((t) => (
+                  <SelectItem key={t.id} value={t.id.toString()}>
+                    {t.description} - ${parseFloat(t.amount).toFixed(2)} ({format(new Date(t.date), 'MMM d, yyyy')})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (linkApprovalId) {
+                    const txId = selectedTransactionId && selectedTransactionId !== "none" ? parseInt(selectedTransactionId) : null;
+                    linkTransactionMutation.mutate({ approvalId: linkApprovalId, transactionId: txId });
+                  }
+                }}
+                disabled={linkTransactionMutation.isPending}
+                data-testid="button-confirm-link"
+              >
+                {linkTransactionMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
         <DialogContent>
@@ -701,6 +956,21 @@ export default function ExpenseApprovals({ currentOrganization, userId }: Expens
                   <span className="text-sm font-medium">Requested By:</span>
                   <p className="text-sm text-muted-foreground">{selectedApproval.requestedByName}</p>
                 </div>
+                {selectedApproval.receiptUrl && (
+                  <div>
+                    <span className="text-sm font-medium">Receipt:</span>
+                    <a
+                      href={selectedApproval.receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+                      data-testid="review-link-receipt"
+                    >
+                      <FileText className="h-3 w-3" />
+                      View Receipt
+                    </a>
+                  </div>
+                )}
                 {selectedApproval.notes && (
                   <div>
                     <span className="text-sm font-medium">Notes:</span>

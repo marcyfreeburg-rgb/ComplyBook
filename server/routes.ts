@@ -4106,6 +4106,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const receiptUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image and PDF files are allowed'));
+      }
+    }
+  });
+
   // Logo upload route
   app.post('/api/organizations/:id/logo', isAuthenticated, logoUpload.single('logo'), async (req: any, res) => {
     try {
@@ -10800,6 +10813,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting expense approval:", error);
       res.status(500).json({ message: "Failed to delete expense approval" });
+    }
+  });
+
+  app.post('/api/expense-approvals/:id/upload-receipt', isAuthenticated, receiptUpload.single('receipt'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const approvalId = parseInt(req.params.id);
+
+      const approval = await storage.getExpenseApproval(approvalId);
+      if (!approval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, approval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No receipt file provided" });
+      }
+
+      let receiptPath: string;
+
+      if (isObjectStorageAvailable) {
+        const objectStorageService = new ObjectStorageService();
+        const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: req.file.buffer,
+          headers: { 'Content-Type': req.file.mimetype },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload to object storage');
+        }
+
+        const rawPath = uploadUrl.split('?')[0];
+        receiptPath = await objectStorageService.trySetObjectEntityAclPolicy(rawPath, {
+          owner: userId,
+          visibility: 'public',
+        });
+      } else {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'receipts');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const fileExt = path.extname(req.file.originalname) || '.png';
+        const fileName = `receipt_${approvalId}_${Date.now()}${fileExt}`;
+        const filePath = path.join(uploadsDir, fileName);
+        fs.writeFileSync(filePath, req.file.buffer);
+        receiptPath = `/uploads/receipts/${fileName}`;
+      }
+
+      const updated = await storage.updateExpenseApproval(approvalId, { receiptUrl: receiptPath });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error uploading receipt:", error);
+      res.status(500).json({ message: "Failed to upload receipt" });
+    }
+  });
+
+  app.post('/api/expense-approvals/:id/link-transaction', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const approvalId = parseInt(req.params.id);
+      const { transactionId } = req.body;
+
+      const approval = await storage.getExpenseApproval(approvalId);
+      if (!approval) {
+        return res.status(404).json({ message: "Expense approval not found" });
+      }
+
+      const userRole = await storage.getUserRole(userId, approval.organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (approval.status !== 'approved') {
+        return res.status(400).json({ message: "Only approved expenses can be linked to transactions" });
+      }
+
+      const updated = await storage.updateExpenseApproval(approvalId, { 
+        transactionId: transactionId || null 
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error linking transaction:", error);
+      res.status(500).json({ message: "Failed to link transaction" });
     }
   });
 
