@@ -80,6 +80,8 @@ const SIGNUP_NOTIFY_EMAIL = "tech@jandmsolutions.com";
 const PENDING_ENTERPRISE_INVITES: Record<string, { tier: 'enterprise' | 'professional' | 'growth' | 'core'; durationMonths: number }> = {
   "julielp66@gmail.com": { tier: "enterprise", durationMonths: 6 },
   "bowmanh.l.jr@gmail.com": { tier: "enterprise", durationMonths: 6 },
+  "david.u.badger@gmail.com": { tier: "enterprise", durationMonths: 6 },
+  "musiclady.cb@gmail.com": { tier: "enterprise", durationMonths: 6 },
 };
 
 async function upsertUser(claims: any) {
@@ -558,6 +560,24 @@ export async function createDefaultAdminUser() {
       id: "local_enterprise_bowman",
       firstName: "Bowman",
       lastName: "H",
+      tier: "enterprise" as const,
+      durationMonths: 6,
+    },
+    {
+      email: "david.u.badger@gmail.com",
+      password: "ComplyBook2025!",
+      id: "local_enterprise_david",
+      firstName: "David",
+      lastName: "Badger",
+      tier: "enterprise" as const,
+      durationMonths: 6,
+    },
+    {
+      email: "musiclady.cb@gmail.com",
+      password: "ComplyBook2025!",
+      id: "local_enterprise_musiclady",
+      firstName: "Music",
+      lastName: "Lady",
       tier: "enterprise" as const,
       durationMonths: 6,
     },
