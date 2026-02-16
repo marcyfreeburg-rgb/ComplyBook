@@ -22,19 +22,22 @@ interface ScheduleAData {
   partII: {
     sectionA: { years: number[]; line1: string[]; line2: string[]; line3: string[]; line4: string[]; line5: string; line6: string };
     sectionB: { years: number[]; line7: string[]; line8: string[]; line9: string[]; line10: string[]; line11: string; line12: string };
-    sectionC: { line14: string; line15: string };
+    sectionC: { line13: boolean; line14: string; line15: string; line16a: boolean; line16b: boolean; line17a: boolean; line17b: boolean; line18: boolean };
   };
   partIII: {
     sectionA: { years: number[]; line1: string[]; line2: string[]; line3: string[]; line4: string[]; line5: string[]; line6: string[]; line7a: string[]; line7b: string[]; line7c: string[]; line8: string[] };
     sectionB: { years: number[]; line9: string[]; line10a: string[]; line10b: string[]; line10c: string[]; line11: string[]; line12: string[]; line13: string[] };
-    sectionC: { line15: string; line16: string };
-    sectionD: { line17: string; line18: string };
+    sectionC: { line14: boolean; line15: string; line16: string };
+    sectionD: { line17: string; line18: string; line19a: boolean; line19b: boolean; line20: boolean };
   };
+  partIV: null;
+  partV: null;
   summary: {
     totalPublicSupport: string;
     totalSupport: string;
     publicSupportPercentage: string;
     meetsThreshold: boolean;
+    meetsFactsAndCircumstances: boolean;
     partIIIPublicSupport: string;
     partIIITotalSupport: string;
     partIIIPublicSupportPercentage: string;
@@ -139,6 +142,7 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
   const [taxYear, setTaxYear] = useState(currentYear - 1);
   const [selectedCharityType, setSelectedCharityType] = useState<string>("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [supportingOrgType, setSupportingOrgType] = useState<string>("");
 
   const { data: reportData, isLoading, error, refetch } = useQuery<ScheduleAData>({
     queryKey: [`/api/reports/form-990-schedule-a/${currentOrganization.id}/${taxYear}`],
@@ -190,6 +194,12 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
       csvRows.push(["Part II - Section C: Public Support Percentage"]);
       csvRows.push([`Line 14 - Public support percentage ${taxYear}`, `${reportData.partII.sectionC.line14}%`]);
       csvRows.push([`Line 15 - Prior year percentage`, `${reportData.partII.sectionC.line15}%`]);
+      csvRows.push([`Line 13 - First five years`, reportData.partII.sectionC.line13 ? "Yes" : "No"]);
+      csvRows.push([`Line 16a - 33 1/3% support test (current year)`, reportData.partII.sectionC.line16a ? "Yes" : "No"]);
+      csvRows.push([`Line 16b - 33 1/3% support test (prior year)`, reportData.partII.sectionC.line16b ? "Yes" : "No"]);
+      csvRows.push([`Line 17a - 10% facts-and-circumstances test (current year)`, reportData.partII.sectionC.line17a ? "Yes" : "No"]);
+      csvRows.push([`Line 17b - 10% facts-and-circumstances test (prior year)`, reportData.partII.sectionC.line17b ? "Yes" : "No"]);
+      csvRows.push([`Line 18 - Private foundation`, reportData.partII.sectionC.line18 ? "Yes" : "No"]);
     }
 
     if (needsPartIII) {
@@ -207,6 +217,10 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
       csvRows.push([]);
       csvRows.push([`Line 15 - Public support percentage`, `${reportData.partIII.sectionC.line15}%`]);
       csvRows.push([`Line 17 - Investment income percentage`, `${reportData.partIII.sectionD.line17}%`]);
+      csvRows.push([`Line 14 - First five years`, reportData.partIII.sectionC.line14 ? "Yes" : "No"]);
+      csvRows.push([`Line 19a - Both tests pass (current year)`, reportData.partIII.sectionD.line19a ? "Yes" : "No"]);
+      csvRows.push([`Line 19b - Both tests pass (prior year)`, reportData.partIII.sectionD.line19b ? "Yes" : "No"]);
+      csvRows.push([`Line 20 - Does not qualify`, reportData.partIII.sectionD.line20 ? "Yes" : "No"]);
     }
 
     csvRows.push([]);
@@ -310,7 +324,6 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
         </Card>
       ) : reportData ? (
         <>
-          {/* Summary Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -358,7 +371,6 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
             </CardContent>
           </Card>
 
-          {/* Tabbed Content */}
           <Card>
             <CardContent className="pt-6">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -367,10 +379,11 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                   <TabsTrigger value="partI" data-testid="tab-part-1">Part I</TabsTrigger>
                   <TabsTrigger value="partII" data-testid="tab-part-2">Part II</TabsTrigger>
                   <TabsTrigger value="partIII" data-testid="tab-part-3">Part III</TabsTrigger>
+                  <TabsTrigger value="partIV" data-testid="tab-part-4">Part IV</TabsTrigger>
+                  <TabsTrigger value="partV" data-testid="tab-part-5">Part V</TabsTrigger>
                   <TabsTrigger value="partVI" data-testid="tab-part-6">Part VI</TabsTrigger>
                 </TabsList>
 
-                {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-4 mt-4">
                   <div className="p-4 border rounded-lg bg-muted/30">
                     <div className="flex items-start gap-3">
@@ -433,7 +446,6 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                   </div>
                 </TabsContent>
 
-                {/* Part I: Public Charity Status */}
                 <TabsContent value="partI" className="space-y-4 mt-4">
                   <div>
                     <h3 className="text-lg font-semibold mb-1">Part I: Reason for Public Charity Status</h3>
@@ -462,6 +474,48 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                     </div>
                   </RadioGroup>
 
+                  {selectedCharityType === "12" && (
+                    <div className="ml-8 mt-2 space-y-3">
+                      <p className="text-sm font-medium">Select the type of supporting organization:</p>
+                      <RadioGroup value={supportingOrgType} onValueChange={setSupportingOrgType}>
+                        <div className="space-y-2">
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12a" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                            <RadioGroupItem value="12a" id="supporting-org-12a" className="mt-0.5" data-testid="radio-supporting-org-12a" />
+                            <label htmlFor="supporting-org-12a" className="text-sm cursor-pointer leading-relaxed flex-1">
+                              <span className="font-medium">Type I.</span> Operated, supervised, or controlled by the supported organization(s)
+                            </label>
+                          </div>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12b" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                            <RadioGroupItem value="12b" id="supporting-org-12b" className="mt-0.5" data-testid="radio-supporting-org-12b" />
+                            <label htmlFor="supporting-org-12b" className="text-sm cursor-pointer leading-relaxed flex-1">
+                              <span className="font-medium">Type II.</span> Supervised or controlled in connection with the supported organization(s)
+                            </label>
+                          </div>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12c" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                            <RadioGroupItem value="12c" id="supporting-org-12c" className="mt-0.5" data-testid="radio-supporting-org-12c" />
+                            <label htmlFor="supporting-org-12c" className="text-sm cursor-pointer leading-relaxed flex-1">
+                              <span className="font-medium">Type III \u2014 Functionally integrated.</span> Operated in connection with the supported organization(s)
+                            </label>
+                          </div>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12d" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                            <RadioGroupItem value="12d" id="supporting-org-12d" className="mt-0.5" data-testid="radio-supporting-org-12d" />
+                            <label htmlFor="supporting-org-12d" className="text-sm cursor-pointer leading-relaxed flex-1">
+                              <span className="font-medium">Type III \u2014 Non-functionally integrated.</span> Not functionally integrated with the supported organization(s)
+                            </label>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                      <div className="p-3 border rounded-lg bg-muted/30">
+                        <p className="text-sm text-muted-foreground">
+                          Supporting organizations must complete <strong>Part IV</strong> (Sections A through E).
+                          {supportingOrgType === "12d" && (
+                            <> Type III non-functionally integrated organizations must also complete <strong>Part V</strong>.</>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {selectedCharityType && (
                     <div className="p-4 border rounded-lg bg-muted/30 mt-4">
                       <p className="text-sm">
@@ -471,15 +525,17 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                         {needsPartIII && (
                           <>You selected section 509(a)(2), which requires completing <strong>Part III</strong>. Review the Part III tab for your support and investment income schedules.</>
                         )}
-                        {!needsPartII && !needsPartIII && (
+                        {!needsPartII && !needsPartIII && selectedCharityType !== "12" && (
                           <>This classification type does not require completing the support schedules in Part II or Part III. Consult your tax advisor for any additional requirements.</>
+                        )}
+                        {selectedCharityType === "12" && (
+                          <>You selected a supporting organization classification. Complete <strong>Part IV</strong> and review the applicable tabs for your organization type.</>
                         )}
                       </p>
                     </div>
                   )}
                 </TabsContent>
 
-                {/* Part II: Support Schedule for 170(b)(1)(A) */}
                 <TabsContent value="partII" className="space-y-6 mt-4">
                   <div>
                     <h3 className="text-lg font-semibold mb-1">Part II: Support Schedule for Organizations Described in Sections 170(b)(1)(A)(iv) and 170(b)(1)(A)(vi)</h3>
@@ -528,6 +584,15 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partII.sectionC.line13 ? 'border-primary bg-primary/5' : 'border-border'}`} data-testid="checkbox-line-13">
+                          {reportData.partII.sectionC.line13 ? (
+                            <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 13.</span> If the organization did not check a box on line 13a or 13b, and line 14 is 33\u2153% or more, check this box and stop here. The organization qualifies as a publicly supported organization (first five years).</span>
+                        </div>
+
                         <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
                           <span className="text-sm font-medium">Line 14: Public support percentage for {taxYear}</span>
                           <span className={`text-lg font-bold tabular-nums ${parseFloat(reportData.partII.sectionC.line14) >= 33.33 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-part2-percentage">
@@ -538,32 +603,56 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                           <span className="text-sm text-muted-foreground">Line 15: Public support percentage from prior year</span>
                           <span className="text-sm tabular-nums">{formatPercent(reportData.partII.sectionC.line15)}</span>
                         </div>
-                        <div className="p-3 rounded-lg border">
-                          <div className="flex items-center gap-2">
-                            {parseFloat(reportData.partII.sectionC.line14) >= 33.33 ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <span className="text-sm font-medium">Line 16a: 33\u2153% support test passes. The organization qualifies as a publicly supported organization.</span>
-                              </>
-                            ) : parseFloat(reportData.partII.sectionC.line14) >= 10 ? (
-                              <>
-                                <Info className="h-4 w-4 text-amber-600" />
-                                <span className="text-sm font-medium">Line 17a: 10% facts-and-circumstances test may apply. Consult your tax advisor and explain in Part VI.</span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                <span className="text-sm font-medium">The organization does not meet the public support tests under this section. Consider Part III or consult your tax advisor.</span>
-                              </>
-                            )}
-                          </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partII.sectionC.line16a ? 'border-green-600 bg-green-50 dark:bg-green-950/20' : 'border-border'}`} data-testid="checkbox-line-16a">
+                          {reportData.partII.sectionC.line16a ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 16a.</span> 33\u2153% support test\u2014{taxYear}. If the organization did not check the box on line 13, and line 14 is 33\u2153% or more, check this box and stop here. The organization qualifies as a publicly supported organization.</span>
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partII.sectionC.line16b ? 'border-green-600 bg-green-50 dark:bg-green-950/20' : 'border-border'}`} data-testid="checkbox-line-16b">
+                          {reportData.partII.sectionC.line16b ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 16b.</span> 33\u2153% support test\u2014{taxYear - 1}. If the organization did not check a box on line 13 or 16a, and line 15 is 33\u2153% or more, check this box and stop here. The organization qualifies as a publicly supported organization.</span>
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partII.sectionC.line17a ? 'border-amber-600 bg-amber-50 dark:bg-amber-950/20' : 'border-border'}`} data-testid="checkbox-line-17a">
+                          {reportData.partII.sectionC.line17a ? (
+                            <CheckCircle2 className="h-5 w-5 text-amber-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 17a.</span> 10%-facts-and-circumstances test\u2014{taxYear}. If the organization did not check a box on line 13, 16a, or 16b, and line 14 is 10% or more, and if the organization meets the facts-and-circumstances test, check this box and stop here. Explain in Part VI how the organization meets the test.</span>
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partII.sectionC.line17b ? 'border-amber-600 bg-amber-50 dark:bg-amber-950/20' : 'border-border'}`} data-testid="checkbox-line-17b">
+                          {reportData.partII.sectionC.line17b ? (
+                            <CheckCircle2 className="h-5 w-5 text-amber-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 17b.</span> 10%-facts-and-circumstances test\u2014{taxYear - 1}. If the organization did not check a box on line 13, 16a, 16b, or 17a, and line 15 is 10% or more, and if the organization meets the facts-and-circumstances test, check this box and stop here. Explain in Part VI how the organization meets the test.</span>
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partII.sectionC.line18 ? 'border-red-600 bg-red-50 dark:bg-red-950/20' : 'border-border'}`} data-testid="checkbox-line-18">
+                          {reportData.partII.sectionC.line18 ? (
+                            <CheckCircle2 className="h-5 w-5 text-red-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 18.</span> Private foundation. If the organization did not check a box on line 13, 16a, 16b, 17a, or 17b, check this box and see instructions.</span>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                {/* Part III: Support Schedule for 509(a)(2) */}
                 <TabsContent value="partIII" className="space-y-6 mt-4">
                   <div>
                     <h3 className="text-lg font-semibold mb-1">Part III: Support Schedule for Organizations Described in Section 509(a)(2)</h3>
@@ -614,6 +703,14 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
+                          <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partIII.sectionC.line14 ? 'border-primary bg-primary/5' : 'border-border'}`} data-testid="checkbox-line-14">
+                            {reportData.partIII.sectionC.line14 ? (
+                              <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                            ) : (
+                              <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                            )}
+                            <span className="text-sm"><span className="font-medium">Line 14.</span> First five years. If the Form 990 is for the organization's first, second, third, fourth, or fifth tax year as a section 501(c)(3) organization, check this box and stop here.</span>
+                          </div>
                           <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
                             <span className="text-sm">Line 15: Public support % for {taxYear}</span>
                             <span className={`font-bold tabular-nums ${parseFloat(reportData.partIII.sectionC.line15) > 33.33 ? 'text-green-600' : ''}`} data-testid="text-part3-public-pct">
@@ -650,25 +747,92 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                   </div>
 
                   <Card>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-2">
-                        {parseFloat(reportData.partIII.sectionC.line15) > 33.33 && parseFloat(reportData.partIII.sectionD.line17) <= 33.33 ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            <span className="text-sm font-medium">Line 19a: 33\u2153% support tests pass. The organization qualifies as a publicly supported organization under section 509(a)(2).</span>
-                          </>
-                        ) : (
-                          <>
-                            <Info className="h-4 w-4 text-amber-600" />
-                            <span className="text-sm font-medium">The organization may not meet the 33\u2153% tests under section 509(a)(2). Consider Part II or consult your tax advisor.</span>
-                          </>
-                        )}
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Qualification Determination</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partIII.sectionD.line19a ? 'border-green-600 bg-green-50 dark:bg-green-950/20' : 'border-border'}`} data-testid="checkbox-line-19a">
+                          {reportData.partIII.sectionD.line19a ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 19a.</span> 33\u2153% support tests\u2014{taxYear}. If the organization did not check the box on line 14, and line 15 is more than 33\u2153%, and line 17 is not more than 33\u2153%, check this box and stop here. The organization qualifies as a publicly supported organization.</span>
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partIII.sectionD.line19b ? 'border-green-600 bg-green-50 dark:bg-green-950/20' : 'border-border'}`} data-testid="checkbox-line-19b">
+                          {reportData.partIII.sectionD.line19b ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 19b.</span> 33\u2153% support tests\u2014{taxYear - 1}. If the organization did not check a box on line 14 or line 19a, and line 16 is more than 33\u2153%, and line 18 is not more than 33\u2153%, check this box and stop here. The organization qualifies as a publicly supported organization.</span>
+                        </div>
+
+                        <div className={`flex items-center gap-3 p-3 rounded-lg border ${reportData.partIII.sectionD.line20 ? 'border-red-600 bg-red-50 dark:bg-red-950/20' : 'border-border'}`} data-testid="checkbox-line-20">
+                          {reportData.partIII.sectionD.line20 ? (
+                            <CheckCircle2 className="h-5 w-5 text-red-600 shrink-0" />
+                          ) : (
+                            <div className="h-5 w-5 border-2 border-muted-foreground/40 rounded-sm shrink-0" />
+                          )}
+                          <span className="text-sm"><span className="font-medium">Line 20.</span> Private foundation. If the organization did not check a box on line 14, 19a, or 19b, check this box and see instructions.</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                {/* Part VI: Supplemental Information */}
+                <TabsContent value="partIV" className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Part IV: Supporting Organizations</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Complete this part only if you checked line 12 of Part I (supporting organization under section 509(a)(3)).
+                    </p>
+                  </div>
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-start gap-3">
+                      <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>
+                          Supporting organizations must complete Sections A through E of Part IV. This includes answering questions about
+                          the type of supporting organization (Type I, Type II, or Type III), listing supported organizations, and
+                          providing information about organizational relationships and control.
+                        </p>
+                        <p>
+                          <strong>This section requires manual completion.</strong> Work with your tax advisor to complete Part IV based on your
+                          organization's specific supporting organization classification and relationships.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="partV" className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Part V: Type III Non-Functionally Integrated 509(a)(3) Supporting Organizations</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Complete this part only if the organization is a Type III non-functionally integrated supporting organization (checked Part I, line 12, and Part IV, Section A, line 1, and Part IV, Section B, line 1i).
+                    </p>
+                  </div>
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-start gap-3">
+                      <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>
+                          Part V determines the distributable amount and tracks distributions for Type III non-functionally integrated
+                          supporting organizations. It includes sections for Adjusted Net Income, Minimum Asset Amount, Distributable Amount,
+                          Distributions, and Distribution Allocations.
+                        </p>
+                        <p>
+                          <strong>This section requires manual completion.</strong> The calculations involve complex asset valuations and
+                          distribution requirements. Work with your tax advisor to complete this section.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
                 <TabsContent value="partVI" className="space-y-4 mt-4">
                   <div>
                     <h3 className="text-lg font-semibold mb-1">Part VI: Supplemental Information</h3>
