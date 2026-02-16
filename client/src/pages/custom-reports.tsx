@@ -110,6 +110,36 @@ const PRESET_TEMPLATES: ReportTemplate[] = [
     sortBy: "endDate",
     sortOrder: "asc",
   },
+  {
+    id: "profit-and-loss",
+    name: "Profit & Loss (Income vs Expenses)",
+    description: "All income and expenses with category breakdown — ideal for Form 990 preparation and financial statements",
+    dataSource: "transactions",
+    selectedFields: ["date", "description", "amount", "type", "categoryId", "notes"],
+    filters: {},
+    sortBy: "date",
+    sortOrder: "desc",
+  },
+  {
+    id: "expense-by-category",
+    name: "Expense Breakdown by Category",
+    description: "All expenses sorted by category — useful for functional expense allocation and Form 990 Part IX",
+    dataSource: "transactions",
+    selectedFields: ["date", "description", "amount", "categoryId", "vendorId", "notes"],
+    filters: { type: "expense" },
+    sortBy: "categoryId",
+    sortOrder: "asc",
+  },
+  {
+    id: "donor-income",
+    name: "Donor & Grant Income Report",
+    description: "All income transactions showing source, grant, and client for contribution tracking",
+    dataSource: "transactions",
+    selectedFields: ["date", "description", "amount", "clientId", "grantId", "categoryId", "notes"],
+    filters: { type: "income" },
+    sortBy: "date",
+    sortOrder: "desc",
+  },
 ];
 
 const DATA_SOURCE_OPTIONS = [
@@ -1292,8 +1322,8 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
 
       {/* Template Selection Dialog */}
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <LayoutTemplate className="h-5 w-5" />
               Report Templates
@@ -1302,42 +1332,44 @@ export default function CustomReports({ currentOrganization }: CustomReportsProp
               Choose a pre-built template to quickly create a new report
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 mt-4">
-            {PRESET_TEMPLATES.map((template) => (
-              <Card 
-                key={template.id} 
-                className="cursor-pointer hover-elevate transition-all"
-                onClick={() => handleUseTemplate(template)}
-                data-testid={`card-template-${template.id}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{template.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary">{template.dataSource}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {template.selectedFields.length} fields
-                        </span>
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="grid gap-3 py-2">
+              {PRESET_TEMPLATES.map((template) => (
+                <Card 
+                  key={template.id} 
+                  className="cursor-pointer hover-elevate transition-all"
+                  onClick={() => handleUseTemplate(template)}
+                  data-testid={`card-template-${template.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium">{template.name}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <Badge variant="secondary">{template.dataSource}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {template.selectedFields.length} fields
+                          </span>
+                        </div>
                       </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUseTemplate(template);
+                        }}
+                        data-testid={`button-use-template-${template.id}`}
+                      >
+                        Use
+                      </Button>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUseTemplate(template);
-                      }}
-                      data-testid={`button-use-template-${template.id}`}
-                    >
-                      Use
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
