@@ -18,6 +18,19 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get("error");
+    if (errorParam) {
+      setAuthMode("local");
+      toast({
+        title: "Sign up blocked",
+        description: errorParam,
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", "/login");
+      return;
+    }
+
     fetch("/api/auth/mode")
       .then((res) => res.json())
       .then((data) => {

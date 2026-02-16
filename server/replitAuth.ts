@@ -84,9 +84,184 @@ const PENDING_ENTERPRISE_INVITES: Record<string, { tier: 'enterprise' | 'profess
   "musiclady.cb@gmail.com": { tier: "enterprise", durationMonths: 6 },
 };
 
+const BLOCKED_EMAIL_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "test.com",
+  "test.org",
+  "test.net",
+  "localhost",
+  "localhost.localdomain",
+  "invalid",
+  "invalid.com",
+  "mailinator.com",
+  "guerrillamail.com",
+  "guerrillamail.net",
+  "guerrillamail.org",
+  "guerrillamail.de",
+  "grr.la",
+  "guerrillamailblock.com",
+  "tempmail.com",
+  "tempmail.net",
+  "throwaway.email",
+  "throwaway.com",
+  "yopmail.com",
+  "yopmail.fr",
+  "sharklasers.com",
+  "guerrillamail.info",
+  "spam4.me",
+  "trashmail.com",
+  "trashmail.me",
+  "trashmail.net",
+  "dispostable.com",
+  "maildrop.cc",
+  "maildrop.com",
+  "mailnesia.com",
+  "fakeinbox.com",
+  "mailcatch.com",
+  "tempail.com",
+  "tempr.email",
+  "temp-mail.org",
+  "temp-mail.io",
+  "emailondeck.com",
+  "getnada.com",
+  "10minutemail.com",
+  "10minutemail.net",
+  "mohmal.com",
+  "burnermail.io",
+  "inboxbear.com",
+  "minutemail.com",
+  "getairmail.com",
+  "mailnator.com",
+  "mytemp.email",
+  "noemail.com",
+  "nobody.com",
+  "nomail.com",
+  "devnull.email",
+  "33mail.com",
+  "simplelogin.co",
+  "simplelogin.com",
+  "anonaddy.com",
+  "anonaddy.me",
+  "temporary-email.org",
+  "temp-mail.de",
+  "tempinbox.com",
+  "disposableemailaddresses.emailmiser.com",
+  "mailforspam.com",
+  "safetymail.info",
+  "filzmail.com",
+  "trashymail.com",
+  "trashymail.net",
+  "mailexpire.com",
+  "spamgourmet.com",
+  "spamgourmet.net",
+  "harakirimail.com",
+  "mailmoat.com",
+  "mailnull.com",
+  "spamfree24.org",
+  "binkmail.com",
+  "spaml.com",
+  "uglymailbox.com",
+  "tempomail.fr",
+  "jetable.com",
+  "jetable.fr.nf",
+  "jetable.org",
+  "mail-temporaire.fr",
+  "courrieltemporaire.com",
+  "trash-mail.com",
+  "trash-me.com",
+  "mytrashmail.com",
+  "mt2015.com",
+  "thankyou2010.com",
+  "crazymailing.com",
+  "bobmail.info",
+  "wegwerfmail.de",
+  "wegwerfmail.net",
+  "wegwerfmail.org",
+  "emailigo.de",
+  "spambog.com",
+  "spambog.de",
+  "spambog.ru",
+  "0-mail.com",
+  "0815.ru",
+  "0clickemail.com",
+  "brefmail.com",
+  "bugmenot.com",
+  "deadaddress.com",
+  "despam.it",
+  "disposeamail.com",
+  "dodgeit.com",
+  "e4ward.com",
+  "emailmiser.com",
+  "emailsensei.com",
+  "emailtemporario.com.br",
+  "ephemail.net",
+  "gishpuppy.com",
+  "haltospam.com",
+  "incognitomail.com",
+  "incognitomail.org",
+  "kasmail.com",
+  "kulturbetrieb.info",
+  "lhsdv.com",
+  "lookugly.com",
+  "mail2rss.org",
+  "mailbidon.com",
+  "mailblocks.com",
+  "mailscrap.com",
+  "mailzilla.com",
+  "nomail.xl.cx",
+  "nospam.ze.tc",
+  "pookmail.com",
+  "proxymail.eu",
+  "rcpt.at",
+  "reallymymail.com",
+  "recode.me",
+  "regbypass.com",
+  "safersignup.de",
+  "safetypost.de",
+  "sneakemail.com",
+  "sogetthis.com",
+  "spamcero.com",
+  "spamday.com",
+  "spamex.com",
+  "tempemail.co.za",
+  "tempemail.net",
+  "tempinbox.co.uk",
+  "temporaryemail.net",
+  "temporaryemail.us",
+  "temporaryforwarding.com",
+  "temporarymailaddress.com",
+  "thankyou2010.com",
+  "thisisnotmyrealemail.com",
+  "trashmail.org",
+  "tyldd.com",
+  "wh4f.org",
+  "whyspam.me",
+  "willselfdestruct.com",
+  "xyzfree.net",
+  "yopmail.net",
+  "zoemail.org",
+]);
+
+export function isBlockedEmailDomain(email: string): boolean {
+  if (!email || !email.includes("@")) return true;
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return true;
+  if (BLOCKED_EMAIL_DOMAINS.has(domain)) return true;
+  if (domain.endsWith(".example.com") || domain.endsWith(".example.org") || domain.endsWith(".example.net")) return true;
+  if (domain.endsWith(".test") || domain.endsWith(".invalid") || domain.endsWith(".localhost")) return true;
+  return false;
+}
+
 async function upsertUser(claims: any) {
   const existingUser = claims["email"] ? await storage.getUserByEmail(claims["email"]) : null;
   const isNewUser = !existingUser;
+
+  if (isNewUser && claims["email"] && isBlockedEmailDomain(claims["email"])) {
+    console.log(`[Auth] Blocked signup from fake/disposable email domain: ${claims["email"]}`);
+    throw new Error("Registration is not allowed with this email domain. Please use a legitimate email address.");
+  }
 
   await storage.upsertUser({
     id: claims["sub"],
@@ -143,7 +318,27 @@ async function setupReplitAuth(app: Express) {
     const user = {};
     updateUserSession(user, tokens);
     const claims = tokens.claims();
-    await upsertUser(claims);
+    
+    try {
+      await upsertUser(claims);
+    } catch (err) {
+      const errorMessage = (err as Error).message || "Registration blocked";
+      console.log(`[Auth] OIDC signup blocked: ${errorMessage}`);
+      await storage.logSecurityEvent({
+        eventType: 'signup_blocked',
+        severity: 'warning',
+        userId: null,
+        email: claims?.email || null,
+        ipAddress: null,
+        userAgent: null,
+        eventData: {
+          authMethod: 'replit_oidc',
+          reason: 'blocked_email_domain',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      return verified(new Error(errorMessage));
+    }
     
     if (claims) {
       await storage.logSecurityEvent({
@@ -186,7 +381,8 @@ async function setupReplitAuth(app: Express) {
   app.get("/api/callback", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any, info: any) => {
       if (err) {
-        return next(err);
+        console.error("[Auth] OIDC callback error:", err.message);
+        return res.redirect(`/login?error=${encodeURIComponent(err.message || "Authentication failed")}`);
       }
       if (!user) {
         return res.redirect("/api/login");
