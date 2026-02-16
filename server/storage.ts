@@ -1045,6 +1045,33 @@ export interface IStorage {
     grants: Array<{ grantorName: string; amount: string; purpose: string }>;
   }>;
 
+  // Nonprofit-specific: Schedule A (Form 990) - Public Charity Status & Public Support
+  getScheduleAData(organizationId: number, taxYear: number): Promise<{
+    partI: { publicCharityType: number | null };
+    partII: {
+      sectionA: { years: number[]; line1: string[]; line2: string[]; line3: string[]; line4: string[]; line5: string; line6: string };
+      sectionB: { years: number[]; line7: string[]; line8: string[]; line9: string[]; line10: string[]; line11: string; line12: string };
+      sectionC: { line14: string; line15: string };
+    };
+    partIII: {
+      sectionA: { years: number[]; line1: string[]; line2: string[]; line3: string[]; line4: string[]; line5: string[]; line6: string[]; line7a: string[]; line7b: string[]; line7c: string[]; line8: string[] };
+      sectionB: { years: number[]; line9: string[]; line10a: string[]; line10b: string[]; line10c: string[]; line11: string[]; line12: string[]; line13: string[] };
+      sectionC: { line15: string; line16: string };
+      sectionD: { line17: string; line18: string };
+    };
+    summary: {
+      totalPublicSupport: string;
+      totalSupport: string;
+      publicSupportPercentage: string;
+      meetsThreshold: boolean;
+      partIIIPublicSupport: string;
+      partIIITotalSupport: string;
+      partIIIPublicSupportPercentage: string;
+      partIIIInvestmentPercentage: string;
+      partIIIMeetsThreshold: boolean;
+    };
+  }>;
+
   // For-profit: Contract operations
   getContracts(organizationId: number): Promise<Contract[]>;
   getContract(id: number): Promise<Contract | undefined>;
@@ -8706,6 +8733,252 @@ export class DatabaseStorage implements IStorage {
         amount: g.amount,
         purpose: g.restrictions || 'General support',
       })),
+    };
+  }
+
+  // Schedule A (Form 990) - Public Charity Status & Public Support
+  async getScheduleAData(organizationId: number, taxYear: number) {
+    const years = [taxYear - 4, taxYear - 3, taxYear - 2, taxYear - 1, taxYear];
+
+    const getYearTransactions = async (year: number) => {
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31);
+      return db.select().from(transactions)
+        .where(and(
+          eq(transactions.organizationId, organizationId),
+          gte(transactions.date, yearStart),
+          lte(transactions.date, yearEnd)
+        ));
+    };
+
+    const getYearGrants = async (year: number) => {
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31);
+      return db.select().from(grants)
+        .where(and(
+          eq(grants.organizationId, organizationId),
+          gte(grants.startDate, yearStart),
+          lte(grants.startDate, yearEnd)
+        ));
+    };
+
+    const allCategories = await db.select().from(categories)
+      .where(eq(categories.organizationId, organizationId));
+
+    const classifyCategory = (catId: number | null): 'contribution' | 'investment' | 'program_service' | 'other' => {
+      if (!catId) return 'other';
+      const cat = allCategories.find(c => c.id === catId);
+      if (!cat) return 'other';
+      const name = cat.name.toLowerCase();
+      if (name.includes('invest') || name.includes('interest') || name.includes('dividend') || 
+          name.includes('rent') || name.includes('royalt')) {
+        return 'investment';
+      }
+      if (name.includes('program') || name.includes('service') || name.includes('fee') || 
+          name.includes('tuition') || name.includes('admission')) {
+        return 'program_service';
+      }
+      if (name.includes('donat') || name.includes('contribut') || name.includes('gift') || 
+          name.includes('grant') || name.includes('member') || name.includes('tithe') || 
+          name.includes('offering') || name.includes('pledge') || name.includes('fundrais')) {
+        return 'contribution';
+      }
+      return 'other';
+    };
+
+    const fmt = (n: number) => n.toFixed(2);
+
+    // Part II: Support Schedule for 170(b)(1)(A)(iv) and (vi)
+    const partII_line1: number[] = [];
+    const partII_line2: number[] = [];
+    const partII_line3: number[] = [];
+    const partII_line8: number[] = [];
+    const partII_line9: number[] = [];
+    const partII_line10: number[] = [];
+
+    const yearDonorContributions: Map<number | null, number>[] = [];
+
+    // Part III: Support Schedule for 509(a)(2)  
+    const partIII_line1: number[] = [];
+    const partIII_line2: number[] = [];
+    const partIII_line3: number[] = [];
+    const partIII_line4: number[] = [];
+    const partIII_line5: number[] = [];
+    const partIII_line10a: number[] = [];
+    const partIII_line10b: number[] = [];
+    const partIII_line11: number[] = [];
+    const partIII_line12: number[] = [];
+
+    for (const year of years) {
+      const yearTx = await getYearTransactions(year);
+      const yearGrants = await getYearGrants(year);
+      const incomeTx = yearTx.filter(t => t.type === 'income');
+
+      let contributions = 0;
+      let investmentIncome = 0;
+      let programServiceRevenue = 0;
+      let otherIncome = 0;
+
+      const donorContributions: Map<number | null, number> = new Map();
+
+      for (const t of incomeTx) {
+        const cls = classifyCategory(t.categoryId);
+        const amt = parseFloat(t.amount);
+        switch (cls) {
+          case 'contribution':
+            contributions += amt;
+            const existing = donorContributions.get(t.clientId) || 0;
+            donorContributions.set(t.clientId, existing + amt);
+            break;
+          case 'investment':
+            investmentIncome += amt;
+            break;
+          case 'program_service':
+            programServiceRevenue += amt;
+            break;
+          default:
+            otherIncome += amt;
+            break;
+        }
+      }
+
+      const grantAmounts = yearGrants.reduce((s, g) => s + parseFloat(g.amount), 0);
+      const giftsGrantsContributions = contributions + grantAmounts;
+
+      yearDonorContributions.push(donorContributions);
+
+      partII_line1.push(giftsGrantsContributions);
+      partII_line2.push(0);
+      partII_line3.push(0);
+      partII_line8.push(investmentIncome);
+      partII_line9.push(0);
+      partII_line10.push(otherIncome + programServiceRevenue);
+
+      partIII_line1.push(giftsGrantsContributions);
+      partIII_line2.push(programServiceRevenue);
+      partIII_line3.push(0);
+      partIII_line4.push(0);
+      partIII_line5.push(0);
+      partIII_line10a.push(investmentIncome);
+      partIII_line10b.push(0);
+      partIII_line11.push(0);
+      partIII_line12.push(otherIncome);
+    }
+
+    // Part II calculations
+    const partII_line4 = partII_line1.map((v, i) => v + partII_line2[i] + partII_line3[i]);
+    const partII_line4_total = partII_line4.reduce((s, v) => s + v, 0);
+    const partII_line7 = [...partII_line4];
+    const partII_line8_total = partII_line8.reduce((s, v) => s + v, 0);
+    const partII_line9_total = partII_line9.reduce((s, v) => s + v, 0);
+    const partII_line10_total = partII_line10.reduce((s, v) => s + v, 0);
+    const partII_line11_total = partII_line4_total + partII_line8_total + partII_line9_total + partII_line10_total;
+
+    // Line 5: Compute 2% excess contribution limitation
+    // Aggregate each donor's contributions across all 5 years, cap excess over 2% of total support
+    const twoPercentThreshold = partII_line11_total * 0.02;
+    const aggregatedDonorTotals: Map<number | null, number> = new Map();
+    for (const yearMap of yearDonorContributions) {
+      for (const [donorId, amount] of yearMap.entries()) {
+        const existing = aggregatedDonorTotals.get(donorId) || 0;
+        aggregatedDonorTotals.set(donorId, existing + amount);
+      }
+    }
+    let partII_line5_val = 0;
+    for (const [, donorTotal] of aggregatedDonorTotals.entries()) {
+      if (donorTotal > twoPercentThreshold) {
+        partII_line5_val += donorTotal - twoPercentThreshold;
+      }
+    }
+
+    const partII_line6_val = partII_line4_total - partII_line5_val;
+    const partII_line14 = partII_line11_total > 0 ? (partII_line6_val / partII_line11_total * 100) : 0;
+
+    // Part III calculations
+    const partIII_line6 = partIII_line1.map((v, i) => v + partIII_line2[i] + partIII_line3[i] + partIII_line4[i] + partIII_line5[i]);
+    const partIII_line7a = years.map(() => 0);
+    const partIII_line7b = years.map(() => 0);
+    const partIII_line7c = partIII_line7a.map((v, i) => v + partIII_line7b[i]);
+    const partIII_line8 = partIII_line6.map((v, i) => v - partIII_line7c[i]);
+    const partIII_line10c = partIII_line10a.map((v, i) => v + partIII_line10b[i]);
+    const partIII_line9 = [...partIII_line6];
+    const partIII_line13 = partIII_line9.map((v, i) => v + partIII_line10c[i] + partIII_line11[i] + partIII_line12[i]);
+    const partIII_line8_total = partIII_line8.reduce((s, v) => s + v, 0);
+    const partIII_line13_total = partIII_line13.reduce((s, v) => s + v, 0);
+    const partIII_line10c_total = partIII_line10c.reduce((s, v) => s + v, 0);
+    const partIII_line15 = partIII_line13_total > 0 ? (partIII_line8_total / partIII_line13_total * 100) : 0;
+    const partIII_line17 = partIII_line13_total > 0 ? (partIII_line10c_total / partIII_line13_total * 100) : 0;
+
+    return {
+      partI: { publicCharityType: null },
+      partII: {
+        sectionA: {
+          years,
+          line1: partII_line1.map(fmt),
+          line2: partII_line2.map(fmt),
+          line3: partII_line3.map(fmt),
+          line4: partII_line4.map(v => fmt(v)),
+          line5: fmt(partII_line5_val),
+          line6: fmt(partII_line6_val),
+        },
+        sectionB: {
+          years,
+          line7: partII_line7.map(fmt),
+          line8: partII_line8.map(fmt),
+          line9: partII_line9.map(fmt),
+          line10: partII_line10.map(fmt),
+          line11: fmt(partII_line11_total),
+          line12: '0.00',
+        },
+        sectionC: {
+          line14: fmt(partII_line14),
+          line15: '0.00',
+        },
+      },
+      partIII: {
+        sectionA: {
+          years,
+          line1: partIII_line1.map(fmt),
+          line2: partIII_line2.map(fmt),
+          line3: partIII_line3.map(fmt),
+          line4: partIII_line4.map(fmt),
+          line5: partIII_line5.map(fmt),
+          line6: partIII_line6.map(fmt),
+          line7a: partIII_line7a.map(fmt),
+          line7b: partIII_line7b.map(fmt),
+          line7c: partIII_line7c.map(fmt),
+          line8: partIII_line8.map(fmt),
+        },
+        sectionB: {
+          years,
+          line9: partIII_line9.map(fmt),
+          line10a: partIII_line10a.map(fmt),
+          line10b: partIII_line10b.map(fmt),
+          line10c: partIII_line10c.map(fmt),
+          line11: partIII_line11.map(fmt),
+          line12: partIII_line12.map(fmt),
+          line13: partIII_line13.map(fmt),
+        },
+        sectionC: {
+          line15: fmt(partIII_line15),
+          line16: '0.00',
+        },
+        sectionD: {
+          line17: fmt(partIII_line17),
+          line18: '0.00',
+        },
+      },
+      summary: {
+        totalPublicSupport: fmt(partII_line6_val),
+        totalSupport: fmt(partII_line11_total),
+        publicSupportPercentage: fmt(partII_line14),
+        meetsThreshold: partII_line14 >= 33.33,
+        partIIIPublicSupport: fmt(partIII_line8_total),
+        partIIITotalSupport: fmt(partIII_line13_total),
+        partIIIPublicSupportPercentage: fmt(partIII_line15),
+        partIIIInvestmentPercentage: fmt(partIII_line17),
+        partIIIMeetsThreshold: partIII_line15 >= 33.33 && partIII_line17 <= 33.33,
+      },
     };
   }
 

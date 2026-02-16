@@ -143,6 +143,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Custom Reports", url: "/custom-reports", icon: FileLineChart },
         { title: "Functional Expense Report", url: "/functional-expense-report", icon: FileBarChart },
         { title: "Form 990 Report", url: "/form-990-report", icon: FileCheck },
+        { title: "Schedule A (990)", url: "/form-990-schedule-a", icon: FileCheck },
         { title: "Tax Reporting", url: "/tax-reporting", icon: Calculator },
         { title: "Compliance", url: "/compliance-dashboard", icon: ShieldCheck },
         ...(isAdminOrOwner ? [
