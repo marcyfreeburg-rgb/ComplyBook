@@ -8751,17 +8751,6 @@ export class DatabaseStorage implements IStorage {
         ));
     };
 
-    const getYearGrants = async (year: number) => {
-      const yearStart = new Date(year, 0, 1);
-      const yearEnd = new Date(year, 11, 31);
-      return db.select().from(grants)
-        .where(and(
-          eq(grants.organizationId, organizationId),
-          gte(grants.startDate, yearStart),
-          lte(grants.startDate, yearEnd)
-        ));
-    };
-
     const allCategories = await db.select().from(categories)
       .where(eq(categories.organizationId, organizationId));
 
@@ -8811,7 +8800,6 @@ export class DatabaseStorage implements IStorage {
 
     for (const year of years) {
       const yearTx = await getYearTransactions(year);
-      const yearGrants = await getYearGrants(year);
       const incomeTx = yearTx.filter(t => t.type === 'income');
 
       let contributions = 0;
@@ -8842,8 +8830,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      const grantAmounts = yearGrants.reduce((s, g) => s + parseFloat(g.amount), 0);
-      const giftsGrantsContributions = contributions + grantAmounts;
+      const giftsGrantsContributions = contributions;
 
       yearDonorContributions.push(donorContributions);
 
