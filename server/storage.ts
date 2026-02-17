@@ -8794,7 +8794,7 @@ export class DatabaseStorage implements IStorage {
     const partII_line9: number[] = [];
     const partII_line10: number[] = [];
 
-    const yearDonorContributions: Map<number | null, number>[] = [];
+    const yearDonorContributions: Map<string, number>[] = [];
 
     // Part III: Support Schedule for 509(a)(2)  
     const partIII_line1: number[] = [];
@@ -8816,7 +8816,8 @@ export class DatabaseStorage implements IStorage {
       let programServiceRevenue = 0;
       let otherIncome = 0;
 
-      const donorContributions: Map<number | null, number> = new Map();
+      const donorContributions: Map<string, number> = new Map();
+      let unlinkedTxCounter = 0;
 
       for (const t of incomeTx) {
         const cls = classifyCategory(t.categoryId);
@@ -8824,8 +8825,9 @@ export class DatabaseStorage implements IStorage {
         switch (cls) {
           case 'contribution':
             contributions += amt;
-            const existing = donorContributions.get(t.clientId) || 0;
-            donorContributions.set(t.clientId, existing + amt);
+            const donorKey = t.clientId ? `donor_${t.clientId}` : `unlinked_${year}_${unlinkedTxCounter++}`;
+            const existing = donorContributions.get(donorKey) || 0;
+            donorContributions.set(donorKey, existing + amt);
             break;
           case 'investment':
             investmentIncome += amt;
@@ -8873,7 +8875,7 @@ export class DatabaseStorage implements IStorage {
     // Line 5: Compute 2% excess contribution limitation
     // Aggregate each donor's contributions across all 5 years, cap excess over 2% of total support
     const twoPercentThreshold = partII_line11_total * 0.02;
-    const aggregatedDonorTotals: Map<number | null, number> = new Map();
+    const aggregatedDonorTotals: Map<string, number> = new Map();
     for (const yearMap of yearDonorContributions) {
       for (const [donorId, amount] of yearMap.entries()) {
         const existing = aggregatedDonorTotals.get(donorId) || 0;
