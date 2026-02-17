@@ -453,12 +453,13 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                       Select the reason your organization is not a private foundation. Most organizations check line 7 or line 10.
                     </p>
                   </div>
-                  <RadioGroup value={selectedCharityType} onValueChange={setSelectedCharityType}>
+                  <RadioGroup value={selectedCharityType} onValueChange={(val) => setSelectedCharityType(val === selectedCharityType ? "" : val)}>
                     <div className="space-y-3">
                       {PUBLIC_CHARITY_TYPES.map((type) => (
                         <div
                           key={type.value}
-                          className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${selectedCharityType === type.value ? 'border-primary bg-primary/5' : 'border-border'}`}
+                          className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${selectedCharityType === type.value ? 'border-primary bg-primary/5' : 'border-border'}`}
+                          onClick={() => setSelectedCharityType(selectedCharityType === type.value ? "" : type.value)}
                         >
                           <RadioGroupItem
                             value={type.value}
@@ -477,27 +478,27 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
                   {selectedCharityType === "12" && (
                     <div className="ml-8 mt-2 space-y-3">
                       <p className="text-sm font-medium">Select the type of supporting organization:</p>
-                      <RadioGroup value={supportingOrgType} onValueChange={setSupportingOrgType}>
+                      <RadioGroup value={supportingOrgType} onValueChange={(val) => setSupportingOrgType(val === supportingOrgType ? "" : val)}>
                         <div className="space-y-2">
-                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12a" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${supportingOrgType === "12a" ? 'border-primary bg-primary/5' : 'border-border'}`} onClick={() => setSupportingOrgType(supportingOrgType === "12a" ? "" : "12a")}>
                             <RadioGroupItem value="12a" id="supporting-org-12a" className="mt-0.5" data-testid="radio-supporting-org-12a" />
                             <label htmlFor="supporting-org-12a" className="text-sm cursor-pointer leading-relaxed flex-1">
                               <span className="font-medium">Type I.</span> Operated, supervised, or controlled by the supported organization(s)
                             </label>
                           </div>
-                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12b" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${supportingOrgType === "12b" ? 'border-primary bg-primary/5' : 'border-border'}`} onClick={() => setSupportingOrgType(supportingOrgType === "12b" ? "" : "12b")}>
                             <RadioGroupItem value="12b" id="supporting-org-12b" className="mt-0.5" data-testid="radio-supporting-org-12b" />
                             <label htmlFor="supporting-org-12b" className="text-sm cursor-pointer leading-relaxed flex-1">
                               <span className="font-medium">Type II.</span> Supervised or controlled in connection with the supported organization(s)
                             </label>
                           </div>
-                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12c" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${supportingOrgType === "12c" ? 'border-primary bg-primary/5' : 'border-border'}`} onClick={() => setSupportingOrgType(supportingOrgType === "12c" ? "" : "12c")}>
                             <RadioGroupItem value="12c" id="supporting-org-12c" className="mt-0.5" data-testid="radio-supporting-org-12c" />
                             <label htmlFor="supporting-org-12c" className="text-sm cursor-pointer leading-relaxed flex-1">
                               <span className="font-medium">Type III \u2014 Functionally integrated.</span> Operated in connection with the supported organization(s)
                             </label>
                           </div>
-                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${supportingOrgType === "12d" ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                          <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${supportingOrgType === "12d" ? 'border-primary bg-primary/5' : 'border-border'}`} onClick={() => setSupportingOrgType(supportingOrgType === "12d" ? "" : "12d")}>
                             <RadioGroupItem value="12d" id="supporting-org-12d" className="mt-0.5" data-testid="radio-supporting-org-12d" />
                             <label htmlFor="supporting-org-12d" className="text-sm cursor-pointer leading-relaxed flex-1">
                               <span className="font-medium">Type III \u2014 Non-functionally integrated.</span> Not functionally integrated with the supported organization(s)
