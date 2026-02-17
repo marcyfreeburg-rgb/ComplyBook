@@ -8755,24 +8755,33 @@ export class DatabaseStorage implements IStorage {
       .where(eq(categories.organizationId, organizationId));
 
     const classifyCategory = (catId: number | null): 'contribution' | 'investment' | 'program_service' | 'other' => {
-      if (!catId) return 'other';
+      if (!catId) return 'contribution';
       const cat = allCategories.find(c => c.id === catId);
-      if (!cat) return 'other';
+      if (!cat) return 'contribution';
       const name = cat.name.toLowerCase();
       if (name.includes('invest') || name.includes('interest') || name.includes('dividend') || 
-          name.includes('rent') || name.includes('royalt')) {
+          name.includes('royalt')) {
         return 'investment';
       }
-      if (name.includes('program') || name.includes('service') || name.includes('fee') || 
-          name.includes('tuition') || name.includes('admission')) {
+      if (name.includes('rent') && (name.includes('rental income') || name.includes('rent income'))) {
+        return 'investment';
+      }
+      if (name.includes('program') || name.includes('tuition') || name.includes('admission') ||
+          name.includes('ticket') || name.includes('camp') || name.includes('class') ||
+          name.includes('workshop') || name.includes('training') || name.includes('course') ||
+          name.includes('registration') || name.includes('enrollment')) {
         return 'program_service';
       }
-      if (name.includes('donat') || name.includes('contribut') || name.includes('gift') || 
-          name.includes('grant') || name.includes('member') || name.includes('tithe') || 
-          name.includes('offering') || name.includes('pledge') || name.includes('fundrais')) {
-        return 'contribution';
+      if (name.includes('service fee') || name.includes('program fee') || name.includes('user fee') ||
+          name.includes('client fee') || name.includes('student fee')) {
+        return 'program_service';
       }
-      return 'other';
+      if (name.includes('sale') || name.includes('merchandise') || name.includes('product') ||
+          name.includes('refund') || name.includes('return') || name.includes('transfer') ||
+          name.includes('reimburse') || name.includes('verification')) {
+        return 'other';
+      }
+      return 'contribution';
     };
 
     const fmt = (n: number) => n.toFixed(2);
