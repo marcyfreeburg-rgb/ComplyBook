@@ -14163,13 +14163,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const report = await storage.getScheduleOData(organizationId, taxYear);
       res.json(report);
-    } catch (error) {
-      console.error("Error generating Schedule O report:", error);
+    } catch (error: any) {
+      console.error("Error generating Schedule O report:", { message: error?.message });
       res.status(500).json({ message: "Failed to generate Schedule O report" });
     }
   });
 
   // Schedule O AI Narrative Generation (rate limited per user: max 20 requests per minute)
+  const scheduleONarrativeSchema = z.object({
+    organizationId: z.number().int().positive(),
+    lineNumber: z.string().min(1).max(10),
+    formPart: z.enum(["Part I", "Part II", "Part III", "Part V"]),
+    taxYear: z.number().int().min(2000).max(2100),
+    dataContext: z.string().max(10000).optional(),
+    customContext: z.string().max(5000).optional(),
+  });
   const scheduleOAIRateLimit = new Map<string, { count: number; resetTime: number }>();
   app.post("/api/form-990-schedule-o/generate-narrative", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -14185,15 +14193,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scheduleOAIRateLimit.set(userId, { count: 1, resetTime: now + 60000 });
       }
 
-      const { organizationId, lineNumber, formPart, taxYear, dataContext, customContext } = req.body;
-
-      if (!organizationId) {
-        return res.status(400).json({ message: "Organization ID is required" });
+      const parseResult = scheduleONarrativeSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid request data", errors: parseResult.error.flatten().fieldErrors });
       }
+      const { organizationId, lineNumber, formPart, taxYear, dataContext, customContext } = parseResult.data;
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      if (userRole === "viewer") {
+        return res.status(403).json({ message: "Viewers do not have permission to generate AI narratives" });
       }
 
       const organization = await storage.getOrganization(organizationId);
@@ -14341,24 +14353,48 @@ Provide a clear, factual narrative explanation for this line item based on the o
 
       res.json({ narrative, formPart, lineNumber });
     } catch (error: any) {
-      console.error("Error generating Schedule O narrative:", error);
-      res.status(500).json({ message: error.message || "Failed to generate narrative" });
+      const safeMessage = error?.status === 429 ? "AI service rate limit reached. Please try again later." : "Failed to generate narrative";
+      console.error("Error generating Schedule O narrative:", { message: error?.message, status: error?.status });
+      res.status(500).json({ message: safeMessage });
     }
   });
 
-  // Form 990 AI Narrative Builder
+  // Form 990 AI Narrative Builder (rate limited per user: max 20 requests per minute)
+  const form990NarrativeSchema = z.object({
+    organizationId: z.number().int().positive(),
+    narrativeType: z.string().min(1).max(100),
+    taxYear: z.number().int().min(2000).max(2100).optional(),
+    customContext: z.string().max(5000).optional(),
+  });
+  const form990AIRateLimit = new Map<string, { count: number; resetTime: number }>();
   app.post("/api/form-990/generate-narrative", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { organizationId, narrativeType, taxYear, customContext } = req.body;
 
-      if (!organizationId) {
-        return res.status(400).json({ message: "Organization ID is required" });
+      const now = Date.now();
+      const userLimit = form990AIRateLimit.get(userId);
+      if (userLimit && now < userLimit.resetTime) {
+        if (userLimit.count >= 20) {
+          return res.status(429).json({ message: "Rate limit exceeded. Please wait before generating more narratives." });
+        }
+        userLimit.count++;
+      } else {
+        form990AIRateLimit.set(userId, { count: 1, resetTime: now + 60000 });
       }
+
+      const parseResult = form990NarrativeSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid request data", errors: parseResult.error.flatten().fieldErrors });
+      }
+      const { organizationId, narrativeType, taxYear, customContext } = parseResult.data;
 
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      if (userRole === "viewer") {
+        return res.status(403).json({ message: "Viewers do not have permission to generate AI narratives" });
       }
 
       // Get organization details for context
@@ -14507,8 +14543,9 @@ Keep the response approximately 100-150 words.`;
 
       res.json({ narrative, narrativeType });
     } catch (error: any) {
-      console.error("Error generating Form 990 narrative:", error);
-      res.status(500).json({ message: error.message || "Failed to generate narrative" });
+      const safeMessage = error?.status === 429 ? "AI service rate limit reached. Please try again later." : "Failed to generate narrative";
+      console.error("Error generating Form 990 narrative:", { message: error?.message, status: error?.status });
+      res.status(500).json({ message: safeMessage });
     }
   });
 
