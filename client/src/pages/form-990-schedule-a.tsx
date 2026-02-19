@@ -63,8 +63,8 @@ const PUBLIC_CHARITY_TYPES = [
 
 function formatCurrency(value: string | number): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "$0.00";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(num);
+  if (isNaN(num)) return "$0";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
 }
 
 function formatPercent(value: string | number): string {
@@ -173,7 +173,7 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
       csvRows.push(["Part II - Section A: Public Support"]);
       csvRows.push(["", ...years.map(String), "Total"]);
       const addRow = (label: string, values: string[]) => {
-        const total = values.reduce((s, v) => s + parseFloat(v), 0).toFixed(2);
+        const total = Math.round(values.reduce((s, v) => s + parseFloat(v), 0)).toString();
         csvRows.push([label, ...values, total]);
       };
       addRow("Line 1 - Gifts, grants, contributions, membership fees", reportData.partII.sectionA.line1);
@@ -206,7 +206,7 @@ export default function Form990ScheduleA({ currentOrganization }: ScheduleAProps
       csvRows.push(["Part III - Section A: Public Support"]);
       csvRows.push(["", ...years.map(String), "Total"]);
       const addRow = (label: string, values: string[]) => {
-        const total = values.reduce((s, v) => s + parseFloat(v), 0).toFixed(2);
+        const total = Math.round(values.reduce((s, v) => s + parseFloat(v), 0)).toString();
         csvRows.push([label, ...values, total]);
       };
       addRow("Line 1 - Gifts, grants, contributions, membership fees", reportData.partIII.sectionA.line1);

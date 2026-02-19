@@ -11,7 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Download, FileText, TrendingUp, AlertCircle, Sparkles, Copy, Check, RefreshCw } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Organization } from "@shared/schema";
-import { formatCurrency } from "@/lib/utils";
+function formatIRSCurrency(amount: number | string): string {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return "$0";
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(num));
+}
 
 interface Form990ReportProps {
   currentOrganization: Organization;
@@ -560,19 +564,19 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                   <div>
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-total-revenue">
-                      {formatCurrency(parseFloat(reportData.totalRevenue))}
+                      {formatIRSCurrency(reportData.totalRevenue)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Expenses</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-total-expenses">
-                      {formatCurrency(parseFloat(reportData.totalExpenses))}
+                      {formatIRSCurrency(reportData.totalExpenses)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Net Income/Loss</p>
                     <p className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-net-income">
-                      {formatCurrency(netIncome)}
+                      {formatIRSCurrency(netIncome)}
                     </p>
                   </div>
                 </div>
@@ -595,19 +599,19 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                   <div>
                     <p className="text-sm text-muted-foreground">Total Assets</p>
                     <p className="text-2xl font-bold" data-testid="text-total-assets">
-                      {formatCurrency(parseFloat(reportData.totalAssets))}
+                      {formatIRSCurrency(reportData.totalAssets)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Liabilities</p>
                     <p className="text-2xl font-bold" data-testid="text-total-liabilities">
-                      {formatCurrency(parseFloat(reportData.totalLiabilities))}
+                      {formatIRSCurrency(reportData.totalLiabilities)}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Net Assets</p>
                     <p className="text-2xl font-bold text-green-600" data-testid="text-net-assets">
-                      {formatCurrency(parseFloat(reportData.netAssets))}
+                      {formatIRSCurrency(reportData.netAssets)}
                     </p>
                   </div>
                 </div>
@@ -626,26 +630,26 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                 <div className="flex justify-between items-center" data-testid="row-program-expenses">
                   <span className="font-medium">Program Service Expenses</span>
                   <span className="font-bold text-lg" data-testid="text-program-service-expenses">
-                    {formatCurrency(parseFloat(reportData.programServiceExpenses))}
+                    {formatIRSCurrency(reportData.programServiceExpenses)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center" data-testid="row-management-expenses">
                   <span className="font-medium">Management & General Expenses</span>
                   <span className="font-bold text-lg" data-testid="text-management-expenses">
-                    {formatCurrency(parseFloat(reportData.managementExpenses))}
+                    {formatIRSCurrency(reportData.managementExpenses)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center" data-testid="row-fundraising-expenses">
                   <span className="font-medium">Fundraising Expenses</span>
                   <span className="font-bold text-lg" data-testid="text-fundraising-expenses">
-                    {formatCurrency(parseFloat(reportData.fundraisingExpenses))}
+                    {formatIRSCurrency(reportData.fundraisingExpenses)}
                   </span>
                 </div>
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-bold">Total Functional Expenses</span>
                     <span className="font-bold text-xl">
-                      {formatCurrency(parseFloat(reportData.totalExpenses))}
+                      {formatIRSCurrency(reportData.totalExpenses)}
                     </span>
                   </div>
                 </div>
@@ -668,7 +672,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                         {item.source}
                       </span>
                       <span className="font-bold" data-testid={`revenue-source-amount-${index}`}>
-                        {formatCurrency(parseFloat(item.amount))}
+                        {formatIRSCurrency(item.amount)}
                       </span>
                     </div>
                   ))}
@@ -704,7 +708,7 @@ export default function Form990Report({ currentOrganization, userId }: Form990Re
                             {grant.purpose}
                           </td>
                           <td className="p-2 text-right font-bold" data-testid={`grant-amount-${index}`}>
-                            {formatCurrency(parseFloat(grant.amount))}
+                            {formatIRSCurrency(grant.amount)}
                           </td>
                         </tr>
                       ))}

@@ -8699,13 +8699,6 @@ export class DatabaseStorage implements IStorage {
     ))
     .groupBy(categories.name);
 
-    // Expenses by function
-    const expensesByFunction = [
-      { function: 'Program Services', amount: programServiceExpenses.toFixed(2) },
-      { function: 'Management & General', amount: managementExpenses.toFixed(2) },
-      { function: 'Fundraising', amount: fundraisingExpenses.toFixed(2) },
-    ];
-
     // Get grants received
     const grantsReceived = await db.select().from(grants)
       .where(and(
@@ -8715,19 +8708,23 @@ export class DatabaseStorage implements IStorage {
       ));
 
     return {
-      totalRevenue: totalRevenue.toFixed(2),
-      totalExpenses: totalExpenses.toFixed(2),
-      programServiceExpenses: programServiceExpenses.toFixed(2),
-      managementExpenses: managementExpenses.toFixed(2),
-      fundraisingExpenses: fundraisingExpenses.toFixed(2),
+      totalRevenue: Math.round(totalRevenue).toString(),
+      totalExpenses: Math.round(totalExpenses).toString(),
+      programServiceExpenses: Math.round(programServiceExpenses).toString(),
+      managementExpenses: Math.round(managementExpenses).toString(),
+      fundraisingExpenses: Math.round(fundraisingExpenses).toString(),
       totalAssets,
       totalLiabilities,
-      netAssets,
+      netAssets: Math.round(parseFloat(totalAssets) - parseFloat(totalLiabilities)).toString(),
       revenueBySource: revenueBySource.map(row => ({
         source: row.source || 'Other',
-        amount: row.amount || '0.00',
+        amount: row.amount ? Math.round(parseFloat(row.amount)).toString() : '0',
       })),
-      expensesByFunction,
+      expensesByFunction: [
+        { function: 'Program Services', amount: Math.round(programServiceExpenses).toString() },
+        { function: 'Management & General', amount: Math.round(managementExpenses).toString() },
+        { function: 'Fundraising', amount: Math.round(fundraisingExpenses).toString() },
+      ],
       grants: grantsReceived.map(g => ({
         grantorName: g.name,
         amount: g.amount,
@@ -8769,22 +8766,23 @@ export class DatabaseStorage implements IStorage {
       if (name.includes('program') || name.includes('tuition') || name.includes('admission') ||
           name.includes('ticket') || name.includes('camp') || name.includes('class') ||
           name.includes('workshop') || name.includes('training') || name.includes('course') ||
-          name.includes('registration') || name.includes('enrollment')) {
+          name.includes('registration') || name.includes('enrollment') || name.includes('contract') ||
+          name.includes('boces') || name.includes('consulting') || name.includes('service revenue') ||
+          name.includes('earned revenue') || name.includes('fee for service')) {
         return 'program_service';
       }
       if (name.includes('service fee') || name.includes('program fee') || name.includes('user fee') ||
           name.includes('client fee') || name.includes('student fee')) {
         return 'program_service';
       }
-      if (name.includes('sale') || name.includes('merchandise') || name.includes('product') ||
-          name.includes('refund') || name.includes('return') || name.includes('transfer') ||
-          name.includes('reimburse') || name.includes('verification')) {
+      if (name.includes('sale') || name.includes('merchandise') || name.includes('product')) {
         return 'other';
       }
       return 'contribution';
     };
 
-    const fmt = (n: number) => n.toFixed(2);
+    const fmt = (n: number) => Math.round(n).toString();
+    const fmtPct = (n: number) => n.toFixed(2);
 
     // Part II: Support Schedule for 170(b)(1)(A)(iv) and (vi)
     const partII_line1: number[] = [];
@@ -8926,12 +8924,12 @@ export class DatabaseStorage implements IStorage {
           line9: partII_line9.map(fmt),
           line10: partII_line10.map(fmt),
           line11: fmt(partII_line11_total),
-          line12: '0.00',
+          line12: '0',
         },
         sectionC: {
           line13: false,
-          line14: fmt(partII_line14),
-          line15: '0.00',
+          line14: fmtPct(partII_line14),
+          line15: '0',
           line16a: partII_line14 >= 33.33,
           line16b: false,
           line17a: !(partII_line14 >= 33.33) && partII_line14 >= 10,
@@ -8965,12 +8963,12 @@ export class DatabaseStorage implements IStorage {
         },
         sectionC: {
           line14: false,
-          line15: fmt(partIII_line15),
-          line16: '0.00',
+          line15: fmtPct(partIII_line15),
+          line16: '0',
         },
         sectionD: {
-          line17: fmt(partIII_line17),
-          line18: '0.00',
+          line17: fmtPct(partIII_line17),
+          line18: '0',
           line19a: partIII_line15 >= 33.33 && partIII_line17 <= 33.33,
           line19b: false,
           line20: !(partIII_line15 >= 33.33 && partIII_line17 <= 33.33),
@@ -8981,13 +8979,13 @@ export class DatabaseStorage implements IStorage {
       summary: {
         totalPublicSupport: fmt(partII_line6_val),
         totalSupport: fmt(partII_line11_total),
-        publicSupportPercentage: fmt(partII_line14),
+        publicSupportPercentage: fmtPct(partII_line14),
         meetsThreshold: partII_line14 >= 33.33,
         meetsFactsAndCircumstances: partII_line14 >= 10 && partII_line14 < 33.33,
         partIIIPublicSupport: fmt(partIII_line8_total),
         partIIITotalSupport: fmt(partIII_line13_total),
-        partIIIPublicSupportPercentage: fmt(partIII_line15),
-        partIIIInvestmentPercentage: fmt(partIII_line17),
+        partIIIPublicSupportPercentage: fmtPct(partIII_line15),
+        partIIIInvestmentPercentage: fmtPct(partIII_line17),
         partIIIMeetsThreshold: partIII_line15 >= 33.33 && partIII_line17 <= 33.33,
       },
     };
