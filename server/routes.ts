@@ -14175,7 +14175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     lineNumber: z.string().min(1).max(10),
     formPart: z.enum(["Part I", "Part II", "Part III", "Part V"]),
     taxYear: z.number().int().min(2000).max(2100),
-    dataContext: z.string().max(10000).optional(),
+    dataContext: z.string().max(50000).optional(),
     customContext: z.string().max(5000).optional(),
   });
   const scheduleOAIRateLimit = new Map<string, { count: number; resetTime: number }>();
@@ -14242,7 +14242,7 @@ Tax Year: ${taxYear || new Date().getFullYear() - 1}
 Total Revenue: $${form990Data?.partI?.line9 || "0"}
 Total Expenses: $${form990Data?.partI?.line17 || "0"}
 ${programs && programs.length > 0 ? `Programs: ${programs.map(p => `${p.name} - ${p.description || ""}`).join("; ")}` : ""}
-Data Context: ${dataContext || ""}
+Data Context: ${(dataContext || "").slice(0, 15000)}
 ${customContext ? `Additional Context from User: ${customContext}` : ""}
 `;
 

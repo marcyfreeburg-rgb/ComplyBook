@@ -1,0 +1,28 @@
+10:49:22 PM [express] POST /api/form-990-schedule-o/generate-narrative 200 in 5866ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="172e34b1-2a0a-47ce" responseTimeMS=5868 responseBytes=1644 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:49:26 PM [express] POST /api/form-990-schedule-o/generate-narrative 200 in 4215ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="37143c42-40aa-4b9f" responseTimeMS=4219 responseBytes=1813 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="7882a866-834b-4388" responseTimeMS=36 responseBytes=1379 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:49:53 PM [express] POST /api/form-990-schedule-o/generate-narrative 400 in 31ms
+10:49:56 PM [express] POST /api/form-990-schedule-o/generate-narrative 400 in 7ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="38771a5f-24cf-4c01" responseTimeMS=18 responseBytes=1379 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:50:02 PM [express] GET /api/notifications/168/unread-count 304 in 37ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="1e128f55-24ba-410f" responseTimeMS=39 responseBytes=1188 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:50:06 PM [express] POST /api/form-990-schedule-o/generate-narrative 200 in 1826ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="df9063cc-5779-4b65" responseTimeMS=1828 responseBytes=1506 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="34ecc200-6b28-476f" responseTimeMS=1847 responseBytes=1507 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:50:20 PM [express] POST /api/form-990-schedule-o/generate-narrative 200 in 1843ms
+10:50:28 PM [express] POST /api/form-990-schedule-o/generate-narrative 400 in 8ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="87a9561b-0be3-48cc" responseTimeMS=11 responseBytes=1379 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="08f6131a-7530-4f8a" responseTimeMS=73 responseBytes=1188 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:51:02 PM [express] GET /api/notifications/168/unread-count 304 in 72ms
