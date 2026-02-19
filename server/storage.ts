@@ -1116,6 +1116,48 @@ export interface IStorage {
     };
   }>;
 
+  // Nonprofit-specific: Schedule B (Form 990) - Schedule of Contributors
+  getScheduleBData(organizationId: number, taxYear: number): Promise<{
+    organizationName: string;
+    ein: string;
+    taxYear: number;
+    organizationType: string;
+    filingRule: string;
+    contributionThreshold: number;
+    line1Total: string;
+    partI: Array<{
+      number: number;
+      name: string;
+      address: string;
+      totalContributions: string;
+      contributionType: string[];
+      hasNoncash: boolean;
+    }>;
+    partII: Array<{
+      contributorNumber: number;
+      description: string;
+      fairMarketValue: string;
+      dateReceived: string;
+    }>;
+    partIII: Array<{
+      contributorNumber: number;
+      purposeOfGift: string;
+      useOfGift: string;
+      descriptionHowHeld: string;
+      transfereeName: string;
+      transfereeAddress: string;
+      relationship: string;
+    }>;
+    summary: {
+      totalContributors: number;
+      totalContributions: string;
+      noncashContributors: number;
+      totalNoncashValue: string;
+      meetsGeneralRule: boolean;
+      meetsSpecialRule: boolean;
+    };
+  }>;
+
   // For-profit: Contract operations
   getContracts(organizationId: number): Promise<Contract[]>;
   getContract(id: number): Promise<Contract | undefined>;
@@ -9170,6 +9212,224 @@ export class DatabaseStorage implements IStorage {
         partIIIPublicSupportPercentage: fmtPct(partIII_line15),
         partIIIInvestmentPercentage: fmtPct(partIII_line17),
         partIIIMeetsThreshold: partIII_line15 >= 33.33 && partIII_line17 <= 33.33,
+      },
+    };
+  }
+
+  // ===================================================================
+  // SCHEDULE B (Form 990) - Schedule of Contributors
+  // ===================================================================
+
+  async getScheduleBData(organizationId: number, taxYear: number) {
+    const org = await this.getOrganization(organizationId);
+    if (!org) throw new Error("Organization not found");
+
+    const startDate = new Date(taxYear, 0, 1);
+    const endDate = new Date(taxYear, 11, 31, 23, 59, 59);
+
+    const fmt = (n: number) => Math.round(n).toString();
+
+    const allCategories = await db.select().from(categories)
+      .where(eq(categories.organizationId, organizationId));
+
+    const classifyRevenue = (catId: number | null, description: string): string => {
+      const desc = (description || '').toLowerCase();
+      if (catId) {
+        const cat = allCategories.find(c => c.id === catId);
+        if (cat) {
+          const name = cat.name.toLowerCase();
+          if (name.includes('invest') || name.includes('interest') || name.includes('dividend') || name.includes('royalt')) return 'investment';
+          if (name.includes('membership') || name.includes('dues')) return 'membership';
+          if (name.includes('program') || name.includes('tuition') || name.includes('admission') || name.includes('ticket') ||
+              name.includes('camp') || name.includes('class') || name.includes('workshop') || name.includes('training') ||
+              name.includes('course') || name.includes('registration') || name.includes('enrollment') || name.includes('contract') ||
+              name.includes('boces') || name.includes('consulting') || name.includes('service revenue') ||
+              name.includes('earned revenue') || name.includes('fee for service')) return 'program_service';
+          if (name.includes('sale') || name.includes('merchandise') || name.includes('inventory') || name.includes('product')) return 'sales';
+          if (name.includes('fundrais') || name.includes('event') || name.includes('gala') || name.includes('auction') || name.includes('gaming')) return 'fundraising';
+          if (name.includes('asset') && (name.includes('sale') || name.includes('gain') || name.includes('loss'))) return 'asset_sale';
+        }
+      }
+      if (desc.includes('contract') || desc.includes('boces') || desc.includes('consulting') || desc.includes('service revenue')) return 'program_service';
+      if (desc.includes('interest') || desc.includes('dividend') || desc.includes('investment')) return 'investment';
+      if (desc.includes('dues') || desc.includes('membership')) return 'membership';
+      return 'contribution';
+    };
+
+    const incomeTransactions = await db.select().from(transactions)
+      .where(
+        and(
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.type, 'income'),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate)
+        )
+      );
+
+    let line1Amount = 0;
+    for (const t of incomeTransactions) {
+      const cls = classifyRevenue(t.categoryId, t.description || '');
+      if (cls === 'contribution') {
+        line1Amount += parseFloat(t.amount);
+      }
+    }
+
+    const twoPercentThreshold = line1Amount * 0.02;
+    const contributionThreshold = Math.max(5000, twoPercentThreshold);
+
+    const noncashDonations = await db
+      .select({
+        donation: inKindDonations,
+        donorName: donors.name,
+        donorAddress: donors.address,
+      })
+      .from(inKindDonations)
+      .leftJoin(donors, eq(inKindDonations.donorId, donors.id))
+      .where(
+        and(
+          eq(inKindDonations.organizationId, organizationId),
+          gte(inKindDonations.donationDate, startDate),
+          lte(inKindDonations.donationDate, endDate)
+        )
+      )
+      .orderBy(desc(sql`CAST(${inKindDonations.fairMarketValue} AS numeric)`));
+
+    const noncashByDonor = new Map<number, { total: number; items: Array<typeof noncashDonations[0]> }>();
+    for (const nc of noncashDonations) {
+      const donorId = nc.donation.donorId;
+      if (donorId) {
+        if (!noncashByDonor.has(donorId)) noncashByDonor.set(donorId, { total: 0, items: [] });
+        const entry = noncashByDonor.get(donorId)!;
+        entry.total += parseFloat(nc.donation.fairMarketValue);
+        entry.items.push(nc);
+      }
+    }
+
+    const donorTotals = new Map<number, { donor: { id: number; name: string; address: string | null }; cashTotal: number; noncashTotal: number; hasCash: boolean; hasNoncash: boolean }>();
+
+    for (const t of incomeTransactions) {
+      if (!t.donorId) continue;
+      const cls = classifyRevenue(t.categoryId, t.description || '');
+      if (cls !== 'contribution') continue;
+      const amt = parseFloat(t.amount);
+      if (!donorTotals.has(t.donorId)) {
+        const donorRecord = await db.select().from(donors).where(eq(donors.id, t.donorId)).limit(1);
+        if (donorRecord.length === 0) continue;
+        donorTotals.set(t.donorId, {
+          donor: { id: donorRecord[0].id, name: donorRecord[0].name, address: donorRecord[0].address },
+          cashTotal: 0, noncashTotal: 0, hasCash: false, hasNoncash: false,
+        });
+      }
+      const entry = donorTotals.get(t.donorId)!;
+      entry.cashTotal += amt;
+      entry.hasCash = true;
+    }
+
+    for (const [donorId, noncash] of noncashByDonor.entries()) {
+      if (!donorTotals.has(donorId)) {
+        const donorRecord = await db.select().from(donors).where(eq(donors.id, donorId)).limit(1);
+        if (donorRecord.length === 0) continue;
+        donorTotals.set(donorId, {
+          donor: { id: donorRecord[0].id, name: donorRecord[0].name, address: donorRecord[0].address },
+          cashTotal: 0, noncashTotal: 0, hasCash: false, hasNoncash: false,
+        });
+      }
+      const entry = donorTotals.get(donorId)!;
+      entry.noncashTotal += noncash.total;
+      entry.hasNoncash = true;
+    }
+
+    const partI: Array<{
+      number: number;
+      name: string;
+      address: string;
+      totalContributions: string;
+      contributionType: string[];
+      hasNoncash: boolean;
+    }> = [];
+
+    let contributorNum = 0;
+    const contributorNumberMap = new Map<number, number>();
+
+    const sortedDonors = Array.from(donorTotals.entries())
+      .map(([donorId, entry]) => ({
+        donorId,
+        ...entry,
+        grandTotal: entry.cashTotal + entry.noncashTotal,
+      }))
+      .filter(d => d.grandTotal >= contributionThreshold)
+      .sort((a, b) => b.grandTotal - a.grandTotal);
+
+    for (const dc of sortedDonors) {
+      contributorNum++;
+      contributorNumberMap.set(dc.donorId, contributorNum);
+      const types: string[] = [];
+      if (dc.hasCash) types.push('Person');
+      if (dc.hasNoncash) types.push('Noncash');
+
+      partI.push({
+        number: contributorNum,
+        name: dc.donor.name,
+        address: dc.donor.address || '',
+        totalContributions: fmt(dc.grandTotal),
+        contributionType: types,
+        hasNoncash: dc.hasNoncash,
+      });
+    }
+
+    const partII: Array<{
+      contributorNumber: number;
+      description: string;
+      fairMarketValue: string;
+      dateReceived: string;
+    }> = [];
+
+    for (const nc of noncashDonations) {
+      const donorId = nc.donation.donorId;
+      const cNum = donorId ? (contributorNumberMap.get(donorId) || 0) : 0;
+      partII.push({
+        contributorNumber: cNum,
+        description: nc.donation.description,
+        fairMarketValue: fmt(parseFloat(nc.donation.fairMarketValue)),
+        dateReceived: nc.donation.donationDate
+          ? new Date(nc.donation.donationDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+          : '',
+      });
+    }
+
+    const totalNoncash = noncashDonations.reduce((sum, nc) => sum + parseFloat(nc.donation.fairMarketValue), 0);
+
+    const meetsGeneralRule = sortedDonors.length > 0;
+    const meetsSpecialRule = contributionThreshold > 5000;
+
+    const orgType = org.type === 'nonprofit' ? '501(c)(3)' : 'Other';
+
+    return {
+      organizationName: org.name,
+      ein: org.taxId || '',
+      taxYear,
+      organizationType: orgType,
+      filingRule: meetsSpecialRule ? 'special' : 'general',
+      contributionThreshold: Math.round(contributionThreshold),
+      line1Total: fmt(line1Amount),
+      partI,
+      partII,
+      partIII: [] as Array<{
+        contributorNumber: number;
+        purposeOfGift: string;
+        useOfGift: string;
+        descriptionHowHeld: string;
+        transfereeName: string;
+        transfereeAddress: string;
+        relationship: string;
+      }>,
+      summary: {
+        totalContributors: partI.length,
+        totalContributions: fmt(partI.reduce((s, c) => s + parseFloat(c.totalContributions), 0)),
+        noncashContributors: partII.length,
+        totalNoncashValue: fmt(totalNoncash),
+        meetsGeneralRule,
+        meetsSpecialRule,
       },
     };
   }

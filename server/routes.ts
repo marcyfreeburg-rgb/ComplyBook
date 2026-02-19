@@ -14121,6 +14121,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Schedule B (Form 990) - Schedule of Contributors
+  app.get("/api/reports/form-990-schedule-b/:organizationId/:taxYear", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const taxYear = parseInt(req.params.taxYear);
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      if (!taxYear || isNaN(taxYear)) {
+        return res.status(400).json({ message: "Valid tax year is required" });
+      }
+
+      const report = await storage.getScheduleBData(organizationId, taxYear);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating Schedule B report:", error);
+      res.status(500).json({ message: "Failed to generate Schedule B report" });
+    }
+  });
+
   // Form 990 AI Narrative Builder
   app.post("/api/form-990/generate-narrative", isAuthenticated, async (req: any, res: Response) => {
     try {

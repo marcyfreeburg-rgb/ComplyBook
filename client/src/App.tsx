@@ -41,6 +41,7 @@ import ProgramExpenseReport from "@/pages/program-expense-report";
 import FunctionalExpenseReport from "@/pages/functional-expense-report";
 import Form990Report from "@/pages/form-990-report";
 import Form990ScheduleA from "@/pages/form-990-schedule-a";
+import Form990ScheduleB from "@/pages/form-990-schedule-b";
 import GovernmentGrants from "@/pages/government-grants";
 import GovernmentContracts from "@/pages/government-contracts";
 import ComplianceDashboard from "@/pages/compliance-dashboard";
@@ -422,6 +423,13 @@ function AuthenticatedApp() {
               {currentOrganization.type === 'nonprofit' && (
                 <Route path="/form-990-schedule-a">
                   <Form990ScheduleA
+                    currentOrganization={currentOrganization}
+                  />
+                </Route>
+              )}
+              {currentOrganization.type === 'nonprofit' && (
+                <Route path="/form-990-schedule-b">
+                  <Form990ScheduleB
                     currentOrganization={currentOrganization}
                   />
                 </Route>

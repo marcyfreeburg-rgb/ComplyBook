@@ -19,7 +19,7 @@ Key features include:
 -   **Core Financials:** Income/expense tracking, budgeting, recurring transactions, vendor/client management, invoicing.
 -   **AI & Automation:** Plaid integration for transaction import, AI categorization, automated workflows.
 -   **Mileage & Per Diem Tracking:** IRS-compliant tracking with configurable rates and approval workflows.
--   **Reporting & Compliance:** Cash flow forecasting, tax reporting (1099, Form 990, SF-425), custom reports, audit trail, bank reconciliation, compliance calendar, program expense reports, and enhanced analytics.
+-   **Reporting & Compliance:** Cash flow forecasting, tax reporting (1099, Form 990, SF-425, Schedule A, Schedule B), custom reports, audit trail, bank reconciliation, compliance calendar, program expense reports, and enhanced analytics.
 -   **Organizational Management:** Team collaboration, branding, expense approval workflows, and bulk operations with multi-tenant security.
 -   **Nonprofit Specific:** Donor tracking, fund accounting, pledge management, program management, functional expense reporting, government grants compliance, in-kind donation tracking, fundraising tools, and grant expense tracking.
 -   **For-Profit Government Contracts Specific (DCAA Compliant):** Contract management, DCAA timekeeping, job/project costing, indirect cost rate management, advanced cost accounting, project creation, proposal/bid management, subcontractor management, and change order management with document sharing.
