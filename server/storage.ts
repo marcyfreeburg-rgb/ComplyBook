@@ -1032,17 +1032,61 @@ export interface IStorage {
 
   // Nonprofit-specific: Form 990 reporting
   getForm990Data(organizationId: number, taxYear: number): Promise<{
-    totalRevenue: string;
-    totalExpenses: string;
-    programServiceExpenses: string;
-    managementExpenses: string;
-    fundraisingExpenses: string;
-    totalAssets: string;
-    totalLiabilities: string;
-    netAssets: string;
-    revenueBySource: Array<{ source: string; amount: string }>;
-    expensesByFunction: Array<{ function: string; amount: string }>;
+    organizationName: string;
+    ein: string;
+    taxYear: number;
+    partI: {
+      line1: string;
+      line2: string;
+      line3: string;
+      line4: string;
+      line5a: string;
+      line5b: string;
+      line5c: string;
+      line6a: string;
+      line6b: string;
+      line6c: string;
+      line6d: string;
+      line7a: string;
+      line7b: string;
+      line7c: string;
+      line8: string;
+      line9: string;
+      line10: string;
+      line11: string;
+      line12: string;
+      line13: string;
+      line14: string;
+      line15: string;
+      line16: string;
+      line17: string;
+      line18: string;
+      line19: string;
+      line20: string;
+      line21: string;
+    };
+    partII: {
+      line22_boa: string;
+      line22_eoy: string;
+      line23_boa: string;
+      line23_eoy: string;
+      line24_boa: string;
+      line24_eoy: string;
+      line25_boa: string;
+      line25_eoy: string;
+      line26_boa: string;
+      line26_eoy: string;
+      line27_boa: string;
+      line27_eoy: string;
+    };
+    revenueDetails: Array<{ description: string; category: string; amount: string }>;
+    expenseDetails: Array<{ description: string; category: string; amount: string }>;
     grants: Array<{ grantorName: string; amount: string; purpose: string }>;
+    functionalExpenses: {
+      programServiceExpenses: string;
+      managementExpenses: string;
+      fundraisingExpenses: string;
+    };
   }>;
 
   // Nonprofit-specific: Schedule A (Form 990) - Public Charity Status & Public Support
@@ -8647,8 +8691,15 @@ export class DatabaseStorage implements IStorage {
   async getForm990Data(organizationId: number, taxYear: number) {
     const yearStart = new Date(taxYear, 0, 1);
     const yearEnd = new Date(taxYear, 11, 31);
+    const fmt = (n: number) => Math.round(n).toString();
 
-    // Get all transactions for the year
+    const org = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+    const orgName = org[0]?.name || '';
+    const ein = org[0]?.taxId || '';
+
+    const allCategories = await db.select().from(categories)
+      .where(eq(categories.organizationId, organizationId));
+
     const allTransactions = await db.select().from(transactions)
       .where(and(
         eq(transactions.organizationId, organizationId),
@@ -8656,50 +8707,145 @@ export class DatabaseStorage implements IStorage {
         lte(transactions.date, yearEnd)
       ));
 
-    // Calculate revenue (income transactions)
     const incomeTransactions = allTransactions.filter(t => t.type === 'income');
-    const totalRevenue = incomeTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
-
-    // Calculate expenses by functional category
     const expenseTransactions = allTransactions.filter(t => t.type === 'expense');
+
+    const classifyRevenue = (catId: number | null, description: string): string => {
+      const desc = (description || '').toLowerCase();
+      if (catId) {
+        const cat = allCategories.find(c => c.id === catId);
+        if (cat) {
+          const name = cat.name.toLowerCase();
+          if (name.includes('invest') || name.includes('interest') || name.includes('dividend') || name.includes('royalt')) return 'investment';
+          if (name.includes('membership') || name.includes('dues')) return 'membership';
+          if (name.includes('program') || name.includes('tuition') || name.includes('admission') || name.includes('ticket') ||
+              name.includes('camp') || name.includes('class') || name.includes('workshop') || name.includes('training') ||
+              name.includes('course') || name.includes('registration') || name.includes('enrollment') || name.includes('contract') ||
+              name.includes('boces') || name.includes('consulting') || name.includes('service revenue') ||
+              name.includes('earned revenue') || name.includes('fee for service') || name.includes('service fee') ||
+              name.includes('program fee') || name.includes('user fee') || name.includes('client fee') || name.includes('student fee')) return 'program_service';
+          if (name.includes('sale') || name.includes('merchandise') || name.includes('inventory') || name.includes('product')) return 'sales';
+          if (name.includes('fundrais') || name.includes('event') || name.includes('gala') || name.includes('auction') || name.includes('gaming')) return 'fundraising';
+          if (name.includes('asset') && (name.includes('sale') || name.includes('gain') || name.includes('loss'))) return 'asset_sale';
+          if (name.includes('rent') && (name.includes('rental income') || name.includes('rent income'))) return 'other';
+        }
+      }
+      if (desc.includes('contract') || desc.includes('boces') || desc.includes('consulting') || desc.includes('service revenue')) return 'program_service';
+      if (desc.includes('interest') || desc.includes('dividend') || desc.includes('investment')) return 'investment';
+      if (desc.includes('dues') || desc.includes('membership')) return 'membership';
+      return 'contribution';
+    };
+
+    const classifyExpense = (catId: number | null, description: string): string => {
+      const desc = (description || '').toLowerCase();
+      if (catId) {
+        const cat = allCategories.find(c => c.id === catId);
+        if (cat) {
+          const name = cat.name.toLowerCase();
+          if (name.includes('grant') && (name.includes('paid') || name.includes('given') || name.includes('award'))) return 'grants_paid';
+          if (name.includes('salary') || name.includes('wage') || name.includes('payroll') || name.includes('compensation') || name.includes('benefit') || name.includes('employee')) return 'salaries';
+          if (name.includes('professional') || name.includes('contractor') || name.includes('legal') || name.includes('accounting') || name.includes('audit') || name.includes('consulting fee') || name.includes('bookkeep')) return 'professional_fees';
+          if (name.includes('rent') || name.includes('occupancy') || name.includes('utilit') || name.includes('electric') || name.includes('water') || name.includes('gas') || name.includes('maintenance') || name.includes('repair') || name.includes('lease')) return 'occupancy';
+          if (name.includes('print') || name.includes('postage') || name.includes('shipping') || name.includes('publication') || name.includes('mail')) return 'printing';
+          if (name.includes('member benefit') || name.includes('scholarship') || name.includes('benevolence') || name.includes('assistance')) return 'member_benefits';
+        }
+      }
+      if (desc.includes('salary') || desc.includes('payroll') || desc.includes('wage') || desc.includes('compensation')) return 'salaries';
+      if (desc.includes('rent') || desc.includes('utility') || desc.includes('electric')) return 'occupancy';
+      if (desc.includes('professional') || desc.includes('legal') || desc.includes('accounting') || desc.includes('attorney')) return 'professional_fees';
+      if (desc.includes('postage') || desc.includes('shipping') || desc.includes('printing')) return 'printing';
+      if (desc.includes('member benefit') || desc.includes('scholarship') || desc.includes('benevolence') || desc.includes('assistance fund')) return 'member_benefits';
+      return 'other_expenses';
+    };
+
+    let line1 = 0; // Contributions, gifts, grants
+    let line2 = 0; // Program service revenue
+    let line3 = 0; // Membership dues
+    let line4 = 0; // Investment income
+    let line5a = 0; // Gross amount from sale of assets
+    let line5b = 0; // Less: cost or other basis
+    let line6a = 0; // Gaming gross income
+    let line6b = 0; // Fundraising events gross income
+    let line6c = 0; // Less: direct expenses
+    let line7a = 0; // Gross sales of inventory
+    let line7b = 0; // Less: cost of goods sold
+    let line8 = 0;  // Other revenue
+
+    const revenueDetails: Array<{ description: string; category: string; amount: string }> = [];
+
+    for (const t of incomeTransactions) {
+      const amt = parseFloat(t.amount);
+      const cls = classifyRevenue(t.categoryId, t.description || '');
+      const catName = t.categoryId ? (allCategories.find(c => c.id === t.categoryId)?.name || 'Uncategorized') : 'Uncategorized';
+
+      switch (cls) {
+        case 'contribution': line1 += amt; break;
+        case 'program_service': line2 += amt; break;
+        case 'membership': line3 += amt; break;
+        case 'investment': line4 += amt; break;
+        case 'asset_sale': line5a += amt; break;
+        case 'fundraising': line6b += amt; break;
+        case 'sales': line7a += amt; break;
+        default: line8 += amt; break;
+      }
+
+      revenueDetails.push({
+        description: t.description || 'No description',
+        category: cls,
+        amount: fmt(amt),
+      });
+    }
+
+    const line5c = line5a - line5b;
+    const line6d = line6a + line6b - line6c;
+    const line7c = line7a - line7b;
+    const line9 = line1 + line2 + line3 + line4 + line5c + line6d + line7c + line8;
+
+    let line10 = 0; // Grants and similar amounts paid
+    let line11 = 0; // Benefits paid to or for members
+    let line12 = 0; // Salaries, compensation, employee benefits
+    let line13 = 0; // Professional fees and payments to independent contractors
+    let line14 = 0; // Occupancy, rent, utilities, maintenance
+    let line15 = 0; // Printing, publications, postage, shipping
+    let line16 = 0; // Other expenses
+
     let programServiceExpenses = 0;
     let managementExpenses = 0;
     let fundraisingExpenses = 0;
 
-    expenseTransactions.forEach(exp => {
-      const amount = parseFloat(exp.amount);
-      if (exp.functionalCategory === 'program') {
-        programServiceExpenses += amount;
-      } else if (exp.functionalCategory === 'administrative') {
-        managementExpenses += amount;
-      } else if (exp.functionalCategory === 'fundraising') {
-        fundraisingExpenses += amount;
+    const expenseDetails: Array<{ description: string; category: string; amount: string }> = [];
+
+    for (const t of expenseTransactions) {
+      const amt = parseFloat(t.amount);
+      const cls = classifyExpense(t.categoryId, t.description || '');
+
+      switch (cls) {
+        case 'grants_paid': line10 += amt; break;
+        case 'member_benefits': line11 += amt; break;
+        case 'salaries': line12 += amt; break;
+        case 'professional_fees': line13 += amt; break;
+        case 'occupancy': line14 += amt; break;
+        case 'printing': line15 += amt; break;
+        default: line16 += amt; break;
       }
-    });
 
-    const totalExpenses = programServiceExpenses + managementExpenses + fundraisingExpenses;
+      if (t.functionalCategory === 'program') programServiceExpenses += amt;
+      else if (t.functionalCategory === 'administrative') managementExpenses += amt;
+      else if (t.functionalCategory === 'fundraising') fundraisingExpenses += amt;
 
-    // Get balance sheet data (simplified - would need proper asset/liability tracking)
-    const totalAssets = '0.00'; // Placeholder
-    const totalLiabilities = '0.00'; // Placeholder
-    const netAssets = (totalRevenue - totalExpenses).toFixed(2);
+      expenseDetails.push({
+        description: t.description || 'No description',
+        category: cls,
+        amount: fmt(amt),
+      });
+    }
 
-    // Revenue by source (by category)
-    const revenueBySource = await db.select({
-      source: categories.name,
-      amount: sql<string>`SUM(${transactions.amount})`,
-    })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(and(
-      eq(transactions.organizationId, organizationId),
-      eq(transactions.type, 'income'),
-      gte(transactions.date, yearStart),
-      lte(transactions.date, yearEnd)
-    ))
-    .groupBy(categories.name);
+    const line17 = line10 + line11 + line12 + line13 + line14 + line15 + line16;
+    const line18 = line9 - line17;
+    const line19 = 0;
+    const line20 = 0;
+    const line21 = line18 + line19 + line20;
 
-    // Get grants received
     const grantsReceived = await db.select().from(grants)
       .where(and(
         eq(grants.organizationId, organizationId),
@@ -8708,28 +8854,65 @@ export class DatabaseStorage implements IStorage {
       ));
 
     return {
-      totalRevenue: Math.round(totalRevenue).toString(),
-      totalExpenses: Math.round(totalExpenses).toString(),
-      programServiceExpenses: Math.round(programServiceExpenses).toString(),
-      managementExpenses: Math.round(managementExpenses).toString(),
-      fundraisingExpenses: Math.round(fundraisingExpenses).toString(),
-      totalAssets,
-      totalLiabilities,
-      netAssets: Math.round(parseFloat(totalAssets) - parseFloat(totalLiabilities)).toString(),
-      revenueBySource: revenueBySource.map(row => ({
-        source: row.source || 'Other',
-        amount: row.amount ? Math.round(parseFloat(row.amount)).toString() : '0',
-      })),
-      expensesByFunction: [
-        { function: 'Program Services', amount: Math.round(programServiceExpenses).toString() },
-        { function: 'Management & General', amount: Math.round(managementExpenses).toString() },
-        { function: 'Fundraising', amount: Math.round(fundraisingExpenses).toString() },
-      ],
+      organizationName: orgName,
+      ein: ein,
+      taxYear,
+      partI: {
+        line1: fmt(line1),
+        line2: fmt(line2),
+        line3: fmt(line3),
+        line4: fmt(line4),
+        line5a: fmt(line5a),
+        line5b: fmt(line5b),
+        line5c: fmt(line5c),
+        line6a: fmt(line6a),
+        line6b: fmt(line6b),
+        line6c: fmt(line6c),
+        line6d: fmt(line6d),
+        line7a: fmt(line7a),
+        line7b: fmt(line7b),
+        line7c: fmt(line7c),
+        line8: fmt(line8),
+        line9: fmt(line9),
+        line10: fmt(line10),
+        line11: fmt(line11),
+        line12: fmt(line12),
+        line13: fmt(line13),
+        line14: fmt(line14),
+        line15: fmt(line15),
+        line16: fmt(line16),
+        line17: fmt(line17),
+        line18: fmt(line18),
+        line19: fmt(line19),
+        line20: fmt(line20),
+        line21: fmt(line21),
+      },
+      partII: {
+        line22_boa: '0',
+        line22_eoy: '0',
+        line23_boa: '0',
+        line23_eoy: '0',
+        line24_boa: '0',
+        line24_eoy: '0',
+        line25_boa: '0',
+        line25_eoy: '0',
+        line26_boa: '0',
+        line26_eoy: '0',
+        line27_boa: '0',
+        line27_eoy: fmt(line21),
+      },
+      revenueDetails,
+      expenseDetails,
       grants: grantsReceived.map(g => ({
         grantorName: g.name,
         amount: g.amount,
         purpose: g.restrictions || 'General support',
       })),
+      functionalExpenses: {
+        programServiceExpenses: fmt(programServiceExpenses),
+        managementExpenses: fmt(managementExpenses),
+        fundraisingExpenses: fmt(fundraisingExpenses),
+      },
     };
   }
 
