@@ -14080,19 +14080,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organizationId = parseInt(req.params.organizationId);
       const taxYear = parseInt(req.params.taxYear);
 
+      if (isNaN(organizationId) || isNaN(taxYear)) {
+        return res.status(400).json({ message: "Invalid organization ID or tax year" });
+      }
+
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
 
-      if (!taxYear || isNaN(taxYear)) {
-        return res.status(400).json({ message: "Valid tax year is required" });
-      }
-
       const report = await storage.getForm990Data(organizationId, taxYear);
       res.json(report);
-    } catch (error) {
-      console.error("Error generating Form 990 report:", error);
+    } catch (error: any) {
+      console.error("Error generating Form 990 report:", { message: error?.message });
       res.status(500).json({ message: "Failed to generate Form 990 report" });
     }
   });
@@ -14104,19 +14104,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organizationId = parseInt(req.params.organizationId);
       const taxYear = parseInt(req.params.taxYear);
 
+      if (isNaN(organizationId) || isNaN(taxYear)) {
+        return res.status(400).json({ message: "Invalid organization ID or tax year" });
+      }
+
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
 
-      if (!taxYear || isNaN(taxYear)) {
-        return res.status(400).json({ message: "Valid tax year is required" });
-      }
-
       const report = await storage.getScheduleAData(organizationId, taxYear);
       res.json(report);
-    } catch (error) {
-      console.error("Error generating Schedule A report:", error);
+    } catch (error: any) {
+      console.error("Error generating Schedule A report:", { message: error?.message });
       res.status(500).json({ message: "Failed to generate Schedule A report" });
     }
   });
@@ -14128,19 +14128,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const organizationId = parseInt(req.params.organizationId);
       const taxYear = parseInt(req.params.taxYear);
 
+      if (isNaN(organizationId) || isNaN(taxYear)) {
+        return res.status(400).json({ message: "Invalid organization ID or tax year" });
+      }
+
       const userRole = await storage.getUserRole(userId, organizationId);
       if (!userRole) {
         return res.status(403).json({ message: "You don't have access to this organization" });
       }
 
-      if (!taxYear || isNaN(taxYear)) {
-        return res.status(400).json({ message: "Valid tax year is required" });
-      }
-
       const report = await storage.getScheduleBData(organizationId, taxYear);
       res.json(report);
-    } catch (error) {
-      console.error("Error generating Schedule B report:", error);
+    } catch (error: any) {
+      console.error("Error generating Schedule B report:", { message: error?.message });
       res.status(500).json({ message: "Failed to generate Schedule B report" });
     }
   });
