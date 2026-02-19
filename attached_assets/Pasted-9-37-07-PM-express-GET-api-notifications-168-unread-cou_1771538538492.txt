@@ -1,0 +1,58 @@
+9:37:07 PM [express] GET /api/notifications/168/unread-count 304 in 134ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="ca21b4d6-39d9-48a6" responseTimeMS=71 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+9:38:07 PM [express] GET /api/notifications/168/unread-count 304 in 68ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="d31f3554-f140-451a" responseTimeMS=65 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+9:39:08 PM [express] GET /api/notifications/168/unread-count 304 in 63ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="8b7556ec-0fde-4f20" responseTimeMS=84 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+9:40:08 PM [express] GET /api/notifications/168/unread-count 304 in 80ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="3942c8f3-4d9c-4233" responseTimeMS=67 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+9:41:08 PM [express] GET /api/notifications/168/unread-count 304 in 64ms
+[GET]
+complybook.net/api/reports/form-990-schedule-o/168/2025 clientIP="216.147.124.157" requestID="961cb769-6fd3-465c" responseTimeMS=1076 responseBytes=7236 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:00:54 PM [express] GET /api/reports/form-990-schedule-o/168/2025 200 in 1072ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.124.157" requestID="1ecaa350-471e-4d3f" responseTimeMS=131 responseBytes=1178 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:01:09 PM [express] GET /api/notifications/168/unread-count 304 in 127ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="2f652f2f-5040-4621" responseTimeMS=48 responseBytes=1369 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+10:01:24 PM [express] POST /api/form-990-schedule-o/generate-narrative 400 in 42ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="bf01c6b0-58a7-4052" responseTimeMS=5398 responseBytes=1312 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Error generating Schedule O narrative: {
+  message: 'invalid input value for enum audit_action: "ai_schedule_o_narrative_generated"',
+  status: undefined
+}
+10:01:29 PM [express] POST /api/form-990-schedule-o/generate-narrative 500 in 5396ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="18b07b1d-189e-43de" responseTimeMS=1903 responseBytes=1312 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Error generating Schedule O narrative: {
+  message: 'invalid input value for enum audit_action: "ai_schedule_o_narrative_generated"',
+  status: undefined
+}
+10:01:31 PM [express] POST /api/form-990-schedule-o/generate-narrative 500 in 1900ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="3f55c25c-74ea-4252" responseTimeMS=2465 responseBytes=1312 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Error generating Schedule O narrative: {
+  message: 'invalid input value for enum audit_action: "ai_schedule_o_narrative_generated"',
+  status: undefined
+}
+10:01:34 PM [express] POST /api/form-990-schedule-o/generate-narrative 500 in 2460ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="809df44d-fc2f-4249" responseTimeMS=2764 responseBytes=1312 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Menu
+Error generating Schedule O narrative: {
+  message: 'invalid input value for enum audit_action: "ai_schedule_o_narrative_generated"',
+  status: undefined
+}
+10:01:37 PM [express] POST /api/form-990-schedule-o/generate-narrative 500 in 2762ms
+[POST]
+complybook.net/api/form-990-schedule-o/generate-narrative clientIP="216.147.124.157" requestID="4e23add4-e128-4350" responseTimeMS=6158 responseBytes=1312 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Error generating Schedule O narrative: {
+  message: 'invalid input value for enum audit_action: "ai_schedule_o_narrative_generated"',
+  status: undefined
+}
+10:01:43 PM [express] POST /api/form-990-schedule-o/generate-narrative 500 in 6147ms
