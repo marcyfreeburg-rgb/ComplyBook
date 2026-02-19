@@ -145,6 +145,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
         { title: "Form 990 Report", url: "/form-990-report", icon: FileCheck },
         { title: "Schedule A (990)", url: "/form-990-schedule-a", icon: FileCheck },
         { title: "Schedule B (990)", url: "/form-990-schedule-b", icon: FileCheck },
+        { title: "Schedule O (990)", url: "/form-990-schedule-o", icon: FileCheck },
         { title: "Tax Reporting", url: "/tax-reporting", icon: Calculator },
         { title: "Compliance", url: "/compliance-dashboard", icon: ShieldCheck },
         ...(isAdminOrOwner ? [

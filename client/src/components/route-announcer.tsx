@@ -51,6 +51,7 @@ const routeTitles: Record<string, string> = {
   "/form-990-report": "Form 990 Report",
   "/form-990-schedule-a": "Schedule A (Form 990)",
   "/form-990-schedule-b": "Schedule B (Form 990)",
+  "/form-990-schedule-o": "Schedule O (Form 990)",
   "/donation-letters": "Donation Letters",
   "/surveys": "Surveys",
   "/forms": "Forms",

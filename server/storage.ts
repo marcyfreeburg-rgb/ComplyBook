@@ -1158,6 +1158,26 @@ export interface IStorage {
     };
   }>;
 
+  // Nonprofit-specific: Schedule O (Form 990) - Supplemental Information
+  getScheduleOData(organizationId: number, taxYear: number): Promise<{
+    organizationName: string;
+    ein: string;
+    taxYear: number;
+    lineItems: Array<{
+      formPart: string;
+      lineNumber: string;
+      title: string;
+      explanation: string;
+      hasData: boolean;
+      dataContext: string;
+    }>;
+    summary: {
+      totalLineItems: number;
+      itemsWithExplanations: number;
+      itemsNeedingAttention: number;
+    };
+  }>;
+
   // For-profit: Contract operations
   getContracts(organizationId: number): Promise<Contract[]>;
   getContract(id: number): Promise<Contract | undefined>;
@@ -9430,6 +9450,171 @@ export class DatabaseStorage implements IStorage {
         totalNoncashValue: fmt(totalNoncash),
         meetsGeneralRule,
         meetsSpecialRule,
+      },
+    };
+  }
+
+  // Schedule O (Form 990) - Supplemental Information
+  async getScheduleOData(organizationId: number, taxYear: number) {
+    const form990 = await this.getForm990Data(organizationId, taxYear);
+    const org = await this.getOrganization(organizationId);
+    const orgPrograms = await this.getPrograms(organizationId);
+
+    const fmtCur = (v: string | undefined | null) => {
+      const n = parseFloat(v || "0");
+      return isNaN(n) ? "$0" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(n));
+    };
+    const safeParseFloat = (v: string | undefined | null) => {
+      const n = parseFloat(v || "0");
+      return isNaN(n) ? 0 : n;
+    };
+
+    const partI = form990?.partI || {} as any;
+    const partII = form990?.partII || {} as any;
+    const revenueDetails = form990?.revenueDetails || [];
+    const expenseDetails = form990?.expenseDetails || [];
+    const grantsData = form990?.grants || [];
+
+    const lineItems: Array<{
+      formPart: string;
+      lineNumber: string;
+      title: string;
+      explanation: string;
+      hasData: boolean;
+      dataContext: string;
+    }> = [];
+
+    const otherRevenue = safeParseFloat(partI.line8);
+    const otherRevenueItems = revenueDetails
+      .filter(r => r.category === 'other')
+      .map(r => `${r.description}: ${fmtCur(r.amount)}`)
+      .join("; ");
+    lineItems.push({
+      formPart: "Part I",
+      lineNumber: "8",
+      title: "Other revenue (describe)",
+      explanation: otherRevenueItems || "",
+      hasData: otherRevenue > 0,
+      dataContext: otherRevenue > 0 ? `Total other revenue: ${fmtCur(partI.line8)}. Items: ${otherRevenueItems || "None itemized"}` : "No other revenue reported.",
+    });
+
+    const grantsPaid = safeParseFloat(partI.line10);
+    const grantsDetail = grantsData
+      .map(g => `${g.grantorName}: ${fmtCur(g.amount)} (${g.purpose})`)
+      .join("; ");
+    lineItems.push({
+      formPart: "Part I",
+      lineNumber: "10",
+      title: "Grants and similar amounts paid",
+      explanation: grantsDetail || "",
+      hasData: grantsPaid > 0,
+      dataContext: grantsPaid > 0 ? `Total grants paid: ${fmtCur(partI.line10)}. Recipients: ${grantsDetail || "None itemized"}` : "No grants paid during this period.",
+    });
+
+    const otherExpenses = safeParseFloat(partI.line16);
+    const otherExpenseItems = expenseDetails
+      .filter(e => e.category === 'other_expenses')
+      .map(e => `${e.description}: ${fmtCur(e.amount)}`)
+      .join("; ");
+    lineItems.push({
+      formPart: "Part I",
+      lineNumber: "16",
+      title: "Other expenses (describe)",
+      explanation: otherExpenseItems || "",
+      hasData: otherExpenses > 0,
+      dataContext: otherExpenses > 0 ? `Total other expenses: ${fmtCur(partI.line16)}. Items: ${otherExpenseItems || "None itemized"}` : "No other expenses reported.",
+    });
+
+    const otherChanges = safeParseFloat(partI.line20);
+    lineItems.push({
+      formPart: "Part I",
+      lineNumber: "20",
+      title: "Other changes in net assets or fund balances (describe)",
+      explanation: "",
+      hasData: otherChanges !== 0,
+      dataContext: otherChanges !== 0 ? `Other changes in net assets: ${fmtCur(partI.line20)}` : "No other changes in net assets reported.",
+    });
+
+    const otherAssetsBOA = safeParseFloat(partII.line24_boa);
+    const otherAssetsEOY = safeParseFloat(partII.line24_eoy);
+    lineItems.push({
+      formPart: "Part II",
+      lineNumber: "24",
+      title: "Other assets (describe)",
+      explanation: "",
+      hasData: otherAssetsBOA > 0 || otherAssetsEOY > 0,
+      dataContext: (otherAssetsBOA > 0 || otherAssetsEOY > 0) ? `Other assets - Beginning: ${fmtCur(partII.line24_boa)}, End: ${fmtCur(partII.line24_eoy)}` : "No other assets reported.",
+    });
+
+    const liabilitiesBOA = safeParseFloat(partII.line26_boa);
+    const liabilitiesEOY = safeParseFloat(partII.line26_eoy);
+    lineItems.push({
+      formPart: "Part II",
+      lineNumber: "26",
+      title: "Total liabilities (describe)",
+      explanation: "",
+      hasData: liabilitiesBOA > 0 || liabilitiesEOY > 0,
+      dataContext: (liabilitiesBOA > 0 || liabilitiesEOY > 0) ? `Total liabilities - Beginning: ${fmtCur(partII.line26_boa)}, End: ${fmtCur(partII.line26_eoy)}` : "No liabilities reported.",
+    });
+
+    const programDescriptions = orgPrograms.map(p => `${p.name}: ${p.description || "No description"}`).join("; ");
+    lineItems.push({
+      formPart: "Part III",
+      lineNumber: "31",
+      title: "Other program services (describe)",
+      explanation: "",
+      hasData: orgPrograms.length > 0,
+      dataContext: orgPrograms.length > 0 ? `Programs: ${programDescriptions}` : "No program services defined.",
+    });
+
+    lineItems.push({
+      formPart: "Part V",
+      lineNumber: "33",
+      title: "Did the organization engage in any significant activity not previously reported to the IRS?",
+      explanation: "",
+      hasData: false,
+      dataContext: "Requires manual response - indicate Yes/No and describe any new significant activities.",
+    });
+
+    lineItems.push({
+      formPart: "Part V",
+      lineNumber: "34",
+      title: "Were any significant changes made to the organizing or governing documents?",
+      explanation: "",
+      hasData: false,
+      dataContext: "Requires manual response - indicate Yes/No and describe any changes to organizing or governing documents.",
+    });
+
+    lineItems.push({
+      formPart: "Part V",
+      lineNumber: "35b",
+      title: "If 'No' to line 35a, explain why the organization did not report unrelated business gross income of $1,000 or more",
+      explanation: "",
+      hasData: false,
+      dataContext: "If the organization had unrelated business gross income of $1,000 or more but did not file Form 990-T, explain why.",
+    });
+
+    lineItems.push({
+      formPart: "Part V",
+      lineNumber: "44d",
+      title: "If 'No' to line 44c, explain",
+      explanation: "",
+      hasData: false,
+      dataContext: "If the organization did not maintain required records or file required returns, explain why.",
+    });
+
+    const itemsWithExplanations = lineItems.filter(i => i.explanation.trim().length > 0).length;
+    const itemsNeedingAttention = lineItems.filter(i => i.hasData && i.explanation.trim().length === 0).length;
+
+    return {
+      organizationName: form990.organizationName,
+      ein: form990.ein,
+      taxYear,
+      lineItems,
+      summary: {
+        totalLineItems: lineItems.length,
+        itemsWithExplanations,
+        itemsNeedingAttention,
       },
     };
   }

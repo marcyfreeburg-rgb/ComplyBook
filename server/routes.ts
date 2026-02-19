@@ -14145,6 +14145,207 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Schedule O (Form 990) - Supplemental Information
+  app.get("/api/reports/form-990-schedule-o/:organizationId/:taxYear", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const taxYear = parseInt(req.params.taxYear);
+
+      if (isNaN(organizationId) || isNaN(taxYear)) {
+        return res.status(400).json({ message: "Invalid organization ID or tax year" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const report = await storage.getScheduleOData(organizationId, taxYear);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating Schedule O report:", error);
+      res.status(500).json({ message: "Failed to generate Schedule O report" });
+    }
+  });
+
+  // Schedule O AI Narrative Generation (rate limited per user: max 20 requests per minute)
+  const scheduleOAIRateLimit = new Map<string, { count: number; resetTime: number }>();
+  app.post("/api/form-990-schedule-o/generate-narrative", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const now = Date.now();
+      const userLimit = scheduleOAIRateLimit.get(userId);
+      if (userLimit && now < userLimit.resetTime) {
+        if (userLimit.count >= 20) {
+          return res.status(429).json({ message: "Rate limit exceeded. Please wait before generating more narratives." });
+        }
+        userLimit.count++;
+      } else {
+        scheduleOAIRateLimit.set(userId, { count: 1, resetTime: now + 60000 });
+      }
+
+      const { organizationId, lineNumber, formPart, taxYear, dataContext, customContext } = req.body;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "Organization ID is required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const isReplitEnvironment = !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+      const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+
+      if (!isReplitEnvironment && !hasOpenAIKey) {
+        return res.status(503).json({ 
+          message: "AI features are not available. Please configure OpenAI API key." 
+        });
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = isReplitEnvironment 
+        ? new OpenAI({
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+            apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+          })
+        : new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
+          });
+
+      const form990Data = await storage.getForm990Data(organizationId, taxYear || new Date().getFullYear() - 1);
+      const programs = await storage.getPrograms(organizationId);
+
+      const orgContext = `
+Organization: ${organization.name}
+Type: ${organization.organizationType || "nonprofit"}
+Tax Year: ${taxYear || new Date().getFullYear() - 1}
+Total Revenue: $${form990Data?.partI?.line9 || "0"}
+Total Expenses: $${form990Data?.partI?.line17 || "0"}
+${programs && programs.length > 0 ? `Programs: ${programs.map(p => `${p.name} - ${p.description || ""}`).join("; ")}` : ""}
+Data Context: ${dataContext || ""}
+${customContext ? `Additional Context from User: ${customContext}` : ""}
+`;
+
+      const systemPrompt = `You are an expert nonprofit compliance writer specializing in IRS Form 990/990-EZ Schedule O preparation.
+Schedule O provides supplemental information and narrative explanations for specific line items on Form 990 or 990-EZ.
+Write clear, professional, factual narrative explanations that are appropriate for IRS filing.
+The explanations should be concise yet thorough, using specific dollar amounts and details from the data provided.
+Always begin the explanation by identifying the form part and line number being explained (e.g., "Form 990-EZ, Part I, Line 16 - Other Expenses:").
+Do not include any information that is not supported by the data context provided.`;
+
+      let userPrompt = "";
+
+      switch (`${formPart}-${lineNumber}`) {
+        case "Part I-8":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part I, Line 8 (Other Revenue).
+${orgContext}
+Describe the types and amounts of other revenue received. Be specific about each source. If there is no data, write a brief statement that no other revenue was reported.`;
+          break;
+
+        case "Part I-10":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part I, Line 10 (Grants and Similar Amounts Paid).
+${orgContext}
+List each recipient of grants or similar payments, including the amount and purpose. If there is no data, write a brief statement that no grants were paid.`;
+          break;
+
+        case "Part I-16":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part I, Line 16 (Other Expenses).
+${orgContext}
+Itemize and describe the types and amounts of other expenses. Group similar expenses where appropriate. If there is no data, write a brief statement that no other expenses were reported.`;
+          break;
+
+        case "Part I-20":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part I, Line 20 (Other Changes in Net Assets or Fund Balances).
+${orgContext}
+Explain any changes in net assets not accounted for in the revenue and expense sections. Common items include unrealized gains/losses, prior period adjustments, or reclassifications.`;
+          break;
+
+        case "Part II-24":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part II, Line 24 (Other Assets).
+${orgContext}
+Describe the types and values of other assets held by the organization at the beginning and end of year.`;
+          break;
+
+        case "Part II-26":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part II, Line 26 (Total Liabilities).
+${orgContext}
+Describe the types and amounts of liabilities, including any mortgages, notes payable, accounts payable, or other obligations.`;
+          break;
+
+        case "Part III-31":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part III, Line 31 (Other Program Services).
+${orgContext}
+Describe additional program services the organization provides, including the number of people served, specific activities, and measurable outcomes where possible.`;
+          break;
+
+        case "Part V-33":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part V, Line 33.
+${orgContext}
+This line asks: "Did the organization engage in any significant activity not previously reported to the IRS?" Write an appropriate response. If there is nothing to report, indicate that the organization did not engage in any new significant activities during the tax year.`;
+          break;
+
+        case "Part V-34":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part V, Line 34.
+${orgContext}
+This line asks: "Were any significant changes made to the organizing or governing documents?" Write an appropriate response. If there is nothing to report, indicate that no significant changes were made.`;
+          break;
+
+        case "Part V-35b":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part V, Line 35b.
+${orgContext}
+This line asks why the organization did not report unrelated business gross income of $1,000 or more on Form 990-T. Write an appropriate explanation.`;
+          break;
+
+        case "Part V-44d":
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, Part V, Line 44d.
+${orgContext}
+This line relates to maintaining required records and filing required returns. Write an appropriate explanation if there are compliance gaps.`;
+          break;
+
+        default:
+          userPrompt = `Write a Schedule O explanation for Form 990-EZ, ${formPart}, Line ${lineNumber}.
+${orgContext}
+Provide a clear, factual narrative explanation for this line item based on the organization's data.`;
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        max_completion_tokens: 1000,
+      });
+
+      const narrative = completion.choices[0]?.message?.content || "";
+
+      await storage.createAuditLog({
+        organizationId,
+        userId,
+        action: "ai_schedule_o_narrative_generated",
+        entityType: "form990_schedule_o",
+        entityId: `${formPart}_line${lineNumber}`,
+        oldValues: null,
+        newValues: JSON.stringify({ formPart, lineNumber, taxYear }),
+        ipAddress: req.ip || null,
+        userAgent: req.headers["user-agent"] || null,
+      });
+
+      res.json({ narrative, formPart, lineNumber });
+    } catch (error: any) {
+      console.error("Error generating Schedule O narrative:", error);
+      res.status(500).json({ message: error.message || "Failed to generate narrative" });
+    }
+  });
+
   // Form 990 AI Narrative Builder
   app.post("/api/form-990/generate-narrative", isAuthenticated, async (req: any, res: Response) => {
     try {
