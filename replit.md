@@ -118,6 +118,15 @@ The app auto-detects which database to use in `server/db.ts`:
 -   Document title updates on navigation
 -   Semantic landmarks: role="banner" on header, role="main" on main content area
 
+### NIST SP 800-218 (SSDF) Compliance
+-   Centralized security policy module (`server/securityPolicy.ts`) codifying all security settings
+-   NIST 800-53 control mapping with 20 implemented controls (AC-2, AC-3, AC-7, AC-12, AU-2, AU-3, AU-6, AU-9, AU-11, IA-2, IR-4, IR-5, RA-5, SC-5, SC-7, SC-8, SC-13, SC-28, SI-2, SI-10)
+-   Programmatic compliance report generation via `/api/security/compliance-report`
+-   Software Bill of Materials (SBOM) generation in CycloneDX 1.5 format via `/api/security/sbom`
+-   Security policy API endpoint via `/api/security/policy`
+-   Vulnerability scanner sends email alerts via SendGrid when critical/high issues are found (`server/vulnerabilityScanner.ts` → `server/securityAlerting.ts`)
+-   Security monitoring UI includes Compliance tab with control status, header validation, SBOM download, and policy summary
+
 ### Important Security Notes
 -   `STRIPE_WEBHOOK_SECRET` must be configured in all environments or Stripe webhook processing will fail with 500 errors
 -   Plaid webhook verification requires valid Plaid API credentials (`PLAID_CLIENT_ID`, `PLAID_SECRET`) to fetch verification keys

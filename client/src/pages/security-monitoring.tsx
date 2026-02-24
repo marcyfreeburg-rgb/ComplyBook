@@ -420,6 +420,10 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
             <Shield className="h-4 w-4 mr-2" />
             Access Control
           </TabsTrigger>
+          <TabsTrigger value="compliance" data-testid="tab-compliance">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Compliance
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="events" className="space-y-4">
@@ -1002,7 +1006,236 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
             </Card>
           </div>
         </TabsContent>
+
+        <TabsContent value="compliance" className="space-y-4">
+          <ComplianceTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function ComplianceTab() {
+  const { toast } = useToast();
+
+  const { data: complianceReport, isLoading: complianceLoading } = useQuery<{
+    timestamp: string;
+    framework: string;
+    overallStatus: string;
+    controlsImplemented: number;
+    controlsTotal: number;
+    compliancePercentage: number;
+    headerValidation: Record<string, { expected: string; status: string }>;
+    controls: Record<string, { status: string; description: string }>;
+    recommendations: string[];
+  }>({
+    queryKey: ['/api/security/compliance-report'],
+  });
+
+  const { data: securityPolicy, isLoading: policyLoading } = useQuery<{
+    framework: string;
+    version: string;
+    lastUpdated: string;
+    authentication: any;
+    authorization: any;
+    encryption: any;
+    rateLimiting: any;
+    auditLogging: any;
+    vulnerabilityManagement: any;
+    incidentResponse: any;
+  }>({
+    queryKey: ['/api/security/policy'],
+  });
+
+  const handleDownloadSBOM = async () => {
+    try {
+      const response = await fetch('/api/security/sbom?download=true', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to download SBOM');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'complybook-sbom.cdx.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "SBOM Downloaded", description: "CycloneDX SBOM has been downloaded." });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to download SBOM", variant: "destructive" });
+    }
+  };
+
+  if (complianceLoading || policyLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Framework</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold" data-testid="text-framework">{complianceReport?.framework || 'N/A'}</div>
+            <p className="text-xs text-muted-foreground">Security development framework</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Compliance Status</CardTitle>
+            {complianceReport?.overallStatus === 'compliant' ? (
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="text-compliance-percentage">
+              {complianceReport?.compliancePercentage || 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {complianceReport?.controlsImplemented}/{complianceReport?.controlsTotal} controls implemented
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">SBOM</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleDownloadSBOM}
+              variant="outline"
+              className="w-full"
+              data-testid="button-download-sbom"
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Download CycloneDX SBOM
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">Software Bill of Materials</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {complianceReport?.recommendations && complianceReport.recommendations.length > 0 && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Recommendations</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc list-inside space-y-1 mt-2">
+              {complianceReport.recommendations.map((rec, i) => (
+                <li key={i} className="text-sm" data-testid={`text-recommendation-${i}`}>{rec}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>NIST 800-53 Control Implementation</CardTitle>
+          <CardDescription>Status of implemented security controls</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {complianceReport?.controls && Object.entries(complianceReport.controls).map(([controlId, control]) => (
+              <div key={controlId} className="flex items-center justify-between gap-3 p-3 rounded-lg border" data-testid={`card-control-${controlId}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Badge variant="outline" className="shrink-0" data-testid={`badge-control-id-${controlId}`}>
+                    {controlId}
+                  </Badge>
+                  <span className="text-sm truncate" data-testid={`text-control-desc-${controlId}`}>{control.description}</span>
+                </div>
+                <Badge
+                  variant={control.status === 'implemented' ? 'default' : 'destructive'}
+                  className="shrink-0"
+                  data-testid={`badge-control-status-${controlId}`}
+                >
+                  {control.status === 'implemented' ? (
+                    <><CheckCircle className="h-3 w-3 mr-1" /> Implemented</>
+                  ) : (
+                    <><XCircle className="h-3 w-3 mr-1" /> Gap</>
+                  )}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Security Headers</CardTitle>
+          <CardDescription>HTTP security header validation results</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {complianceReport?.headerValidation && Object.entries(complianceReport.headerValidation).map(([header, validation]) => (
+              <div key={header} className="flex items-center justify-between gap-3 p-2 rounded border" data-testid={`card-header-${header}`}>
+                <code className="text-sm font-mono">{header}</code>
+                <Badge variant={validation.status === 'pass' ? 'default' : 'destructive'} data-testid={`badge-header-status-${header}`}>
+                  {validation.status === 'pass' ? 'Active' : 'Missing'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {securityPolicy && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Security Policy Summary</CardTitle>
+            <CardDescription>
+              Version {securityPolicy.version} (Last updated: {securityPolicy.lastUpdated})
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Authentication</h4>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p data-testid="text-auth-provider">Provider: {securityPolicy.authentication.provider}</p>
+                  <p data-testid="text-auth-mfa">MFA: {securityPolicy.authentication.mfaSupported ? 'Supported' : 'Not supported'} ({securityPolicy.authentication.mfaAlgorithm})</p>
+                  <p data-testid="text-auth-csrf">CSRF: {securityPolicy.authentication.csrfProtection}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Encryption</h4>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p data-testid="text-enc-algorithm">At Rest: {securityPolicy.encryption.atRest.algorithm}</p>
+                  <p data-testid="text-enc-transit">In Transit: {securityPolicy.encryption.inTransit.protocol}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Audit Logging</h4>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p data-testid="text-audit-tamper">Tamper-Evident: {securityPolicy.auditLogging.tamperEvident ? 'Yes' : 'No'} ({securityPolicy.auditLogging.chainAlgorithm})</p>
+                  <p data-testid="text-audit-retention">Retention: {securityPolicy.auditLogging.retentionPolicy.active} days active, {Math.round(securityPolicy.auditLogging.retentionPolicy.archival / 365)} years archival</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Vulnerability Management</h4>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p data-testid="text-vuln-scanning">Scanning: {securityPolicy.vulnerabilityManagement.dependencyScanning}</p>
+                  <p data-testid="text-vuln-alerting">Alerting: {securityPolicy.vulnerabilityManagement.alerting}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

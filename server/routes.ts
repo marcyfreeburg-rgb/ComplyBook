@@ -12144,6 +12144,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/security/compliance-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to view the compliance report" });
+      }
+      const { generateComplianceReport } = await import('./securityPolicy');
+      const report = generateComplianceReport();
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating compliance report:", error);
+      res.status(500).json({ message: "Failed to generate compliance report" });
+    }
+  });
+
+  app.get('/api/security/policy', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to view security policies" });
+      }
+      const { SECURITY_POLICY } = await import('./securityPolicy');
+      res.json(SECURITY_POLICY);
+    } catch (error) {
+      console.error("Error fetching security policy:", error);
+      res.status(500).json({ message: "Failed to fetch security policy" });
+    }
+  });
+
+  app.get('/api/security/sbom', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizations = await storage.getOrganizations(userId);
+      const isAdminOrOwner = organizations.some(org => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) {
+        return res.status(403).json({ message: "You don't have permission to view the SBOM" });
+      }
+      const { generateSBOM } = await import('./securityPolicy');
+      const sbom = generateSBOM();
+      if (req.query.download === 'true') {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="complybook-sbom.cdx.json"');
+      }
+      res.json(sbom);
+    } catch (error) {
+      console.error("Error generating SBOM:", error);
+      res.status(500).json({ message: "Failed to generate SBOM" });
+    }
+  });
+
   // MFA enforcement endpoints (NIST 800-53 IA-2(1), IA-2(2))
   // Use isAuthenticatedAllowPendingMfa to allow users in MFA setup flow to access this
   app.get('/api/security/mfa/status', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
