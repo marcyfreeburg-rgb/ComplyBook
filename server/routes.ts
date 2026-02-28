@@ -18376,9 +18376,9 @@ Keep the response approximately 100-150 words.`;
             }
           }
 
-          if (form.settings?.autoThankYou && respondentEmail) {
-            const subject = form.settings.thankYouEmailSubject || `Thank you for completing ${form.title}`;
-            const body = form.settings.thankYouEmailBody || '';
+          if (respondentEmail && form.settings?.autoThankYou !== false) {
+            const subject = form.settings?.thankYouEmailSubject || `Thank you for completing ${form.title}`;
+            const body = form.settings?.thankYouEmailBody || '';
             try {
               await sendFormThankYouEmail({
                 to: respondentEmail,

@@ -1,0 +1,49 @@
+8:03:29 PM [express] GET /api/public/forms/b5cc8611ff12bd096041afa2d840c035 304 in 44ms
+8:03:29 PM [express] GET /api/auth/user 401 in 1ms
+[GET]
+complybook.net/sw.js clientIP="216.147.121.40" requestID="b8e43970-7368-4a11" responseTimeMS=6 responseBytes=2243 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.121.40" requestID="cff8932c-bfa5-44ce" responseTimeMS=5 responseBytes=2416 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/f/b5cc8611ff12bd096041afa2d840c035 clientIP="216.147.121.40" requestID="dce91813-9922-4b9a" responseTimeMS=3 responseBytes=1226 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/public/forms/b5cc8611ff12bd096041afa2d840c035 clientIP="216.147.121.40" requestID="dc2f6262-1ad7-437d" responseTimeMS=13 responseBytes=1140 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.121.40" requestID="ae589957-79ce-4e8a" responseTimeMS=5 responseBytes=1289 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.121.40" requestID="dca6065e-6023-4ee2" responseTimeMS=2 responseBytes=1256 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-6xhQHhsj.css clientIP="216.147.121.40" requestID="f4fcda17-0777-4e99" responseTimeMS=3 responseBytes=1256 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CKwCgCWY.js clientIP="216.147.121.40" requestID="11985483-c4eb-4e34" responseTimeMS=2 responseBytes=1257 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+8:03:32 PM [express] GET /api/public/forms/b5cc8611ff12bd096041afa2d840c035 304 in 12ms
+8:03:32 PM [express] GET /api/auth/user 401 in 1ms
+[GET]
+complybook.net/sw.js clientIP="216.147.121.40" requestID="f69173e9-15ff-4e68" responseTimeMS=3 responseBytes=1081 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.121.40" requestID="8815c5d6-083e-42cd" responseTimeMS=2 responseBytes=1254 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+==> Detected service running on port 10000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+[GET]
+complybook.net/f/b5cc8611ff12bd096041afa2d840c035 clientIP="175.44.42.114" requestID="436ba31e-2ea5-4de6" responseTimeMS=6 responseBytes=2008 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+[GET]
+complybook.net/f/b5cc8611ff12bd096041afa2d840c035 clientIP="216.147.121.40" requestID="fc30c3fb-6541-47b0" responseTimeMS=4 responseBytes=2008 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-CKwCgCWY.js clientIP="216.147.121.40" requestID="e0ffc90f-d457-4365" responseTimeMS=190 responseBytes=970203 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/assets/index-6xhQHhsj.css clientIP="216.147.121.40" requestID="52d475ea-d258-4982" responseTimeMS=7 responseBytes=18132 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/public/forms/b5cc8611ff12bd096041afa2d840c035 clientIP="216.147.121.40" requestID="57b8cf04-1c74-4a59" responseTimeMS=42 responseBytes=1140 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.121.40" requestID="15d23da5-713b-45e2" responseTimeMS=2 responseBytes=1256 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Menu
+[GET]
+complybook.net/api/auth/user clientIP="216.147.121.40" requestID="cb8063be-128b-451e" responseTimeMS=2 responseBytes=1289 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+8:07:19 PM [express] GET /api/auth/user 401 in 1ms
+8:07:19 PM [express] GET /api/public/forms/b5cc8611ff12bd096041afa2d840c035 304 in 40ms
+[GET]
+complybook.net/sw.js clientIP="216.147.121.40" requestID="0425d09f-4e4f-456c" responseTimeMS=4 responseBytes=2416 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/public/forms/b5cc8611ff12bd096041afa2d840c035/submit clientIP="216.147.121.40" requestID="b07869d4-76f5-4377" responseTimeMS=48 responseBytes=1313 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+8:07:41 PM [express] POST /api/public/forms/b5cc8611ff12bd096041afa2d840c035/submit 201 in 38ms
+[Email] Form submission notification sent to tech@jandmsolutions.com for form "Contact Us For a Consultation"
