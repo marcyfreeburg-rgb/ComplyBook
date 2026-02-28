@@ -10808,8 +10808,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFormResponse(response: InsertFormResponse): Promise<FormResponse> {
-    const [newResponse] = await db.insert(formResponses).values(response).returning();
-    return newResponse;
+    try {
+      const [newResponse] = await db.insert(formResponses).values(response).returning();
+      return newResponse;
+    } catch (error: any) {
+      if (error?.code === '23505' && error?.constraint === 'form_responses_pkey') {
+        await db.execute(sql`SELECT setval('form_responses_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM form_responses), false)`);
+        const [newResponse] = await db.insert(formResponses).values(response).returning();
+        return newResponse;
+      }
+      throw error;
+    }
   }
 
   async deleteFormResponse(id: number): Promise<void> {
