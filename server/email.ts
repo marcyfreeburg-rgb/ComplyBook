@@ -1550,3 +1550,154 @@ export async function sendNewUserNotificationEmail({
   await client.send(msg);
   console.log(`[Email] New user notification sent to ${notifyEmail} for user ${userEmail}`);
 }
+
+interface FormSubmissionNotificationParams {
+  to: string;
+  formTitle: string;
+  organizationName: string;
+  respondentName?: string;
+  respondentEmail?: string;
+  answers: Record<string, any>;
+  questions: Array<{ id: number; question: string }>;
+  branding?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    footer?: string;
+  };
+}
+
+export async function sendFormSubmissionNotificationEmail({
+  to,
+  formTitle,
+  organizationName,
+  respondentName,
+  respondentEmail,
+  answers,
+  questions,
+  branding,
+}: FormSubmissionNotificationParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const primaryColor = branding?.primaryColor || '#0070f3';
+  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+  const answersHtml = questions.map(q => {
+    const answer = answers[q.id];
+    const displayAnswer = Array.isArray(answer) ? answer.join(', ') : (answer ?? '—');
+    return `<tr>
+      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #374151; width: 40%; vertical-align: top;">${q.question}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">${displayAnswer}</td>
+    </tr>`;
+  }).join('');
+
+  const respondentInfo = respondentName || respondentEmail
+    ? `<p style="color: #4b5563; font-size: 14px; margin: 0 0 16px 0;">Submitted by: <strong>${respondentName || ''}${respondentName && respondentEmail ? ' — ' : ''}${respondentEmail || ''}</strong></p>`
+    : '';
+
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: `New Response: ${formTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <tr><td style="background-color: ${primaryColor}; padding: 24px 40px; text-align: center;">
+                  <h2 style="color: white; margin: 0; font-size: 20px;">New Form Response</h2>
+                </td></tr>
+                <tr><td style="padding: 32px 40px;">
+                  <h3 style="color: #111827; margin: 0 0 8px 0; font-size: 18px;">${formTitle}</h3>
+                  ${respondentInfo}
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; margin-top: 16px;">
+                    ${answersHtml}
+                  </table>
+                </td></tr>
+                <tr><td style="padding: 20px 40px 32px; text-align: center;">
+                  <p style="color: #6c757d; font-size: 12px; margin: 0;">This is an automated notification from ${organizationName}.</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+    text: `New form response for "${formTitle}"\n\n${respondentName ? 'Name: ' + respondentName + '\n' : ''}${respondentEmail ? 'Email: ' + respondentEmail + '\n' : ''}\nAnswers:\n${questions.map(q => `${q.question}: ${Array.isArray(answers[q.id]) ? answers[q.id].join(', ') : (answers[q.id] ?? '—')}`).join('\n')}`
+  };
+
+  await client.send(msg);
+  console.log(`[Email] Form submission notification sent to ${to} for form "${formTitle}"`);
+}
+
+interface FormThankYouEmailParams {
+  to: string;
+  recipientName?: string;
+  formTitle: string;
+  organizationName: string;
+  subject: string;
+  body: string;
+  branding?: {
+    primaryColor?: string;
+    accentColor?: string;
+    fontFamily?: string;
+    logoUrl?: string;
+    footer?: string;
+  };
+}
+
+export async function sendFormThankYouEmail({
+  to,
+  recipientName,
+  formTitle,
+  organizationName,
+  subject,
+  body,
+  branding,
+}: FormThankYouEmailParams): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const primaryColor = branding?.primaryColor || '#0070f3';
+  const fontFamily = branding?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  const greeting = recipientName ? `Dear ${recipientName},` : 'Hello,';
+  const bodyHtml = body.replace(/\n/g, '<br>');
+
+  const msg = {
+    to,
+    from: fromEmail,
+    subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="font-family: ${fontFamily}; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <tr><td style="background-color: ${primaryColor}; padding: 24px 40px; text-align: center;">
+                  <h2 style="color: white; margin: 0; font-size: 20px;">${organizationName}</h2>
+                </td></tr>
+                <tr><td style="padding: 32px 40px;">
+                  <p style="color: #374151; font-size: 16px; margin: 0 0 16px 0;">${greeting}</p>
+                  <p style="color: #374151; font-size: 16px; margin: 0 0 24px 0;">Thank you for completing <strong>${formTitle}</strong>.</p>
+                  ${body ? `<div style="color: #4b5563; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;">${bodyHtml}</div>` : ''}
+                </td></tr>
+                <tr><td style="padding: 20px 40px 32px; text-align: center;">
+                  <p style="color: #6c757d; font-size: 12px; margin: 0;">This is an automated message from ${organizationName}.</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+    text: `${greeting}\n\nThank you for completing "${formTitle}".\n\n${body || ''}\n\n— ${organizationName}`
+  };
+
+  await client.send(msg);
+  console.log(`[Email] Thank you email sent to ${to} for form "${formTitle}"`);
+}

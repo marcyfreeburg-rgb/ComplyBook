@@ -15,7 +15,7 @@ import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching, analyzeC
 import { detectRecurringPatterns, suggestBudget, createBillFromPattern, clearPatternCache } from "./aiPatternDetection";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
-import { sendInvoiceEmail, sendDonationLetterEmail } from "./email";
+import { sendInvoiceEmail, sendDonationLetterEmail, sendFormSubmissionNotificationEmail, sendFormThankYouEmail } from "./email";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey, createInvoiceCheckoutSession } from "./stripeClient";
 import { generateInvoicePdf } from "./invoicePdf";
@@ -18342,6 +18342,60 @@ Keep the response approximately 100-150 words.`;
       res.status(201).json({
         message: form.settings?.confirmationMessage || "Thank you for your response!",
         data: { id: response.id },
+      });
+
+      setImmediate(async () => {
+        try {
+          const organization = await storage.getOrganization(form.organizationId);
+          const brandSettings = await storage.getBrandSettings(form.organizationId);
+          const questions = await storage.getFormQuestions(form.id);
+          const branding = {
+            primaryColor: brandSettings?.primaryColor,
+            accentColor: brandSettings?.accentColor,
+            fontFamily: brandSettings?.fontFamily,
+            logoUrl: brandSettings?.logoUrl,
+          };
+
+          if (form.settings?.notifyOnSubmission) {
+            const notifyEmail = form.settings.notificationEmail || brandSettings?.primaryEmail;
+            if (notifyEmail) {
+              try {
+                await sendFormSubmissionNotificationEmail({
+                  to: notifyEmail,
+                  formTitle: form.title,
+                  organizationName: organization?.name || 'Your Organization',
+                  respondentName,
+                  respondentEmail,
+                  answers,
+                  questions: questions.map(q => ({ id: q.id, question: q.question })),
+                  branding,
+                });
+              } catch (emailError: any) {
+                console.error("[Email] Failed to send form submission notification:", emailError.message);
+              }
+            }
+          }
+
+          if (form.settings?.autoThankYou && respondentEmail) {
+            const subject = form.settings.thankYouEmailSubject || `Thank you for completing ${form.title}`;
+            const body = form.settings.thankYouEmailBody || '';
+            try {
+              await sendFormThankYouEmail({
+                to: respondentEmail,
+                recipientName: respondentName,
+                formTitle: form.title,
+                organizationName: organization?.name || 'Your Organization',
+                subject,
+                body,
+                branding,
+              });
+            } catch (emailError: any) {
+              console.error("[Email] Failed to send form thank-you email:", emailError.message);
+            }
+          }
+        } catch (bgError: any) {
+          console.error("[Email] Background email processing failed:", bgError.message);
+        }
       });
     } catch (error: any) {
       console.error("Error submitting form response:", error);
