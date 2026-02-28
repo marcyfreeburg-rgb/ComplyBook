@@ -278,28 +278,23 @@ app.use('/api', (req, res, next) => {
 
 // NIST 800-53 SC-7: Boundary Protection - Security Headers
 app.use((req, res, next) => {
-  // Strict-Transport-Security: Force HTTPS for 1 year including subdomains
+  const isPublicFormRoute = req.path.startsWith('/f/') || req.path.startsWith('/api/public/forms/');
+
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  
-  // X-Content-Type-Options: Prevent MIME type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  
-  // X-Frame-Options: Prevent clickjacking attacks
-  res.setHeader('X-Frame-Options', 'DENY');
-  
-  // X-XSS-Protection: Enable browser XSS protection
+
+  if (isPublicFormRoute) {
+    res.removeHeader('X-Frame-Options');
+  } else {
+    res.setHeader('X-Frame-Options', 'DENY');
+  }
+
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
-  // Referrer-Policy: Control referrer information
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  // Permissions-Policy: Restrict browser features
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  
-  // Content-Security-Policy: Comprehensive XSS protection
-  // Note: 'unsafe-inline' and WebSocket support needed for Vite in development
-  // Plaid CDN and iframe support required for bank integration
+
   const isDevelopment = process.env.NODE_ENV === 'development';
+  const frameAncestors = isPublicFormRoute ? "frame-ancestors *" : "frame-ancestors 'none'";
   const csp = [
     "default-src 'self'",
     isDevelopment 
@@ -314,7 +309,7 @@ app.use((req, res, next) => {
       ? "connect-src 'self' ws: wss: https://replit.com https://*.replit.com https://plaid.com https://*.plaid.com https://sandbox.plaid.com https://development.plaid.com https://production.plaid.com"
       : "connect-src 'self' https://replit.com https://*.replit.com https://plaid.com https://*.plaid.com https://sandbox.plaid.com https://development.plaid.com https://production.plaid.com",
     "frame-src 'self' https://cdn.plaid.com https://*.plaid.com",
-    "frame-ancestors 'none'",
+    frameAncestors,
     "base-uri 'self'",
     "form-action 'self'",
   ].join('; ');
