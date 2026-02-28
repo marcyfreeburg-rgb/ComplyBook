@@ -1,0 +1,73 @@
+[GET]
+complybook.net/ clientIP="216.147.121.40" requestID="cb355b3e-db49-4af9" responseTimeMS=2 responseBytes=2036 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/auth/user clientIP="216.147.121.40" requestID="363c9b08-e3a8-4661" responseTimeMS=5 responseBytes=1289 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-512.png clientIP="216.147.121.40" requestID="33f17e60-c2d4-4910" responseTimeMS=77 responseBytes=231949 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/icon-192.png clientIP="216.147.121.40" requestID="6a383895-721e-423e" responseTimeMS=17 responseBytes=231949 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/public/forms/b5cc8611ff12bd096041afa2d840c035 clientIP="216.147.121.40" requestID="b5f99d3c-8ee3-4c6d" responseTimeMS=68 responseBytes=1968 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/sw.js clientIP="216.147.121.40" requestID="d7e843c9-93e7-482b" responseTimeMS=4 responseBytes=2416 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/uploads/logos/org_167_1765909722258.jpg clientIP="216.147.121.40" requestID="9dbd3420-2288-4d92" responseTimeMS=4 responseBytes=67685 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+[GET]
+complybook.net/manifest.json clientIP="216.147.121.40" requestID="21bbe7f7-366a-480c" responseTimeMS=6 responseBytes=1763 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+7:35:30 PM [express] GET /api/auth/user 401 in 3ms
+7:35:30 PM [express] GET /api/public/forms/b5cc8611ff12bd096041afa2d840c035 200 in 64ms
+Error submitting form response: error: duplicate key value violates unique constraint "form_responses_pkey"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+[POST]
+complybook.net/api/public/forms/b5cc8611ff12bd096041afa2d840c035/submit clientIP="216.147.121.40" requestID="2fb52a5d-a254-4d87" responseTimeMS=139 responseBytes=1270 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.createFormResponse (file:///opt/render/project/src/dist/index.js:11330:31)
+    at async file:///opt/render/project/src/dist/index.js:43341:24 {
+  length: 207,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (id)=(5) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'form_responses',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'form_responses_pkey',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+7:35:54 PM [express] POST /api/public/forms/b5cc8611ff12bd096041afa2d840c035/submit 500 in 101ms
+[POST]
+complybook.net/api/public/forms/b5cc8611ff12bd096041afa2d840c035/submit clientIP="216.147.121.40" requestID="830edcc3-b331-4662" responseTimeMS=47 responseBytes=1270 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+Error submitting form response: error: duplicate key value violates unique constraint "form_responses_pkey"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.createFormResponse (file:///opt/render/project/src/dist/index.js:11330:31)
+    at async file:///opt/render/project/src/dist/index.js:43341:24 {
+  length: 207,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (id)=(6) already exists.',
+  hint: undefined,
+Menu
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'form_responses',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'form_responses_pkey',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+7:36:01 PM [express] POST /api/public/forms/b5cc8611ff12bd096041afa2d840c035/submit 500 in 43ms

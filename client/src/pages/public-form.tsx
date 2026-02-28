@@ -269,7 +269,7 @@ export default function PublicForm({ formType }: PublicFormProps) {
       return;
     }
     submitMutation.mutate({
-      answers,
+      answers: answers || {},
       respondentEmail: respondentEmail || undefined,
       respondentName: respondentName || undefined,
     });

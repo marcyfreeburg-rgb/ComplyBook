@@ -18321,6 +18321,10 @@ Keep the response approximately 100-150 words.`;
 
       const { answers, respondentEmail, respondentName } = req.body;
 
+      if (!answers || typeof answers !== 'object') {
+        return res.status(400).json({ message: "Answers are required" });
+      }
+
       const response = await storage.createFormResponse({
         formId: form.id,
         answers,
