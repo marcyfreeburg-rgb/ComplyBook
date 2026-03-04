@@ -286,7 +286,7 @@ function InteractiveDemo() {
       </Tabs>
       
       <div className="bg-muted/30 border-t p-4 text-center">
-        <Link href="/login">
+        <Link href="/login?signup=true">
           <Button data-testid="button-try-demo">
             Try It Free
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -319,7 +319,7 @@ export default function Landing() {
                 Log In
               </Button>
             </Link>
-            <Link href="/login">
+            <Link href="/login?signup=true">
               <Button data-testid="button-signup-header">
                 Start Free Trial
               </Button>
@@ -345,7 +345,7 @@ export default function Landing() {
             Built for nonprofits, government contractors, and grantees who need Form 990, SF-425, DCAA compliance, and fund accounting—without stitching together five tools.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/login">
+            <Link href="/login?signup=true">
               <Button
                 size="lg"
                 data-testid="button-get-started"
@@ -580,7 +580,7 @@ export default function Landing() {
                         </li>
                       )}
                     </ul>
-                    <Link href="/login">
+                    <Link href="/login?signup=true">
                       <Button 
                         variant={isProfessional ? 'default' : 'outline'} 
                         className="w-full"
@@ -616,7 +616,7 @@ export default function Landing() {
             Join 50+ organizations already using ComplyBook to save time, stay compliant, and focus on their mission.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
+            <Link href="/login?signup=true">
               <Button
                 size="lg"
                 data-testid="button-cta-trial"

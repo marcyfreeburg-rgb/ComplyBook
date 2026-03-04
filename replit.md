@@ -46,6 +46,7 @@ The app auto-detects which database to use in `server/db.ts`:
 ### Authentication
 -   **Replit (development):** Replit OIDC authentication (supports Google login)
 -   **Render (production):** Local email/password authentication via `server/replitAuth.ts`
+-   **Self-service registration:** `POST /api/register` endpoint (local auth mode only) allows new users to create accounts with email, password, first name, last name, and optional organization name. Validates password strength (8+ chars, uppercase, lowercase, number), blocks disposable email domains, checks for enterprise invites in `PENDING_ENTERPRISE_INVITES`, auto-creates organization, sends notification email to tech@jandmsolutions.com, and auto-logs in the user after registration. Landing page CTAs link to `/login?signup=true` to show registration form.
 -   Admin accounts are configured in the production database (see user records with `is_admin = true`)
 
 ### Render Environment Variables (Required)

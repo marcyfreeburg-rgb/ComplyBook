@@ -683,6 +683,160 @@ async function setupLocalAuth(app: Express) {
     });
   });
 
+  app.post("/api/register", async (req, res) => {
+    const { email, password, firstName, lastName, organizationName } = req.body;
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('user-agent') || 'unknown';
+
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ message: "Email, password, first name, and last name are required" });
+    }
+
+    const trimmedFirst = (firstName || "").trim();
+    const trimmedLast = (lastName || "").trim();
+    if (!trimmedFirst || !trimmedLast) {
+      return res.status(400).json({ message: "First name and last name cannot be empty" });
+    }
+
+    const emailLower = email.toLowerCase().trim();
+
+    if (isBlockedEmailDomain(emailLower)) {
+      await storage.logSecurityEvent({
+        eventType: 'signup_blocked',
+        severity: 'warning',
+        userId: null,
+        email: emailLower,
+        ipAddress,
+        userAgent,
+        eventData: {
+          authMethod: 'local_registration',
+          reason: 'blocked_email_domain',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      return res.status(400).json({ message: "Registration is not allowed with this email domain. Please use a legitimate email address." });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least one uppercase letter, one lowercase letter, and one number" });
+    }
+
+    try {
+      const existingUser = await storage.getUserByEmail(emailLower);
+      if (existingUser) {
+        return res.status(400).json({ message: "Unable to create account. If you already have an account, please sign in instead." });
+      }
+
+      const userId = `local_user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const hashedPassword = await hashPassword(password);
+
+      let subscriptionTier: 'free' | 'core' | 'professional' | 'growth' | 'enterprise' = 'free';
+      let subscriptionStatus: string | undefined;
+      let subscriptionCurrentPeriodEnd: Date | undefined;
+
+      const invite = PENDING_ENTERPRISE_INVITES[emailLower];
+      if (invite) {
+        subscriptionTier = invite.tier;
+        subscriptionStatus = 'active';
+        subscriptionCurrentPeriodEnd = new Date();
+        subscriptionCurrentPeriodEnd.setMonth(subscriptionCurrentPeriodEnd.getMonth() + invite.durationMonths);
+        console.log(`[Auth] Enterprise invite applied for ${emailLower}: ${invite.tier} tier for ${invite.durationMonths} months`);
+      }
+
+      await storage.upsertLocalUser({
+        id: userId,
+        email: emailLower,
+        passwordHash: hashedPassword,
+        firstName: trimmedFirst,
+        lastName: trimmedLast,
+        role: 'member',
+        subscriptionTier,
+        subscriptionStatus,
+        subscriptionCurrentPeriodEnd,
+      });
+
+      if (organizationName && organizationName.trim()) {
+        try {
+          await storage.createOrganization({
+            name: organizationName.trim(),
+            type: 'nonprofit',
+          }, userId);
+        } catch (orgErr) {
+          console.error(`[Auth] Failed to create organization for ${emailLower}:`, orgErr);
+        }
+      }
+
+      await storage.logSecurityEvent({
+        eventType: 'registration_success',
+        severity: 'info',
+        userId,
+        email: emailLower,
+        ipAddress,
+        userAgent,
+        eventData: {
+          authMethod: 'local_registration',
+          firstName: trimmedFirst,
+          lastName: trimmedLast,
+          organizationName: organizationName?.trim() || null,
+          tier: subscriptionTier,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      const userName = `${trimmedFirst} ${trimmedLast}`;
+      setImmediate(async () => {
+        try {
+          await sendNewUserNotificationEmail({
+            notifyEmail: SIGNUP_NOTIFY_EMAIL,
+            userName,
+            userEmail: emailLower,
+            signupTime: new Date().toLocaleString("en-US", { timeZone: "America/Denver" }),
+          });
+        } catch (err) {
+          console.error("[Auth] Failed to send registration notification email:", (err as Error).message);
+        }
+      });
+
+      const sessionUser = {
+        claims: {
+          sub: userId,
+          email: emailLower,
+          first_name: trimmedFirst,
+          last_name: trimmedLast,
+        },
+        expires_at: Math.floor(Date.now() / 1000) + SESSION_MAX_DURATION / 1000,
+      };
+
+      req.login(sessionUser, (loginErr) => {
+        if (loginErr) {
+          console.error("[Auth] Auto-login after registration failed:", loginErr);
+          return res.json({ success: true, autoLoginFailed: true, message: "Account created successfully. Please sign in." });
+        }
+
+        (req.session as any).mfaVerified = true;
+        (req.session as any).mfaPending = false;
+
+        return res.json({
+          success: true,
+          message: "Account created successfully!",
+          user: {
+            id: userId,
+            email: emailLower,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          },
+        });
+      });
+    } catch (error) {
+      console.error("[Auth] Registration error:", error);
+      return res.status(500).json({ message: "An error occurred during registration. Please try again." });
+    }
+  });
+
   app.get("/api/auth/mode", (_req, res) => {
     res.json({ mode: "local" });
   });
