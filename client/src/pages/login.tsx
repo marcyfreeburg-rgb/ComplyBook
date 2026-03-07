@@ -19,6 +19,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,6 +95,16 @@ export default function Login() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are the same.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -287,6 +298,27 @@ export default function Login() {
                   <PasswordRequirements password={password} />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="reg-confirm-password">Confirm Password</Label>
+                  <Input
+                    id="reg-confirm-password"
+                    type="password"
+                    placeholder="Re-enter your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    data-testid="input-confirm-password"
+                  />
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-destructive">Passwords do not match</p>
+                  )}
+                  {confirmPassword && password === confirmPassword && confirmPassword.length >= 8 && (
+                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <Check className="h-3 w-3" /> Passwords match
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="orgName">Organization Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
                   <Input
                     id="orgName"
@@ -315,6 +347,7 @@ export default function Login() {
                       setView("login");
                       setEmail("");
                       setPassword("");
+                      setConfirmPassword("");
                       setFirstName("");
                       setLastName("");
                       setOrganizationName("");
