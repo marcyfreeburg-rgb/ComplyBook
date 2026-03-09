@@ -1701,3 +1701,48 @@ export async function sendFormThankYouEmail({
   await client.send(msg);
   console.log(`[Email] Thank you email sent to ${to} for form "${formTitle}"`);
 }
+
+export async function sendPasswordResetEmail({
+  to,
+  resetUrl,
+  userName,
+}: {
+  to: string;
+  resetUrl: string;
+  userName: string;
+}): Promise<void> {
+  const { client, fromEmail } = await getUncachableSendGridClient();
+
+  const msg = {
+    to,
+    from: fromEmail,
+    subject: "[ComplyBook] Reset Your Password",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+          <div style="background: #ffffff; border-radius: 8px; padding: 30px; border: 1px solid #e9ecef;">
+            <h2 style="color: #1a365d; margin-top: 0;">Reset Your Password</h2>
+            <p style="color: #495057;">Hi ${userName},</p>
+            <p style="color: #495057;">We received a request to reset your ComplyBook password. Click the button below to choose a new password:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" style="background-color: #1a365d; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Reset Password</a>
+            </div>
+            <p style="color: #6c757d; font-size: 14px;">This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email — your password won't be changed.</p>
+            <p style="color: #6c757d; font-size: 14px;">If the button above doesn't work, copy and paste this link into your browser:</p>
+            <p style="color: #495057; font-size: 12px; word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px;">${resetUrl}</p>
+            <hr style="border: none; border-top: 1px solid #e9ecef; margin: 20px 0;" />
+            <p style="color: #6c757d; font-size: 12px; margin-bottom: 0;">
+              Powered by <a href="https://complybook.net" style="color: #1a365d; text-decoration: none;">ComplyBook</a>
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `Hi ${userName},\n\nWe received a request to reset your ComplyBook password.\n\nClick this link to reset your password: ${resetUrl}\n\nThis link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.\n\n— ComplyBook`
+  };
+
+  await client.send(msg);
+  console.log(`[Email] Password reset email sent to ${to}`);
+}

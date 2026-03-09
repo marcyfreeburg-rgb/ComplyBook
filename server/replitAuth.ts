@@ -10,7 +10,8 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { sendNewUserNotificationEmail } from "./email";
+import { pool } from "./db";
+import { sendNewUserNotificationEmail, sendPasswordResetEmail } from "./email";
 
 const scryptAsync = promisify(scrypt);
 
@@ -834,6 +835,163 @@ async function setupLocalAuth(app: Express) {
     } catch (error) {
       console.error("[Auth] Registration error:", error);
       return res.status(500).json({ message: "An error occurred during registration. Please try again." });
+    }
+  });
+
+  const passwordResetTokens = new Map<string, { email: string; expiresAt: number }>();
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [token, data] of passwordResetTokens) {
+      if (data.expiresAt < now) {
+        passwordResetTokens.delete(token);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  app.post("/api/forgot-password", async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const emailLower = email.toLowerCase().trim();
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('user-agent') || 'unknown';
+
+    try {
+      const user = await storage.getUserByEmail(emailLower);
+
+      if (!user || !user.passwordHash) {
+        await storage.logSecurityEvent({
+          eventType: 'password_reset',
+          severity: 'info',
+          userId: null,
+          email: emailLower,
+          ipAddress,
+          userAgent,
+          eventData: {
+            action: 'request',
+            result: 'email_not_found',
+            timestamp: new Date().toISOString(),
+          },
+        });
+        return res.json({ success: true, message: "If an account exists with that email, a password reset link has been sent." });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      passwordResetTokens.set(token, {
+        email: emailLower,
+        expiresAt: Date.now() + 60 * 60 * 1000,
+      });
+
+      const baseUrl = process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://complybook.net');
+      const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+      const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "there";
+
+      await sendPasswordResetEmail({
+        to: emailLower,
+        resetUrl,
+        userName,
+      });
+
+      await storage.logSecurityEvent({
+        eventType: 'password_reset',
+        severity: 'info',
+        userId: user.id,
+        email: emailLower,
+        ipAddress,
+        userAgent,
+        eventData: {
+          action: 'request',
+          result: 'email_sent',
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      return res.json({ success: true, message: "If an account exists with that email, a password reset link has been sent." });
+    } catch (error) {
+      console.error("[Auth] Forgot password error:", error);
+      return res.json({ success: true, message: "If an account exists with that email, a password reset link has been sent." });
+    }
+  });
+
+  app.post("/api/reset-password", async (req, res) => {
+    const { token, password } = req.body;
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('user-agent') || 'unknown';
+
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token and new password are required" });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least one uppercase letter, one lowercase letter, and one number" });
+    }
+
+    const tokenData = passwordResetTokens.get(token);
+    if (!tokenData) {
+      return res.status(400).json({ message: "This reset link is invalid or has expired. Please request a new one." });
+    }
+
+    if (tokenData.expiresAt < Date.now()) {
+      passwordResetTokens.delete(token);
+      return res.status(400).json({ message: "This reset link has expired. Please request a new one." });
+    }
+
+    try {
+      const user = await storage.getUserByEmail(tokenData.email);
+      if (!user) {
+        passwordResetTokens.delete(token);
+        return res.status(400).json({ message: "Unable to reset password. Please try again." });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      await storage.updateUserPassword(user.id, hashedPassword);
+
+      passwordResetTokens.delete(token);
+
+      for (const [t, data] of passwordResetTokens) {
+        if (data.email === tokenData.email) {
+          passwordResetTokens.delete(t);
+        }
+      }
+
+      try {
+        await pool.query(
+          `DELETE FROM sessions WHERE sess::text LIKE $1`,
+          [`%"sub":"${user.id}"%`]
+        );
+        console.log(`[Auth] Invalidated all sessions for user ${user.id} after password reset`);
+      } catch (sessErr) {
+        console.error("[Auth] Failed to invalidate sessions after password reset:", sessErr);
+      }
+
+      await storage.logSecurityEvent({
+        eventType: 'password_reset',
+        severity: 'info',
+        userId: user.id,
+        email: tokenData.email,
+        ipAddress,
+        userAgent,
+        eventData: {
+          action: 'complete',
+          result: 'success',
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      return res.json({ success: true, message: "Your password has been reset successfully. You can now sign in." });
+    } catch (error) {
+      console.error("[Auth] Reset password error:", error);
+      return res.status(500).json({ message: "An error occurred. Please try again." });
     }
   });
 

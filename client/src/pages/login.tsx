@@ -14,7 +14,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [authMode, setAuthMode] = useState<"replit" | "local" | null>(null);
-  const [view, setView] = useState<"login" | "register">("login");
+  const [view, setView] = useState<"login" | "register" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -22,6 +22,7 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotEmailSent, setForgotEmailSent] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -144,6 +145,32 @@ export default function Login() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await apiRequest("POST", "/api/forgot-password", { email });
+      const data = await response.json();
+
+      if (data.success) {
+        setForgotEmailSent(true);
+        toast({
+          title: "Check your email",
+          description: "If an account exists with that email, we've sent a reset link.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Something went wrong",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (authMode === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -196,7 +223,21 @@ export default function Login() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <Label htmlFor="password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView("forgot");
+                        setPassword("");
+                        setForgotEmailSent(false);
+                      }}
+                      className="text-xs text-primary underline-offset-4 hover:underline"
+                      data-testid="link-forgot-password"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <Input
                     id="password"
                     type="password"
@@ -233,6 +274,75 @@ export default function Login() {
                   </button>
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        ) : view === "forgot" ? (
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl">Reset Password</CardTitle>
+              <CardDescription>
+                {forgotEmailSent
+                  ? "Check your inbox for a password reset link"
+                  : "Enter your email and we'll send you a reset link"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {forgotEmailSent ? (
+                <div className="space-y-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    If an account exists with that email address, you'll receive a password reset link shortly. Check your spam folder if you don't see it.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setView("login");
+                      setForgotEmailSent(false);
+                    }}
+                    data-testid="button-back-to-login"
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">Email</Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      data-testid="input-forgot-email"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isLoading}
+                    data-testid="button-send-reset"
+                  >
+                    {isLoading ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </form>
+              )}
+              {!forgotEmailSent && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Remember your password?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setView("login")}
+                      className="text-primary underline-offset-4 hover:underline font-medium"
+                      data-testid="link-back-to-login-from-forgot"
+                    >
+                      Sign in
+                    </button>
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (

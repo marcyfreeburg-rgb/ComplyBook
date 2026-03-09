@@ -70,6 +70,7 @@ import MfaVerify from "@/pages/mfa-verify";
 import MfaSetupLogin from "@/pages/mfa-setup-login";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
+import ResetPassword from "@/pages/reset-password";
 import GettingStartedNonprofit from "@/pages/getting-started-nonprofit";
 import GettingStartedForprofit from "@/pages/getting-started-forprofit";
 import DonorPortal from "@/pages/donor-portal";
@@ -645,6 +646,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/donor-portal" component={DonorPortal} />
         <Route path="/s/:publicId">
           <PublicForm formType="survey" />
