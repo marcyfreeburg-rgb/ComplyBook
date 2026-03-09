@@ -84,6 +84,7 @@ const PENDING_ENTERPRISE_INVITES: Record<string, { tier: 'enterprise' | 'profess
   "david.u.badger@gmail.com": { tier: "enterprise", durationMonths: 6 },
   "musiclady.cb@gmail.com": { tier: "enterprise", durationMonths: 6 },
   "andilewis51@gmail.com": { tier: "enterprise", durationMonths: 6 },
+  "bburnett@nomadgroup.com": { tier: "enterprise", durationMonths: 6 },
 };
 
 const BLOCKED_EMAIL_DOMAINS = new Set([
@@ -276,24 +277,25 @@ async function upsertUser(claims: any) {
   if (isNewUser && claims["email"]) {
     const email = claims["email"].toLowerCase();
     const invite = PENDING_ENTERPRISE_INVITES[email];
-    if (invite) {
-      try {
-        const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + invite.durationMonths);
-        await storage.upsertUser({
-          id: claims["sub"],
-          email: claims["email"],
-          firstName: claims["first_name"],
-          lastName: claims["last_name"],
-          profileImageUrl: claims["profile_image_url"],
-          subscriptionTier: invite.tier,
-          subscriptionStatus: 'active',
-          subscriptionCurrentPeriodEnd: endDate,
-        });
-        console.log(`[Auth] Activated ${invite.tier} account for ${email} (expires ${endDate.toISOString()})`);
-      } catch (err) {
-        console.error(`[Auth] Failed to activate enterprise invite for ${email}:`, (err as Error).message);
-      }
+    const tier = invite?.tier || 'enterprise';
+    const durationMonths = invite?.durationMonths || 6;
+
+    try {
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + durationMonths);
+      await storage.upsertUser({
+        id: claims["sub"],
+        email: claims["email"],
+        firstName: claims["first_name"],
+        lastName: claims["last_name"],
+        profileImageUrl: claims["profile_image_url"],
+        subscriptionTier: tier,
+        subscriptionStatus: 'active',
+        subscriptionCurrentPeriodEnd: endDate,
+      });
+      console.log(`[Auth] Activated ${tier} account for ${email} for ${durationMonths} months (${invite ? 'enterprise invite' : 'default trial'}, expires ${endDate.toISOString()})`);
+    } catch (err) {
+      console.error(`[Auth] Failed to activate trial for ${email}:`, (err as Error).message);
     }
 
     const userName = [claims["first_name"], claims["last_name"]].filter(Boolean).join(" ") || "Unknown";
@@ -735,18 +737,12 @@ async function setupLocalAuth(app: Express) {
       const userId = `local_user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       const hashedPassword = await hashPassword(password);
 
-      let subscriptionTier: 'free' | 'core' | 'professional' | 'growth' | 'enterprise' = 'free';
-      let subscriptionStatus: string | undefined;
-      let subscriptionCurrentPeriodEnd: Date | undefined;
-
       const invite = PENDING_ENTERPRISE_INVITES[emailLower];
-      if (invite) {
-        subscriptionTier = invite.tier;
-        subscriptionStatus = 'active';
-        subscriptionCurrentPeriodEnd = new Date();
-        subscriptionCurrentPeriodEnd.setMonth(subscriptionCurrentPeriodEnd.getMonth() + invite.durationMonths);
-        console.log(`[Auth] Enterprise invite applied for ${emailLower}: ${invite.tier} tier for ${invite.durationMonths} months`);
-      }
+      const subscriptionTier: 'free' | 'core' | 'professional' | 'growth' | 'enterprise' = invite?.tier || 'enterprise';
+      const subscriptionStatus = 'active';
+      const subscriptionCurrentPeriodEnd = new Date();
+      subscriptionCurrentPeriodEnd.setMonth(subscriptionCurrentPeriodEnd.getMonth() + (invite?.durationMonths || 6));
+      console.log(`[Auth] New signup ${emailLower}: ${subscriptionTier} tier for ${invite?.durationMonths || 6} months (${invite ? 'enterprise invite' : 'default trial'})`);
 
       await storage.upsertLocalUser({
         id: userId,
@@ -1096,6 +1092,15 @@ export async function createDefaultAdminUser() {
       id: "local_enterprise_andi",
       firstName: "Andi",
       lastName: "Lewis",
+      tier: "enterprise" as const,
+      durationMonths: 6,
+    },
+    {
+      email: "bburnett@nomadgroup.com",
+      password: "ComplyBook2025!",
+      id: "local_enterprise_bburnett",
+      firstName: "B",
+      lastName: "Burnett",
       tier: "enterprise" as const,
       durationMonths: 6,
     },
