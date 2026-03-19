@@ -85,6 +85,7 @@ const PENDING_ENTERPRISE_INVITES: Record<string, { tier: 'enterprise' | 'profess
   "musiclady.cb@gmail.com": { tier: "enterprise", durationMonths: 6 },
   "andilewis51@gmail.com": { tier: "enterprise", durationMonths: 6 },
   "bburnett@nomadgroup.com": { tier: "enterprise", durationMonths: 6 },
+  "christine@emergentcampus.com": { tier: "enterprise", durationMonths: 6 },
 };
 
 const BLOCKED_EMAIL_DOMAINS = new Set([
@@ -1101,6 +1102,15 @@ export async function createDefaultAdminUser() {
       id: "local_enterprise_bburnett",
       firstName: "B",
       lastName: "Burnett",
+      tier: "enterprise" as const,
+      durationMonths: 6,
+    },
+    {
+      email: "christine@emergentcampus.com",
+      password: "ComplyBook2025!",
+      id: "local_enterprise_christine",
+      firstName: "Christine",
+      lastName: "",
       tier: "enterprise" as const,
       durationMonths: 6,
     },
