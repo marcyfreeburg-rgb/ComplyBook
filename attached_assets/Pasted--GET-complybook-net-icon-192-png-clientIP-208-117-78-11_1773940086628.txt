@@ -1,0 +1,38 @@
+[GET]
+complybook.net/icon-192.png clientIP="208.117.78.118" requestID="21f76d9c-a8ad-43a6" responseTimeMS=3 responseBytes=231776 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15"
+[GET]
+complybook.net/favicon.png clientIP="208.117.78.118" requestID="6f3d6888-5158-4a2b" responseTimeMS=2 responseBytes=1083 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15"
+[GET]
+complybook.net/icon-512.png clientIP="208.117.78.118" requestID="cebc3a6d-0412-424a" responseTimeMS=107 responseBytes=231776 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15"
+[GET]
+complybook.net/assets/COmplybook_1765050943685-CYDp8V7U.png clientIP="208.117.78.118" requestID="406a53e0-caef-49ab" responseTimeMS=3 responseBytes=1083 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15"
+[GET]
+complybook.net/api/auth/mode clientIP="208.117.78.118" requestID="487c7fdf-bdfb-442c" responseTimeMS=2 responseBytes=1106 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15"
+[POST]
+complybook.net/api/register clientIP="208.117.78.118" requestID="13d3eea1-0836-4045" responseTimeMS=801 responseBytes=1151 userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15"
+[Auth] Registration error: error: invalid input value for enum security_event_type: "registration_success"
+    at file:///opt/render/project/src/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///opt/render/project/src/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.logSecurityEvent (file:///opt/render/project/src/dist/index.js:5532:28)
+    at async file:///opt/render/project/src/dist/index.js:26399:7 {
+  length: 159,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+Menu
+  dataType: undefined,
+  constraint: undefined,
+  file: 'enum.c',
+  line: '129',
+  routine: 'enum_in'
+}
+5:04:20 PM [express] POST /api/register 500 in 797ms

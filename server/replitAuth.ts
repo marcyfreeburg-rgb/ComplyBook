@@ -11,7 +11,7 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { sendNewUserNotificationEmail, sendPasswordResetEmail } from "./email";
+import { sendNewUserNotificationEmail, sendPasswordResetEmail, sendBetaWelcomeEmail } from "./email";
 
 const scryptAsync = promisify(scrypt);
 
@@ -768,7 +768,7 @@ async function setupLocalAuth(app: Express) {
       }
 
       await storage.logSecurityEvent({
-        eventType: 'registration_success',
+        eventType: 'login_success',
         severity: 'info',
         userId,
         email: emailLower,
@@ -1128,6 +1128,20 @@ export async function createDefaultAdminUser() {
         });
 
         console.log(`[Auth] Enterprise user created: ${invitee.email} (expires ${endDate.toISOString()})`);
+
+        // Send beta welcome email with login credentials
+        try {
+          const loginUrl = process.env.APP_URL || 'https://complybook.net/login';
+          await sendBetaWelcomeEmail({
+            to: invitee.email,
+            firstName: invitee.firstName,
+            loginUrl,
+            temporaryPassword: invitee.password,
+            trialEndDate: endDate,
+          });
+        } catch (emailErr) {
+          console.error(`[Auth] Failed to send beta welcome email to ${invitee.email}:`, (emailErr as Error).message);
+        }
       } else {
         await storage.updateUser(existingUser.id, {
           subscriptionTier: invitee.tier,

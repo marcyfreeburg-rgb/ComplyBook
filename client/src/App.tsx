@@ -84,9 +84,77 @@ import AdminBugReports from "@/pages/admin-bug-reports";
 import type { Organization } from "@shared/schema";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, X, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { ReportBugButton } from "@/components/report-bug-button";
+
+function getTrialInfo(user: any): { show: boolean; monthsLeft: number; daysLeft: number; urgent: boolean } | null {
+  if (!user) return null;
+  // Only show for enterprise trial users (no Stripe subscription = not a paid plan)
+  if (user.subscriptionTier !== 'enterprise' || !user.subscriptionCurrentPeriodEnd || user.stripeSubscriptionId) return null;
+  const endDate = new Date(user.subscriptionCurrentPeriodEnd);
+  const now = new Date();
+  const msLeft = endDate.getTime() - now.getTime();
+  if (msLeft <= 0) return null; // expired — handled elsewhere
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const monthsLeft = Math.floor(daysLeft / 30);
+  return { show: true, monthsLeft, daysLeft, urgent: daysLeft <= 60 };
+}
+
+function BetaTrialBanner({ user }: { user: any }) {
+  const trial = getTrialInfo(user);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (trial) {
+      const key = `trial-banner-dismissed-${trial.monthsLeft}mo`;
+      if (sessionStorage.getItem(key)) setDismissed(true);
+      else setDismissed(false);
+    }
+  }, [trial?.monthsLeft]);
+
+  if (!trial || dismissed) return null;
+
+  const dismiss = () => {
+    const key = `trial-banner-dismissed-${trial.monthsLeft}mo`;
+    sessionStorage.setItem(key, '1');
+    setDismissed(true);
+  };
+
+  let message: string;
+  if (trial.daysLeft <= 30) {
+    message = `Your ComplyBook Beta access expires in ${trial.daysLeft} day${trial.daysLeft !== 1 ? 's' : ''}. Upgrade to keep all features, or your account will revert to the free plan.`;
+  } else if (trial.daysLeft <= 60) {
+    message = `You have about ${trial.monthsLeft} month${trial.monthsLeft !== 1 ? 's' : ''} left on your free Beta access (${trial.daysLeft} days). Enjoy full features while it lasts!`;
+  } else {
+    message = `You have ${trial.monthsLeft} month${trial.monthsLeft !== 1 ? 's' : ''} of free Beta access remaining (${trial.daysLeft} days). Thank you for being an early tester!`;
+  }
+
+  return (
+    <Alert
+      variant={trial.urgent ? "destructive" : "default"}
+      className="mx-6 mt-4 rounded-md"
+      data-testid="alert-trial-warning"
+    >
+      <Clock className="h-4 w-4" />
+      <AlertDescription className="flex items-center justify-between gap-4 flex-wrap">
+        <span>
+          <strong>Beta Access: </strong>{message}
+        </span>
+        <div className="flex items-center gap-2">
+          <Link href="/pricing">
+            <Button size="sm" variant={trial.urgent ? "secondary" : "default"} data-testid="button-trial-upgrade">
+              View Plans
+            </Button>
+          </Link>
+          <Button size="icon" variant="ghost" onClick={dismiss} aria-label="Dismiss" data-testid="button-trial-dismiss">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 // Organization with user role
 type OrganizationWithRole = Organization & { userRole: string };
@@ -250,6 +318,9 @@ function AuthenticatedApp() {
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Beta Trial Warning Banner */}
+          <BetaTrialBanner user={user} />
           
           <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-8 outline-none" role="main" aria-label="Main content">
             <Switch>
