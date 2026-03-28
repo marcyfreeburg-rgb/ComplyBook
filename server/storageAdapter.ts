@@ -33,7 +33,7 @@ export function getStorageService(): UnifiedStorageService | null {
       type: "replit",
       generateObjectPath: (orgId, entityType, entityId, fileName) => {
         const privateDir = replitStorage.getPrivateObjectDir();
-        const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-_]/g, "_");
+        const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
         const uniqueId = Date.now().toString(36);
         return `${privateDir}/documents/org-${orgId}/${entityType}/${entityId}/${uniqueId}-${sanitizedFileName}`;
       },
