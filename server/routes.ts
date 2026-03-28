@@ -18123,6 +18123,11 @@ Keep the response approximately 100-150 words.`;
       const formId = parseInt(req.params.formId);
       const { questionIds } = req.body;
 
+      if (!Array.isArray(questionIds) || questionIds.length > 500 ||
+          !questionIds.every((id: unknown) => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+        return res.status(400).json({ message: "Invalid questionIds" });
+      }
+
       const form = await storage.getForm(formId);
       if (!form) {
         return res.status(404).json({ message: "Form not found" });
