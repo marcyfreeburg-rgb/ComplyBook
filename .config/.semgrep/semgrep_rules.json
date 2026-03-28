@@ -4536,80 +4536,6 @@
       "severity": "INFO"
     },
     {
-      "id": "vendored-rules.generic.secrets.gitleaks.linkedin-client-id",
-      "languages": [
-        "regex"
-      ],
-      "message": "A gitleaks Linkedin Client ID detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.",
-      "metadata": {
-        "category": "security",
-        "confidence": "LOW",
-        "cwe": [
-          "CWE-798: Use of Hard-coded Credentials"
-        ],
-        "cwe2021-top25": true,
-        "cwe2022-top25": true,
-        "impact": "MEDIUM",
-        "likelihood": "LOW",
-        "owasp": [
-          "A07:2021 - Identification and Authentication Failures"
-        ],
-        "references": [
-          "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
-        ],
-        "source-rule-url": "https://github.com/zricethezav/gitleaks/tree/master/cmd/generate/config/rules",
-        "subcategory": [
-          "vuln"
-        ],
-        "technology": [
-          "gitleaks"
-        ]
-      },
-      "patterns": [
-        {
-          "pattern-regex": "(?i)(?:linkedin|linked-in)(?:[0-9a-z\\-_\\t .]{0,20})(?:[\\s|']|[\\s|\"]){0,3}(?:=|>|:{1,3}=|\\|\\|:|<=|=>|:|\\?=)(?:'|\\\"|\\s|=|\\x60){0,5}([a-z0-9]{14})(?:['|\\\"|\\n|\\r|\\s|\\x60|;]|$)"
-        }
-      ],
-      "severity": "INFO"
-    },
-    {
-      "id": "vendored-rules.generic.secrets.gitleaks.linkedin-client-secret",
-      "languages": [
-        "regex"
-      ],
-      "message": "A gitleaks Linkedin Client Secret detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.",
-      "metadata": {
-        "category": "security",
-        "confidence": "LOW",
-        "cwe": [
-          "CWE-798: Use of Hard-coded Credentials"
-        ],
-        "cwe2021-top25": true,
-        "cwe2022-top25": true,
-        "impact": "MEDIUM",
-        "likelihood": "LOW",
-        "owasp": [
-          "A07:2021 - Identification and Authentication Failures"
-        ],
-        "references": [
-          "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
-        ],
-        "source-rule-url": "https://github.com/zricethezav/gitleaks/tree/master/cmd/generate/config/rules",
-        "subcategory": [
-          "vuln"
-        ],
-        "technology": [
-          "gitleaks"
-        ]
-      },
-      "patterns": [
-        {
-          "pattern-regex": "(?i)(?:linkedin|linked-in)(?:[0-9a-z\\-_\\t .]{0,20})(?:[\\s|']|[\\s|\"]){0,3}(?:=|>|:{1,3}=|\\|\\|:|<=|=>|:|\\?=)(?:'|\\\"|\\s|=|\\x60){0,5}([a-z0-9]{16})(?:['|\\\"|\\n|\\r|\\s|\\x60|;]|$)"
-        }
-      ],
-      "severity": "INFO"
-    },
-    {
       "id": "vendored-rules.generic.secrets.gitleaks.lob-api-key",
       "languages": [
         "regex"
@@ -7491,6 +7417,80 @@
       "patterns": [
         {
           "pattern-regex": "(?i)(?:zendesk)(?:[0-9a-z\\-_\\t .]{0,20})(?:[\\s|']|[\\s|\"]){0,3}(?:=|>|:{1,3}=|\\|\\|:|<=|=>|:|\\?=)(?:'|\\\"|\\s|=|\\x60){0,5}([a-z0-9]{40})(?:['|\\\"|\\n|\\r|\\s|\\x60|;]|$)"
+        }
+      ],
+      "severity": "INFO"
+    },
+    {
+      "id": "vendored-rules.generic.secrets.gitleaks.linkedin-client-id",
+      "languages": [
+        "regex"
+      ],
+      "message": "A gitleaks Linkedin Client ID detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.",
+      "metadata": {
+        "category": "security",
+        "confidence": "LOW",
+        "cwe": [
+          "CWE-798: Use of Hard-coded Credentials"
+        ],
+        "cwe2021-top25": true,
+        "cwe2022-top25": true,
+        "impact": "MEDIUM",
+        "likelihood": "LOW",
+        "owasp": [
+          "A07:2021 - Identification and Authentication Failures"
+        ],
+        "references": [
+          "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
+        ],
+        "source-rule-url": "https://github.com/zricethezav/gitleaks/tree/master/cmd/generate/config/rules",
+        "subcategory": [
+          "vuln"
+        ],
+        "technology": [
+          "gitleaks"
+        ]
+      },
+      "patterns": [
+        {
+          "pattern-regex": "\\b(?i)(?:linkedin|linked-in)(?:[0-9a-z\\-_\\t .]{0,20})(?:[\\s|']|[\\s|\"]){0,3}(?:=|>|:{1,3}=|\\|\\|:|<=|=>|:|\\?=)(?:'|\\\"|\\s|=|\\x60){0,5}([a-z0-9]{14})(?:['|\\\"|\\n|\\r|\\s|\\x60|;]|$)"
+        }
+      ],
+      "severity": "INFO"
+    },
+    {
+      "id": "vendored-rules.generic.secrets.gitleaks.linkedin-client-secret",
+      "languages": [
+        "regex"
+      ],
+      "message": "A gitleaks Linkedin Client Secret detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.",
+      "metadata": {
+        "category": "security",
+        "confidence": "LOW",
+        "cwe": [
+          "CWE-798: Use of Hard-coded Credentials"
+        ],
+        "cwe2021-top25": true,
+        "cwe2022-top25": true,
+        "impact": "MEDIUM",
+        "likelihood": "LOW",
+        "owasp": [
+          "A07:2021 - Identification and Authentication Failures"
+        ],
+        "references": [
+          "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
+        ],
+        "source-rule-url": "https://github.com/zricethezav/gitleaks/tree/master/cmd/generate/config/rules",
+        "subcategory": [
+          "vuln"
+        ],
+        "technology": [
+          "gitleaks"
+        ]
+      },
+      "patterns": [
+        {
+          "pattern-regex": "\\b(?i)(?:linkedin|linked-in)(?:[0-9a-z\\-_\\t .]{0,20})(?:[\\s|']|[\\s|\"]){0,3}(?:=|>|:{1,3}=|\\|\\|:|<=|=>|:|\\?=)(?:'|\\\"|\\s|=|\\x60){0,5}([a-z0-9]{16})(?:['|\\\"|\\n|\\r|\\s|\\x60|;]|$)"
         }
       ],
       "severity": "INFO"
@@ -15200,6 +15200,35 @@
       "pattern-sinks": [
         {
           "patterns": [
+            {
+              "pattern-inside": "$WK = require('wkhtmltoimage');\n...\n"
+            },
+            {
+              "pattern": "$WK.generate($SINK,...)"
+            },
+            {
+              "focus-metavariable": "$SINK"
+            }
+          ]
+        },
+        {
+          "patterns": [
+            {
+              "pattern-inside": "import $WK from 'wkhtmltoimage';\n...\n"
+            },
+            {
+              "pattern": "$WK.generate($SINK,...)"
+            },
+            {
+              "focus-metavariable": "$SINK"
+            }
+          ]
+        },
+        {
+          "patterns": [
+            {
+              "pattern-inside": "import * as $WK from 'wkhtmltoimage';\n...\n"
+            },
             {
               "pattern": "$WK.generate($SINK,...)"
             },
@@ -50209,246 +50238,6 @@
       "severity": "ERROR"
     },
     {
-      "id": "vendored-rules.typescript.react.security.audit.react-dangerouslysetinnerhtml",
-      "languages": [
-        "js",
-        "ts"
-      ],
-      "message": "Detection of dangerouslySetInnerHTML from non-constant definition. This can inadvertently expose users to cross-site scripting (XSS) attacks if this comes from user-provided input. If you have to use dangerouslySetInnerHTML, consider using a sanitization library such as DOMPurify to sanitize your HTML.",
-      "metadata": {
-        "category": "security",
-        "confidence": "MEDIUM",
-        "cwe": [
-          "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
-        ],
-        "cwe2021-top25": true,
-        "cwe2022-top25": true,
-        "impact": "MEDIUM",
-        "license": "Commons Clause License Condition v1.0[LGPL-2.1-only]",
-        "likelihood": "MEDIUM",
-        "owasp": [
-          "A07:2017 - Cross-Site Scripting (XSS)",
-          "A03:2021 - Injection"
-        ],
-        "references": [
-          "https://react.dev/reference/react-dom/components/common#dangerously-setting-the-inner-html"
-        ],
-        "subcategory": [
-          "vuln"
-        ],
-        "technology": [
-          "react"
-        ]
-      },
-      "mode": "taint",
-      "pattern-sanitizers": [
-        {
-          "patterns": [
-            {
-              "pattern-either": [
-                {
-                  "pattern-inside": "import $S from \"underscore.string\"\n...\n"
-                },
-                {
-                  "pattern-inside": "import * as $S from \"underscore.string\"\n...\n"
-                },
-                {
-                  "pattern-inside": "import $S from \"underscore.string\"\n...\n"
-                },
-                {
-                  "pattern-inside": "$S = require(\"underscore.string\")\n...\n"
-                }
-              ]
-            },
-            {
-              "pattern-either": [
-                {
-                  "pattern": "$S.escapeHTML(...)"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "patterns": [
-            {
-              "pattern-either": [
-                {
-                  "pattern-inside": "import $S from \"dompurify\"\n...\n"
-                },
-                {
-                  "pattern-inside": "import { ..., $S,... } from \"dompurify\"\n...\n"
-                },
-                {
-                  "pattern-inside": "import * as $S from \"dompurify\"\n...\n"
-                },
-                {
-                  "pattern-inside": "$S = require(\"dompurify\")\n...\n"
-                },
-                {
-                  "pattern-inside": "import $S from \"isomorphic-dompurify\"\n...\n"
-                },
-                {
-                  "pattern-inside": "import * as $S from \"isomorphic-dompurify\"\n...\n"
-                },
-                {
-                  "pattern-inside": "$S = require(\"isomorphic-dompurify\")\n...\n"
-                }
-              ]
-            },
-            {
-              "pattern-either": [
-                {
-                  "patterns": [
-                    {
-                      "pattern-inside": "$VALUE = $S(...)\n...\n"
-                    },
-                    {
-                      "pattern": "$VALUE.sanitize(...)"
-                    }
-                  ]
-                },
-                {
-                  "patterns": [
-                    {
-                      "pattern-inside": "$VALUE = $S.sanitize\n...\n"
-                    },
-                    {
-                      "pattern": "$S(...)"
-                    }
-                  ]
-                },
-                {
-                  "pattern": "$S.sanitize(...)"
-                },
-                {
-                  "pattern": "$S(...)"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "patterns": [
-            {
-              "pattern-either": [
-                {
-                  "pattern-inside": "import $S from 'xss';\n...\n"
-                },
-                {
-                  "pattern-inside": "import * as $S from 'xss';\n...\n"
-                },
-                {
-                  "pattern-inside": "$S = require(\"xss\")\n...\n"
-                }
-              ]
-            },
-            {
-              "pattern": "$S(...)"
-            }
-          ]
-        },
-        {
-          "patterns": [
-            {
-              "pattern-either": [
-                {
-                  "pattern-inside": "import $S from 'sanitize-html';\n...\n"
-                },
-                {
-                  "pattern-inside": "import * as $S from \"sanitize-html\";\n...\n"
-                },
-                {
-                  "pattern-inside": "$S = require(\"sanitize-html\")\n...\n"
-                }
-              ]
-            },
-            {
-              "pattern": "$S(...)"
-            }
-          ]
-        },
-        {
-          "patterns": [
-            {
-              "pattern-either": [
-                {
-                  "pattern-inside": "$S = new Remarkable()\n...\n"
-                }
-              ]
-            },
-            {
-              "pattern": "$S.render(...)"
-            }
-          ]
-        }
-      ],
-      "pattern-sinks": [
-        {
-          "patterns": [
-            {
-              "focus-metavariable": "$X"
-            },
-            {
-              "pattern-either": [
-                {
-                  "pattern": "{...,dangerouslySetInnerHTML: {__html: $X},...}\n"
-                },
-                {
-                  "pattern": "<$Y ... dangerouslySetInnerHTML={{__html: $X}} />\n"
-                }
-              ]
-            },
-            {
-              "pattern-not": "<$Y ... dangerouslySetInnerHTML={{__html: \"...\"}} />\n"
-            },
-            {
-              "pattern-not": "{...,dangerouslySetInnerHTML:{__html: \"...\"},...}\n"
-            },
-            {
-              "metavariable-pattern": {
-                "metavariable": "$X",
-                "patterns": [
-                  {
-                    "pattern-not": "{...}\n"
-                  }
-                ]
-              }
-            },
-            {
-              "pattern-not": "<... {__html: \"...\"} ...>\n"
-            },
-            {
-              "pattern-not": "<... {__html: `...`} ...>\n"
-            }
-          ]
-        }
-      ],
-      "pattern-sources": [
-        {
-          "patterns": [
-            {
-              "pattern-either": [
-                {
-                  "pattern-inside": "function ...({..., $X, ...}) { ... }\n"
-                },
-                {
-                  "pattern-inside": "function ...(..., $X, ...) { ... }\n"
-                }
-              ]
-            },
-            {
-              "focus-metavariable": "$X"
-            },
-            {
-              "pattern-not-inside": "$F. ... .$SANITIZEUNC(...)\n"
-            }
-          ]
-        }
-      ],
-      "severity": "WARNING"
-    },
-    {
       "id": "vendored-rules.typescript.react.security.audit.react-href-var",
       "languages": [
         "js",
@@ -51217,6 +51006,246 @@
         }
       ],
       "severity": "INFO"
+    },
+    {
+      "id": "vendored-rules.typescript.react.security.audit.react-dangerouslysetinnerhtml",
+      "languages": [
+        "js",
+        "ts"
+      ],
+      "message": "Detection of dangerouslySetInnerHTML from non-constant definition. This can inadvertently expose users to cross-site scripting (XSS) attacks if this comes from user-provided input. If you have to use dangerouslySetInnerHTML, consider using a sanitization library such as DOMPurify to sanitize your HTML.",
+      "metadata": {
+        "category": "security",
+        "confidence": "MEDIUM",
+        "cwe": [
+          "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+        ],
+        "cwe2021-top25": true,
+        "cwe2022-top25": true,
+        "impact": "MEDIUM",
+        "license": "Commons Clause License Condition v1.0[LGPL-2.1-only]",
+        "likelihood": "MEDIUM",
+        "owasp": [
+          "A07:2017 - Cross-Site Scripting (XSS)",
+          "A03:2021 - Injection"
+        ],
+        "references": [
+          "https://react.dev/reference/react-dom/components/common#dangerously-setting-the-inner-html"
+        ],
+        "subcategory": [
+          "vuln"
+        ],
+        "technology": [
+          "react"
+        ]
+      },
+      "mode": "taint",
+      "pattern-sanitizers": [
+        {
+          "patterns": [
+            {
+              "pattern-either": [
+                {
+                  "pattern-inside": "import $S from \"underscore.string\"\n...\n"
+                },
+                {
+                  "pattern-inside": "import * as $S from \"underscore.string\"\n...\n"
+                },
+                {
+                  "pattern-inside": "import $S from \"underscore.string\"\n...\n"
+                },
+                {
+                  "pattern-inside": "$S = require(\"underscore.string\")\n...\n"
+                }
+              ]
+            },
+            {
+              "pattern-either": [
+                {
+                  "pattern": "$S.escapeHTML(...)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "patterns": [
+            {
+              "pattern-either": [
+                {
+                  "pattern-inside": "import $S from \"dompurify\"\n...\n"
+                },
+                {
+                  "pattern-inside": "import { ..., $S,... } from \"dompurify\"\n...\n"
+                },
+                {
+                  "pattern-inside": "import * as $S from \"dompurify\"\n...\n"
+                },
+                {
+                  "pattern-inside": "$S = require(\"dompurify\")\n...\n"
+                },
+                {
+                  "pattern-inside": "import $S from \"isomorphic-dompurify\"\n...\n"
+                },
+                {
+                  "pattern-inside": "import * as $S from \"isomorphic-dompurify\"\n...\n"
+                },
+                {
+                  "pattern-inside": "$S = require(\"isomorphic-dompurify\")\n...\n"
+                }
+              ]
+            },
+            {
+              "pattern-either": [
+                {
+                  "patterns": [
+                    {
+                      "pattern-inside": "$VALUE = $S(...)\n...\n"
+                    },
+                    {
+                      "pattern": "$VALUE.sanitize(...)"
+                    }
+                  ]
+                },
+                {
+                  "patterns": [
+                    {
+                      "pattern-inside": "$VALUE = $S.sanitize\n...\n"
+                    },
+                    {
+                      "pattern": "$S(...)"
+                    }
+                  ]
+                },
+                {
+                  "pattern": "$S.sanitize(...)"
+                },
+                {
+                  "pattern": "$S(...)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "patterns": [
+            {
+              "pattern-either": [
+                {
+                  "pattern-inside": "import $S from 'xss';\n...\n"
+                },
+                {
+                  "pattern-inside": "import * as $S from 'xss';\n...\n"
+                },
+                {
+                  "pattern-inside": "$S = require(\"xss\")\n...\n"
+                }
+              ]
+            },
+            {
+              "pattern": "$S(...)"
+            }
+          ]
+        },
+        {
+          "patterns": [
+            {
+              "pattern-either": [
+                {
+                  "pattern-inside": "import $S from 'sanitize-html';\n...\n"
+                },
+                {
+                  "pattern-inside": "import * as $S from \"sanitize-html\";\n...\n"
+                },
+                {
+                  "pattern-inside": "$S = require(\"sanitize-html\")\n...\n"
+                }
+              ]
+            },
+            {
+              "pattern": "$S(...)"
+            }
+          ]
+        },
+        {
+          "patterns": [
+            {
+              "pattern-either": [
+                {
+                  "pattern-inside": "$S = new Remarkable()\n...\n"
+                }
+              ]
+            },
+            {
+              "pattern": "$S.render(...)"
+            }
+          ]
+        }
+      ],
+      "pattern-sinks": [
+        {
+          "patterns": [
+            {
+              "focus-metavariable": "$X"
+            },
+            {
+              "pattern-either": [
+                {
+                  "pattern": "{...,dangerouslySetInnerHTML: {__html: $X},...}\n"
+                },
+                {
+                  "pattern": "<$Y ... dangerouslySetInnerHTML={{__html: $X}} />\n"
+                }
+              ]
+            },
+            {
+              "pattern-not": "<$Y ... dangerouslySetInnerHTML={{__html: \"...\"}} />\n"
+            },
+            {
+              "pattern-not": "{...,dangerouslySetInnerHTML:{__html: \"...\"},...}\n"
+            },
+            {
+              "metavariable-pattern": {
+                "metavariable": "$X",
+                "patterns": [
+                  {
+                    "pattern-not": "{...}\n"
+                  }
+                ]
+              }
+            },
+            {
+              "pattern-not": "<... {__html: \"...\"} ...>\n"
+            },
+            {
+              "pattern-not": "<... {__html: `...`} ...>\n"
+            }
+          ]
+        }
+      ],
+      "pattern-sources": [
+        {
+          "patterns": [
+            {
+              "pattern-either": [
+                {
+                  "pattern-inside": "function ...({..., $X, ...}) { ... }\n"
+                },
+                {
+                  "pattern-inside": "function ...(..., $X, ...) { ... }\n"
+                }
+              ]
+            },
+            {
+              "focus-metavariable": "$X"
+            },
+            {
+              "pattern-not-inside": "$F. ... .$SANITIZEUNC(...)\n"
+            }
+          ]
+        }
+      ],
+      "severity": "HIGH"
     },
     {
       "id": "replit-rules.javascript.drizzle-orm.security.audit.ban-drizzle-sql-raw",

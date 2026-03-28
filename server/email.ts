@@ -1752,13 +1752,13 @@ export async function sendBetaWelcomeEmail({
   to,
   firstName,
   loginUrl,
-  temporaryPassword,
+  forgotPasswordUrl,
   trialEndDate,
 }: {
   to: string;
   firstName: string;
   loginUrl: string;
-  temporaryPassword: string;
+  forgotPasswordUrl: string;
   trialEndDate: Date;
 }): Promise<void> {
   const { client, fromEmail } = await getUncachableSendGridClient();
@@ -1770,7 +1770,7 @@ export async function sendBetaWelcomeEmail({
   const msg = {
     to,
     from: fromEmail,
-    subject: `Welcome to ComplyBook Beta - Your Account is Ready`,
+    subject: `Welcome to ComplyBook Beta - Set Up Your Account`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -1782,29 +1782,17 @@ export async function sendBetaWelcomeEmail({
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 8px; padding: 30px; margin-bottom: 24px; color: white;">
             <h1 style="color: white; margin: 0 0 8px 0; font-size: 26px;">Welcome to ComplyBook Beta!</h1>
-            <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;">Hi ${firstName}, your account has been set up and is ready to use.</p>
+            <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px;">Hi ${firstName}, your account has been created and is ready to use.</p>
           </div>
 
           <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #111;">Your Login Details</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280; width: 140px;">Website</td>
-                <td style="padding: 6px 0;"><a href="${loginUrl}" style="color: #4f46e5;">${loginUrl}</a></td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Email</td>
-                <td style="padding: 6px 0; font-family: monospace;">${to}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Temporary Password</td>
-                <td style="padding: 6px 0; font-family: monospace; font-weight: bold;">${temporaryPassword}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Beta Access Until</td>
-                <td style="padding: 6px 0; color: #059669; font-weight: 600;">${formattedEndDate}</td>
-              </tr>
-            </table>
+            <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #111;">Get Started in 2 Steps</h2>
+            <p style="margin: 0 0 8px 0; color: #374151;"><strong>Step 1:</strong> Click the button below to set your own password.</p>
+            <p style="margin: 0 0 16px 0; color: #374151;"><strong>Step 2:</strong> Log in with your email (<span style="font-family: monospace;">${to}</span>) and the password you just created.</p>
+            <div style="text-align: center;">
+              <a href="${forgotPasswordUrl}" style="display: inline-block; background: #4f46e5; color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">Set Up My Password</a>
+            </div>
+            <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 13px; text-align: center;">Beta access valid through ${formattedEndDate}</p>
           </div>
 
           <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
@@ -1819,19 +1807,14 @@ export async function sendBetaWelcomeEmail({
             </ul>
           </div>
 
-          <div style="text-align: center; margin-bottom: 24px;">
-            <a href="${loginUrl}" style="display: inline-block; background: #4f46e5; color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">Log In to ComplyBook</a>
-          </div>
-
           <p style="color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-            We recommend changing your password after your first login. Your Beta access is valid through ${formattedEndDate}. 
-            After that, you can choose a paid plan or continue with the free version.
+            If the button above doesn't work, visit <a href="${loginUrl}" style="color: #4f46e5;">${loginUrl}</a> and click "Forgot Password".
             Questions? Reply to this email or visit <a href="https://complybook.net" style="color: #4f46e5;">complybook.net</a>.
           </p>
         </body>
       </html>
     `,
-    text: `Welcome to ComplyBook Beta, ${firstName}!\n\nYour account is ready. Log in at: ${loginUrl}\n\nEmail: ${to}\nTemporary Password: ${temporaryPassword}\nBeta Access Until: ${formattedEndDate}\n\nYour Beta access includes all Enterprise features for 6 months, free.\n\nWe recommend changing your password after first login.\n\n— The ComplyBook Team`
+    text: `Welcome to ComplyBook Beta, ${firstName}!\n\nYour account has been created. To get started, set your password here:\n${forgotPasswordUrl}\n\nThen log in at: ${loginUrl}\nUsing your email: ${to}\n\nBeta Access Until: ${formattedEndDate}\n\nYour Beta access includes all Enterprise features for 6 months, free.\n\n— The ComplyBook Team`
   };
 
   await client.send(msg);

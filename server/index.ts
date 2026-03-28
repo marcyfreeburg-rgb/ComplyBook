@@ -10,6 +10,7 @@ import { WebhookHandlers } from './webhookHandlers';
 import { PlaidWebhookHandlers, PlaidWebhookPayload } from './plaidWebhookHandlers';
 import { verifyPlaidWebhook } from './plaidWebhookVerification';
 import { runAuditRetentionPolicies } from './auditRetention';
+import { storage } from './storage';
 
 const app = express();
 
@@ -80,6 +81,48 @@ async function scheduleAuditRetention() {
 }
 
 scheduleAuditRetention();
+
+// NIST 800-53 AC-2: Account Management — Dormant Account Detection
+// Runs weekly. Logs a security event for any account that has had no successful
+// login in the past 90 days, so administrators are aware and can take action.
+async function checkDormantAccounts() {
+  try {
+    const users = await storage.getAllUsers();
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    for (const user of users) {
+      if (!user.email) continue;
+      const recentEvents = await storage.getSecurityEvents({ userId: user.id, eventType: 'login_success', limit: 1 });
+      const lastLogin = recentEvents?.[0]?.timestamp;
+      if (!lastLogin || new Date(lastLogin) < ninetyDaysAgo) {
+        await storage.logSecurityEvent({
+          eventType: 'suspicious_activity',
+          severity: 'warning',
+          userId: user.id,
+          email: user.email,
+          ipAddress: null,
+          userAgent: null,
+          eventData: {
+            type: 'dormant_account',
+            lastLoginAt: lastLogin ? new Date(lastLogin).toISOString() : null,
+            daysSinceLogin: lastLogin
+              ? Math.floor((Date.now() - new Date(lastLogin).getTime()) / 86400000)
+              : null,
+            note: 'Account has had no successful login in 90+ days (NIST AC-2)',
+          },
+        });
+      }
+    }
+    console.log('[AC-2] Dormant account check completed');
+  } catch (err: any) {
+    console.error('[AC-2] Dormant account check failed:', err.message);
+  }
+}
+
+// Run 30 seconds after startup, then every 7 days
+setTimeout(checkDormantAccounts, 30000);
+setInterval(checkDormantAccounts, 7 * 24 * 60 * 60 * 1000);
 
 // CRITICAL: Register Stripe webhook route BEFORE express.json()
 // Webhook needs raw Buffer, not parsed JSON

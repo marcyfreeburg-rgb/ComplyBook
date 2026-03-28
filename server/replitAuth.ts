@@ -1005,17 +1005,20 @@ export async function createDefaultAdminUser() {
     return;
   }
 
+  // NIST 800-53 IA-5: Passwords must not be stored in source code.
+  // Provide admin credentials via environment variables. If not set, skip creation
+  // and log a warning so the operator knows action is required.
   const adminUsers = [
     {
       email: "tech@jandmsolutions.com",
-      password: "comply2025",
+      password: process.env.ADMIN_TECH_PASSWORD,
       id: "local_admin_default",
       firstName: "Admin",
       lastName: "User",
     },
     {
       email: "marcy.freeburg@gmail.com",
-      password: "CaseyLee12",
+      password: process.env.ADMIN_MARCY_PASSWORD,
       id: "local_admin_marcy",
       firstName: "Marcy",
       lastName: "Freeburg",
@@ -1023,6 +1026,10 @@ export async function createDefaultAdminUser() {
   ];
 
   for (const admin of adminUsers) {
+    if (!admin.password) {
+      console.warn(`[Auth] Skipping admin account creation for ${admin.email}: set ${admin.id === 'local_admin_default' ? 'ADMIN_TECH_PASSWORD' : 'ADMIN_MARCY_PASSWORD'} env var to enable.`);
+      continue;
+    }
     try {
       const existingUser = await storage.getUserByEmail(admin.email);
       
@@ -1051,10 +1058,12 @@ export async function createDefaultAdminUser() {
     }
   }
 
+  // Enterprise beta users — no passwords stored in source code.
+  // New accounts receive a secure random placeholder password (never sent to the user).
+  // The welcome email directs them to use "Forgot Password" to set their own credentials.
   const enterpriseUsers = [
     {
       email: "julielp66@gmail.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_julie",
       firstName: "Julie",
       lastName: "LP",
@@ -1063,7 +1072,6 @@ export async function createDefaultAdminUser() {
     },
     {
       email: "bowmanh.l.jr@gmail.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_bowman",
       firstName: "Bowman",
       lastName: "H",
@@ -1072,7 +1080,6 @@ export async function createDefaultAdminUser() {
     },
     {
       email: "david.u.badger@gmail.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_david",
       firstName: "David",
       lastName: "Badger",
@@ -1081,7 +1088,6 @@ export async function createDefaultAdminUser() {
     },
     {
       email: "musiclady.cb@gmail.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_musiclady",
       firstName: "Music",
       lastName: "Lady",
@@ -1090,7 +1096,6 @@ export async function createDefaultAdminUser() {
     },
     {
       email: "andilewis51@gmail.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_andi",
       firstName: "Andi",
       lastName: "Lewis",
@@ -1099,7 +1104,6 @@ export async function createDefaultAdminUser() {
     },
     {
       email: "bburnett@nomadgroup.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_bburnett",
       firstName: "B",
       lastName: "Burnett",
@@ -1108,7 +1112,6 @@ export async function createDefaultAdminUser() {
     },
     {
       email: "christine@emergentcampus.com",
-      password: "ComplyBook2025!",
       id: "local_enterprise_christine",
       firstName: "Christine",
       lastName: "",
@@ -1124,7 +1127,11 @@ export async function createDefaultAdminUser() {
       endDate.setMonth(endDate.getMonth() + invitee.durationMonths);
 
       if (!existingUser) {
-        const hashedPassword = await hashPassword(invitee.password);
+        // Generate a cryptographically random placeholder — never stored in plaintext,
+        // never sent to the user. The user sets their own password via the reset flow.
+        const { randomBytes } = await import('crypto');
+        const placeholderPassword = randomBytes(32).toString('hex');
+        const hashedPassword = await hashPassword(placeholderPassword);
 
         await storage.upsertLocalUser({
           id: invitee.id,
@@ -1140,14 +1147,15 @@ export async function createDefaultAdminUser() {
 
         console.log(`[Auth] Enterprise user created: ${invitee.email} (expires ${endDate.toISOString()})`);
 
-        // Send beta welcome email with login credentials
         try {
-          const loginUrl = process.env.APP_URL || 'https://complybook.net/login';
+          const appUrl = process.env.APP_URL || 'https://complybook.net';
+          const loginUrl = `${appUrl}/login`;
+          const forgotPasswordUrl = `${appUrl}/login?forgot=true`;
           await sendBetaWelcomeEmail({
             to: invitee.email,
             firstName: invitee.firstName,
             loginUrl,
-            temporaryPassword: invitee.password,
+            forgotPasswordUrl,
             trialEndDate: endDate,
           });
         } catch (emailErr) {
@@ -1159,10 +1167,6 @@ export async function createDefaultAdminUser() {
           subscriptionStatus: "active",
           subscriptionCurrentPeriodEnd: endDate,
         });
-        if (!existingUser.passwordHash) {
-          const hashedPassword = await hashPassword(invitee.password);
-          await storage.updateUserPassword(existingUser.id, hashedPassword);
-        }
         console.log(`[Auth] Enterprise user updated: ${invitee.email} (expires ${endDate.toISOString()})`);
       }
     } catch (error) {
