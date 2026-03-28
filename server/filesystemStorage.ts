@@ -40,7 +40,7 @@ export class FilesystemStorageService {
   }
 
   generateObjectPath(organizationId: number, entityType: string, entityId: number, fileName: string): string {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-_]/g, "_");
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const uniqueId = randomUUID().slice(0, 8);
     const finalFileName = `${uniqueId}-${sanitizedFileName}`;
     return path.join(`org-${organizationId}`, entityType, `${entityId}`, finalFileName);
