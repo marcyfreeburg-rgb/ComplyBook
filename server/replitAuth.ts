@@ -735,7 +735,8 @@ async function setupLocalAuth(app: Express) {
         return res.status(400).json({ message: "Unable to create account. If you already have an account, please sign in instead." });
       }
 
-      const userId = `local_user_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const { randomBytes } = await import('crypto');
+      const userId = `local_user_${Date.now()}_${randomBytes(4).toString('hex')}`;
       const hashedPassword = await hashPassword(password);
 
       const invite = PENDING_ENTERPRISE_INVITES[emailLower];

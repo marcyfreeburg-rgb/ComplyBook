@@ -1,0 +1,147 @@
+Server-side request forgery
+Critical
+#390 opened on Jan 25 • Detected by CodeQL in server/invoicePdf.ts :33
+main
+
+Select alert #542
+Insecure randomness
+High
+#542 opened 3 weeks ago • Detected by CodeQL in server/replitAuth.ts :738
+main
+
+Select alert #541
+Missing rate limiting
+High
+#541 opened 3 weeks ago • Detected by CodeQL in server/replitAuth.ts :690
+main
+
+Select alert #540
+Use of externally-controlled format string
+High
+#540 opened 3 weeks ago • Detected by CodeQL in server/replitAuth.ts :767
+main
+
+Select alert #539
+Missing rate limiting
+High
+#539 opened on Feb 23 • Detected by CodeQL in server/routes.ts :12180
+main
+
+Select alert #538
+Missing rate limiting
+High
+#538 opened on Feb 23 • Detected by CodeQL in server/routes.ts :12164
+main
+
+Select alert #537
+Missing rate limiting
+High
+#537 opened on Feb 23 • Detected by CodeQL in server/routes.ts :12147
+main
+
+Select alert #536
+Missing rate limiting
+High
+#536 opened on Feb 19 • Detected by CodeQL in server/routes.ts :14236
+main
+
+Select alert #535
+Missing rate limiting
+High
+#535 opened on Feb 19 • Detected by CodeQL in server/routes.ts :14203
+main
+
+Select alert #534
+Missing rate limiting
+High
+#534 opened on Feb 19 • Detected by CodeQL in server/routes.ts :14179
+main
+
+Select alert #533
+Missing rate limiting
+High
+#533 opened on Feb 16 • Detected by CodeQL in server/routes.ts :14155
+main
+
+Select alert #532
+Missing rate limiting
+High
+#532 opened on Feb 12 • Detected by CodeQL in server/routes.ts :10879
+main
+
+Select alert #531
+Missing rate limiting
+High
+#531 opened on Feb 12 • Detected by CodeQL in server/routes.ts :10819
+main
+
+Select alert #530
+Missing rate limiting
+High
+#530 opened on Feb 12 • Detected by CodeQL in server/routes.ts :10819
+main
+
+Select alert #529
+Polynomial regular expression used on uncontrolled data
+High
+#529 opened on Feb 11 • Detected by CodeQL in server/routes.ts :17837
+main
+
+Select alert #528
+Use of externally-controlled format string
+High
+#528 opened on Feb 11 • Detected by CodeQL in server/routes.ts :17854
+main
+
+Select alert #527
+Missing rate limiting
+High
+#527 opened on Feb 8 • Detected by CodeQL in server/routes.ts :18588
+main
+
+Select alert #526
+Missing rate limiting
+High
+#526 opened on Feb 8 • Detected by CodeQL in server/routes.ts :18568
+main
+
+Select alert #525
+Missing rate limiting
+High
+#525 opened on Feb 8 • Detected by CodeQL in server/routes.ts :18546
+main
+
+Select alert #524
+Missing rate limiting
+High
+#524 opened on Feb 8 • Detected by CodeQL in server/routes.ts :18422
+main
+
+Select alert #523
+Missing rate limiting
+High
+#523 opened on Feb 8 • Detected by CodeQL in server/routes.ts :18422
+main
+
+Select alert #522
+Missing rate limiting
+High
+#522 opened on Feb 8 • Detected by CodeQL in server/routes.ts :359
+main
+
+Select alert #521
+Missing rate limiting
+High
+#521 opened on Feb 6 • Detected by CodeQL in server/index.ts :163
+main
+
+Select alert #520
+Missing rate limiting
+High
+#520 opened on Feb 6 • Detected by CodeQL in server/routes.ts :8728
+main
+
+Select alert #519
+Missing rate limiting
+High
+#519 opened on Feb 4 • Detected by CodeQL in server/routes.ts :14131

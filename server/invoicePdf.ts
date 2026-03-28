@@ -1,5 +1,19 @@
 import PDFDocument from 'pdfkit';
 
+const PRIVATE_IP_PATTERN =
+  /^(localhost|127\.|0\.0\.0\.0|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1|fc00:|fd)/i;
+
+function isSafeLogoUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    if (PRIVATE_IP_PATTERN.test(parsed.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 interface InvoicePdfParams {
   invoiceNumber: string;
   invoiceDate: string;
@@ -29,6 +43,7 @@ interface InvoicePdfParams {
 }
 
 async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  if (!isSafeLogoUrl(url)) return null;
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
