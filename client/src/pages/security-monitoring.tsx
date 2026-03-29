@@ -164,6 +164,11 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
 
   const { data: vulnSummary, isLoading: vulnLoading } = useQuery<VulnerabilityScanSummary>({
     queryKey: ['/api/security/vulnerability-scan/summary'],
+    // Poll every 3 seconds while a scan is actively running so the UI updates automatically
+    refetchInterval: (query) => {
+      const data = query.state.data as VulnerabilityScanSummary | undefined;
+      return data?.status === 'running' ? 3000 : false;
+    },
   });
 
   const runScanMutation = useMutation({
@@ -173,10 +178,8 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
         title: "Scan Started",
         description: "Vulnerability scan is now running. Results will be available shortly.",
       });
-      // Refetch after a delay to get updated results
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['/api/security/vulnerability-scan/summary'] });
-      }, 5000);
+      // Immediately invalidate so we see the 'running' status; polling above handles the rest
+      queryClient.invalidateQueries({ queryKey: ['/api/security/vulnerability-scan/summary'] });
     },
     onError: () => {
       toast({
@@ -566,10 +569,10 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                 </div>
                 <Button
                   onClick={() => runScanMutation.mutate()}
-                  disabled={runScanMutation.isPending}
+                  disabled={runScanMutation.isPending || vulnSummary?.status === 'running'}
                   data-testid="button-run-scan"
                 >
-                  {runScanMutation.isPending ? (
+                  {runScanMutation.isPending || vulnSummary?.status === 'running' ? (
                     <>
                       <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                       Scanning...
@@ -598,7 +601,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                   </p>
                   <Button
                     onClick={() => runScanMutation.mutate()}
-                    disabled={runScanMutation.isPending}
+                    disabled={runScanMutation.isPending || vulnSummary?.status === 'running'}
                   >
                     Run First Scan
                   </Button>
