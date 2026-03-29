@@ -24,7 +24,9 @@ import {
   Mail,
   Globe,
   Smartphone,
-  Settings
+  Settings,
+  ExternalLink,
+  Terminal
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -90,6 +92,37 @@ interface VulnerabilityScanSummary {
   moderateCount: number;
   lowCount: number;
   infoCount: number;
+}
+
+interface NpmAuditAdvisory {
+  source?: number;
+  name?: string;
+  title?: string;
+  url?: string;
+  severity?: string;
+}
+
+interface NpmAuditVulnEntry {
+  name: string;
+  severity: 'info' | 'low' | 'moderate' | 'high' | 'critical';
+  isDirect: boolean;
+  via: Array<string | NpmAuditAdvisory>;
+  effects: string[];
+  range: string;
+  nodes: string[];
+  fixAvailable: boolean | { name: string; version: string; isSemVerMajor: boolean };
+}
+
+interface LatestVulnerabilityScan {
+  id: number;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  totalVulnerabilities: number;
+  scanData: {
+    vulnerabilities: Record<string, NpmAuditVulnEntry>;
+    metadata: { vulnerabilities: { info: number; low: number; moderate: number; high: number; critical: number; total: number } };
+  } | null;
 }
 
 interface AlertSettings {
@@ -171,6 +204,14 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
     },
   });
 
+  const { data: latestScan } = useQuery<LatestVulnerabilityScan | null>({
+    queryKey: ['/api/security/vulnerability-scan/latest'],
+    refetchInterval: (query) => {
+      const data = query.state.data as LatestVulnerabilityScan | null | undefined;
+      return data?.status === 'running' ? 3000 : false;
+    },
+  });
+
   const runScanMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/security/vulnerability-scan', {}),
     onSuccess: () => {
@@ -180,6 +221,7 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
       });
       // Immediately invalidate so we see the 'running' status; polling above handles the rest
       queryClient.invalidateQueries({ queryKey: ['/api/security/vulnerability-scan/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/security/vulnerability-scan/latest'] });
     },
     onError: () => {
       toast({
@@ -667,6 +709,89 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                     </div>
                   </div>
 
+                  {/* Per-vulnerability details */}
+                  {latestScan?.scanData?.vulnerabilities && Object.keys(latestScan.scanData.vulnerabilities).length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium mb-3">Vulnerability Details</div>
+                      <div className="space-y-2">
+                        {Object.entries(latestScan.scanData.vulnerabilities).map(([pkgName, vuln]) => {
+                          const advisories = vuln.via.filter((v): v is NpmAuditAdvisory => typeof v === 'object');
+                          const transitiveDeps = vuln.via.filter((v): v is string => typeof v === 'string');
+                          const severityBadgeVariants: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
+                            critical: 'destructive',
+                            high: 'destructive',
+                            moderate: 'default',
+                            low: 'secondary',
+                            info: 'outline',
+                          };
+                          const fix = vuln.fixAvailable;
+                          const fixLabel = fix === false
+                            ? 'No automatic fix'
+                            : fix === true
+                              ? 'npm audit fix'
+                              : (fix as any).isSemVerMajor
+                                ? `npm audit fix --force (upgrades to v${(fix as any).version} — breaking change)`
+                                : `npm audit fix (upgrades to v${(fix as any).version})`;
+                          const fixIsBreaking = typeof fix === 'object' && (fix as any).isSemVerMajor;
+                          const fixIsNone = fix === false;
+
+                          return (
+                            <div key={pkgName} className="rounded-md border p-4 space-y-2" data-testid={`card-vuln-${pkgName}`}>
+                              <div className="flex items-start justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <code className="text-sm font-semibold">{pkgName}</code>
+                                  <Badge variant={severityBadgeVariants[vuln.severity] ?? 'outline'} className="capitalize">
+                                    {vuln.severity}
+                                  </Badge>
+                                  {!vuln.isDirect && (
+                                    <span className="text-xs text-muted-foreground">transitive</span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground font-mono">{vuln.range}</span>
+                              </div>
+
+                              {advisories.length > 0 ? (
+                                <div className="space-y-1">
+                                  {advisories.map((adv, i) => (
+                                    <div key={i} className="flex items-start gap-2">
+                                      <span className="text-sm">{adv.title ?? 'Unknown advisory'}</span>
+                                      {adv.url && (
+                                        <a
+                                          href={adv.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="shrink-0 text-muted-foreground hover:text-foreground"
+                                          data-testid={`link-advisory-${pkgName}-${i}`}
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : transitiveDeps.length > 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                  Introduced via: {transitiveDeps.join(', ')}
+                                </p>
+                              ) : null}
+
+                              {vuln.effects.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  Affects: {vuln.effects.join(', ')}
+                                </p>
+                              )}
+
+                              <div className={`flex items-center gap-1.5 text-xs ${fixIsNone ? 'text-muted-foreground' : fixIsBreaking ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}`}>
+                                <Terminal className="h-3.5 w-3.5 shrink-0" />
+                                <code>{fixLabel}</code>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {(vulnSummary.criticalCount > 0 || vulnSummary.highCount > 0) && (
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
@@ -675,6 +800,16 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                         Your dependencies have {vulnSummary.criticalCount} critical and {vulnSummary.highCount} high severity vulnerabilities. 
                         Run <code className="bg-destructive/10 px-1 rounded">npm audit fix</code> to automatically fix compatible issues, 
                         or review each vulnerability with <code className="bg-destructive/10 px-1 rounded">npm audit</code>.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {vulnSummary.totalVulnerabilities > 0 && vulnSummary.criticalCount === 0 && vulnSummary.highCount === 0 && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Low-severity vulnerabilities detected</AlertTitle>
+                      <AlertDescription>
+                        No critical or high issues found. Run <code className="bg-muted px-1 rounded">npm audit fix</code> to automatically resolve any fixable vulnerabilities, or <code className="bg-muted px-1 rounded">npm audit fix --force</code> for breaking-change upgrades.
                       </AlertDescription>
                     </Alert>
                   )}
