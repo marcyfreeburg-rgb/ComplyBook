@@ -190,9 +190,9 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
   const repairChainMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', `/api/security/audit-chain/repair/${organizationId}`, {});
-      return response.json() as Promise<{ repaired: number; nullHashesFixed?: number; brokenLinksFixed?: number; message: string }>;
+      return response.json() as Promise<{ repaired: number; nullHashesFixed?: number; brokenLinksFixed?: number; hashMismatchesFixed?: number; message: string }>;
     },
-    onSuccess: (data: { repaired: number; nullHashesFixed?: number; brokenLinksFixed?: number; message: string }) => {
+    onSuccess: (data: { repaired: number; nullHashesFixed?: number; brokenLinksFixed?: number; hashMismatchesFixed?: number; message: string }) => {
       toast({
         title: "Chain Repaired",
         description: data.message,

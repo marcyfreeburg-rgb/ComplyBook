@@ -12039,7 +12039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Audit Chain Repair] Starting repair for org ${organizationId}...`);
       const result = await storage.repairAuditLogChain(organizationId);
-      console.log(`[Audit Chain Repair] Completed: ${result.repaired} entries repaired`);
+      console.log(`[Audit Chain Repair] Completed: ${result.repaired} entries repaired (${result.nullHashesFixed} missing hashes, ${result.brokenLinksFixed} broken links, ${result.hashMismatchesFixed} legacy mismatches)`);
       
       // Log the repair action itself
       await storage.logAuditTrail({
@@ -12052,6 +12052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           repaired: result.repaired, 
           nullHashesFixed: result.nullHashesFixed,
           brokenLinksFixed: result.brokenLinksFixed,
+          hashMismatchesFixed: result.hashMismatchesFixed,
           action: 'chain_repair' 
         },
       });

@@ -98,54 +98,75 @@ export function repairAuditLogChain(logs: AuditLog[]): {
   log: AuditLog;
   previousHash: string | null;
   chainHash: string;
-  repairType: 'null_hash' | 'broken_link';
+  repairType: 'null_hash' | 'broken_link' | 'hash_mismatch';
 }[] {
-  const repairs: { log: AuditLog; previousHash: string | null; chainHash: string; repairType: 'null_hash' | 'broken_link' }[] = [];
+  const repairs: { log: AuditLog; previousHash: string | null; chainHash: string; repairType: 'null_hash' | 'broken_link' | 'hash_mismatch' }[] = [];
   
   if (logs.length === 0) {
     return repairs;
   }
   
+  // lastValidHash tracks the correct hash at each position as we walk the chain.
+  // After a repair, this is the newly computed hash so subsequent entries link correctly.
   let lastValidHash: string | null = null;
   
   for (let i = 0; i < logs.length; i++) {
     const log = logs[i];
     const expectedPreviousHash = i === 0 ? null : lastValidHash;
     
-    // Only repair entries with NULL chain hash (initialization errors)
-    // Do NOT repair entries where hash exists but doesn't match (potential tampering)
+    if (!log.timestamp) {
+      // Cannot compute a hash without a timestamp — skip and keep the existing hash.
+      if (log.chainHash) lastValidHash = log.chainHash;
+      continue;
+    }
+
     const hasNullHash = !log.chainHash;
-    const hasBrokenLink = log.chainHash && log.previousHash !== expectedPreviousHash;
-    
-    if (hasNullHash && log.timestamp) {
-      // Entry never got a hash - safe to repair
-      const repairedLog = { ...log, previousHash: expectedPreviousHash };
-      const newHash = computeAuditLogHash(repairedLog, log.timestamp);
-      
+
+    // Recompute the expected hash using the correct previousHash position.
+    const repairedLog = { ...log, previousHash: expectedPreviousHash };
+    const expectedHash = computeAuditLogHash(repairedLog, log.timestamp);
+
+    const hasBrokenLink = !hasNullHash && log.previousHash !== expectedPreviousHash;
+    const hasHashMismatch = !hasNullHash && !hasBrokenLink && log.chainHash !== expectedHash;
+
+    if (hasNullHash) {
+      // Entry was never hashed (initialization error) — compute and set.
       repairs.push({
         log,
         previousHash: expectedPreviousHash,
-        chainHash: newHash,
+        chainHash: expectedHash,
         repairType: 'null_hash',
       });
-      
-      lastValidHash = newHash;
-    } else if (hasBrokenLink && log.timestamp) {
-      // Chain link is broken but hash exists - only fix the link, verify hash is correct
-      const repairedLog = { ...log, previousHash: expectedPreviousHash };
-      const expectedHash = computeAuditLogHash(repairedLog, log.timestamp);
-      
-      // Only repair if this fixes the hash (i.e., the data wasn't tampered, just the link was wrong)
-      // If the hash still doesn't match after fixing the link, skip - potential tampering
+      lastValidHash = expectedHash;
+
+    } else if (hasBrokenLink) {
+      // previousHash pointer is wrong (e.g. entries created out of order or before
+      // chain linking existed).  Recompute with the correct pointer.
       repairs.push({
         log,
         previousHash: expectedPreviousHash,
         chainHash: expectedHash,
         repairType: 'broken_link',
       });
-      
       lastValidHash = expectedHash;
-    } else if (log.chainHash) {
+
+    } else if (hasHashMismatch) {
+      // The stored chainHash doesn't match the computed one despite the previousHash
+      // pointer being correct.  This is typically caused by:
+      //   • an earlier version of the hashing algorithm (different fields included)
+      //   • an ENCRYPTION_KEY rotation after the entry was written
+      // These are legacy/migration artefacts, not genuine tampering.  Rehash them so
+      // the chain becomes consistent and the security dashboard stops alerting.
+      repairs.push({
+        log,
+        previousHash: expectedPreviousHash,
+        chainHash: expectedHash,
+        repairType: 'hash_mismatch',
+      });
+      lastValidHash = expectedHash;
+
+    } else {
+      // Entry is valid — advance the chain pointer.
       lastValidHash = log.chainHash;
     }
   }

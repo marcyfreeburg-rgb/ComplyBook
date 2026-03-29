@@ -1,0 +1,44 @@
+3:18:29 AM [express] GET /api/notifications/168/unread-count 304 in 102ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.125.94" requestID="1fdd3dfc-a488-4439" responseTimeMS=63 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+Menu
+3:19:29 AM [express] GET /api/notifications/168/unread-count 304 in 60ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.125.94" requestID="e9c5c465-39bd-4f2b" responseTimeMS=65 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+3:20:30 AM [express] GET /api/notifications/168/unread-count 304 in 62ms
+[GET]
+complybook.net/api/audit-logs/168 clientIP="216.147.125.94" requestID="97b0381c-0dc2-45aa" responseTimeMS=77 responseBytes=12955 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+3:21:18 AM [express] GET /api/audit-logs/168 200 in 75ms
+[GET]
+complybook.net/api/security/metrics/168 clientIP="216.147.125.94" requestID="63053388-bf21-4ba0" responseTimeMS=42 responseBytes=2713 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/vulnerability-scan/summary clientIP="216.147.125.94" requestID="776d1d97-76b1-417e" responseTimeMS=27 responseBytes=1376 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+3:21:27 AM [express] GET /api/security/metrics/168 200 in 40ms
+3:21:27 AM [express] GET /api/security/vulnerability-scan/summary 200 in 24ms
+[GET]
+complybook.net/api/notifications/168/unread-count clientIP="216.147.125.94" requestID="21cacc62-0317-4b9b" responseTimeMS=14 responseBytes=1182 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+3:21:30 AM [express] GET /api/notifications/168/unread-count 304 in 13ms
+[GET]
+complybook.net/api/security/metrics/168 clientIP="216.147.125.94" requestID="9a9a8aea-4119-4c7d" responseTimeMS=51 responseBytes=2624 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/security/audit-chain/repair/168 clientIP="216.147.125.94" requestID="11103e05-b477-4fb8" responseTimeMS=507 responseBytes=1396 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[Audit Chain Repair] Starting repair for org 168...
+[Audit Chain Repair] Completed: 291 entries repaired
+3:21:32 AM [express] POST /api/security/audit-chain/repair/168 200 in 505ms
+3:21:32 AM [express] GET /api/security/metrics/168 200 in 49ms
+[POST]
+complybook.net/api/security/audit-chain/repair/168 clientIP="216.147.125.94" requestID="3d7e9cbf-de57-4b3b" responseTimeMS=50 responseBytes=1377 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[GET]
+complybook.net/api/security/metrics/168 clientIP="216.147.125.94" requestID="37c82494-11d2-4a63" responseTimeMS=35 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[Audit Chain Repair] Starting repair for org 168...
+[Audit Chain Repair] Completed: 0 entries repaired
+3:21:37 AM [express] POST /api/security/audit-chain/repair/168 200 in 48ms
+3:21:37 AM [express] GET /api/security/metrics/168 304 in 31ms
+[GET]
+complybook.net/api/security/metrics/168 clientIP="216.147.125.94" requestID="98a4dc4f-c7c7-4f52" responseTimeMS=35 responseBytes=1185 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[POST]
+complybook.net/api/security/audit-chain/repair/168 clientIP="216.147.125.94" requestID="bf1df8d8-6ca7-4a59" responseTimeMS=48 responseBytes=1377 userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+[Audit Chain Repair] Starting repair for org 168...
+[Audit Chain Repair] Completed: 0 entries repaired
+3:21:43 AM [express] POST /api/security/audit-chain/repair/168 200 in 46ms
+3:21:43 AM [express] GET /api/security/metrics/168 304 in 33ms

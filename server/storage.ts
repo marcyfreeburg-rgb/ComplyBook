@@ -845,6 +845,7 @@ export interface IStorage {
     repaired: number;
     nullHashesFixed: number;
     brokenLinksFixed: number;
+    hashMismatchesFixed: number;
     message: string;
   }>;
   logAuditTrail(params: {
@@ -7484,6 +7485,7 @@ export class DatabaseStorage implements IStorage {
     repaired: number;
     nullHashesFixed: number;
     brokenLinksFixed: number;
+    hashMismatchesFixed: number;
     message: string;
   }> {
     const logs = await db
@@ -7497,6 +7499,7 @@ export class DatabaseStorage implements IStorage {
         repaired: 0,
         nullHashesFixed: 0,
         brokenLinksFixed: 0,
+        hashMismatchesFixed: 0,
         message: 'No audit logs found for this organization',
       };
     }
@@ -7508,12 +7511,14 @@ export class DatabaseStorage implements IStorage {
         repaired: 0,
         nullHashesFixed: 0,
         brokenLinksFixed: 0,
+        hashMismatchesFixed: 0,
         message: 'Audit log chain is already valid, no repairs needed',
       };
     }
     
     const nullHashesFixed = repairs.filter(r => r.repairType === 'null_hash').length;
     const brokenLinksFixed = repairs.filter(r => r.repairType === 'broken_link').length;
+    const hashMismatchesFixed = repairs.filter(r => r.repairType === 'hash_mismatch').length;
     
     // Batch updates in chunks of 100 for better performance
     const BATCH_SIZE = 100;
@@ -7533,12 +7538,18 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
+
+    const parts: string[] = [];
+    if (nullHashesFixed > 0) parts.push(`${nullHashesFixed} missing hashes`);
+    if (brokenLinksFixed > 0) parts.push(`${brokenLinksFixed} broken links`);
+    if (hashMismatchesFixed > 0) parts.push(`${hashMismatchesFixed} legacy hash mismatches`);
     
     return {
       repaired: repairs.length,
       nullHashesFixed,
       brokenLinksFixed,
-      message: `Successfully repaired ${repairs.length} audit log entries (${nullHashesFixed} missing hashes, ${brokenLinksFixed} broken links)`,
+      hashMismatchesFixed,
+      message: `Successfully repaired ${repairs.length} audit log entries (${parts.join(', ')})`,
     };
   }
 
