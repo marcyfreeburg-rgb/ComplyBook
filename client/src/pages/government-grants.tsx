@@ -1123,11 +1123,11 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       reportingPeriodEnd: timeEffortFormData.reportingPeriodEnd,
       totalHours: parseFloat(timeEffortFormData.totalHours),
       grantHours: parseFloat(timeEffortFormData.grantHours),
-      otherActivitiesHours: timeEffortFormData.otherActivitiesHours ? parseFloat(timeEffortFormData.otherActivitiesHours) : undefined,
+      otherActivitiesHours: timeEffortFormData.otherActivitiesHours ? parseFloat(timeEffortFormData.otherActivitiesHours) : null,
       percentageEffort: parseFloat(timeEffortFormData.percentageEffort),
-      certificationDate: timeEffortFormData.certificationDate || undefined,
-      certifiedBy: timeEffortFormData.certifiedBy || undefined,
-      notes: timeEffortFormData.notes || undefined,
+      certificationDate: timeEffortFormData.certificationDate || null,
+      certifiedBy: timeEffortFormData.certifiedBy || null,
+      notes: timeEffortFormData.notes || null,
     };
     if (editingTimeEffort) {
       updateTimeEffortMutation.mutate({ id: editingTimeEffort.id, data: payload });
@@ -1138,15 +1138,15 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
 
   const handleCreateCostCheck = () => {
     const payload = {
-      transactionId: costCheckFormData.transactionId ? parseInt(costCheckFormData.transactionId) : undefined,
+      transactionId: costCheckFormData.transactionId ? parseInt(costCheckFormData.transactionId) : null,
       grantId: parseInt(costCheckFormData.grantId),
       costCategory: costCheckFormData.costCategory,
       amount: costCheckFormData.amount,
       allowabilityStatus: costCheckFormData.allowabilityStatus,
-      reviewedBy: costCheckFormData.reviewedBy || undefined,
-      reviewDate: costCheckFormData.reviewDate || undefined,
-      justification: costCheckFormData.justification || undefined,
-      notes: costCheckFormData.notes || undefined,
+      reviewedBy: costCheckFormData.reviewedBy || null,
+      reviewDate: costCheckFormData.reviewDate || null,
+      justification: costCheckFormData.justification || null,
+      notes: costCheckFormData.notes || null,
     };
     if (editingCostCheck) {
       updateCostCheckMutation.mutate({ id: editingCostCheck.id, data: payload });
@@ -1167,9 +1167,9 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       purpose: subAwardFormData.purpose,
       status: subAwardFormData.status,
       complianceStatus: subAwardFormData.complianceStatus,
-      lastMonitoringDate: subAwardFormData.lastMonitoringDate || undefined,
-      nextMonitoringDate: subAwardFormData.nextMonitoringDate || undefined,
-      notes: subAwardFormData.notes || undefined,
+      lastMonitoringDate: subAwardFormData.lastMonitoringDate || null,
+      nextMonitoringDate: subAwardFormData.nextMonitoringDate || null,
+      notes: subAwardFormData.notes || null,
     };
     if (editingSubAward) {
       updateSubAwardMutation.mutate({ id: editingSubAward.id, data: payload });
@@ -1191,9 +1191,9 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       programIncomeEarned: ffrFormData.programIncomeEarned,
       programIncomeExpended: ffrFormData.programIncomeExpended,
       status: ffrFormData.status,
-      submittedDate: ffrFormData.submittedDate || undefined,
-      approvedDate: ffrFormData.approvedDate || undefined,
-      notes: ffrFormData.notes || undefined,
+      submittedDate: ffrFormData.submittedDate || null,
+      approvedDate: ffrFormData.approvedDate || null,
+      notes: ffrFormData.notes || null,
     };
     if (editingFFR) {
       updateFFRMutation.mutate({ id: editingFFR.id, data: payload });
@@ -1207,14 +1207,14 @@ export default function GovernmentGrants({ currentOrganization, userId }: Govern
       auditYear: auditItemFormData.auditYear,
       itemType: auditItemFormData.itemType,
       description: auditItemFormData.description,
-      grantId: auditItemFormData.grantId ? parseInt(auditItemFormData.grantId) : undefined,
-      amount: auditItemFormData.amount || undefined,
+      grantId: auditItemFormData.grantId ? parseInt(auditItemFormData.grantId) : null,
+      amount: auditItemFormData.amount || null,
       completionStatus: auditItemFormData.completionStatus,
-      assignedTo: auditItemFormData.assignedTo || undefined,
-      dueDate: auditItemFormData.dueDate || undefined,
-      completedDate: auditItemFormData.completedDate || undefined,
-      findings: auditItemFormData.findings || undefined,
-      notes: auditItemFormData.notes || undefined,
+      assignedTo: auditItemFormData.assignedTo || null,
+      dueDate: auditItemFormData.dueDate || null,
+      completedDate: auditItemFormData.completedDate || null,
+      findings: auditItemFormData.findings || null,
+      notes: auditItemFormData.notes || null,
     };
     if (editingAuditItem) {
       updateAuditItemMutation.mutate({ id: editingAuditItem.id, data: payload });
