@@ -2751,9 +2751,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction> {
+    // Build the Drizzle set clause. For null values on nullable FK columns we must
+    // use sql`null` so that Drizzle emits SET col = NULL rather than skipping the
+    // field.  Plain JavaScript `null` is technically supported in Drizzle v0.39 but
+    // using sql`null` is an explicit, version-safe guarantee.
+    const nullableFkKeys: (keyof typeof updates)[] = [
+      'grantId', 'fundId', 'programId', 'categoryId',
+      'vendorId', 'clientId', 'donorId', 'bankAccountId',
+    ];
+
+    const setClause: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null && nullableFkKeys.includes(key as keyof typeof updates)) {
+        setClause[key] = sql`null`;
+      } else {
+        setClause[key] = value;
+      }
+    }
+
     const [transaction] = await db
       .update(transactions)
-      .set(updates)
+      .set(setClause as any)
       .where(eq(transactions.id, id))
       .returning();
     return transaction;

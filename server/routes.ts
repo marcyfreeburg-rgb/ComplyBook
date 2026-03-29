@@ -3729,7 +3729,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Diagnostic: log grantId before/after to confirm null is applied
+      if ('grantId' in req.body) {
+        console.log(`[PATCH /api/transactions/${transactionId}] grantId in body: ${JSON.stringify(req.body.grantId)}, in parsed updates: ${JSON.stringify(updates.grantId)}`);
+      }
+
       const updatedTransaction = await storage.updateTransaction(transactionId, updates);
+
+      if ('grantId' in req.body) {
+        console.log(`[PATCH /api/transactions/${transactionId}] grantId after update: ${JSON.stringify(updatedTransaction.grantId)}`);
+      }
       
       // Log audit trail
       await storage.logUpdate(existingTransaction.organizationId, userId, 'transaction', transactionId.toString(), existingTransaction, updates);
