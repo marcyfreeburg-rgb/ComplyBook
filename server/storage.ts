@@ -2751,30 +2751,55 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTransaction(id: number, updates: Partial<InsertTransaction>): Promise<Transaction> {
-    // Build the Drizzle set clause. For null values on nullable FK columns we must
-    // use sql`null` so that Drizzle emits SET col = NULL rather than skipping the
-    // field.  Plain JavaScript `null` is technically supported in Drizzle v0.39 but
-    // using sql`null` is an explicit, version-safe guarantee.
-    const nullableFkKeys: (keyof typeof updates)[] = [
-      'grantId', 'fundId', 'programId', 'categoryId',
-      'vendorId', 'clientId', 'donorId', 'bankAccountId',
-    ];
+    // Nullable FK columns that must be explicitly cleared via raw SQL when set to null.
+    // Drizzle ORM v0.39 can silently skip null values in .set() for certain column types;
+    // using db.execute with a parameterised query guarantees SET col = NULL is emitted.
+    const nullableColumnMap: Record<string, string> = {
+      grantId:       'grant_id',
+      fundId:        'fund_id',
+      programId:     'program_id',
+      categoryId:    'category_id',
+      vendorId:      'vendor_id',
+      clientId:      'client_id',
+      donorId:       'donor_id',
+      bankAccountId: 'bank_account_id',
+    };
 
-    const setClause: Record<string, any> = {};
+    // Split: fields to null-out vs regular fields
+    const nullFields: string[] = [];
+    const nonNullUpdates: Partial<InsertTransaction> = {};
     for (const [key, value] of Object.entries(updates)) {
-      if (value === null && nullableFkKeys.includes(key as keyof typeof updates)) {
-        setClause[key] = sql`null`;
+      if (value === null && nullableColumnMap[key]) {
+        nullFields.push(nullableColumnMap[key]);
       } else {
-        setClause[key] = value;
+        (nonNullUpdates as any)[key] = value;
       }
     }
 
-    const [transaction] = await db
-      .update(transactions)
-      .set(setClause as any)
-      .where(eq(transactions.id, id))
-      .returning();
-    return transaction;
+    // Explicitly SET col = NULL for each cleared FK field
+    for (const col of nullFields) {
+      await db.execute(sql.raw(`UPDATE transactions SET ${col} = NULL WHERE id = ${id}`));
+    }
+
+    // Apply the remaining (non-null) fields via Drizzle
+    let updatedTransaction: Transaction;
+    if (Object.keys(nonNullUpdates).length > 0) {
+      const [t] = await db
+        .update(transactions)
+        .set(nonNullUpdates)
+        .where(eq(transactions.id, id))
+        .returning();
+      updatedTransaction = t;
+    } else {
+      // Nothing left to update via Drizzle – just fetch the current row
+      const [t] = await db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, id));
+      updatedTransaction = t;
+    }
+
+    return updatedTransaction;
   }
 
   async deleteTransaction(id: number): Promise<void> {
