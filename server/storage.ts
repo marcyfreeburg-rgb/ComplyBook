@@ -2778,7 +2778,10 @@ export class DatabaseStorage implements IStorage {
 
     // Explicitly SET col = NULL for each cleared FK field
     for (const col of nullFields) {
-      await db.execute(sql.raw(`UPDATE transactions SET ${col} = NULL WHERE id = ${id}`));
+      const rawSql = `UPDATE transactions SET ${col} = NULL WHERE id = ${id}`;
+      console.log(`[updateTransaction] Executing: ${rawSql}`);
+      const result = await db.execute(sql.raw(rawSql));
+      console.log(`[updateTransaction] Result rowCount=${(result as any).rowCount ?? (result as any).rowsAffected ?? 'unknown'}`);
     }
 
     // Apply the remaining (non-null) fields via Drizzle
