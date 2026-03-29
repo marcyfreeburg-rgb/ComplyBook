@@ -1430,7 +1430,19 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
         try {
           // First update the parent transaction
-          await apiRequest('PATCH', `/api/transactions/${editingTransaction.id}`, formData);
+          // Convert undefined FK fields to null so JSON.stringify includes them and
+          // the server explicitly clears the columns rather than leaving them unchanged.
+          const editDataForSplit = {
+            ...formData,
+            grantId:    formData.grantId    ?? null,
+            fundId:     formData.fundId     ?? null,
+            programId:  formData.programId  ?? null,
+            vendorId:   formData.vendorId   ?? null,
+            clientId:   formData.clientId   ?? null,
+            donorId:    formData.donorId    ?? null,
+            categoryId: formData.categoryId ?? null,
+          };
+          await apiRequest('PATCH', `/api/transactions/${editingTransaction.id}`, editDataForSplit);
           
           // Then split it with the defined splits
           await apiRequest('POST', `/api/transactions/${editingTransaction.id}/split`, { 
@@ -1452,8 +1464,20 @@ export default function Transactions({ currentOrganization, userId }: Transactio
           });
         }
       } else {
-        // Regular update without splitting
-        updateMutation.mutate({ id: editingTransaction.id, data: formData });
+        // Regular update without splitting.
+        // Convert undefined FK fields to null so JSON.stringify includes them and
+        // the server explicitly clears those columns rather than leaving them unchanged.
+        const editData = {
+          ...formData,
+          grantId:    formData.grantId    ?? null,
+          fundId:     formData.fundId     ?? null,
+          programId:  formData.programId  ?? null,
+          vendorId:   formData.vendorId   ?? null,
+          clientId:   formData.clientId   ?? null,
+          donorId:    formData.donorId    ?? null,
+          categoryId: formData.categoryId ?? null,
+        };
+        updateMutation.mutate({ id: editingTransaction.id, data: editData });
       }
     } else if (isFormSplitMode && formSplitItems.length >= 2) {
       // Validate split amounts match total
