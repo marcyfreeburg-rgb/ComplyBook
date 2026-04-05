@@ -5797,6 +5797,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         continue; // processed — don't fall through to date-based logic
       }
 
+      // ── Daily Ending Balance table rows ──────────────────────────────────────
+      // These lines start with a date but contain multiple pipe-separated date|balance
+      // pairs (e.g. "03/01   49,076.87 |03/08   43,200.16 | ..."). Not transactions.
+      if (/\|\s*\d{1,2}\/\d{1,2}/.test(line)) continue;
+
       // ── Standard date-prefixed transaction lines ─────────────────────────────
       // Check if line starts with a date
       let dateMatch = null;
@@ -5814,11 +5819,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizedDate = normalizeDate(dateMatch, inferredYear);
       if (!normalizedDate) continue;
 
-      // Look for amounts — support both "$300.00" and bare "300.00" / "-300.00"
-      const amountMatches = [
-        ...line.matchAll(/(-?\$\d{1,3}(?:,\d{3})*\.\d{2})/g),
-        ...line.matchAll(/(?<![.\d])(-?\d{1,3}(?:,\d{3})+\.\d{2})(?![.\d])/g), // comma-separated without $
-      ];
+      // Look for amounts — match currency amounts like $300.00, -$1,000.00, -$16.59
+      // NOTE: Bare-number amounts (no $) only appear in the Checks Cleared section, which
+      // is handled by the dedicated checkLineMatch branch above. Using a bare-number fallback
+      // here would cause the numeric part of "-$1,000.00" to be captured a second time as a
+      // positive match, flipping the sign to income.
+      const amountMatches = [...line.matchAll(/(-?\$\d{1,3}(?:,\d{3})*\.\d{2})/g)];
       if (amountMatches.length === 0) continue;
 
       // Use the last amount on the line (typically the transaction amount, not running balance)
