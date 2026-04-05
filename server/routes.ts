@@ -5772,9 +5772,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     for (const line of lines) {
       // Skip header lines and summary lines
-      if (/^(Trans Date|Date|Beginning Balance|Ending Balance|Total)/i.test(line)) continue;
-      if (/^(DEPOSITS|WITHDRAWALS|CHECKS|SUMMARY|SERVICE CHARGE)/i.test(line)) continue;
+      if (/^(Trans Date|Date|Beginning Balance|Ending Balance|Total|Number\s+Date)/i.test(line)) continue;
+      if (/^(DEPOSITS|WITHDRAWALS|CHECKS|SUMMARY|SERVICE CHARGE|DAILY ENDING|SAVINGS SUMMARY|CHECKING SUMMARY)/i.test(line)) continue;
+      if (/^\*Checks may not/i.test(line)) continue;
 
+      // ── Checks Cleared format ────────────────────────────────────────────────
+      // Lines like: "521002   03/02                           -300.00"
+      // Check number (4+ digits) followed by MM/DD date and a bare numeric amount
+      const checkLineMatch = line.match(/^(\d{4,})\s+(\d{1,2}\/\d{1,2})\s+([-]?\d{1,3}(?:,\d{3})*\.\d{2})/);
+      if (checkLineMatch) {
+        const [, checkNo, dateStr, rawAmount] = checkLineMatch;
+        const normalizedDate = normalizeDate(dateStr, inferredYear);
+        if (normalizedDate) {
+          const numericAmount = Math.abs(parseFloat(rawAmount.replace(/,/g, '')));
+          if (!isNaN(numericAmount) && numericAmount > 0 && numericAmount <= 1000000) {
+            transactions.push({
+              date: normalizedDate,
+              description: `Check #${checkNo}`,
+              amount: numericAmount.toFixed(2),
+              type: 'expense', // checks are always outflows
+            });
+          }
+        }
+        continue; // processed — don't fall through to date-based logic
+      }
+
+      // ── Standard date-prefixed transaction lines ─────────────────────────────
       // Check if line starts with a date
       let dateMatch = null;
       for (const pattern of datePatterns) {
@@ -5791,8 +5814,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizedDate = normalizeDate(dateMatch, inferredYear);
       if (!normalizedDate) continue;
 
-      // Look for amounts in the line - match currency amounts like $300.00 or -$16.59
-      const amountMatches = [...line.matchAll(/(-?\$\d{1,3}(?:,\d{3})*\.\d{2})/g)];
+      // Look for amounts — support both "$300.00" and bare "300.00" / "-300.00"
+      const amountMatches = [
+        ...line.matchAll(/(-?\$\d{1,3}(?:,\d{3})*\.\d{2})/g),
+        ...line.matchAll(/(?<![.\d])(-?\d{1,3}(?:,\d{3})+\.\d{2})(?![.\d])/g), // comma-separated without $
+      ];
       if (amountMatches.length === 0) continue;
 
       // Use the last amount on the line (typically the transaction amount, not running balance)
