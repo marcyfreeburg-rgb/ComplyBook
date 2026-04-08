@@ -82,6 +82,17 @@ The app auto-detects which database to use in `server/db.ts`:
 -   **Plaid Webhooks:** JWT-based signature verification using ES256 via `server/plaidWebhookVerification.ts`. Decodes JWT from `Plaid-Verification` header, fetches the signing key from Plaid's `webhookVerificationKeyGet` API, verifies the ES256 signature, checks `iat` timestamp (5-minute max age), and validates `request_body_sha256` against the raw request body bytes. Raw body is captured via `express.json({ verify })` callback before JSON parsing.
 -   **Stripe Webhooks:** Signature verification required via `STRIPE_WEBHOOK_SECRET`. Raw body captured in `server/index.ts` and passed to `stripe.webhooks.constructEvent()`. Webhooks are rejected with 500 if `STRIPE_WEBHOOK_SECRET` is not configured — no fallback processing of unverified events.
 
+### 7-Day Trusted Device Authentication (SOC 2 CC6.1 / NIST 800-53 IA-2)
+-   After successful MFA, users can check "Trust this device for 7 days" on the MFA verify page
+-   A cryptographically random 96-char hex token is stored in a 7-day `trusted_device_token` HttpOnly cookie
+-   On next login, if the cookie is valid, unexpired, and matches the authenticated user → MFA is bypassed
+-   Trusted devices are stored in the `trusted_devices` table (token hash, user agent, IP, expiry, revoke timestamp)
+-   Password change revokes all trusted devices automatically and clears the cookie
+-   Users can view and revoke individual devices (or all devices) via Security Settings → Trusted Devices
+-   Every bypass, registration, and revocation event is written to the security_event_log
+-   Backend: `server/replitAuth.ts` (login check), `server/routes.ts` (verify-login + management endpoints)
+-   Frontend: `client/src/pages/mfa-verify.tsx` (checkbox), `client/src/pages/security-monitoring.tsx` (panel)
+
 ### Log Sanitization
 -   MFA token values are never logged (server/mfa.ts)
 -   Finch connection IDs and company IDs are not logged (server/finch.ts)

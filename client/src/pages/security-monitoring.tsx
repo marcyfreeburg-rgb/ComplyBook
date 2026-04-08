@@ -26,7 +26,10 @@ import {
   Smartphone,
   Settings,
   ExternalLink,
-  Terminal
+  Terminal,
+  Monitor,
+  Trash2,
+  Clock
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -188,7 +191,49 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
     method: mfaApiStatus?.mfaEnabled ? 'Authenticator App' : null,
     enrolledAt: mfaApiStatus?.mfaVerifiedAt || null,
   };
-  
+
+  type TrustedDeviceInfo = {
+    id: number;
+    deviceName: string | null;
+    ipAddress: string | null;
+    lastUsedAt: string;
+    expiresAt: string;
+    createdAt: string;
+    isCurrent: boolean;
+  };
+
+  const { data: trustedDevicesList, isLoading: devicesLoading } = useQuery<TrustedDeviceInfo[]>({
+    queryKey: ['/api/auth/trusted-devices'],
+  });
+
+  const revokeDeviceMutation = useMutation({
+    mutationFn: async (deviceId: number) => {
+      const response = await apiRequest('DELETE', `/api/auth/trusted-devices/${deviceId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/trusted-devices'] });
+      toast({ title: "Device removed", description: "Trusted device has been revoked." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to revoke device.", variant: "destructive" });
+    },
+  });
+
+  const revokeAllDevicesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('DELETE', '/api/auth/trusted-devices');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/trusted-devices'] });
+      toast({ title: "All devices removed", description: "All trusted devices have been revoked." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to revoke all devices.", variant: "destructive" });
+    },
+  });
+
   const [ipRestrictions, setIpRestrictions] = useState<IpRestriction[]>([]);
   
   const { data: metrics, isLoading } = useQuery<SecurityMetrics>({
@@ -1041,6 +1086,86 @@ export default function SecurityMonitoring({ organizationId }: { organizationId:
                       Enable two-factor authentication to protect your account from unauthorized access.
                     </AlertDescription>
                   </Alert>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-trusted-devices">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Monitor className="h-5 w-5" />
+                    Trusted Devices
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Browsers that skip two-factor authentication for 7 days. Remove any device you don't recognize.
+                  </CardDescription>
+                </div>
+                {trustedDevicesList && trustedDevicesList.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => revokeAllDevicesMutation.mutate()}
+                    disabled={revokeAllDevicesMutation.isPending}
+                    data-testid="button-revoke-all-devices"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Revoke All
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {devicesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                  </div>
+                ) : !trustedDevicesList || trustedDevicesList.length === 0 ? (
+                  <div className="flex items-center gap-3 p-4 rounded-lg border border-dashed text-muted-foreground">
+                    <Monitor className="h-4 w-4 shrink-0" />
+                    <p className="text-sm">No trusted devices. Check "Trust this device for 7 days" when completing two-factor authentication.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {trustedDevicesList.map((device) => (
+                      <div
+                        key={device.id}
+                        className="flex items-center justify-between p-3 rounded-lg border"
+                        data-testid={`card-trusted-device-${device.id}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium truncate">
+                                {device.deviceName || 'Unknown Browser'}
+                              </p>
+                              {device.isCurrent && (
+                                <Badge variant="secondary" className="text-xs">Current</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                              <Clock className="h-3 w-3" />
+                              <span>Last used {format(new Date(device.lastUsedAt), 'MMM d, yyyy')}</span>
+                              {device.ipAddress && (
+                                <span className="ml-1">· {device.ipAddress}</span>
+                              )}
+                              <span className="ml-1">· Expires {format(new Date(device.expiresAt), 'MMM d')}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => revokeDeviceMutation.mutate(device.id)}
+                          disabled={revokeDeviceMutation.isPending}
+                          data-testid={`button-revoke-device-${device.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

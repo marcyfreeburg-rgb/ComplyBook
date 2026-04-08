@@ -1,0 +1,67 @@
+Yes, you can implement a "authenticate once every X days" model (via trusted device, remember-this-browser, or session persistence with re-authentication triggers) and still achieve SOC 1 and SOC 2 compliance, as long as it's properly risk-assessed, documented, and supported by compensating controls. SOC frameworks are not prescriptive like "MFA must fire on literally every login with zero exceptions forever."
+Quick breakdown of why this works for SOC 1 / SOC 2
+
+SOC 2 (Security criterion – the one that matters most here): The relevant controls are mainly in the Common Criteria (CC6 series, especially CC6.1 and CC6.2). These require effective logical access controls that identify and authenticate users before granting access to protected information assets. The AICPA Trust Services Criteria (TSC) points of focus recommend strong authentication practices (MFA is the de-facto expectation for remote access, privileged accounts, and sensitive data), but they do not dictate frequency, session length, or ban device-trust features. Auditors evaluate whether your controls mitigate risk based on your environment, not a rigid checklist.
+SOC 1: Even more flexible on the tech side because it focuses narrowly on controls relevant to financial reporting (ICFR). If your app processes or feeds into financial data for your customers (nonprofits/government contractors), you still need solid access controls over those systems, but the same risk-based logic applies. No "every-login MFA" mandate.
+
+Industry reality: Plenty of SOC 2 Type 2 attested SaaS platforms (including financial/compliance tools) use "remember this device for 7–30 days," conditional/risk-based MFA, or re-authentication tied to session idle timeouts or high-risk actions. Modern identity providers (Okta, Auth0, Azure AD, etc.) built for SOC 2 explicitly support this and provide the audit-friendly logs.
+What auditors actually look for (and how to pass with an X-day model)
+You cannot just "turn MFA off for a day" (that would be a disabling exception and would fail). Instead, frame it as initial MFA + trusted-device persistence:
+
+Risk assessment & policy: Document why your chosen window (e.g., 7 days default, max 14–30 for non-privileged users) is appropriate for ComplyBook's data sensitivity (financial budgets, compliance records, possibly CUI-like info). Tie it to threat modeling — e.g., "Low-to-medium risk for same-device/same-IP logins from known users; higher risk triggers step-up MFA."
+Implementation must-haves:
+Device fingerprinting + secure token (bound to browser/machine, not easily replayable).
+Clear revocation: Admin can force logout/revoke trusted status instantly; auto-revoke on password change, suspicious activity, or device compromise.
+Logging: Every auth event (success/failure, MFA used or skipped via trust, IP, device info, timestamp) stored for 1+ year and monitored.
+Compensating controls: Short idle session timeout (15–60 min lock/terminate), inactivity re-auth, anomaly detection (new location/device = full MFA), and MFA always required for sensitive actions (e.g., editing budgets, exporting reports, admin functions).
+No indefinite trust; cap it and require periodic re-MFA.
+
+Testing: Your SOC auditor will sample login attempts, review exception logs, and walk through revocation. As long as you can prove the control operates effectively and exceptions are rare/justified, it passes.
+
+Practical sweet spot for ComplyBook (financial/compliance SaaS):
+
+Default: Full MFA (authenticator app) on first login per device, then trusted for 7–14 days.
+Configurable per tenant/role (e.g., admins or financial modules = shorter or no trust).
+Always full MFA for high-risk actions or new contexts.
+This is user-friendly (your current "every single login" is indeed painful) while staying auditor-friendly. Many SOC 2 apps land here.
+
+Other relevant frameworks (since you asked)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FrameworkAllows X-day re-auth / trusted device?Key nuance for ComplyBookNIST 800-171 / CMMC L2 (your wheelhouse)Yes, with documentationNo fixed timeout in 3.5.3; org-defined. Some auditors accept 12–60 days if justified in SSP; best practice is shorter + strong session termination (3.1.11). Document rationale.ISO 27001Yes (control-based like SOC 2)A.9 access controls expect MFA for sensitive systems; frequency is risk-based.PCI DSS (if you ever handle card data)Risky / heavily restricted"Remember me" features can introduce replay-attack concerns; usually needs compensating controls or avoidance. Not relevant for most nonprofit budget tools.FedRAMP / high-assurancePossible but tighterOften prefers shorter windows or continuous/risk-based auth.
+Recommendation for your next steps on ComplyBook
+
+Choose an IdP that bakes in SOC 2-friendly device trust + full audit logs (most do).
+Update your System Security Plan / policies with the exact window, risk rationale, and revocation process.
+Run it through a pre-SOC readiness assessment (or ask your future auditor early — they love seeing this documented upfront).
+Test user feedback: A 7-day default + "force MFA now" button usually feels like a huge UX win without sacrificing security.
+
+This approach keeps you compliant, defensible in an audit, and actually usable for your small-nonprofit and contractor customers. If you share more details (e.g., which IdP you're using or what sensitive actions are in-scope), I can help draft the exact policy language or control matrix row for your SOC binder.

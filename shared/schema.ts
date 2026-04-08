@@ -449,6 +449,37 @@ export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
 export type SecurityEvent = typeof securityEventLog.$inferSelect;
 
 // ============================================
+// TRUSTED DEVICES (SOC 2 CC6.1 / NIST 800-53 IA-2)
+// 7-day device trust: skip MFA for verified devices
+// ============================================
+
+export const trustedDevices = pgTable("trusted_devices", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  deviceToken: varchar("device_token", { length: 128 }).notNull().unique(),
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  deviceName: varchar("device_name", { length: 200 }),
+  lastUsedAt: timestamp("last_used_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_trusted_devices_user").on(table.userId),
+  index("idx_trusted_devices_token").on(table.deviceToken),
+  index("idx_trusted_devices_expires").on(table.expiresAt),
+]);
+
+export const insertTrustedDeviceSchema = createInsertSchema(trustedDevices).omit({
+  id: true,
+  createdAt: true,
+  lastUsedAt: true,
+});
+
+export type InsertTrustedDevice = z.infer<typeof insertTrustedDeviceSchema>;
+export type TrustedDevice = typeof trustedDevices.$inferSelect;
+
+// ============================================
 // FAILED LOGIN TRACKING (NIST 800-53 AC-7)
 // ============================================
 

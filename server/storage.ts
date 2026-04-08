@@ -186,6 +186,9 @@ import {
   failedLoginAttempts,
   type FailedLoginAttempt,
   type InsertFailedLoginAttempt,
+  trustedDevices,
+  type TrustedDevice,
+  type InsertTrustedDevice,
   vulnerabilityScans,
   type VulnerabilityScan,
   type InsertVulnerabilityScan,
@@ -338,6 +341,14 @@ export interface IStorage {
   unlockAccount(email: string): Promise<void>;
   isAccountLocked(email: string): Promise<boolean>;
   clearFailedLoginAttempts(email: string): Promise<void>;
+
+  // Trusted device management (SOC 2 CC6.1 / NIST 800-53 IA-2)
+  createTrustedDevice(data: InsertTrustedDevice): Promise<TrustedDevice>;
+  getTrustedDeviceByToken(token: string): Promise<TrustedDevice | null>;
+  touchTrustedDevice(id: number): Promise<void>;
+  getUserTrustedDevices(userId: string): Promise<TrustedDevice[]>;
+  revokeTrustedDevice(id: number, userId: string): Promise<void>;
+  revokeAllUserTrustedDevices(userId: string): Promise<void>;
 
   // Vulnerability scanning (NIST 800-53 RA-5, SI-2)
   createVulnerabilityScan(scan: InsertVulnerabilityScan): Promise<VulnerabilityScan>;
@@ -1832,6 +1843,62 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(failedLoginAttempts)
       .where(eq(failedLoginAttempts.email, email));
+  }
+
+  // Trusted device management (SOC 2 CC6.1 / NIST 800-53 IA-2)
+  async createTrustedDevice(data: InsertTrustedDevice): Promise<TrustedDevice> {
+    const [device] = await db.insert(trustedDevices).values(data).returning();
+    return device;
+  }
+
+  async getTrustedDeviceByToken(token: string): Promise<TrustedDevice | null> {
+    const [device] = await db
+      .select()
+      .from(trustedDevices)
+      .where(
+        and(
+          eq(trustedDevices.deviceToken, token),
+          gt(trustedDevices.expiresAt, new Date()),
+          isNull(trustedDevices.revokedAt)
+        )
+      )
+      .limit(1);
+    return device || null;
+  }
+
+  async touchTrustedDevice(id: number): Promise<void> {
+    await db
+      .update(trustedDevices)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(trustedDevices.id, id));
+  }
+
+  async getUserTrustedDevices(userId: string): Promise<TrustedDevice[]> {
+    return db
+      .select()
+      .from(trustedDevices)
+      .where(
+        and(
+          eq(trustedDevices.userId, userId),
+          gt(trustedDevices.expiresAt, new Date()),
+          isNull(trustedDevices.revokedAt)
+        )
+      )
+      .orderBy(desc(trustedDevices.lastUsedAt));
+  }
+
+  async revokeTrustedDevice(id: number, userId: string): Promise<void> {
+    await db
+      .update(trustedDevices)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(trustedDevices.id, id), eq(trustedDevices.userId, userId)));
+  }
+
+  async revokeAllUserTrustedDevices(userId: string): Promise<void> {
+    await db
+      .update(trustedDevices)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(trustedDevices.userId, userId), isNull(trustedDevices.revokedAt)));
   }
 
   // Vulnerability scanning (NIST 800-53 RA-5, SI-2)

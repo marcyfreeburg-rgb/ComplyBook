@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Shield, Key, AlertTriangle, Loader2 } from "lucide-react";
+import { Shield, Key, AlertTriangle, Loader2, Monitor } from "lucide-react";
 
 type MfaLoginStatus = {
   mfaPending: boolean;
@@ -22,6 +23,7 @@ export default function MfaVerify() {
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
 
   const { data: mfaStatus, isLoading: statusLoading, error: statusError } = useQuery<MfaLoginStatus>({
     queryKey: ['/api/auth/mfa/login-status'],
@@ -29,8 +31,8 @@ export default function MfaVerify() {
   });
 
   const verifyMutation = useMutation({
-    mutationFn: async ({ code, isBackupCode }: { code: string; isBackupCode: boolean }) => {
-      const response = await apiRequest('POST', '/api/auth/mfa/verify-login', { code, isBackupCode });
+    mutationFn: async ({ code, isBackupCode, rememberDevice }: { code: string; isBackupCode: boolean; rememberDevice: boolean }) => {
+      const response = await apiRequest('POST', '/api/auth/mfa/verify-login', { code, isBackupCode, rememberDevice });
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -47,7 +49,9 @@ export default function MfaVerify() {
       
       toast({
         title: "Verification successful",
-        description: "You have been logged in.",
+        description: rememberDevice
+          ? "You are logged in. This device is trusted for 7 days."
+          : "You have been logged in.",
       });
       
       setLocation("/");
@@ -74,7 +78,7 @@ export default function MfaVerify() {
       return;
     }
     
-    verifyMutation.mutate({ code: cleanCode, isBackupCode: useBackupCode });
+    verifyMutation.mutate({ code: cleanCode, isBackupCode: useBackupCode, rememberDevice });
   };
 
   if (statusLoading) {
@@ -145,6 +149,27 @@ export default function MfaVerify() {
                 </p>
               </div>
             )}
+
+            <div className="flex items-start gap-3 rounded-md border p-3">
+              <Checkbox
+                id="remember-device"
+                checked={rememberDevice}
+                onCheckedChange={(checked) => setRememberDevice(checked === true)}
+                data-testid="checkbox-remember-device"
+              />
+              <div className="space-y-1">
+                <label
+                  htmlFor="remember-device"
+                  className="text-sm font-medium leading-none cursor-pointer flex items-center gap-1.5"
+                >
+                  <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                  Trust this device for 7 days
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Skip two-factor authentication on this browser for one week. Only check this on personal, trusted devices.
+                </p>
+              </div>
+            </div>
 
             <Button
               type="submit"

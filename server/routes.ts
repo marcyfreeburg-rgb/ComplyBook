@@ -433,6 +433,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newPasswordHash = await hashPassword(newPassword);
       await storage.updateUserPassword(userId, newPasswordHash);
 
+      // Revoke all trusted devices on password change (SOC 2 CC6.1 security control)
+      await storage.revokeAllUserTrustedDevices(userId);
+      res.clearCookie('trusted_device_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
+
       await storage.logSecurityEvent({
         eventType: 'password_changed',
         severity: 'info',
@@ -442,6 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.get('user-agent') || null,
         eventData: {
           timestamp: new Date().toISOString(),
+          trustedDevicesRevoked: true,
         },
       });
 
@@ -12598,7 +12608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/mfa/verify-login', isAuthenticatedAllowPendingMfa, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { code, isBackupCode } = req.body;
+      const { code, isBackupCode, rememberDevice } = req.body;
       
       if (!code || typeof code !== 'string') {
         return res.status(400).json({ message: "Verification code is required" });
@@ -12608,6 +12618,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(req.session as any).mfaPending) {
         return res.status(400).json({ message: "No MFA verification pending" });
       }
+
+      // Helper to issue a 7-day trusted device cookie after successful MFA
+      const issueTrustedDeviceCookie = async () => {
+        if (!rememberDevice) return;
+        const { randomBytes } = await import('crypto');
+        const deviceToken = randomBytes(48).toString('hex'); // 96-char hex token
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        const rawUa = req.get('user-agent') || null;
+        // Build a human-readable device name from the user-agent
+        const deviceName = (() => {
+          if (!rawUa) return 'Unknown Browser';
+          const ua = rawUa.toLowerCase();
+          let browser = 'Browser';
+          let os = '';
+          if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome';
+          else if (ua.includes('firefox')) browser = 'Firefox';
+          else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari';
+          else if (ua.includes('edg')) browser = 'Edge';
+          if (ua.includes('windows')) os = ' on Windows';
+          else if (ua.includes('mac')) os = ' on Mac';
+          else if (ua.includes('linux')) os = ' on Linux';
+          else if (ua.includes('android')) os = ' on Android';
+          else if (ua.includes('iphone') || ua.includes('ipad')) os = ' on iOS';
+          return `${browser}${os}`;
+        })();
+        await storage.createTrustedDevice({
+          userId,
+          deviceToken,
+          userAgent: rawUa,
+          ipAddress: req.ip || req.socket?.remoteAddress || null,
+          deviceName,
+          expiresAt,
+        });
+        res.cookie('trusted_device_token', deviceToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: '/',
+        });
+      };
       
       const user = await storage.getUser(userId);
       if (!user) {
@@ -12663,6 +12714,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.session.save((err: any) => err ? reject(err) : resolve());
         });
         
+        await issueTrustedDeviceCookie();
+        
         await storage.logSecurityEvent({
           eventType: 'login_success',
           severity: 'info',
@@ -12673,6 +12726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eventData: {
             action: 'mfa_login_backup_code_verified',
             remainingBackupCodes: remainingCodes.length,
+            deviceTrusted: !!rememberDevice,
           },
         });
         
@@ -12714,6 +12768,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.session.save((err: any) => err ? reject(err) : resolve());
         });
         
+        await issueTrustedDeviceCookie();
+
         await storage.logSecurityEvent({
           eventType: 'login_success',
           severity: 'info',
@@ -12723,6 +12779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userAgent: req.get('user-agent') || null,
           eventData: {
             action: 'mfa_login_verified',
+            deviceTrusted: !!rememberDevice,
           },
         });
         
@@ -12734,6 +12791,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying login MFA:", error);
       res.status(500).json({ message: "Failed to verify MFA" });
+    }
+  });
+
+  // Trusted device management routes
+  app.get('/api/auth/trusted-devices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const devices = await storage.getUserTrustedDevices(userId);
+      const currentToken = req.cookies?.['trusted_device_token'];
+      const sanitized = devices.map(d => ({
+        id: d.id,
+        deviceName: d.deviceName,
+        ipAddress: d.ipAddress,
+        lastUsedAt: d.lastUsedAt,
+        expiresAt: d.expiresAt,
+        createdAt: d.createdAt,
+        isCurrent: currentToken ? d.deviceToken === currentToken : false,
+      }));
+      res.json(sanitized);
+    } catch (error) {
+      console.error("Error fetching trusted devices:", error);
+      res.status(500).json({ message: "Failed to fetch trusted devices" });
+    }
+  });
+
+  app.delete('/api/auth/trusted-devices/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deviceId = parseInt(req.params.id, 10);
+      if (isNaN(deviceId)) return res.status(400).json({ message: "Invalid device ID" });
+      
+      await storage.revokeTrustedDevice(deviceId, userId);
+      // If revoking the current device, clear the cookie too
+      const devices = await storage.getUserTrustedDevices(userId);
+      const currentToken = req.cookies?.['trusted_device_token'];
+      if (currentToken) {
+        const stillActive = devices.find(d => d.deviceToken === currentToken && d.id !== deviceId);
+        if (!stillActive) {
+          res.clearCookie('trusted_device_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
+        }
+      }
+      await storage.logSecurityEvent({
+        eventType: 'logout',
+        severity: 'info',
+        userId,
+        email: req.user.claims.email || null,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: { action: 'trusted_device_revoked', deviceId },
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error revoking trusted device:", error);
+      res.status(500).json({ message: "Failed to revoke trusted device" });
+    }
+  });
+
+  app.delete('/api/auth/trusted-devices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.revokeAllUserTrustedDevices(userId);
+      res.clearCookie('trusted_device_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
+      await storage.logSecurityEvent({
+        eventType: 'logout',
+        severity: 'info',
+        userId,
+        email: req.user.claims.email || null,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
+        userAgent: req.get('user-agent') || null,
+        eventData: { action: 'all_trusted_devices_revoked' },
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error revoking all trusted devices:", error);
+      res.status(500).json({ message: "Failed to revoke all trusted devices" });
     }
   });
   

@@ -606,7 +606,39 @@ async function setupLocalAuth(app: Express) {
           const dbUser = await storage.getUser(user.claims.sub);
           
           if (dbUser?.mfaEnabled) {
-            // MFA is enabled - user needs to verify TOTP code
+            // Check for a valid trusted device cookie (7-day bypass)
+            const rawCookie = req.cookies?.['trusted_device_token'];
+            if (rawCookie) {
+              const trustedDevice = await storage.getTrustedDeviceByToken(rawCookie);
+              if (trustedDevice && trustedDevice.userId === user.claims.sub) {
+                // Valid trusted device — skip MFA, refresh last-used timestamp
+                await storage.touchTrustedDevice(trustedDevice.id);
+                (req.session as any).mfaPending = false;
+                (req.session as any).mfaVerified = true;
+                await storage.logSecurityEvent({
+                  eventType: 'login_success',
+                  severity: 'info',
+                  userId: user.claims.sub,
+                  email: user.claims.email || dbUser.email || undefined,
+                  ipAddress: req.ip || req.socket.remoteAddress || null,
+                  userAgent: req.get('user-agent') || null,
+                  eventData: { action: 'mfa_skipped_trusted_device', deviceId: trustedDevice.id },
+                });
+                return res.json({
+                  success: true,
+                  mfaRequired: false,
+                  mfaSetupRequired: false,
+                  trustedDevice: true,
+                  user: {
+                    id: user.claims.sub,
+                    email: user.claims.email,
+                    firstName: user.claims.first_name,
+                    lastName: user.claims.last_name,
+                  }
+                });
+              }
+            }
+            // MFA is enabled and no valid trusted device — user must verify TOTP
             (req.session as any).mfaPending = true;
             (req.session as any).mfaVerified = false;
             return res.json({ 
