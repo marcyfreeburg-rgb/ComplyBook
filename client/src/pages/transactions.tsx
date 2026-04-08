@@ -56,6 +56,22 @@ interface CategorySuggestion {
   historyId: number;
 }
 
+interface FullCategorizationSuggestion {
+  categoryId: number | null;
+  categoryName: string | null;
+  vendorId: number | null;
+  vendorName: string | null;
+  fundId: number | null;
+  fundName: string | null;
+  programId: number | null;
+  programName: string | null;
+  grantId: number | null;
+  grantName: string | null;
+  functionalCategory: 'program' | 'administrative' | 'fundraising' | null;
+  confidence: number;
+  reasoning: string;
+}
+
 interface SplitItem {
   amount: string;
   description: string;
@@ -136,6 +152,8 @@ export default function Transactions({ currentOrganization, userId }: Transactio
   const [aiSuggestion, setAiSuggestion] = useState<CategorySuggestion | null>(null);
   const [bulkSuggestions, setBulkSuggestions] = useState<Map<number, CategorySuggestion>>(new Map());
   const [showBulkCategorization, setShowBulkCategorization] = useState(false);
+  const [fullSuggestions, setFullSuggestions] = useState<Map<number, FullCategorizationSuggestion>>(new Map());
+  const [showFullCategorization, setShowFullCategorization] = useState(false);
   const [isAttachmentsDialogOpen, setIsAttachmentsDialogOpen] = useState(false);
   const [selectedTransactionForAttachments, setSelectedTransactionForAttachments] = useState<Transaction | null>(null);
   
@@ -849,6 +867,46 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       }
       toast({
         title: "Bulk Categorization Failed",
+        description: error.message || "Could not categorize transactions. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const fullCategorizeMutation = useMutation({
+    mutationFn: async (transactionsToProcess: Transaction[]) => {
+      const transactionData = transactionsToProcess.map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+      }));
+      const response = await apiRequest('POST', `/api/ai/full-categorize-bulk/${currentOrganization.id}`, {
+        transactions: transactionData,
+      });
+      return await response.json() as Record<number, FullCategorizationSuggestion>;
+    },
+    onSuccess: (suggestionsObj) => {
+      const map = new Map<number, FullCategorizationSuggestion>();
+      Object.entries(suggestionsObj).forEach(([id, s]) => {
+        map.set(parseInt(id), s);
+      });
+      setFullSuggestions(map);
+      setShowFullCategorization(true);
+      setShowBulkCategorization(false);
+      toast({
+        title: "AI Auto-Categorize Complete",
+        description: `Generated suggestions for ${map.size} transaction${map.size !== 1 ? 's' : ''}`,
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({
+        title: "AI Auto-Categorize Failed",
         description: error.message || "Could not categorize transactions. Please try again.",
         variant: "destructive",
       });
@@ -2527,14 +2585,14 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  AI Bulk Categorization
+                  AI Auto-Categorize
                 </CardTitle>
                 <CardDescription>
                   {uncategorizedTransactions.length} uncategorized transaction{uncategorizedTransactions.length !== 1 ? 's' : ''} found
                 </CardDescription>
               </div>
-              {!showBulkCategorization ? (
-                <div className="flex items-center gap-3">
+              {!showBulkCategorization && !showFullCategorization ? (
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="batch-size" className="text-sm whitespace-nowrap">
                       Batch size:
@@ -2560,16 +2618,30 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                     </Select>
                   </div>
                   <Button
+                    variant="outline"
                     onClick={() => {
                       const transactionsToProcess = uncategorizedTransactions.slice(0, aiBatchSize);
                       bulkCategorizeMutation.mutate(transactionsToProcess);
                     }}
-                    disabled={bulkCategorizeMutation.isPending}
+                    disabled={bulkCategorizeMutation.isPending || fullCategorizeMutation.isPending}
                     data-testid="button-bulk-categorize"
                   >
-                    {bulkCategorizeMutation.isPending 
-                      ? "Analyzing..." 
-                      : `Categorize ${Math.min(aiBatchSize, uncategorizedTransactions.length)}`
+                    {bulkCategorizeMutation.isPending
+                      ? "Analyzing..."
+                      : `Category Only (${Math.min(aiBatchSize, uncategorizedTransactions.length)})`
+                    }
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const transactionsToProcess = uncategorizedTransactions.slice(0, aiBatchSize);
+                      fullCategorizeMutation.mutate(transactionsToProcess);
+                    }}
+                    disabled={fullCategorizeMutation.isPending || bulkCategorizeMutation.isPending}
+                    data-testid="button-full-categorize"
+                  >
+                    {fullCategorizeMutation.isPending
+                      ? "Analyzing..."
+                      : `All Fields (${Math.min(aiBatchSize, uncategorizedTransactions.length)})`
                     }
                   </Button>
                 </div>
@@ -2621,7 +2693,9 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                     variant="outline"
                     onClick={() => {
                       setShowBulkCategorization(false);
+                      setShowFullCategorization(false);
                       setBulkSuggestions(new Map());
+                      setFullSuggestions(new Map());
                     }}
                     data-testid="button-hide-bulk-suggestions"
                   >
@@ -2815,6 +2889,165 @@ export default function Transactions({ currentOrganization, userId }: Transactio
               </div>
             </CardContent>
           )}
+
+          {/* Full categorization suggestions panel */}
+          {showFullCategorization && fullSuggestions.size > 0 && (
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Button
+                  onClick={async () => {
+                    try {
+                      for (const [transactionId, s] of fullSuggestions.entries()) {
+                        const updates: Record<string, any> = {};
+                        if (s.categoryId != null) updates.categoryId = s.categoryId;
+                        if (s.vendorId != null) updates.vendorId = s.vendorId;
+                        if (s.fundId != null) updates.fundId = s.fundId;
+                        if (s.programId != null) updates.programId = s.programId;
+                        if (s.grantId != null) updates.grantId = s.grantId;
+                        if (s.functionalCategory != null) updates.functionalCategory = s.functionalCategory;
+                        if (Object.keys(updates).length > 0) {
+                          await apiRequest('PATCH', `/api/transactions/${transactionId}`, updates);
+                        }
+                      }
+                      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+                      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+                      setFullSuggestions(new Map());
+                      setShowFullCategorization(false);
+                      toast({ title: "All Fields Applied", description: `Applied AI suggestions to ${fullSuggestions.size} transactions.` });
+                    } catch {
+                      toast({ title: "Error", description: "Failed to apply some suggestions.", variant: "destructive" });
+                    }
+                  }}
+                  className="flex-1"
+                  data-testid="button-apply-all-full-suggestions"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Apply All ({fullSuggestions.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFullSuggestions(new Map());
+                    setShowFullCategorization(false);
+                  }}
+                  data-testid="button-ignore-all-full-suggestions"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Ignore All
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {Array.from(fullSuggestions.entries()).map(([transactionId, s]) => {
+                  const transaction = transactions?.find(t => t.id === transactionId);
+                  if (!transaction) return null;
+                  const hasAnyField = s.categoryId || s.vendorId || s.fundId || s.programId || s.grantId || s.functionalCategory;
+                  if (!hasAnyField) return null;
+
+                  return (
+                    <div key={transactionId} className="p-4 bg-muted/30 rounded-md space-y-3" data-testid={`full-suggestion-${transactionId}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{transaction.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {transaction.type === 'income' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{s.confidence}% confidence</Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {s.categoryName && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground font-medium">Category</span>
+                            <span className="font-semibold">{s.categoryName}</span>
+                          </div>
+                        )}
+                        {s.vendorName && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground font-medium">Vendor</span>
+                            <span className="font-semibold">{s.vendorName}</span>
+                          </div>
+                        )}
+                        {s.fundName && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground font-medium">Fund</span>
+                            <span className="font-semibold">{s.fundName}</span>
+                          </div>
+                        )}
+                        {s.programName && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground font-medium">Program</span>
+                            <span className="font-semibold">{s.programName}</span>
+                          </div>
+                        )}
+                        {s.grantName && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground font-medium">Grant</span>
+                            <span className="font-semibold">{s.grantName}</span>
+                          </div>
+                        )}
+                        {s.functionalCategory && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground font-medium">Functional Category</span>
+                            <span className="font-semibold capitalize">{s.functionalCategory}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {s.reasoning && (
+                        <p className="text-xs text-muted-foreground italic">{s.reasoning}</p>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const updates: Record<string, any> = {};
+                              if (s.categoryId != null) updates.categoryId = s.categoryId;
+                              if (s.vendorId != null) updates.vendorId = s.vendorId;
+                              if (s.fundId != null) updates.fundId = s.fundId;
+                              if (s.programId != null) updates.programId = s.programId;
+                              if (s.grantId != null) updates.grantId = s.grantId;
+                              if (s.functionalCategory != null) updates.functionalCategory = s.functionalCategory;
+                              await apiRequest('PATCH', `/api/transactions/${transactionId}`, updates);
+                              const updated = new Map(fullSuggestions);
+                              updated.delete(transactionId);
+                              setFullSuggestions(updated);
+                              queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+                              toast({ title: "Applied", description: transaction.description });
+                            } catch {
+                              toast({ title: "Error", description: "Failed to update transaction.", variant: "destructive" });
+                            }
+                          }}
+                          className="flex-1"
+                          data-testid={`button-accept-full-suggestion-${transactionId}`}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Apply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const updated = new Map(fullSuggestions);
+                            updated.delete(transactionId);
+                            setFullSuggestions(updated);
+                          }}
+                          className="flex-1"
+                          data-testid={`button-reject-full-suggestion-${transactionId}`}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Ignore
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
         </Card>
       )}
 
@@ -2837,6 +3070,20 @@ export default function Transactions({ currentOrganization, userId }: Transactio
                 </Button>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const selected = Array.from(selectedTransactionIds);
+                    const transactionsToProcess = (transactions || []).filter(t => selected.includes(t.id));
+                    fullCategorizeMutation.mutate(transactionsToProcess);
+                    setSelectedTransactionIds(new Set());
+                  }}
+                  disabled={fullCategorizeMutation.isPending}
+                  data-testid="button-ai-full-categorize-selected"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {fullCategorizeMutation.isPending ? "Analyzing..." : "AI Auto-Categorize"}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

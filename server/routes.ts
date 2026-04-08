@@ -11,7 +11,7 @@ import { isStorageAvailable, getStorageType, getStorageService, filesystemStorag
 const isObjectStorageAvailable = isStorageAvailable();
 import { setupAuth, isAuthenticated, isAuthenticatedAllowPendingMfa, requireMfaCompliance, hashPassword, comparePasswords } from "./replitAuth";
 import { plaidClient } from "./plaid";
-import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching, analyzeCategoriesToTaxDeductibility } from "./aiCategorization";
+import { suggestCategory, suggestCategoryBulk, suggestEnhancedMatching, analyzeCategoriesToTaxDeductibility, suggestFullCategorizationBulk, FullCategorizationSuggestion } from "./aiCategorization";
 import { detectRecurringPatterns, suggestBudget, createBillFromPattern, clearPatternCache } from "./aiPatternDetection";
 import { ObjectStorageService } from "./objectStorage";
 import { runVulnerabilityScan, getLatestVulnerabilitySummary } from "./vulnerabilityScanner";
@@ -6744,6 +6744,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error suggesting categories in bulk:", error);
       res.status(500).json({ message: "Failed to suggest categories" });
+    }
+  });
+
+  // Full AI auto-categorization — suggests vendor, fund, program, grant, functional category, and category
+  app.post('/api/ai/full-categorize-bulk/:organizationId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = parseInt(req.params.organizationId);
+      const { transactions } = req.body;
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!checkAiRateLimit(userId, organizationId)) {
+        return res.status(429).json({ message: "Too many AI requests. Please try again in a minute." });
+      }
+
+      if (!Array.isArray(transactions) || transactions.length === 0) {
+        return res.status(400).json({ message: "Transactions array is required" });
+      }
+
+      if (transactions.length > 50) {
+        return res.status(400).json({ message: "Maximum 50 transactions allowed per bulk request" });
+      }
+
+      for (const tx of transactions) {
+        if (!tx.description || !tx.amount || !tx.type) {
+          return res.status(400).json({ message: "Each transaction must have description, amount, and type" });
+        }
+      }
+
+      const org = await storage.getOrganization(organizationId);
+      const orgType = org?.type || 'forprofit';
+
+      const suggestions = await suggestFullCategorizationBulk(organizationId, orgType, transactions);
+
+      const suggestionsObj: Record<number, FullCategorizationSuggestion> = {};
+      suggestions.forEach((value, key) => {
+        suggestionsObj[key] = value;
+      });
+
+      console.log(`[Full Categorization Route] Organization ${organizationId} — ${suggestions.size} suggestions for ${transactions.length} transactions`);
+      res.json(suggestionsObj);
+    } catch (error) {
+      console.error("Error in full-categorize-bulk:", error);
+      res.status(500).json({ message: "Failed to generate categorization suggestions" });
     }
   });
 

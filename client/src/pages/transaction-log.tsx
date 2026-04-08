@@ -46,6 +46,22 @@ import { formatCurrency, safeFormatDate } from "@/lib/utils";
 
 type OrganizationWithRole = Organization & { userRole: string };
 
+interface FullCategorizationSuggestion {
+  categoryId: number | null;
+  categoryName: string | null;
+  vendorId: number | null;
+  vendorName: string | null;
+  fundId: number | null;
+  fundName: string | null;
+  programId: number | null;
+  programName: string | null;
+  grantId: number | null;
+  grantName: string | null;
+  functionalCategory: 'program' | 'administrative' | 'fundraising' | null;
+  confidence: number;
+  reasoning: string;
+}
+
 interface PlaidAccountWithInitialBalance {
   id: number;
   accountId: string;
@@ -95,6 +111,9 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     grantId: "",
   });
   
+  const [fullSuggestions, setFullSuggestions] = useState<Map<number, FullCategorizationSuggestion>>(new Map());
+  const [showFullCategorization, setShowFullCategorization] = useState(false);
+
   // Sorting state
   type SortColumn = 'date' | 'description' | 'category' | 'grant' | 'type' | 'source' | 'amount';
   type SortDirection = 'asc' | 'desc';
@@ -583,6 +602,40 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     },
   });
 
+  const fullCategorizeMutation = useMutation({
+    mutationFn: async (transactionsToProcess: Transaction[]) => {
+      const transactionData = transactionsToProcess.map(t => ({
+        id: t.id,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+      }));
+      const response = await apiRequest('POST', `/api/ai/full-categorize-bulk/${currentOrganization.id}`, {
+        transactions: transactionData,
+      });
+      return await response.json() as Record<number, FullCategorizationSuggestion>;
+    },
+    onSuccess: (suggestionsObj) => {
+      const map = new Map<number, FullCategorizationSuggestion>();
+      Object.entries(suggestionsObj).forEach(([id, s]) => {
+        map.set(parseInt(id), s);
+      });
+      setFullSuggestions(map);
+      setShowFullCategorization(true);
+      toast({
+        title: "AI Auto-Categorize Complete",
+        description: `Generated suggestions for ${map.size} transaction${map.size !== 1 ? 's' : ''}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "AI Auto-Categorize Failed",
+        description: error.message || "Could not categorize transactions. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditClick = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setEditForm({
@@ -1032,6 +1085,25 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
+              {selectedTransactions.size > 0 && (
+                <Button
+                  onClick={() => {
+                    const ids = Array.from(selectedTransactions);
+                    const transactionsToProcess = (transactions || []).filter(t => ids.includes(t.id));
+                    fullCategorizeMutation.mutate(transactionsToProcess);
+                    setSelectedTransactions(new Set());
+                  }}
+                  disabled={fullCategorizeMutation.isPending}
+                  data-testid="button-ai-full-categorize-selected"
+                >
+                  {fullCategorizeMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  AI Auto-Categorize
+                </Button>
+              )}
               {selectedTransactions.size > 0 && currentOrganization.type === 'nonprofit' && (
                 <Button
                   variant="outline"
@@ -1954,6 +2026,165 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AI Full Categorization Suggestions Panel */}
+      {showFullCategorization && fullSuggestions.size > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  AI Auto-Categorize Suggestions
+                </CardTitle>
+                <CardDescription>{fullSuggestions.size} suggestion{fullSuggestions.size !== 1 ? 's' : ''} ready to review</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    try {
+                      for (const [transactionId, s] of fullSuggestions.entries()) {
+                        const updates: Record<string, any> = {};
+                        if (s.categoryId != null) updates.categoryId = s.categoryId;
+                        if (s.vendorId != null) updates.vendorId = s.vendorId;
+                        if (s.fundId != null) updates.fundId = s.fundId;
+                        if (s.programId != null) updates.programId = s.programId;
+                        if (s.grantId != null) updates.grantId = s.grantId;
+                        if (s.functionalCategory != null) updates.functionalCategory = s.functionalCategory;
+                        if (Object.keys(updates).length > 0) {
+                          await apiRequest('PATCH', `/api/transactions/${transactionId}`, updates);
+                        }
+                      }
+                      queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+                      queryClient.invalidateQueries({ queryKey: [`/api/grants/${currentOrganization.id}`] });
+                      setFullSuggestions(new Map());
+                      setShowFullCategorization(false);
+                      toast({ title: "All Fields Applied", description: `Applied AI suggestions to ${fullSuggestions.size} transactions.` });
+                    } catch {
+                      toast({ title: "Error", description: "Failed to apply some suggestions.", variant: "destructive" });
+                    }
+                  }}
+                  data-testid="button-apply-all-full-suggestions"
+                >
+                  Apply All ({fullSuggestions.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => { setFullSuggestions(new Map()); setShowFullCategorization(false); }}
+                  data-testid="button-ignore-all-full-suggestions"
+                >
+                  Dismiss All
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Array.from(fullSuggestions.entries()).map(([transactionId, s]) => {
+                const transaction = transactions.find(t => t.id === transactionId);
+                if (!transaction) return null;
+                return (
+                  <div key={transactionId} className="p-4 bg-muted/30 rounded-md space-y-3" data-testid={`full-suggestion-${transactionId}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{transaction.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {transaction.type === 'income' ? '+' : '-'}${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · {safeFormatDate(transaction.date, 'MMM d, yyyy', '')}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-xs flex-shrink-0">{s.confidence}% confidence</Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {s.categoryName && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground font-medium">Category</span>
+                          <span className="font-semibold">{s.categoryName}</span>
+                        </div>
+                      )}
+                      {s.vendorName && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground font-medium">Vendor</span>
+                          <span className="font-semibold">{s.vendorName}</span>
+                        </div>
+                      )}
+                      {s.fundName && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground font-medium">Fund</span>
+                          <span className="font-semibold">{s.fundName}</span>
+                        </div>
+                      )}
+                      {s.programName && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground font-medium">Program</span>
+                          <span className="font-semibold">{s.programName}</span>
+                        </div>
+                      )}
+                      {s.grantName && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground font-medium">Grant</span>
+                          <span className="font-semibold">{s.grantName}</span>
+                        </div>
+                      )}
+                      {s.functionalCategory && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-muted-foreground font-medium">Functional Category</span>
+                          <span className="font-semibold capitalize">{s.functionalCategory}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {s.reasoning && <p className="text-xs text-muted-foreground italic">{s.reasoning}</p>}
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const updates: Record<string, any> = {};
+                            if (s.categoryId != null) updates.categoryId = s.categoryId;
+                            if (s.vendorId != null) updates.vendorId = s.vendorId;
+                            if (s.fundId != null) updates.fundId = s.fundId;
+                            if (s.programId != null) updates.programId = s.programId;
+                            if (s.grantId != null) updates.grantId = s.grantId;
+                            if (s.functionalCategory != null) updates.functionalCategory = s.functionalCategory;
+                            await apiRequest('PATCH', `/api/transactions/${transactionId}`, updates);
+                            const updated = new Map(fullSuggestions);
+                            updated.delete(transactionId);
+                            setFullSuggestions(updated);
+                            queryClient.invalidateQueries({ queryKey: [`/api/transactions/${currentOrganization.id}`] });
+                            toast({ title: "Applied", description: transaction.description });
+                          } catch {
+                            toast({ title: "Error", description: "Failed to update transaction.", variant: "destructive" });
+                          }
+                        }}
+                        className="flex-1"
+                        data-testid={`button-accept-full-suggestion-${transactionId}`}
+                      >
+                        Apply
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const updated = new Map(fullSuggestions);
+                          updated.delete(transactionId);
+                          setFullSuggestions(updated);
+                          if (updated.size === 0) setShowFullCategorization(false);
+                        }}
+                        className="flex-1"
+                        data-testid={`button-reject-full-suggestion-${transactionId}`}
+                      >
+                        Ignore
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Grant Overspending Warning Dialog */}
       <AlertDialog open={grantOverspendWarning !== null} onOpenChange={(open) => !open && setGrantOverspendWarning(null)}>

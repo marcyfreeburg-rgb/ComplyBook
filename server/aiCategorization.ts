@@ -326,6 +326,220 @@ Respond with JSON: {"suggestions": [{"transactionId": <id>, "categoryId": <id>, 
   }
 }
 
+// Full categorization — suggests all 5 fields simultaneously for a batch of transactions
+export interface FullCategorizationSuggestion {
+  categoryId: number | null;
+  categoryName: string | null;
+  vendorId: number | null;
+  vendorName: string | null;
+  fundId: number | null;
+  fundName: string | null;
+  programId: number | null;
+  programName: string | null;
+  grantId: number | null;
+  grantName: string | null;
+  functionalCategory: 'program' | 'administrative' | 'fundraising' | null;
+  confidence: number;
+  reasoning: string;
+}
+
+export async function suggestFullCategorizationBulk(
+  organizationId: number,
+  organizationType: string,
+  transactions: Array<{
+    id: number;
+    description: string;
+    amount: string;
+    type: 'income' | 'expense';
+  }>
+): Promise<Map<number, FullCategorizationSuggestion>> {
+  const suggestions = new Map<number, FullCategorizationSuggestion>();
+
+  if (!openai) {
+    console.log('[Full Categorization] AI not available - no API key configured');
+    return suggestions;
+  }
+
+  if (transactions.length === 0) return suggestions;
+
+  const isNonprofit = organizationType === 'nonprofit';
+
+  // Fetch all org reference data once
+  const [categories, vendors, funds, programs, rawGrants] = await Promise.all([
+    storage.getCategories(organizationId),
+    storage.getVendors(organizationId),
+    storage.getFunds(organizationId),
+    storage.getPrograms(organizationId),
+    isNonprofit ? storage.getGrants(organizationId) : Promise.resolve([]),
+  ]);
+
+  const grants = (rawGrants as Array<{ id: number; name: string; status?: string }>).filter(
+    g => !g.status || g.status === 'active'
+  );
+
+  // Build lookup lists for the prompt
+  const incomeCategories = categories
+    .filter(c => c.type === 'income')
+    .map(c => `  - ID:${c.id} "${c.name}"`)
+    .join('\n') || '  (none)';
+
+  const expenseCategories = categories
+    .filter(c => c.type === 'expense')
+    .map(c => `  - ID:${c.id} "${c.name}"`)
+    .join('\n') || '  (none)';
+
+  const vendorList = vendors.length > 0
+    ? vendors.map(v => `  - ID:${v.id} "${v.name}"`).join('\n')
+    : '  (none)';
+
+  const fundList = funds.length > 0
+    ? funds.map(f => `  - ID:${f.id} "${f.name}" (${(f as any).fundType || 'unrestricted'})`).join('\n')
+    : '  (none)';
+
+  const programList = programs.length > 0
+    ? programs.map(p => `  - ID:${p.id} "${p.name}"`).join('\n')
+    : '  (none)';
+
+  const grantList = grants.length > 0
+    ? grants.map(g => `  - ID:${g.id} "${g.name}"`).join('\n')
+    : '  (none)';
+
+  const orgContext = isNonprofit
+    ? 'This is a NONPROFIT organization. For each transaction assign: category, vendor (if a vendor purchase), fund, program, grant (if directly grant-funded), and functionalCategory (program/administrative/fundraising).'
+    : 'This is a FOR-PROFIT organization. For each transaction assign: category, vendor (if a vendor purchase). Assign fund, program, grant, and functionalCategory only when the organization has them configured and they clearly apply.';
+
+  // Process in chunks of 20 to stay within token limits
+  const CHUNK_SIZE = 20;
+  const chunks: typeof transactions[] = [];
+  for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
+    chunks.push(transactions.slice(i, i + CHUNK_SIZE));
+  }
+
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+    const chunk = chunks[chunkIndex];
+    console.log(`[Full Categorization] Processing chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} transactions)...`);
+
+    const transactionList = chunk
+      .map((t, i) => `${i + 1}. ID:${t.id} type:${t.type} amount:$${t.amount} desc:"${t.description.slice(0, 60)}"`)
+      .join('\n');
+
+    const prompt = `${orgContext}
+
+INCOME Categories:
+${incomeCategories}
+
+EXPENSE Categories:
+${expenseCategories}
+
+Vendors:
+${vendorList}
+
+Funds:
+${fundList}
+
+Programs:
+${programList}
+
+Grants:
+${grantList}
+
+Functional Categories: program, administrative, fundraising
+
+Transactions to categorize:
+${transactionList}
+
+Rules:
+- categoryId MUST match the transaction type (income tx → income category, expense tx → expense category)
+- vendorId: match only if description clearly matches a vendor name, else null
+- fundId/programId/grantId: null if none clearly apply or list is empty
+- functionalCategory: always assign for nonprofits; for for-profits only if applicable
+- confidence: 0-100
+
+Respond ONLY with valid JSON:
+{"suggestions": [{"transactionId": <id>, "categoryId": <id or null>, "categoryName": "<string or null>", "vendorId": <id or null>, "vendorName": "<string or null>", "fundId": <id or null>, "fundName": "<string or null>", "programId": <id or null>, "programName": "<string or null>", "grantId": <id or null>, "grantName": "<string or null>", "functionalCategory": "<program|administrative|fundraising|null>", "confidence": <0-100>, "reasoning": "<brief>"}]}`;
+
+    const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: modelName,
+        messages: [
+          { role: "system", content: "You are a financial categorization expert for both nonprofit and for-profit organizations. Always respond with valid JSON only. Keep reasoning under 12 words." },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 6000,
+      });
+
+      const responseText = completion.choices[0]?.message?.content;
+      if (!responseText) {
+        console.error(`[Full Categorization] No response for chunk ${chunkIndex + 1}`);
+        continue;
+      }
+
+      const parsed = JSON.parse(responseText) as {
+        suggestions: Array<FullCategorizationSuggestion & { transactionId: number }>;
+      };
+
+      for (const s of parsed.suggestions || []) {
+        const tx = chunk.find(t => t.id === s.transactionId);
+        if (!tx) continue;
+
+        // Validate category matches transaction type
+        const relevantCats = categories.filter(c => c.type === tx.type);
+        let cat = relevantCats.find(c => c.id === s.categoryId);
+        if (!cat && s.categoryName) {
+          cat = relevantCats.find(c => c.name.toLowerCase() === s.categoryName!.toLowerCase());
+          if (cat) s.categoryId = cat.id;
+        }
+
+        // Validate vendor
+        const vendor = s.vendorId ? vendors.find(v => v.id === s.vendorId) : null;
+        if (!vendor) { s.vendorId = null; s.vendorName = null; }
+
+        // Validate fund
+        const fund = s.fundId ? funds.find(f => f.id === s.fundId) : null;
+        if (!fund) { s.fundId = null; s.fundName = null; }
+
+        // Validate program
+        const program = s.programId ? programs.find(p => p.id === s.programId) : null;
+        if (!program) { s.programId = null; s.programName = null; }
+
+        // Validate grant
+        const grant = s.grantId ? grants.find(g => g.id === s.grantId) : null;
+        if (!grant) { s.grantId = null; s.grantName = null; }
+
+        // Validate functionalCategory
+        const validFC = ['program', 'administrative', 'fundraising'];
+        if (s.functionalCategory && !validFC.includes(s.functionalCategory)) {
+          s.functionalCategory = null;
+        }
+
+        suggestions.set(s.transactionId, {
+          categoryId: cat ? s.categoryId : null,
+          categoryName: cat ? (cat.name) : null,
+          vendorId: s.vendorId,
+          vendorName: s.vendorName,
+          fundId: s.fundId,
+          fundName: s.fundName,
+          programId: s.programId,
+          programName: s.programName,
+          grantId: s.grantId,
+          grantName: s.grantName,
+          functionalCategory: s.functionalCategory as 'program' | 'administrative' | 'fundraising' | null,
+          confidence: s.confidence,
+          reasoning: s.reasoning,
+        });
+      }
+    } catch (err) {
+      console.error(`[Full Categorization] Error in chunk ${chunkIndex + 1}:`, err);
+    }
+  }
+
+  console.log(`[Full Categorization] Generated ${suggestions.size} suggestions for ${transactions.length} transactions`);
+  return suggestions;
+}
+
 // Enhanced AI matching for grants, programs, and funds
 export interface EnhancedMatchingSuggestion {
   categoryId?: number;
