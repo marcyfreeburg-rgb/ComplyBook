@@ -11,6 +11,7 @@ import { PlaidWebhookHandlers, PlaidWebhookPayload } from './plaidWebhookHandler
 import { verifyPlaidWebhook } from './plaidWebhookVerification';
 import { runAuditRetentionPolicies } from './auditRetention';
 import { storage } from './storage';
+import { pool } from './db';
 
 const app = express();
 
@@ -81,6 +82,38 @@ async function scheduleAuditRetention() {
 }
 
 scheduleAuditRetention();
+
+// Idempotent startup migration: ensure trusted_devices table exists in all environments
+async function ensureTrustedDevicesTable() {
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS trusted_devices (
+          id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          device_token varchar(128) NOT NULL UNIQUE,
+          user_agent text,
+          ip_address varchar(45),
+          device_name varchar(200),
+          last_used_at timestamp NOT NULL DEFAULT now(),
+          expires_at timestamp NOT NULL,
+          revoked_at timestamp,
+          created_at timestamp NOT NULL DEFAULT now()
+        );
+        CREATE INDEX IF NOT EXISTS idx_trusted_devices_user ON trusted_devices(user_id);
+        CREATE INDEX IF NOT EXISTS idx_trusted_devices_token ON trusted_devices(device_token);
+        CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON trusted_devices(expires_at);
+      `);
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    console.warn('[startup] trusted_devices migration skipped:', err.message);
+  }
+}
+
+ensureTrustedDevicesTable();
 
 // NIST 800-53 AC-2: Account Management — Dormant Account Detection
 // Runs weekly. Logs a security event for any account that has had no successful
