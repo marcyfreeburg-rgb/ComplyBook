@@ -364,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const userOrgs = await storage.getUserOrganizations(userId);
+      const userOrgs = await storage.getOrganizations(userId);
       const isAdminOrOwner = userOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
       if (!isAdminOrOwner) {
         return res.status(403).json({ message: "Admin or owner access required" });
