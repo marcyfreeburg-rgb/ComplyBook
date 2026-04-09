@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, Shield, Mail, Calendar } from "lucide-react";
+import { Users, Shield, Mail, Calendar, Building2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ interface AdminUser {
   mfaEnabled: boolean;
   subscriptionTier: string | null;
   subscriptionStatus: string | null;
+  organizations: Array<{ id: number; name: string; role: string }>;
 }
 
 export default function AdminUsers() {
@@ -69,6 +70,10 @@ export default function AdminUsers() {
         )}
       </div>
 
+      <p className="text-sm text-muted-foreground">
+        All accounts registered on the platform. The Organizations column shows which organizations each user has been granted access to. Users with no organizations listed have their own account but have not joined any organization.
+      </p>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -88,6 +93,7 @@ export default function AdminUsers() {
                   <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Organizations</TableHead>
                     <TableHead>MFA</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Signed Up</TableHead>
@@ -117,6 +123,21 @@ export default function AdminUsers() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex flex-col gap-1" data-testid={`orgs-${u.id}`}>
+                          {u.organizations.length === 0 ? (
+                            <span className="text-sm text-muted-foreground italic">None</span>
+                          ) : (
+                            u.organizations.map((org) => (
+                              <div key={org.id} className="flex items-center gap-1.5">
+                                <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <span className="text-sm">{org.name}</span>
+                                <Badge variant="outline" className="text-xs capitalize">{org.role}</Badge>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={u.mfaEnabled ? "default" : "outline"} data-testid={`badge-mfa-${u.id}`}>
                           {u.mfaEnabled ? "Enabled" : "Off"}
                         </Badge>
@@ -141,7 +162,7 @@ export default function AdminUsers() {
                   ))}
                   {users.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No users registered yet.
                       </TableCell>
                     </TableRow>

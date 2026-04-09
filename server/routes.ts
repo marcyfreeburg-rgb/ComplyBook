@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin or owner access required" });
       }
 
-      const allUsers = await storage.getAllUsers();
+      const allUsers = await storage.getAllUsersWithOrgs();
       const safeUsers = allUsers.map((u: any) => ({
         id: u.id,
         email: u.email,
@@ -382,6 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mfaEnabled: u.mfaEnabled,
         subscriptionTier: u.subscriptionTier,
         subscriptionStatus: u.subscriptionStatus,
+        organizations: u.organizations,
       }));
       res.json(safeUsers);
     } catch (error) {
