@@ -620,6 +620,14 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
       Object.entries(suggestionsObj).forEach(([id, s]) => {
         map.set(parseInt(id), s);
       });
+      if (map.size === 0) {
+        toast({
+          title: "No Suggestions Generated",
+          description: "The AI could not generate suggestions. Make sure your categories, funds, programs, and grants are set up, then try again.",
+          variant: "destructive",
+        });
+        return;
+      }
       setFullSuggestions(map);
       setShowFullCategorization(true);
       toast({
@@ -1080,8 +1088,8 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
               <CardTitle>All Transactions</CardTitle>
               <CardDescription>
                 {selectedTransactions.size > 0 
-                  ? `${selectedTransactions.size} of ${totalTransactions} selected`
-                  : `${totalTransactions} transactions${totalTransactions > PAGE_SIZE ? ` (showing ${page * PAGE_SIZE + 1}-${Math.min((page + 1) * PAGE_SIZE, totalTransactions)})` : ''}`}
+                  ? `${selectedTransactions.size} of ${totalTransactions} selected — use the AI Auto-Categorize button to categorize selected rows`
+                  : `${totalTransactions} transactions${totalTransactions > PAGE_SIZE ? ` (showing ${page * PAGE_SIZE + 1}-${Math.min((page + 1) * PAGE_SIZE, totalTransactions)})` : ''} — check rows to select them for bulk actions`}
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">

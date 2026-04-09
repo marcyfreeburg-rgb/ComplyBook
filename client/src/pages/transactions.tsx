@@ -891,6 +891,14 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       Object.entries(suggestionsObj).forEach(([id, s]) => {
         map.set(parseInt(id), s);
       });
+      if (map.size === 0) {
+        toast({
+          title: "No Suggestions Generated",
+          description: "The AI could not generate suggestions. Make sure your categories, funds, programs, and grants are set up, then try again.",
+          variant: "destructive",
+        });
+        return;
+      }
       setFullSuggestions(map);
       setShowFullCategorization(true);
       setShowBulkCategorization(false);

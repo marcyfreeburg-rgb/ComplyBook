@@ -460,8 +460,9 @@ Respond ONLY with valid JSON:
 
     const modelName = isReplitEnvironment ? "gpt-5" : "gpt-4o";
 
+    let completion;
     try {
-      const completion = await openai.chat.completions.create({
+      completion = await openai.chat.completions.create({
         model: modelName,
         messages: [
           { role: "system", content: "You are a financial categorization expert for both nonprofit and for-profit organizations. Always respond with valid JSON only. Keep reasoning under 12 words." },
@@ -470,7 +471,12 @@ Respond ONLY with valid JSON:
         response_format: { type: "json_object" },
         max_completion_tokens: 6000,
       });
+    } catch (apiErr) {
+      console.error(`[Full Categorization] API call failed for chunk ${chunkIndex + 1}:`, apiErr);
+      throw apiErr;
+    }
 
+    try {
       const responseText = completion.choices[0]?.message?.content;
       if (!responseText) {
         console.error(`[Full Categorization] No response for chunk ${chunkIndex + 1}`);
