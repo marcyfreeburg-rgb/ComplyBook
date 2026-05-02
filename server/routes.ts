@@ -3666,15 +3666,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Server-side grant overspending validation
+      // Allow $0.01 tolerance for floating-point rounding in stored amounts
       if (data.grantId && data.type === 'expense') {
         const grantsWithSpent = await storage.getGrants(data.organizationId);
         const grant = grantsWithSpent.find(g => g.id === data.grantId);
         if (grant) {
           const remaining = parseFloat(grant.remainingBalance);
           const expenseAmount = parseFloat(data.amount);
-          if (expenseAmount > remaining) {
+          const overage = expenseAmount - remaining;
+          if (overage > 0.01) {
             return res.status(400).json({ 
-              message: `Grant balance exceeded. This expense ($${expenseAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}).` 
+              message: `Grant balance exceeded. This expense ($${expenseAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}) by $${overage.toFixed(2)}.` 
             });
           }
         }
@@ -3718,6 +3720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Server-side grant overspending validation for updates
+      // Allow $0.01 tolerance for floating-point rounding in stored amounts
       const newGrantId = updates.grantId !== undefined ? updates.grantId : existingTransaction.grantId;
       const newType = updates.type !== undefined ? updates.type : existingTransaction.type;
       const newAmount = updates.amount !== undefined ? updates.amount : existingTransaction.amount;
@@ -3728,13 +3731,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (grant) {
           let remaining = parseFloat(grant.remainingBalance);
           // Add back the current transaction's amount if it was already assigned to this grant
+          // (avoids double-counting the existing spend when recategorizing)
           if (existingTransaction.grantId === newGrantId && existingTransaction.type === 'expense') {
             remaining += parseFloat(existingTransaction.amount);
           }
           const expenseAmount = parseFloat(newAmount);
-          if (expenseAmount > remaining) {
+          const overage = expenseAmount - remaining;
+          if (overage > 0.01) {
             return res.status(400).json({ 
-              message: `Grant balance exceeded. This expense ($${expenseAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}).` 
+              message: `Grant balance exceeded. This expense ($${expenseAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}) by $${overage.toFixed(2)}.` 
             });
           }
         }
@@ -3850,17 +3855,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Check each grant allocation against remaining balance
+        // Allow $0.01 tolerance for floating-point rounding in stored amounts
         for (const [grantId, allocated] of Array.from(grantAllocations.entries())) {
           const grant = grantsWithSpent.find(g => g.id === grantId);
           if (grant) {
             let remaining = parseFloat(grant.remainingBalance);
             // Add back what was previously allocated to this grant from the original transaction
+            // (avoids double-counting the existing spend when splitting)
             if (existingTransaction.grantId === grantId) {
               remaining += parseFloat(existingTransaction.amount);
             }
-            if (allocated > remaining) {
+            const overage = allocated - remaining;
+            if (overage > 0.01) {
               return res.status(400).json({ 
-                message: `Grant "${grant.name}" balance exceeded. Split allocates $${allocated.toFixed(2)} but only $${remaining.toFixed(2)} remains.` 
+                message: `Grant "${grant.name}" balance exceeded. Split allocates $${allocated.toFixed(2)} but only $${remaining.toFixed(2)} remains ($${overage.toFixed(2)} over).` 
               });
             }
           }

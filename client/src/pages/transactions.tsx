@@ -1162,12 +1162,14 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       // Add back what was previously allocated to this grant from the original transaction
       const previousAllocation = transactionToSplit.grantId === grantId ? parseFloat(transactionToSplit.amount) : 0;
       const remaining = getGrantRemainingBalance(grantId) + previousAllocation;
+      const overage = allocated - remaining;
       
-      if (allocated > remaining) {
+      // Allow up to $0.01 tolerance for floating-point rounding in stored amounts
+      if (overage > 0.01) {
         const grantName = getGrantName(grantId);
         toast({
           title: "Grant Balance Exceeded in Split",
-          description: `Split items allocate $${allocated.toFixed(2)} to "${grantName}" but only $${remaining.toFixed(2)} remains. Please adjust the split amounts.`,
+          description: `You're allocating $${allocated.toFixed(2)} to "${grantName}" but only $${remaining.toFixed(2)} is available ($${overage.toFixed(2)} over). Reduce that split line to $${remaining.toFixed(2)} and move the extra $${overage.toFixed(2)} to another category.`,
           variant: "destructive",
         });
         return;
@@ -1442,11 +1444,17 @@ export default function Transactions({ currentOrganization, userId }: Transactio
 
     // Hard validation: Block overspending on grants for non-split transactions
     if (!isFormSplitMode && formData.grantId && formData.type === 'expense') {
-      const remaining = getGrantRemainingBalance(formData.grantId);
-      if (parsedAmount > remaining) {
+      // Add back any amount this transaction was already contributing to this grant
+      // (so editing doesn't falsely count the existing spend twice)
+      const previousAllocation = editingTransaction && editingTransaction.grantId === formData.grantId
+        ? parseFloat(editingTransaction.amount) : 0;
+      const remaining = getGrantRemainingBalance(formData.grantId) + previousAllocation;
+      const overage = parsedAmount - remaining;
+      // Allow up to $0.01 tolerance for floating-point rounding in stored amounts
+      if (overage > 0.01) {
         toast({
           title: "Grant Balance Exceeded",
-          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}). Please use the split feature to allocate within the grant limit.`,
+          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the grant balance by $${overage.toFixed(2)} — only $${remaining.toFixed(2)} is available. Please use the split feature to allocate within the grant limit.`,
           variant: "destructive",
         });
         return;
@@ -1472,11 +1480,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         const previousAllocation = editingTransaction && editingTransaction.grantId === grantId
           ? parseFloat(editingTransaction.amount) : 0;
         const remaining = getGrantRemainingBalance(grantId) + previousAllocation;
-        if (allocated > remaining) {
+        const overage = allocated - remaining;
+        // Allow up to $0.01 tolerance for floating-point rounding in stored amounts
+        if (overage > 0.01) {
           const grantName = getGrantName(grantId);
           toast({
             title: "Grant Balance Exceeded in Split",
-            description: `Split items allocate $${allocated.toFixed(2)} to "${grantName}" but only $${remaining.toFixed(2)} remains. Please adjust the split amounts.`,
+            description: `You're allocating $${allocated.toFixed(2)} to "${grantName}" but only $${remaining.toFixed(2)} is available ($${overage.toFixed(2)} over). Reduce that split line to $${remaining.toFixed(2)} and move the extra $${overage.toFixed(2)} to another category.`,
             variant: "destructive",
           });
           return;

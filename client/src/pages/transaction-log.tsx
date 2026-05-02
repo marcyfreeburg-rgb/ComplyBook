@@ -514,10 +514,12 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     if (addForm.grantId && addForm.grantId !== "none" && addForm.type === 'expense') {
       const grantId = parseInt(addForm.grantId);
       const remaining = getGrantRemainingBalance(grantId);
-      if (parsedAmount > remaining) {
+      const overage = parsedAmount - remaining;
+      // Allow up to $0.01 tolerance for floating-point rounding in stored amounts
+      if (overage > 0.01) {
         toast({
           title: "Grant Balance Exceeded",
-          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}). Please reduce the amount or remove the grant assignment.`,
+          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the grant balance by $${overage.toFixed(2)} — only $${remaining.toFixed(2)} is available. Please reduce the amount or remove the grant assignment.`,
           variant: "destructive",
         });
         return;
@@ -671,14 +673,15 @@ export default function TransactionLog({ currentOrganization, userId }: Transact
     // Hard validation: Block overspending on grants
     if (editForm.grantId && editForm.grantId !== "none" && editForm.type === 'expense') {
       const grantId = parseInt(editForm.grantId);
-      // Add back current transaction's grant spend if editing same grant
+      // Add back current transaction's grant spend if editing same grant (avoid double-counting)
       const currentGrantSpend = editingTransaction.grantId === grantId ? parseFloat(editingTransaction.amount) : 0;
       const remaining = getGrantRemainingBalance(grantId) + currentGrantSpend;
-      
-      if (parsedAmount > remaining) {
+      const overage = parsedAmount - remaining;
+      // Allow up to $0.01 tolerance for floating-point rounding in stored amounts
+      if (overage > 0.01) {
         toast({
           title: "Grant Balance Exceeded",
-          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the remaining grant balance ($${remaining.toFixed(2)}). Please reduce the amount or remove the grant assignment.`,
+          description: `This expense ($${parsedAmount.toFixed(2)}) exceeds the grant balance by $${overage.toFixed(2)} — only $${remaining.toFixed(2)} is available. Please reduce the amount or remove the grant assignment.`,
           variant: "destructive",
         });
         return;
