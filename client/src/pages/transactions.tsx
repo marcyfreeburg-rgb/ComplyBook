@@ -1467,7 +1467,11 @@ export default function Transactions({ currentOrganization, userId }: Transactio
       const splitEntries = Array.from(grantAllocations.entries());
       for (let i = 0; i < splitEntries.length; i++) {
         const [grantId, allocated] = splitEntries[i];
-        const remaining = getGrantRemainingBalance(grantId);
+        // Add back what this transaction was previously contributing to the grant's spent total
+        // so we don't double-count it when validating the new split allocation.
+        const previousAllocation = editingTransaction && editingTransaction.grantId === grantId
+          ? parseFloat(editingTransaction.amount) : 0;
+        const remaining = getGrantRemainingBalance(grantId) + previousAllocation;
         if (allocated > remaining) {
           const grantName = getGrantName(grantId);
           toast({
@@ -1495,12 +1499,15 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         }
 
         try {
-          // First update the parent transaction
+          // First update the parent transaction.
           // Convert undefined FK fields to null so JSON.stringify includes them and
           // the server explicitly clears the columns rather than leaving them unchanged.
+          // IMPORTANT: clear grantId on the parent — grant assignments live on the split
+          // children, not the parent (whose amount will become 0 after splitting). Sending
+          // the parent's full amount with a grantId would trigger a false overspend error.
           const editDataForSplit = {
             ...formData,
-            grantId:    formData.grantId    ?? null,
+            grantId:    null,
             fundId:     formData.fundId     ?? null,
             programId:  formData.programId  ?? null,
             vendorId:   formData.vendorId   ?? null,
@@ -1557,9 +1564,13 @@ export default function Transactions({ currentOrganization, userId }: Transactio
         return;
       }
 
-      // Create the parent transaction first, then immediately split it
+      // Create the parent transaction first, then immediately split it.
+      // Clear grantId on the parent — grant assignments live on the split children
+      // (parent amount becomes 0 after splitting, so grantId would be misleading and
+      // would also trigger a false overspend validation on the full amount).
       const transactionData: InsertTransaction = {
         ...formData,
+        grantId: undefined,
         date: new Date(formData.date),
         hasSplits: true,
       };
