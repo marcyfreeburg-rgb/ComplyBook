@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -1708,45 +1709,49 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   <CardTitle>Matched Items</CardTitle>
                   <CardDescription>Successfully matched transactions and statement entries</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
+                <CardContent className="p-0">
                   {existingMatches.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8" data-testid="text-no-matches">
+                    <p className="text-center text-muted-foreground py-8 px-6" data-testid="text-no-matches">
                       No matches yet
                     </p>
                   ) : (
-                    existingMatches.map((match) => {
-                      const txn = unreconciledTransactions.find(t => t.id === match.transactionId) 
-                        || periodTransactions.find(t => t.id === match.transactionId);
-                      const entry = statementEntries.find(e => e.id === match.statementEntryId);
-                      
-                      if (!txn || !entry) return null;
+                    <ScrollArea className="h-[600px]">
+                      <div className="space-y-3 px-6 pb-6">
+                        {existingMatches.map((match) => {
+                          const txn = unreconciledTransactions.find(t => t.id === match.transactionId) 
+                            || periodTransactions.find(t => t.id === match.transactionId);
+                          const entry = statementEntries.find(e => e.id === match.statementEntryId);
+                          
+                          if (!txn || !entry) return null;
 
-                      return (
-                        <div key={match.id} className="flex items-center gap-4 p-4 border rounded-md" data-testid={`match-${match.id}`}>
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                          <div className="flex-1 grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="font-medium">{txn.description}</p>
-                              <p className="text-sm text-muted-foreground">{safeFormatDate(txn.date, 'MMM dd, yyyy')}</p>
+                          return (
+                            <div key={match.id} className="flex items-center gap-4 p-4 border rounded-md" data-testid={`match-${match.id}`}>
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <div className="flex-1 grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="font-medium">{txn.description}</p>
+                                  <p className="text-sm text-muted-foreground">{safeFormatDate(txn.date, 'MMM dd, yyyy')}</p>
+                                </div>
+                                <div>
+                                  <p className="font-medium">{entry.description}</p>
+                                  <p className="text-sm text-muted-foreground">{safeFormatDate(entry.date, 'MMM dd, yyyy')}</p>
+                                </div>
+                              </div>
+                              <p className="font-bold">{formatCurrency(txn.amount)}</p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => unmatchMutation.mutate(match.id)}
+                                disabled={unmatchMutation.isPending}
+                                data-testid={`button-unmatch-${match.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                            <div>
-                              <p className="font-medium">{entry.description}</p>
-                              <p className="text-sm text-muted-foreground">{safeFormatDate(entry.date, 'MMM dd, yyyy')}</p>
-                            </div>
-                          </div>
-                          <p className="font-bold">{formatCurrency(txn.amount)}</p>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => unmatchMutation.mutate(match.id)}
-                            disabled={unmatchMutation.isPending}
-                            data-testid={`button-unmatch-${match.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
                   )}
                 </CardContent>
               </Card>
