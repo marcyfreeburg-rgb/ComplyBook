@@ -1442,6 +1442,10 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               {/* Balance Comparison Summary */}
               <div className="border rounded-lg p-4 mb-4">
                 <h3 className="font-semibold mb-3">Balance Reconciliation Summary</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Period: {safeFormatDate(reconciliation.statementStartDate, 'MMM dd, yyyy')} &ndash; {safeFormatDate(reconciliation.statementEndDate, 'MMM dd, yyyy')}
+                  {' '}({periodTransactions.length} transactions)
+                </p>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">

@@ -5577,10 +5577,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get transactions within the statement date range
+      const startDate = reconciliation.statementStartDate ? new Date(reconciliation.statementStartDate) : new Date(0);
+      const endDate = new Date(reconciliation.statementEndDate);
+      
+      console.log(`[PeriodTx] reconciliation ${reconciliationId}: startDate=${startDate.toISOString()}, endDate=${endDate.toISOString()}, rawStart=${reconciliation.statementStartDate}, rawEnd=${reconciliation.statementEndDate}`);
+      
       const allTransactions = await storage.getTransactionsByDateRange(
         reconciliation.organizationId,
-        new Date(reconciliation.statementStartDate),
-        new Date(reconciliation.statementEndDate)
+        startDate,
+        endDate
       );
 
       // Exclude split parents (hasSplits=true, amount='0') from the period view:
@@ -5588,6 +5593,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // would add duplicate $0 rows to the count without affecting the sum —
       // but it distorts "2 of 5 reconciled" style counts.
       const periodTransactions = allTransactions.filter(t => !t.hasSplits);
+
+      const incomeCount = periodTransactions.filter(t => t.type === 'income').length;
+      const expenseCount = periodTransactions.filter(t => t.type === 'expense').length;
+      console.log(`[PeriodTx] found ${periodTransactions.length} transactions (${incomeCount} income, ${expenseCount} expense)`);
+      periodTransactions.forEach(t => {
+        console.log(`[PeriodTx]   id=${t.id} date=${t.date} type=${t.type} amount=${t.amount} desc="${t.description}"`);
+      });
 
       res.json(periodTransactions);
     } catch (error) {
