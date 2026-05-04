@@ -5078,7 +5078,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const unreconciledTransactions = await storage.getUnreconciledTransactions(organizationId);
-      res.json(unreconciledTransactions);
+
+      // For reconciliation matching:
+      // - Hide split children (isSplitChild=true) — they're represented by their parent
+      // - Show split parents with originalAmount so they can be matched to the bank statement entry
+      const reconciliationView = unreconciledTransactions
+        .filter(t => !t.isSplitChild)
+        .map(t => (t.hasSplits && t.originalAmount) ? { ...t, amount: t.originalAmount } : t);
+
+      res.json(reconciliationView);
     } catch (error) {
       console.error("Error fetching unreconciled transactions:", error);
       res.status(500).json({ message: "Failed to fetch unreconciled transactions" });
@@ -5569,13 +5577,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get transactions within the statement date range
-      const transactions = await storage.getTransactionsByDateRange(
+      const allTransactions = await storage.getTransactionsByDateRange(
         reconciliation.organizationId,
         new Date(reconciliation.statementStartDate),
         new Date(reconciliation.statementEndDate)
       );
 
-      res.json(transactions);
+      // Exclude split parents (hasSplits=true, amount='0') from the period view:
+      // their children already carry the correct amounts, so including parents
+      // would add duplicate $0 rows to the count without affecting the sum —
+      // but it distorts "2 of 5 reconciled" style counts.
+      const periodTransactions = allTransactions.filter(t => !t.hasSplits);
+
+      res.json(periodTransactions);
     } catch (error) {
       console.error("Error fetching reconciliation transactions:", error);
       res.status(500).json({ message: "Failed to fetch transactions" });
