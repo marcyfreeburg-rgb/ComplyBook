@@ -1708,14 +1708,13 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   <CardTitle>Matched Items</CardTitle>
                   <CardDescription>Successfully matched transactions and statement entries</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-0 p-0">
+                <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
                   {existingMatches.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8 px-6" data-testid="text-no-matches">
+                    <p className="text-center text-muted-foreground py-8" data-testid="text-no-matches">
                       No matches yet
                     </p>
                   ) : (
-                    <div className="overflow-y-auto max-h-[480px] space-y-3 px-6 pb-6">
-                    {existingMatches.map((match) => {
+                    existingMatches.map((match) => {
                       const txn = unreconciledTransactions.find(t => t.id === match.transactionId) 
                         || periodTransactions.find(t => t.id === match.transactionId);
                       const entry = statementEntries.find(e => e.id === match.statementEntryId);
@@ -1747,8 +1746,7 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                           </Button>
                         </div>
                       );
-                    })}
-                    </div>
+                    })
                   )}
                 </CardContent>
               </Card>
