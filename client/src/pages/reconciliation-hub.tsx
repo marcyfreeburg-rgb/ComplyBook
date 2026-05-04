@@ -769,9 +769,8 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 <td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">Matched Items</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">${existingMatches.length}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e0e0e0;">
-                  ${formatCurrency(existingMatches.reduce((sum, match) => {
-                    const txn = unreconciledTransactions.find(t => t.id === match.transactionId)
-                      || periodTransactions.find(t => t.id === match.transactionId);
+                  ${formatCurrency(existingMatches.reduce((sum: number, match: any) => {
+                    const txn = match.transaction;
                     return sum + (txn ? parseFloat(txn.amount) : 0);
                   }, 0))}
                 </td>
@@ -807,10 +806,9 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                 </tr>
               </thead>
               <tbody>
-                ${existingMatches.map(match => {
-                  const txn = unreconciledTransactions.find(t => t.id === match.transactionId)
-                    || periodTransactions.find(t => t.id === match.transactionId);
-                  const entry = statementEntries.find(e => e.id === match.statementEntryId);
+                ${existingMatches.map((match: any) => {
+                  const txn = match.transaction;
+                  const entry = match.statementEntry;
                   if (!txn || !entry) return '';
                   return `
                     <tr>
@@ -1717,11 +1715,10 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
                   ) : (
                     <ScrollArea className="h-[600px]">
                       <div className="space-y-3 px-6 pb-6">
-                        {existingMatches.map((match) => {
-                          const txn = unreconciledTransactions.find(t => t.id === match.transactionId) 
-                            || periodTransactions.find(t => t.id === match.transactionId);
-                          const entry = statementEntries.find(e => e.id === match.statementEntryId);
-                          
+                        {existingMatches.map((match: any) => {
+                          const txn = match.transaction;
+                          const entry = match.statementEntry;
+
                           if (!txn || !entry) return null;
 
                           return (

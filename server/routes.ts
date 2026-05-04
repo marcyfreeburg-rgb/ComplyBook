@@ -6039,7 +6039,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const matches = await storage.getReconciliationMatches(reconciliationId);
-      res.json(matches);
+
+      // Enrich each match with full transaction and statement entry data
+      const enriched = await Promise.all(matches.map(async (match) => {
+        const [txn, entry] = await Promise.all([
+          match.transactionId ? storage.getTransaction(match.transactionId) : null,
+          match.statementEntryId ? storage.getBankStatementEntry(match.statementEntryId) : null,
+        ]);
+        return { ...match, transaction: txn ?? null, statementEntry: entry ?? null };
+      }));
+
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching matches:", error);
       res.status(500).json({ message: "Failed to fetch matches" });
