@@ -1,3 +1,4 @@
+// © 2026 ComplyBook, LLC. All rights reserved.
 // Referenced from javascript_log_in_with_replit and javascript_database blueprints
 import { sql, relations } from 'drizzle-orm';
 import {

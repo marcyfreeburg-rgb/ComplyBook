@@ -1,3 +1,4 @@
+// © 2026 ComplyBook, LLC. All rights reserved.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
@@ -43,3 +44,5 @@ const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`✅ ComplyBook MCP is running on http://localhost:${PORT}/mcp`);
 });
+git add mcp/
+git commit -m "Add MCP server"

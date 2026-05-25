@@ -1,3 +1,4 @@
+// © 2026 ComplyBook, LLC. All rights reserved.
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { DeviceProvider } from "./contexts/DeviceContext";

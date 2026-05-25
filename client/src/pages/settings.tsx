@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check, Lock, Upload, Download, FileText, X } from "lucide-react";
+import { Settings as SettingsIcon, Plus, Trash2, Tag, Pencil, Building2, DollarSign, ArrowLeft, Mail, Users, Copy, Check, Lock, Upload, Download, FileText, X, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1423,6 +1423,21 @@ export default function Settings({ currentOrganization, user }: SettingsProps) {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* About */}
+      <Card data-testid="card-about">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            About ComplyBook
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">ComplyBook</p>
+          <p>Financial management for nonprofits, grants &amp; government compliance.</p>
+          <p className="pt-2 border-t border-border">&copy; 2026 ComplyBook, LLC. All rights reserved.</p>
         </CardContent>
       </Card>
 

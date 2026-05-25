@@ -1,3 +1,4 @@
+// © 2026 ComplyBook, LLC. All rights reserved.
 import express, { type Request, Response, NextFunction } from "express";
 import crypto from 'crypto';
 import { createRequire } from 'module';
