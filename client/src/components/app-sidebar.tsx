@@ -31,7 +31,7 @@ import { useState, type ComponentType } from "react";
 type OrganizationWithRole = Organization & { userRole: string };
 
 interface AppSidebarProps {
-  user: User;
+  user: User & { isPlatformAdmin?: boolean };
   currentOrganization?: OrganizationWithRole;
 }
 
@@ -52,6 +52,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
   const [location, setLocation] = useLocation();
 
   const isAdminOrOwner = currentOrganization?.userRole === 'owner' || currentOrganization?.userRole === 'admin';
+  const isPlatformAdmin = user.isPlatformAdmin === true;
   const isNonprofit = currentOrganization?.type === 'nonprofit';
 
   const nonprofitMenuGroups: MenuGroup[] = [
@@ -168,7 +169,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: Cog,
       items: [
         { title: "Organizations", url: "/organization-management", icon: Building2 },
-        { title: "Registered Users", url: "/admin/users", icon: UserCog },
+        ...(isPlatformAdmin ? [{ title: "Registered Users", url: "/admin/users", icon: UserCog }] : []),
         { title: "Bug Reports", url: "/admin/bug-reports", icon: ClipboardCheck },
         { title: "Brand Settings", url: "/brand-settings", icon: FileSliders },
         { title: "Settings", url: "/settings", icon: Settings },
@@ -283,7 +284,7 @@ export function AppSidebar({ user, currentOrganization }: AppSidebarProps) {
       icon: Cog,
       items: [
         { title: "Organizations", url: "/organization-management", icon: Building2 },
-        { title: "Registered Users", url: "/admin/users", icon: UserCog },
+        ...(isPlatformAdmin ? [{ title: "Registered Users", url: "/admin/users", icon: UserCog }] : []),
         { title: "Bug Reports", url: "/admin/bug-reports", icon: ClipboardCheck },
         { title: "Brand Settings", url: "/brand-settings", icon: FileSliders },
         { title: "Settings", url: "/settings", icon: Settings },

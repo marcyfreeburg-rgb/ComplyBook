@@ -349,7 +349,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      res.json(user);
+      const platformAdminEmails = (process.env.SECURITY_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const isPlatformAdmin = !!user?.email && platformAdminEmails.includes(user.email.toLowerCase());
+      res.json({ ...user, isPlatformAdmin });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -364,10 +366,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const userOrgs = await storage.getOrganizations(userId);
-      const isAdminOrOwner = userOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
-      if (!isAdminOrOwner) {
-        return res.status(403).json({ message: "Admin or owner access required" });
+      const platformAdminEmails = (process.env.SECURITY_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!user.email || !platformAdminEmails.includes(user.email.toLowerCase())) {
+        return res.status(403).json({ message: "Platform admin access required" });
       }
 
       const allUsers = await storage.getAllUsersWithOrgs();
@@ -395,9 +396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/users/:userId/provision-org', isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user.claims.sub;
-      const adminOrgs = await storage.getOrganizations(adminId);
-      const isAdminOrOwner = adminOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
-      if (!isAdminOrOwner) return res.status(403).json({ message: "Admin or owner access required" });
+      const adminUser = await storage.getUser(adminId);
+      const platformAdminEmails = (process.env.SECURITY_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!adminUser?.email || !platformAdminEmails.includes(adminUser.email.toLowerCase())) {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
 
       const { userId } = req.params;
       const { orgName, orgType = 'nonprofit' } = req.body;
@@ -415,9 +418,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/org-roles/:roleId', isAuthenticated, async (req: any, res) => {
     try {
       const adminId = req.user.claims.sub;
-      const adminOrgs = await storage.getOrganizations(adminId);
-      const isAdminOrOwner = adminOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
-      if (!isAdminOrOwner) return res.status(403).json({ message: "Admin or owner access required" });
+      const adminUser = await storage.getUser(adminId);
+      const platformAdminEmails = (process.env.SECURITY_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (!adminUser?.email || !platformAdminEmails.includes(adminUser.email.toLowerCase())) {
+        return res.status(403).json({ message: "Platform admin access required" });
+      }
 
       const roleId = parseInt(req.params.roleId);
       if (isNaN(roleId)) return res.status(400).json({ message: "Invalid role ID" });
