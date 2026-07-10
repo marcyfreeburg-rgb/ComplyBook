@@ -391,6 +391,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: provision a new organization for a user with no org
+  app.post('/api/admin/users/:userId/provision-org', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const adminOrgs = await storage.getOrganizations(adminId);
+      const isAdminOrOwner = adminOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) return res.status(403).json({ message: "Admin or owner access required" });
+
+      const { userId } = req.params;
+      const { orgName, orgType = 'nonprofit' } = req.body;
+      if (!orgName?.trim()) return res.status(400).json({ message: "Organization name is required" });
+
+      const org = await storage.createOrganization({ name: orgName.trim(), type: orgType }, userId);
+      res.json({ success: true, org });
+    } catch (error) {
+      console.error("Error provisioning org:", error);
+      res.status(500).json({ message: "Failed to create organization" });
+    }
+  });
+
+  // Admin: remove a user from a specific org role by role row ID
+  app.delete('/api/admin/org-roles/:roleId', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const adminOrgs = await storage.getOrganizations(adminId);
+      const isAdminOrOwner = adminOrgs.some((org: any) => org.userRole === 'admin' || org.userRole === 'owner');
+      if (!isAdminOrOwner) return res.status(403).json({ message: "Admin or owner access required" });
+
+      const roleId = parseInt(req.params.roleId);
+      if (isNaN(roleId)) return res.status(400).json({ message: "Invalid role ID" });
+
+      await storage.removeOrgRoleById(roleId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing org role:", error);
+      res.status(500).json({ message: "Failed to remove org role" });
+    }
+  });
+
   // Password change route (for local auth only)
   app.post('/api/auth/change-password', isAuthenticated, async (req: any, res) => {
     try {

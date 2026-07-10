@@ -296,7 +296,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByStripeSubscriptionId(subscriptionId: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
-  getAllUsersWithOrgs(): Promise<Array<User & { organizations: Array<{ id: number; name: string; role: string }> }>>;
+  getAllUsersWithOrgs(): Promise<Array<User & { organizations: Array<{ id: number; name: string; role: string; roleId: number }> }>>;
+  removeOrgRoleById(roleId: number): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
   upsertLocalUser(userData: { id: string; email: string; passwordHash: string; firstName?: string; lastName?: string; role?: string; subscriptionTier?: string; subscriptionStatus?: string; subscriptionCurrentPeriodEnd?: Date }): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
@@ -1485,11 +1486,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).orderBy(desc(users.createdAt));
   }
 
-  async getAllUsersWithOrgs(): Promise<Array<User & { organizations: Array<{ id: number; name: string; role: string }> }>> {
+  async getAllUsersWithOrgs(): Promise<Array<User & { organizations: Array<{ id: number; name: string; role: string; roleId: number }> }>> {
     const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
     const allRoles = await db
       .select({
         userId: userOrganizationRoles.userId,
+        roleId: userOrganizationRoles.id,
         orgId: organizations.id,
         orgName: organizations.name,
         role: userOrganizationRoles.role,
@@ -1497,13 +1499,17 @@ export class DatabaseStorage implements IStorage {
       .from(userOrganizationRoles)
       .innerJoin(organizations, eq(userOrganizationRoles.organizationId, organizations.id));
 
-    const rolesByUser = new Map<string, Array<{ id: number; name: string; role: string }>>();
+    const rolesByUser = new Map<string, Array<{ id: number; name: string; role: string; roleId: number }>>();
     for (const r of allRoles) {
       if (!rolesByUser.has(r.userId)) rolesByUser.set(r.userId, []);
-      rolesByUser.get(r.userId)!.push({ id: r.orgId, name: r.orgName, role: r.role });
+      rolesByUser.get(r.userId)!.push({ id: r.orgId, name: r.orgName, role: r.role, roleId: r.roleId });
     }
 
     return allUsers.map(u => ({ ...u, organizations: rolesByUser.get(u.id) || [] }));
+  }
+
+  async removeOrgRoleById(roleId: number): Promise<void> {
+    await db.delete(userOrganizationRoles).where(eq(userOrganizationRoles.id, roleId));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
