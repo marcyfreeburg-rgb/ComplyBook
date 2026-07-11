@@ -1,0 +1,47 @@
+ Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+    at responseCallbacks.<computed> (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+Node.js v24.14.1
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Instance srv-d7ukqn0sfn5c73b9g23g-z9kcr restarted
+==> Running 'npx tsx index.ts'
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [TransformError]: Transform failed with 1 error:
+/opt/render/project/src/mcp/index.ts:47:4: ERROR: Expected ";" but found "add"
+    at failureErrorWithLog (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:1467:15)
+    at /opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+Node.js v24.14.1
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Running 'npx tsx index.ts'
+✅ ComplyBook MCP is running on http://localhost:3001/mcp
+==> New primary port detected: 3001. Restarting deploy to update network configuration...
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+==> Running 'npx tsx index.ts'
+✅ ComplyBook MCP is running on http://localhost:3001/mcp
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://complybook-mcp.onrender.com
+==> 
+==> ///////////////////////////////////////////////////////////
+==> Detected a new open port HTTP:3001
