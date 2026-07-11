@@ -57,6 +57,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [deleteInvoiceId, setDeleteInvoiceId] = useState<number | null>(null);
   const [previewingInvoice, setPreviewingInvoice] = useState<(Invoice & { clientName: string | null }) | null>(null);
+  const [previewLineItemsOverride, setPreviewLineItemsOverride] = useState<InvoiceLineItem[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [newCustomerForm, setNewCustomerForm] = useState({
@@ -199,7 +200,17 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
             title: "Success",
             description: "Invoice created and marked for mailing. Download the PDF to print.",
           });
-          // Trigger PDF download
+          // Capture the current form line items immediately — avoids race with API fetch
+          const capturedLineItems = data.lineItems.map((item, idx) => ({
+            id: idx,
+            invoiceId: invoice.id,
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            amount: (parseFloat(item.quantity || "0") * parseFloat(item.rate || "0")).toFixed(2),
+            createdAt: new Date(),
+          })) as unknown as InvoiceLineItem[];
+          setPreviewLineItemsOverride(capturedLineItems);
           setTimeout(() => {
             const invoiceWithClient = {
               ...invoice,
@@ -412,6 +423,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
   };
 
   const handleView = (invoice: Invoice & { clientName: string | null }) => {
+    setPreviewLineItemsOverride(null);
     setPreviewingInvoice(invoice);
     setIsPreviewDialogOpen(true);
   };
@@ -903,7 +915,7 @@ export default function Invoices({ currentOrganization }: InvoicesProps) {
           {previewingInvoice && organizationForPreview && (
             <InvoicePreview
               invoice={previewingInvoice}
-              lineItems={previewLineItems}
+              lineItems={previewLineItemsOverride ?? previewLineItems}
               organization={organizationForPreview}
             />
           )}
