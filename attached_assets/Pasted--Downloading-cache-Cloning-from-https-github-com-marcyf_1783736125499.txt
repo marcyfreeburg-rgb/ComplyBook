@@ -1,0 +1,58 @@
+==> Downloading cache...
+==> Cloning from https://github.com/marcyfreeburg-rgb/ComplyBook
+==> Checking out commit e41bf7a6e6e973f69265c53b2b50cc7b5ff76625 in branch main
+==> Downloaded 455MB in 9s. Extraction took 5s.
+==> Using Node.js version 24.14.1 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install'...
+added 837 packages, and audited 838 packages in 15s
+109 packages are looking for funding
+  run `npm fund` for details
+29 vulnerabilities (2 low, 17 moderate, 10 high)
+To address issues that do not require attention, run:
+  npm audit fix
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+Run `npm audit` for details.
+==> Uploading build...
+==> Uploaded in 7.5s. Compression took 5.8s
+==> Build successful 🎉
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Running 'npx tsx index.ts'
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [TransformError]: Transform failed with 1 error:
+/opt/render/project/src/mcp/index.ts:47:4: ERROR: Expected ";" but found "add"
+    at failureErrorWithLog (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:1467:15)
+    at /opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+Node.js v24.14.1
+==> Exited with status 1
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+==> Instance srv-d7ukqn0sfn5c73b9g23g-z9kcr restarted
+==> Running 'npx tsx index.ts'
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [TransformError]: Transform failed with 1 error:
+/opt/render/project/src/mcp/index.ts:47:4: ERROR: Expected ";" but found "add"
+    at failureErrorWithLog (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:1467:15)
+    at /opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/opt/render/project/src/node_modules/tsx/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+Node.js v24.14.1

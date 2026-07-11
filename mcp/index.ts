@@ -44,5 +44,3 @@ const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`✅ ComplyBook MCP is running on http://localhost:${PORT}/mcp`);
 });
-git add mcp/
-git commit -m "Add MCP server"
