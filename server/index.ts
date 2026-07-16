@@ -326,14 +326,17 @@ app.use('/api', (req, res, next) => {
   // Exempt paths relative to /api mount point (req.path excludes /api prefix)
   // Auth endpoints and webhooks have their own security mechanisms
   const csrfExemptPaths = [
-    '/login',           // POST /api/login - uses session auth
-    '/callback',        // POST /api/callback - OIDC callback
-    '/logout',          // POST /api/logout - session logout
-    '/auth/login',      // Alternative auth path
-    '/auth/callback',   // Alternative auth callback
-    '/stripe/webhook',  // Stripe webhooks - uses signature verification
-    '/plaid/webhook',   // Plaid webhooks - uses signature verification
-    '/public/forms',    // Public form submissions - accessed by anonymous users
+    '/login',              // POST /api/login - uses session auth
+    '/callback',           // POST /api/callback - OIDC callback
+    '/logout',             // POST /api/logout - session logout
+    '/auth/login',         // Alternative auth path
+    '/auth/callback',      // Alternative auth callback
+    '/register',           // Self-service registration - anonymous users, no session yet
+    '/forgot-password',    // Password reset request - anonymous users
+    '/reset-password',     // Password reset confirmation - anonymous users
+    '/stripe/webhook',     // Stripe webhooks - uses signature verification
+    '/plaid/webhook',      // Plaid webhooks - uses signature verification
+    '/public/forms',       // Public form submissions - accessed by anonymous users
   ];
   
   // Check if request path matches any exempt path

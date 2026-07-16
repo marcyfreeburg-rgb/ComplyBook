@@ -57,7 +57,7 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
   const [organizationToDelete, setOrganizationToDelete] = useState<OrganizationWithRole | null>(null);
   const [formData, setFormData] = useState<Partial<InsertOrganization>>({
     name: '',
-    type: 'forprofit',
+    type: 'nonprofit',
     description: '',
   });
 
@@ -92,7 +92,7 @@ export default function Organizations({ onSelectOrganization, userId }: Organiza
       setIsDialogOpen(false);
       setFormData({
         name: '',
-        type: 'forprofit',
+        type: 'nonprofit',
         description: '',
       });
     },

@@ -1,0 +1,1 @@
+- [ComplyBook QA Bug Patterns](complybook-qa-bugs.md) — security event enum values, CSRF exempt list, org type default, Math.max empty array patterns found in pre-ChannelCon QA

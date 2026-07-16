@@ -330,7 +330,7 @@ async function setupReplitAuth(app: Express) {
       const errorMessage = (err as Error).message || "Registration blocked";
       console.log(`[Auth] OIDC signup blocked: ${errorMessage}`);
       await storage.logSecurityEvent({
-        eventType: 'signup_blocked',
+        eventType: 'suspicious_activity',
         severity: 'warning',
         userId: null,
         email: claims?.email || null,
@@ -537,7 +537,7 @@ async function setupLocalAuth(app: Express) {
       const isLocked = await storage.isAccountLocked(email);
       if (isLocked) {
         await storage.logSecurityEvent({
-          eventType: 'login_blocked',
+          eventType: 'account_locked',
           severity: 'warning',
           userId: null,
           email: email,
@@ -738,7 +738,7 @@ async function setupLocalAuth(app: Express) {
 
     if (isBlockedEmailDomain(emailLower)) {
       await storage.logSecurityEvent({
-        eventType: 'signup_blocked',
+        eventType: 'suspicious_activity',
         severity: 'warning',
         userId: null,
         email: emailLower,
@@ -1248,7 +1248,7 @@ export const requireMfaCompliance: RequestHandler = async (req, res, next) => {
   
   if (gracePeriodCheck.expired) {
     await storage.logSecurityEvent({
-      eventType: 'mfa_required_block',
+      eventType: 'unauthorized_access',
       severity: 'warning',
       userId: userId,
       email: user.claims.email || null,

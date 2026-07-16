@@ -311,7 +311,7 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     }
 
     const lead: Lead = {
-      id: Math.max(...leads.map(l => l.id)) + 1,
+      id: (leads.length > 0 ? Math.max(...leads.map(l => l.id)) : 0) + 1,
       name: newLead.name,
       company: newLead.company,
       email: newLead.email,
@@ -365,7 +365,7 @@ export default function CRM({ currentOrganization, userId }: CRMProps) {
     }
 
     const opp: Opportunity = {
-      id: Math.max(...opportunities.map(o => o.id)) + 1,
+      id: (opportunities.length > 0 ? Math.max(...opportunities.map(o => o.id)) : 0) + 1,
       name: newOpportunity.name,
       company: newOpportunity.company,
       value: parseFloat(newOpportunity.value) || 0,

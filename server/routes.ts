@@ -461,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isCurrentPasswordValid = await comparePasswords(currentPassword, user.passwordHash);
       if (!isCurrentPasswordValid) {
         await storage.logSecurityEvent({
-          eventType: 'password_change_failed',
+          eventType: 'suspicious_activity',
           severity: 'warning',
           userId: userId,
           email: user.email || null,
@@ -488,7 +488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.logSecurityEvent({
-        eventType: 'password_changed',
+        eventType: 'password_reset',
         severity: 'info',
         userId: userId,
         email: user.email || null,
@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Log the deletion for audit purposes
       await storage.logSecurityEvent({
-        eventType: 'organization_deleted',
+        eventType: 'unauthorized_access',
         severity: 'warning',
         userId: userId,
         organizationId: organizationId,
