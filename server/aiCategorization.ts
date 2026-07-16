@@ -225,8 +225,8 @@ export async function suggestCategoryBulk(
       const relevantCategories = categories.filter(cat => cat.type === type);
       return relevantCategories.map(cat => {
         const examples = categorizedExamples.get(cat.id) || [];
-        const limitedExamples = examples.slice(0, 2); // Reduced to 2 examples to save tokens
-        const examplesText = limitedExamples.length > 0 ? ` Ex: ${limitedExamples.map(e => `"${e.slice(0, 30)}"`).join(', ')}` : '';
+        const limitedExamples = examples.slice(0, 4); // Up to 4 learned examples
+        const examplesText = limitedExamples.length > 0 ? ` (learned: ${limitedExamples.map(e => `"${e.slice(0, 60)}"`).join(', ')})` : '';
         return `  - ID: ${cat.id}, Name: "${cat.name}"${examplesText}`;
       }).join('\n');
     };
@@ -245,6 +245,7 @@ export async function suggestCategoryBulk(
       ).join('\n');
 
       const prompt = `Categorize ALL transactions below. Use brief reasoning (max 10 words).
+IMPORTANT: Categories marked with "learned:" show how this organization has previously categorized similar transactions — use those examples as your primary matching signal.
 
 INCOME Categories:
 ${incomeCategories}
@@ -377,16 +378,26 @@ export async function suggestFullCategorizationBulk(
     g => !g.status || g.status === 'active'
   );
 
-  // Build lookup lists for the prompt
-  const incomeCategories = categories
-    .filter(c => c.type === 'income')
-    .map(c => `  - ID:${c.id} "${c.name}"`)
-    .join('\n') || '  (none)';
+  // Fetch learned examples so the AI knows how THIS org has categorized similar transactions
+  const allCategoryIds = categories.map(c => c.id);
+  const categoryExamples = await getCachedCategoryExamples(organizationId, allCategoryIds);
 
-  const expenseCategories = categories
-    .filter(c => c.type === 'expense')
-    .map(c => `  - ID:${c.id} "${c.name}"`)
-    .join('\n') || '  (none)';
+  // Build lookup lists for the prompt — include up to 3 learned examples per category
+  const buildCategoryListWithExamples = (type: 'income' | 'expense') => {
+    return categories
+      .filter(c => c.type === type)
+      .map(c => {
+        const examples = categoryExamples.get(c.id) || [];
+        const exText = examples.slice(0, 3).map(e => `"${e.slice(0, 50)}"`).join(', ');
+        return exText
+          ? `  - ID:${c.id} "${c.name}" (learned: ${exText})`
+          : `  - ID:${c.id} "${c.name}"`;
+      })
+      .join('\n') || '  (none)';
+  };
+
+  const incomeCategories = buildCategoryListWithExamples('income');
+  const expenseCategories = buildCategoryListWithExamples('expense');
 
   const vendorList = vendors.length > 0
     ? vendors.map(v => `  - ID:${v.id} "${v.name}"`).join('\n')
@@ -405,8 +416,8 @@ export async function suggestFullCategorizationBulk(
     : '  (none)';
 
   const orgContext = isNonprofit
-    ? 'This is a NONPROFIT organization. For each transaction assign: category, vendor (if a vendor purchase), fund, program, grant (if directly grant-funded), and functionalCategory (program/administrative/fundraising).'
-    : 'This is a FOR-PROFIT organization. For each transaction assign: category, vendor (if a vendor purchase). Assign fund, program, grant, and functionalCategory only when the organization has them configured and they clearly apply.';
+    ? 'This is a NONPROFIT organization. For each transaction assign: category, vendor (if a vendor purchase), fund, program, grant (if directly grant-funded), and functionalCategory (program/administrative/fundraising). IMPORTANT: Each category below includes "learned" examples — real transactions this organization has already categorized that way. Use these examples as your primary signal when matching new transactions.'
+    : 'This is a FOR-PROFIT organization. For each transaction assign: category, vendor (if a vendor purchase). Assign fund, program, grant, and functionalCategory only when the organization has them configured and they clearly apply. IMPORTANT: Each category below includes "learned" examples — real transactions this organization has already categorized that way. Use these examples as your primary signal when matching new transactions.';
 
   // Process in chunks of 20 to stay within token limits
   const CHUNK_SIZE = 20;
@@ -449,6 +460,7 @@ Transactions to categorize:
 ${transactionList}
 
 Rules:
+- If a category has "learned:" examples, heavily weight those when matching — they reflect this org's actual categorization patterns
 - categoryId MUST match the transaction type (income tx → income category, expense tx → expense category)
 - vendorId: match only if description clearly matches a vendor name, else null
 - fundId/programId/grantId: null if none clearly apply or list is empty
