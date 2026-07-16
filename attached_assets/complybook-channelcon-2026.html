@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ComplyBook — GTIA ChannelCon 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #0a0f1e;
+    --navy2:  #0d1530;
+    --blue:   #1a2a5e;
+    --teal:   #00c2a8;
+    --teal2:  #00e5cc;
+    --gold:   #f5c842;
+    --white:  #ffffff;
+    --gray:   #94a3b8;
+    --light:  #e2e8f0;
+    --red:    #ef4444;
+    --green:  #22c55e;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--navy);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    color: var(--white);
+  }
+
+  /* ── SLIDES ── */
+  .deck { position: relative; width: 100vw; height: 100vh; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s ease;
+    padding: 0;
+    overflow: hidden;
+  }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  /* ── SHARED LAYOUT ── */
+  .slide-inner {
+    flex: 1;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: flex-start;
+    padding: 60px 80px;
+  }
+  .slide-inner.center { align-items: center; text-align: center; }
+
+  .tag {
+    display: inline-block;
+    background: var(--teal);
+    color: var(--navy);
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 4px;
+    margin-bottom: 22px;
+  }
+  .tag.gold { background: var(--gold); }
+
+  h1 {
+    font-size: clamp(36px, 5.5vw, 72px);
+    font-weight: 900; line-height: 1.08;
+    letter-spacing: -1.5px;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 800; line-height: 1.12;
+    letter-spacing: -1px;
+    margin-bottom: 20px;
+  }
+  h3 {
+    font-size: clamp(18px, 2.2vw, 28px);
+    font-weight: 700; line-height: 1.3;
+    margin-bottom: 12px;
+  }
+  p {
+    font-size: clamp(15px, 1.8vw, 22px);
+    font-weight: 400; line-height: 1.65;
+    color: var(--light); max-width: 800px;
+  }
+  .accent { color: var(--teal2); }
+  .gold-text { color: var(--gold); }
+  .big-num {
+    font-size: clamp(52px, 8vw, 110px);
+    font-weight: 900; line-height: 1;
+    letter-spacing: -3px; color: var(--teal2);
+  }
+
+  /* ── BACKGROUND DECORATION ── */
+  .bg-glow {
+    position: absolute; border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(120px); opacity: 0.18;
+  }
+  .glow-teal { background: var(--teal); }
+  .glow-blue { background: #4f80ff; }
+  .glow-gold { background: var(--gold); }
+
+  .slide-inner > * { position: relative; z-index: 1; }
+
+  /* ── LOGO BAR ── */
+  .logo-bar {
+    padding: 18px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    position: relative; z-index: 10;
+    flex-shrink: 0;
+  }
+  .logo {
+    font-size: 22px; font-weight: 900; letter-spacing: -0.5px;
+    color: var(--white);
+  }
+  .logo span { color: var(--teal2); }
+  .slide-num {
+    font-size: 12px; color: var(--gray); font-weight: 600; letter-spacing: 1px;
+  }
+
+  /* ── FOOTER BAR ── */
+  .footer-bar {
+    padding: 14px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+    position: relative; z-index: 10;
+  }
+  .footer-url { font-size: 13px; color: var(--teal2); font-weight: 600; }
+  .footer-tag { font-size: 12px; color: var(--gray); }
+
+  /* ── GRID CARDS ── */
+  .cards {
+    display: grid;
+    gap: 18px;
+    width: 100%;
+    margin-top: 28px;
+  }
+  .cards.col-2 { grid-template-columns: 1fr 1fr; }
+  .cards.col-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cards.col-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .card .icon { font-size: 28px; margin-bottom: 10px; }
+  .card h4 {
+    font-size: clamp(13px, 1.5vw, 17px); font-weight: 700;
+    margin-bottom: 6px; color: var(--white);
+  }
+  .card p { font-size: clamp(11px, 1.2vw, 14px); color: var(--gray); line-height: 1.5; max-width: 100%; }
+  .card.highlight { border-color: var(--teal); background: rgba(0,194,168,0.08); }
+  .card.gold-card { border-color: var(--gold); background: rgba(245,200,66,0.07); }
+
+  /* ── COMPARISON TABLE ── */
+  .compare {
+    width: 100%; border-collapse: collapse; margin-top: 24px;
+    font-size: clamp(12px, 1.4vw, 16px);
+  }
+  .compare th {
+    padding: 12px 18px; text-align: left; font-weight: 700;
+    border-bottom: 2px solid rgba(255,255,255,0.12);
+    color: var(--gray); text-transform: uppercase; font-size: 11px; letter-spacing: 1px;
+  }
+  .compare th.cb { color: var(--teal2); }
+  .compare td {
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: var(--light);
+  }
+  .compare tr:last-child td { border-bottom: none; }
+  .compare .yes { color: var(--green); font-weight: 700; }
+  .compare .no { color: var(--red); }
+  .compare .price { font-weight: 800; }
+  .compare .cb-col { color: var(--teal2); font-weight: 700; }
+  .compare tr:hover td { background: rgba(255,255,255,0.03); }
+
+  /* ── CHECK LIST ── */
+  .checklist { list-style: none; margin-top: 20px; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 12px;
+    font-size: clamp(14px, 1.6vw, 19px); color: var(--light);
+    margin-bottom: 14px; line-height: 1.45;
+  }
+  .checklist li .ck { color: var(--teal2); font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .checklist li .cx { color: var(--red); font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── STAT ROW ── */
+  .stats { display: flex; gap: 40px; margin-top: 32px; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; }
+  .stat .num { font-size: clamp(36px, 5vw, 64px); font-weight: 900; color: var(--teal2); line-height: 1; }
+  .stat .lbl { font-size: clamp(12px, 1.2vw, 15px); color: var(--gray); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── TWO-COL ── */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 60px; width: 100%; align-items: start;
+    margin-top: 10px;
+  }
+
+  /* ── PILL ── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 13px; font-weight: 600; color: var(--light);
+    margin: 4px;
+  }
+  .pill-teal { background: rgba(0,194,168,0.15); border-color: var(--teal); color: var(--teal2); }
+
+  /* ── HERO SLIDE ── */
+  #s1 {
+    background: radial-gradient(ellipse 80% 60% at 60% 40%, #1a3a7a 0%, var(--navy) 70%);
+  }
+  #s1 h1 { font-size: clamp(40px, 6vw, 82px); }
+
+  /* ── NAVIGATION ── */
+  .nav {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 100;
+  }
+  .nav-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.25); cursor: pointer;
+    transition: all 0.3s;
+  }
+  .nav-dot.active { background: var(--teal2); width: 24px; border-radius: 4px; }
+
+  .nav-arrows {
+    position: fixed; bottom: 20px; right: 40px;
+    display: flex; gap: 10px; z-index: 100;
+  }
+  .nav-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white; border-radius: 8px;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px;
+    transition: background 0.2s;
+  }
+  .nav-btn:hover { background: rgba(0,194,168,0.25); border-color: var(--teal); }
+
+  /* ── CTA SLIDE ── */
+  #s8 { background: radial-gradient(ellipse 70% 60% at 50% 50%, #003d35 0%, var(--navy) 65%); }
+
+  /* ── PROBLEM SLIDE ── */
+  #s2 { background: radial-gradient(ellipse 60% 50% at 80% 30%, #2a1040 0%, var(--navy) 65%); }
+
+  /* ── PRICING BADGE ── */
+  .price-badge {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--navy);
+    font-weight: 900; font-size: clamp(28px, 4vw, 52px);
+    padding: 16px 36px; border-radius: 12px;
+    margin: 20px 0;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 60px; height: 4px; border-radius: 2px;
+    background: var(--teal); margin-bottom: 24px;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: var(--teal2); z-index: 200;
+    transition: width 0.4s ease;
+  }
+
+  /* ── QUOTE ── */
+  .quote-block {
+    border-left: 4px solid var(--teal);
+    padding: 16px 24px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 0 8px 8px 0;
+    margin: 20px 0;
+  }
+  .quote-block p { font-size: clamp(16px, 2vw, 24px); font-style: italic; }
+  .quote-block .attr { font-size: 13px; color: var(--gray); margin-top: 8px; font-style: normal; }
+
+  @media print {
+    .nav, .nav-arrows, .progress-bar { display: none !important; }
+    .slide { position: relative !important; opacity: 1 !important; pointer-events: all !important; page-break-after: always; }
+    html, body { overflow: visible; height: auto; }
+    .deck { height: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+
+<div class="deck" id="deck">
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 1 — HOOK / TITLE
+  ══════════════════════════════════════════════ -->
+  <div class="slide active" id="s1">
+    <div class="bg-glow glow-teal" style="width:700px;height:700px;top:-200px;right:-100px;"></div>
+    <div class="bg-glow glow-blue" style="width:500px;height:500px;bottom:-150px;left:-100px;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">01 / 08</div>
+    </div>
+    <div class="slide-inner">
+      <div class="tag">GTIA ChannelCon 2026 · San Diego</div>
+      <h1>Your Clients Are<br/>Overpaying for<br/><span class="accent">Compliance Chaos.</span></h1>
+      <p style="max-width:680px;font-size:clamp(16px,2vw,24px);margin-top:8px;">
+        ComplyBook is the <strong style="color:white;">all-in-one financial compliance platform</strong> built exclusively 
+        for nonprofits and government contractors — at a fraction of the cost.
+      </p>
+      <div class="stats" style="margin-top:40px;">
+        <div class="stat"><div class="num">1</div><div class="lbl">Platform</div></div>
+        <div class="stat"><div class="num" style="color:var(--gold);">Everything</div><div class="lbl">Included</div></div>
+        <div class="stat"><div class="num">60%</div><div class="lbl">Less than competitors</div></div>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">Marcy Freeburg · CEO, ComplyBook</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 2 — THE PROBLEM
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s2">
+    <div class="bg-glow glow-blue" style="width:600px;height:600px;top:-100px;right:-50px;opacity:0.15;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">02 / 08</div>
+    </div>
+    <div class="slide-inner">
+      <div class="tag">The Problem</div>
+      <h2>Your Nonprofit &amp; GovCon Clients<br/>Are Running on <span class="accent">Duct Tape</span></h2>
+      <div class="two-col" style="gap:40px;margin-top:24px;">
+        <div>
+          <h3 style="color:var(--gray);font-size:14px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">What they're paying today</h3>
+          <ul class="checklist">
+            <li><span class="cx">✕</span> QuickBooks — $85–200/mo</li>
+            <li><span class="cx">✕</span> Bloomerang / Blackbaud — $300–700/mo</li>
+            <li><span class="cx">✕</span> Sage Intacct / Unanet — $500–1,500/mo</li>
+            <li><span class="cx">✕</span> Separate payroll tool — $100–300/mo</li>
+            <li><span class="cx">✕</span> Manual grant tracking in Excel — $0 + hours</li>
+            <li><span class="cx">✕</span> Compliance consultant for 990/DCAA — $200+/hr</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="color:var(--gray);font-size:14px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">The real cost</h3>
+          <div class="quote-block">
+            <p>"We spend $2,400 a month on software and still need a consultant to file our 990."</p>
+            <div class="attr">— Small nonprofit executive director</div>
+          </div>
+          <div style="margin-top:20px;">
+            <div class="big-num">$2K+</div>
+            <p style="color:var(--gray);font-size:15px;margin-top:8px;">per month — just to stay compliant.<br/>And it still doesn't talk to itself.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">GTIA ChannelCon 2026</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 3 — THE SOLUTION
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s3">
+    <div class="bg-glow glow-teal" style="width:800px;height:800px;bottom:-300px;right:-200px;opacity:0.12;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">03 / 08</div>
+    </div>
+    <div class="slide-inner">
+      <div class="tag">The Solution</div>
+      <h2>One Platform.<br/><span class="accent">Everything They Need.</span><br/>Nothing They Don't.</h2>
+      <p style="margin-bottom:28px;">ComplyBook replaces every tool in their stack — built from the ground up for the rules nonprofit and government contractors actually have to follow.</p>
+      <div class="cards col-4">
+        <div class="card highlight">
+          <div class="icon">📊</div>
+          <h4>Full Accounting</h4>
+          <p>Income, expenses, budgets, bank reconciliation, invoicing, bills</p>
+        </div>
+        <div class="card highlight">
+          <div class="icon">🏛️</div>
+          <h4>Nonprofit Compliance</h4>
+          <p>Form 990, fund accounting, donor tracking, grant management, SF-425</p>
+        </div>
+        <div class="card highlight">
+          <div class="icon">🪖</div>
+          <h4>GovCon / DCAA</h4>
+          <p>DCAA timekeeping, indirect cost rates, contract management, job costing</p>
+        </div>
+        <div class="card highlight">
+          <div class="icon">🤖</div>
+          <h4>AI-Powered</h4>
+          <p>Auto-categorization, Plaid bank sync, cash flow forecasting, smart reports</p>
+        </div>
+      </div>
+      <div style="margin-top:22px;display:flex;flex-wrap:wrap;gap:8px;">
+        <span class="pill pill-teal">Payroll</span>
+        <span class="pill pill-teal">Mileage Tracking</span>
+        <span class="pill pill-teal">Document Management</span>
+        <span class="pill pill-teal">Audit Trail</span>
+        <span class="pill pill-teal">1099 Reporting</span>
+        <span class="pill pill-teal">Multi-Tenant</span>
+        <span class="pill pill-teal">Expense Approvals</span>
+        <span class="pill pill-teal">Compliance Calendar</span>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">GTIA ChannelCon 2026</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 4 — NONPROFIT FEATURES
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s4">
+    <div class="bg-glow glow-teal" style="width:500px;height:500px;top:-100px;left:-100px;opacity:0.14;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">04 / 08</div>
+    </div>
+    <div class="slide-inner">
+      <div class="tag" style="background:#6366f1;">Nonprofit Clients</div>
+      <h2>Built for the Way<br/><span style="color:#a5b4fc;">Nonprofits Actually Work</span></h2>
+      <div class="two-col" style="margin-top:20px;">
+        <div>
+          <ul class="checklist">
+            <li><span class="ck">✓</span><span><strong>Fund Accounting</strong> — restricted &amp; unrestricted funds, separate tracking by program</span></li>
+            <li><span class="ck">✓</span><span><strong>Grant Management</strong> — SF-425 federal reporting, expense tracking per grant</span></li>
+            <li><span class="ck">✓</span><span><strong>Donor Tracking</strong> — pledges, acknowledgment letters, in-kind donations</span></li>
+            <li><span class="ck">✓</span><span><strong>Form 990 Ready</strong> — Schedule A, B, functional expense reporting baked in</span></li>
+            <li><span class="ck">✓</span><span><strong>Program Expense Reports</strong> — show funders exactly where dollars went</span></li>
+          </ul>
+        </div>
+        <div>
+          <ul class="checklist">
+            <li><span class="ck">✓</span><span><strong>Compliance Calendar</strong> — never miss a filing deadline</span></li>
+            <li><span class="ck">✓</span><span><strong>Fundraising Tools</strong> — campaign tracking, pledge management</span></li>
+            <li><span class="ck">✓</span><span><strong>Bank Reconciliation</strong> — automated via Plaid</span></li>
+            <li><span class="ck">✓</span><span><strong>Role-Based Access</strong> — board members, accountants, staff get the right view</span></li>
+            <li><span class="ck">✓</span><span><strong>Audit Trail</strong> — immutable log for every financial action, NIST-compliant</span></li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top:24px;padding:16px 24px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:10px;">
+        <p style="font-size:clamp(14px,1.6vw,18px);color:var(--white);">
+          <strong style="color:#a5b4fc;">Replaces:</strong> QuickBooks + Bloomerang/Blackbaud + separate grant tracking + compliance consultant
+        </p>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">GTIA ChannelCon 2026</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 5 — GOVCON / DCAA FEATURES
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s5">
+    <div class="bg-glow glow-gold" style="width:500px;height:500px;top:-150px;right:-100px;opacity:0.12;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">05 / 08</div>
+    </div>
+    <div class="slide-inner">
+      <div class="tag gold">GovCon Clients</div>
+      <h2>DCAA Compliant.<br/><span class="gold-text">Out of the Box.</span></h2>
+      <div class="two-col" style="margin-top:20px;">
+        <div>
+          <ul class="checklist">
+            <li><span class="ck">✓</span><span><strong>DCAA Timekeeping</strong> — daily time entry, supervisor approval, floor checks</span></li>
+            <li><span class="ck">✓</span><span><strong>Indirect Cost Rates</strong> — fringe, overhead, G&amp;A — FAR-compliant rate pools</span></li>
+            <li><span class="ck">✓</span><span><strong>Contract Management</strong> — track CLINs, mods, budget vs. actuals</span></li>
+            <li><span class="ck">✓</span><span><strong>Job/Project Costing</strong> — allocate costs to contracts automatically</span></li>
+            <li><span class="ck">✓</span><span><strong>Proposal &amp; Bid Management</strong> — cost estimates tied to real historical rates</span></li>
+          </ul>
+        </div>
+        <div>
+          <ul class="checklist">
+            <li><span class="ck">✓</span><span><strong>Subcontractor Management</strong> — track flow-down compliance &amp; payments</span></li>
+            <li><span class="ck">✓</span><span><strong>Change Order Management</strong> — document sharing, approval workflows</span></li>
+            <li><span class="ck">✓</span><span><strong>SF-425 &amp; Reporting</strong> — federal grant reporting built in</span></li>
+            <li><span class="ck">✓</span><span><strong>Mileage &amp; Per Diem</strong> — IRS-compliant, GSA rates, approval workflows</span></li>
+            <li><span class="ck">✓</span><span><strong>Immutable Audit Log</strong> — survive any DCAA audit with confidence</span></li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top:24px;padding:16px 24px;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.3);border-radius:10px;">
+        <p style="font-size:clamp(14px,1.6vw,18px);color:var(--white);">
+          <strong style="color:var(--gold);">Replaces:</strong> Unanet + Deltek Costpoint + separate timekeeping + DCAA consultant
+        </p>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">GTIA ChannelCon 2026</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 6 — PRICING / COMPARISON
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s6">
+    <div class="bg-glow glow-teal" style="width:400px;height:400px;bottom:-100px;left:-50px;opacity:0.15;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">06 / 08</div>
+    </div>
+    <div class="slide-inner" style="padding-top:30px;">
+      <div class="tag">Pricing</div>
+      <h2>Everything They Pay For Now.<br/><span class="accent">One Price. Way Less.</span></h2>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>QuickBooks + Stack</th>
+            <th>Blackbaud / Unanet</th>
+            <th class="cb">ComplyBook</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Full accounting &amp; invoicing</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="cb-col yes">✓</td>
+          </tr>
+          <tr>
+            <td>Nonprofit / grant compliance</td>
+            <td class="no">✕ (add-on)</td>
+            <td class="yes">✓</td>
+            <td class="cb-col yes">✓</td>
+          </tr>
+          <tr>
+            <td>DCAA timekeeping</td>
+            <td class="no">✕</td>
+            <td class="yes">Unanet only</td>
+            <td class="cb-col yes">✓</td>
+          </tr>
+          <tr>
+            <td>AI categorization &amp; bank sync</td>
+            <td class="yes">✓ (basic)</td>
+            <td class="no">✕</td>
+            <td class="cb-col yes">✓ Advanced</td>
+          </tr>
+          <tr>
+            <td>Payroll built-in</td>
+            <td class="no">✕ (extra $)</td>
+            <td class="no">✕</td>
+            <td class="cb-col yes">✓</td>
+          </tr>
+          <tr>
+            <td>Multi-tenant / MSP ready</td>
+            <td class="no">✕</td>
+            <td class="no">✕</td>
+            <td class="cb-col yes">✓ Native</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;color:var(--white);">Monthly cost</td>
+            <td class="price" style="color:var(--red);">$1,200–$2,500+</td>
+            <td class="price" style="color:var(--red);">$800–$2,000+</td>
+            <td class="price cb-col" style="font-size:1.2em;">A fraction.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">GTIA ChannelCon 2026</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 7 — MSP PARTNER OPPORTUNITY
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s7">
+    <div class="bg-glow glow-teal" style="width:600px;height:600px;top:-200px;right:-100px;opacity:0.14;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">07 / 08</div>
+    </div>
+    <div class="slide-inner">
+      <div class="tag">MSP Partner Program</div>
+      <h2>Add a <span class="accent">Recurring Revenue Stream</span><br/>Your Clients Already Need</h2>
+      <div class="cards col-3" style="margin-top:28px;">
+        <div class="card gold-card">
+          <div class="icon">💰</div>
+          <h4>Partner Margins</h4>
+          <p>White-label or referral options. Recurring monthly revenue for every client you bring on.</p>
+        </div>
+        <div class="card gold-card">
+          <div class="icon">🏢</div>
+          <h4>Multi-Tenant Console</h4>
+          <p>Manage all your clients from one MSP dashboard. Org isolation, role-based access, audit logs.</p>
+        </div>
+        <div class="card gold-card">
+          <div class="icon">🤝</div>
+          <h4>Sticky Clients</h4>
+          <p>ComplyBook touches payroll, compliance, and accounting — it becomes essential infrastructure.</p>
+        </div>
+      </div>
+      <div style="margin-top:28px;padding:20px 28px;background:rgba(245,200,66,0.06);border:1px solid rgba(245,200,66,0.25);border-radius:12px;">
+        <p style="font-size:clamp(15px,1.8vw,20px);color:var(--white);max-width:100%;">
+          <strong style="color:var(--gold);">The opportunity:</strong> The average MSP has 3–8 nonprofit or govcon clients already paying you for IT. 
+          Every one of them needs exactly what ComplyBook does — and none of them have it in one place today.
+        </p>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">GTIA ChannelCon 2026</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SLIDE 8 — CALL TO ACTION
+  ══════════════════════════════════════════════ -->
+  <div class="slide" id="s8">
+    <div class="bg-glow glow-teal" style="width:900px;height:900px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.15;"></div>
+    <div class="logo-bar">
+      <div class="logo">Comply<span>Book</span></div>
+      <div class="slide-num">08 / 08</div>
+    </div>
+    <div class="slide-inner center" style="align-items:center;">
+      <div class="tag">Let's Work Together</div>
+      <h1 style="font-size:clamp(40px,6.5vw,88px);">Your Clients Deserve<br/>Better Than <span class="accent">Duct Tape.</span></h1>
+      <p style="font-size:clamp(16px,2vw,24px);margin-top:16px;margin-bottom:40px;max-width:700px;">
+        Sign up for our <strong style="color:white;">MSP Partner Program</strong> today and be the MSP who brings financial compliance to your nonprofit and govcon clients — at a price that finally makes sense.
+      </p>
+      <div class="cards col-3" style="max-width:800px;width:100%;margin:0 auto;">
+        <div class="card" style="text-align:center;">
+          <div class="icon">🌐</div>
+          <h4>Try It Free</h4>
+          <p style="color:var(--teal2);font-weight:700;margin-top:6px;">complybook.app</p>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div class="icon">📧</div>
+          <h4>Partner Inquiries</h4>
+          <p style="color:var(--teal2);font-weight:700;margin-top:6px;">tech@jandmsolutions.com</p>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div class="icon">📲</div>
+          <h4>Scan &amp; Connect</h4>
+          <p style="color:var(--gray);margin-top:6px;">Stop by our table — live demo available</p>
+        </div>
+      </div>
+      <div class="divider" style="margin:32px auto 0;"></div>
+      <p style="color:var(--gray);font-size:14px;margin-top:12px;">
+        Nonprofit compliance · DCAA timekeeping · Grant management · Payroll · AI categorization · All in one
+      </p>
+    </div>
+    <div class="footer-bar">
+      <div class="footer-url">complybook.app</div>
+      <div class="footer-tag">© 2026 ComplyBook, LLC. All rights reserved.</div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- ── NAVIGATION ── -->
+<div class="nav" id="navDots"></div>
+
+<div class="nav-arrows">
+  <button class="nav-btn" id="prevBtn">&#8592;</button>
+  <button class="nav-btn" id="nextBtn">&#8594;</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  // Build dots
+  const dotsEl = document.getElementById('navDots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, total - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('progress').style.width = ((current + 1) / total * 100) + '%';
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); goTo(current - 1); }
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(total - 1);
+  });
+
+  // Swipe support
+  let touchX = 0;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) goTo(current + (dx < 0 ? 1 : -1));
+  });
+
+  // Init progress
+  document.getElementById('progress').style.width = (1 / total * 100) + '%';
+</script>
+</body>
+</html>

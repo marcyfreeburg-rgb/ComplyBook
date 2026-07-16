@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "4XKvrqJto1Spoa4uGxlX5"
+uri = "file://attached_assets/complybook-channelcon-2026.zip"
+type = "unspecified"
+title = "ComplyBook — GTIA ChannelCon 2026 Pitch Deck"
