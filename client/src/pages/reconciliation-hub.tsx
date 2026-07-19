@@ -1515,10 +1515,20 @@ export default function ReconciliationHub({ currentOrganization }: Reconciliatio
               )}
 
               {periodUnreconciledCount === 0 && periodTransactions.length > 0 && (
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900">
+                <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900 gap-4 flex-wrap">
                   <p className="font-medium text-green-700 dark:text-green-400">
                     All {periodTransactions.length} transactions in this period are reconciled.
                   </p>
+                  {reconciliation?.status !== 'reconciled' && (
+                    <Button
+                      onClick={() => reconcileAllMutation.mutate()}
+                      disabled={reconcileAllMutation.isPending}
+                      data-testid="button-finalize-reconciliation"
+                    >
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      {reconcileAllMutation.isPending ? 'Finalizing...' : 'Mark Reconciliation Complete'}
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
