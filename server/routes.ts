@@ -5257,6 +5257,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk unreconcile transactions
+  app.post('/api/reconciliation/bulk-unreconcile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, transactionIds } = req.body;
+
+      if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        return res.status(400).json({ message: "Invalid transaction IDs" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can bulk unreconcile transactions" });
+      }
+
+      const count = await storage.bulkUnreconcileTransactions(transactionIds);
+
+      await storage.recordReconciliationAction({
+        organizationId,
+        action: 'bulk_unreconciled' as any,
+        previousStatus: 'reconciled',
+        newStatus: 'unreconciled',
+        notes: `Bulk unreconciled ${count} transactions`,
+        performedBy: userId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.json({ count });
+    } catch (error) {
+      console.error("Error bulk unreconciling transactions:", error);
+      res.status(500).json({ message: "Failed to unreconcile transactions" });
+    }
+  });
+
+  // Unreconcile all reconciled transactions for a given month
+  app.post('/api/reconciliation/unreconcile-month', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { organizationId, year, month, bankAccountId } = req.body;
+
+      if (!organizationId || !year || !month) {
+        return res.status(400).json({ message: "organizationId, year, and month are required" });
+      }
+
+      const userRole = await storage.getUserRole(userId, organizationId);
+      if (!userRole) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      if (!['owner', 'admin'].includes(userRole.role)) {
+        return res.status(403).json({ message: "Only owners and admins can unreconcile by month" });
+      }
+
+      const count = await storage.unreconcileTransactionsByMonth(
+        organizationId,
+        parseInt(year),
+        parseInt(month),
+        bankAccountId ? parseInt(bankAccountId) : undefined
+      );
+
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      await storage.recordReconciliationAction({
+        organizationId,
+        action: 'bulk_unreconciled' as any,
+        previousStatus: 'reconciled',
+        newStatus: 'unreconciled',
+        notes: `Unreconciled ${count} transactions for ${monthNames[parseInt(month) - 1]} ${year}`,
+        performedBy: userId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.json({ count });
+    } catch (error) {
+      console.error("Error unreconciling by month:", error);
+      res.status(500).json({ message: "Failed to unreconcile transactions for that month" });
+    }
+  });
+
   // Reconciliation Audit Log routes
   app.get('/api/reconciliation/audit-logs/:organizationId', isAuthenticated, async (req: any, res) => {
     try {

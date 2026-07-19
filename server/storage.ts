@@ -437,6 +437,8 @@ export interface IStorage {
   reconcileTransaction(id: number, userId: string): Promise<Transaction>;
   unreconcileTransaction(id: number): Promise<Transaction>;
   bulkReconcileTransactions(ids: number[], userId: string): Promise<number>;
+  bulkUnreconcileTransactions(ids: number[]): Promise<number>;
+  unreconcileTransactionsByMonth(organizationId: number, year: number, month: number, bankAccountId?: number): Promise<number>;
   autoReconcileTransactions(organizationId: number, userId: string): Promise<{ reconciledCount: number; matchedTransactions: Array<{ transactionId: number; plaidTransactionId: string }> }>;
   
   // Bank Reconciliation Session operations
@@ -3100,6 +3102,43 @@ export class DatabaseStorage implements IStorage {
       .where(inArray(transactions.id, ids))
       .returning({ id: transactions.id });
     
+    return result.length;
+  }
+
+  async bulkUnreconcileTransactions(ids: number[]): Promise<number> {
+    const result = await db
+      .update(transactions)
+      .set({
+        reconciliationStatus: 'unreconciled',
+        reconciledDate: null,
+        reconciledBy: null,
+      })
+      .where(inArray(transactions.id, ids))
+      .returning({ id: transactions.id });
+    return result.length;
+  }
+
+  async unreconcileTransactionsByMonth(organizationId: number, year: number, month: number, bankAccountId?: number): Promise<number> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+    const conditions = [
+      eq(transactions.organizationId, organizationId),
+      eq(transactions.reconciliationStatus, 'reconciled'),
+      gte(transactions.date, startDate.toISOString().split('T')[0]),
+      lt(transactions.date, endDate.toISOString().split('T')[0]),
+    ];
+    if (bankAccountId) {
+      conditions.push(eq(transactions.bankAccountId, bankAccountId));
+    }
+    const result = await db
+      .update(transactions)
+      .set({
+        reconciliationStatus: 'unreconciled',
+        reconciledDate: null,
+        reconciledBy: null,
+      })
+      .where(and(...conditions))
+      .returning({ id: transactions.id });
     return result.length;
   }
 

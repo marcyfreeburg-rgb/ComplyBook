@@ -7,9 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CheckCircle2, XCircle, Sparkles, RefreshCw, AlertTriangle, Download, History, Building2 } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles, RefreshCw, AlertTriangle, Download, History, Building2, CalendarX } from "lucide-react";
 import type { Organization, Transaction, ReconciliationAlert, ReconciliationAuditLog } from "@shared/schema";
-import { format } from "date-fns";
 import { safeFormatDate, formatCurrency } from "@/lib/utils";
 import {
   Dialog,
@@ -26,6 +25,24 @@ interface BankReconciliationProps {
   currentOrganization?: OrganizationWithRole;
 }
 
+const MONTHS = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 5 }, (_, i) => String(currentYear - i));
+
 export default function BankReconciliation({ currentOrganization }: BankReconciliationProps) {
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -34,6 +51,11 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [showUnreconcileMonth, setShowUnreconcileMonth] = useState(false);
+  const [unreconcileYear, setUnreconcileYear] = useState(String(currentYear));
+  const [unreconcileMonth, setUnreconcileMonth] = useState(String(new Date().getMonth() + 1));
+
+  const isAdminOrOwner = currentOrganization?.userRole === 'owner' || currentOrganization?.userRole === 'admin';
 
   // Fetch unreconciled transactions
   const { data: unreconciledTransactions = [], isLoading: isLoadingUnreconciled } = useQuery<Transaction[]>({
@@ -79,15 +101,15 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
   const uniqueAccounts = Array.from(new Set(unreconciledTransactions.map(t => t.bankAccountId).filter(Boolean)));
 
   // Filter transactions by selected account
-  const filteredUnreconciled = selectedAccount === "all" 
-    ? unreconciledTransactions 
-    : unreconciledTransactions.filter(t => 
+  const filteredUnreconciled = selectedAccount === "all"
+    ? unreconciledTransactions
+    : unreconciledTransactions.filter(t =>
         selectedAccount === "manual" ? !t.bankAccountId : t.bankAccountId?.toString() === selectedAccount
       );
 
   const transactions = showReconciled ? reconciledTransactions : filteredUnreconciled;
   const isLoading = showReconciled ? isLoadingReconciled : isLoadingUnreconciled;
-  
+
   const handleLoadMoreReconciled = async () => {
     setLoadingMore(true);
     setReconciledLimit(prev => prev + 100);
@@ -102,21 +124,14 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
-      toast({
-        title: "Success",
-        description: "Transaction reconciled successfully",
-      });
+      toast({ title: "Success", description: "Transaction reconciled successfully" });
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to reconcile transaction",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to reconcile transaction" });
     },
   });
 
-  // Unreconcile transaction
+  // Unreconcile single transaction
   const unreconcileMutation = useMutation({
     mutationFn: async (id: number) => {
       return await apiRequest('POST', `/api/reconciliation/unreconcile/${id}`);
@@ -124,17 +139,10 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
-      toast({
-        title: "Success",
-        description: "Transaction marked as unreconciled",
-      });
+      toast({ title: "Success", description: "Transaction marked as unreconciled" });
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to unreconcile transaction",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to unreconcile transaction" });
     },
   });
 
@@ -151,17 +159,10 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
       setSelectedIds([]);
-      toast({
-        title: "Success",
-        description: `${data.count} transactions reconciled successfully`,
-      });
+      toast({ title: "Success", description: `${data.count} transactions reconciled successfully` });
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to reconcile transactions",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to reconcile transactions" });
     },
   });
 
@@ -174,17 +175,37 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
+      toast({ title: "Auto-Reconciliation Complete", description: `${data.reconciledCount} transactions automatically reconciled` });
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Error", description: "Failed to auto-reconcile transactions" });
+    },
+  });
+
+  // Unreconcile by month
+  const unreconcileMonthMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/reconciliation/unreconcile-month', {
+        organizationId: currentOrganization?.id,
+        year: parseInt(unreconcileYear),
+        month: parseInt(unreconcileMonth),
+      });
+      return await response.json() as { count: number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/unreconciled/${currentOrganization?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/reconciliation/reconciled/${currentOrganization?.id}`] });
+      setShowUnreconcileMonth(false);
+      const monthLabel = MONTHS.find(m => m.value === unreconcileMonth)?.label;
       toast({
-        title: "Auto-Reconciliation Complete",
-        description: `${data.reconciledCount} transactions automatically reconciled`,
+        title: "Month Unreconciled",
+        description: data.count > 0
+          ? `${data.count} transactions from ${monthLabel} ${unreconcileYear} marked as unreconciled`
+          : `No reconciled transactions found for ${monthLabel} ${unreconcileYear}`,
       });
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to auto-reconcile transactions",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to unreconcile transactions for that month" });
     },
   });
 
@@ -263,6 +284,68 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
             <RefreshCw className="h-4 w-4 mr-2" />
             {showReconciled ? "Unreconciled" : "Show All"}
           </Button>
+          {isAdminOrOwner && (
+            <Dialog open={showUnreconcileMonth} onOpenChange={setShowUnreconcileMonth}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid="button-unreconcile-month">
+                  <CalendarX className="h-4 w-4 mr-2" />
+                  Unreconcile Month
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Unreconcile by Month</DialogTitle>
+                  <DialogDescription>
+                    Mark all reconciled transactions in a given month as unreconciled. This cannot be undone automatically.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-1.5 block">Month</label>
+                      <Select value={unreconcileMonth} onValueChange={setUnreconcileMonth}>
+                        <SelectTrigger data-testid="select-unreconcile-month">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map(m => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-1.5 block">Year</label>
+                      <Select value={unreconcileYear} onValueChange={setUnreconcileYear}>
+                        <SelectTrigger data-testid="select-unreconcile-year">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEARS.map(y => (
+                            <SelectItem key={y} value={y}>{y}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setShowUnreconcileMonth(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => unreconcileMonthMutation.mutate()}
+                      disabled={unreconcileMonthMutation.isPending}
+                      data-testid="button-confirm-unreconcile-month"
+                    >
+                      <CalendarX className="h-4 w-4 mr-2" />
+                      {unreconcileMonthMutation.isPending ? "Processing..." : "Unreconcile Month"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
           <Dialog open={showAuditLog} onOpenChange={setShowAuditLog}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-audit-log">
@@ -351,12 +434,12 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-2 flex-wrap">
             <div>
               <CardTitle>Transactions</CardTitle>
               <CardDescription>
-                {showReconciled 
-                  ? `Showing ${reconciledTransactions.length} reconciled transactions` 
+                {showReconciled
+                  ? `Showing ${reconciledTransactions.length} reconciled transactions`
                   : `${unreconciledTransactions.length} unreconciled transactions`}
               </CardDescription>
             </div>
@@ -462,8 +545,8 @@ export default function BankReconciliation({ currentOrganization }: BankReconcil
               </table>
               {showReconciled && reconciledTransactions.length >= reconciledLimit && (
                 <div className="flex justify-center py-4">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={handleLoadMoreReconciled}
                     disabled={loadingMore}
                     data-testid="button-load-more-reconciled"
