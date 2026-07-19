@@ -3250,73 +3250,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBankReconciliation(id: number): Promise<void> {
-    // Get the reconciliation record first (need date range for bulk-reconciled transactions)
-    const [reconciliation] = await db
-      .select()
+    // Use Drizzle ORM for the initial fetch (known-working pattern), then raw SQL
+    // for updates/deletes to avoid type/enum mismatch issues in production.
+    // Also unreconciles transactions to fix bulk-reconciled sessions before deletion.
+    // Production may not have CASCADE FKs on child tables, so we delete explicitly.
+
+    // Step 1: Fetch the reconciliation to get org + date range (Drizzle ORM select)
+    const [recon] = await db
+      .select({
+        organizationId: bankReconciliations.organizationId,
+        statementStartDate: bankReconciliations.statementStartDate,
+        statementEndDate: bankReconciliations.statementEndDate,
+      })
       .from(bankReconciliations)
       .where(eq(bankReconciliations.id, id));
 
-    // Get all transaction IDs that were individually matched to this reconciliation
-    const matches = await db
-      .select({ transactionId: reconciliationMatches.transactionId })
-      .from(reconciliationMatches)
-      .where(eq(reconciliationMatches.reconciliationId, id));
-    
-    const matchedIds = matches
-      .map(m => m.transactionId)
-      .filter((tid): tid is number => tid !== null);
-    
-    // Also unreconcile any transactions in the date range that were bulk-reconciled
-    // via "Reconcile All" (those don't have match entries but are still marked reconciled)
-    if (reconciliation) {
-      const startDate = reconciliation.statementStartDate
-        ? new Date(reconciliation.statementStartDate)
-        : new Date(0);
-      const endDate = new Date(reconciliation.statementEndDate);
+    if (recon) {
+      // Step 2: Unreconcile transactions individually matched to this reconciliation
+      await db.execute(sql`
+        UPDATE transactions t
+        SET reconciliation_status = 'unreconciled',
+            reconciled_date = NULL,
+            reconciled_by = NULL
+        FROM reconciliation_matches rm
+        WHERE rm.reconciliation_id = ${id}
+          AND rm.transaction_id = t.id
+          AND t.reconciliation_status = 'reconciled'
+      `);
 
-      const conditions = [
-        eq(transactions.organizationId, reconciliation.organizationId),
-        eq(transactions.reconciliationStatus, 'reconciled'),
-        gte(transactions.date, startDate.toISOString().split('T')[0]),
-        lte(transactions.date, endDate.toISOString().split('T')[0]),
-      ];
+      // Step 3: Unreconcile any transactions bulk-reconciled in the date range
+      // (Reconcile All marks transactions directly without creating match entries)
+      const orgId = recon.organizationId;
+      const startDate = recon.statementStartDate
+        ? new Date(recon.statementStartDate).toISOString().split('T')[0]
+        : '1970-01-01';
+      const endDate = new Date(recon.statementEndDate).toISOString().split('T')[0];
 
-      await db
-        .update(transactions)
-        .set({
-          reconciliationStatus: 'unreconciled',
-          reconciledDate: null,
-          reconciledBy: null,
-        })
-        .where(and(...conditions));
+      await db.execute(sql`
+        UPDATE transactions
+        SET reconciliation_status = 'unreconciled',
+            reconciled_date = NULL,
+            reconciled_by = NULL
+        WHERE organization_id = ${orgId}
+          AND reconciliation_status = 'reconciled'
+          AND date >= ${startDate}::date
+          AND date <= ${endDate}::date
+      `);
     }
-    
-    // Also reset any individually matched transactions not covered by the date range
-    if (matchedIds.length > 0) {
-      await db
-        .update(transactions)
-        .set({
-          reconciliationStatus: 'unreconciled',
-          reconciledDate: null,
-          reconciledBy: null,
-        })
-        .where(inArray(transactions.id, matchedIds));
-    }
-    
-    // Delete all related reconciliation matches
-    await db
-      .delete(reconciliationMatches)
-      .where(eq(reconciliationMatches.reconciliationId, id));
-    
-    // Delete all bank statement entries
-    await db
-      .delete(bankStatementEntries)
-      .where(eq(bankStatementEntries.reconciliationId, id));
-    
-    // Finally delete the reconciliation itself
-    await db
-      .delete(bankReconciliations)
-      .where(eq(bankReconciliations.id, id));
+
+    // Step 4: Delete child records explicitly (production may lack CASCADE FKs)
+    await db.execute(sql`DELETE FROM reconciliation_matches WHERE reconciliation_id = ${id}`);
+    await db.execute(sql`DELETE FROM bank_statement_entries WHERE reconciliation_id = ${id}`);
+
+    // Step 5: Delete the reconciliation record itself
+    await db.execute(sql`DELETE FROM bank_reconciliations WHERE id = ${id}`);
   }
 
   // Bank Statement Entry operations
