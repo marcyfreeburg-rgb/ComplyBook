@@ -62,3 +62,6 @@ FINCH_SANDBOX = "finch"
 
 [userenv.production]
 STORAGE_PATH = "/opt/render/project/src/uploads/documents"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-23d468cd-0135-49c6-99c0-a56b1047776b"
