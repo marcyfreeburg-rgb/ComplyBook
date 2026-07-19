@@ -3250,18 +3250,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBankReconciliation(id: number): Promise<void> {
-    // First, get all transaction IDs that were matched to this reconciliation
+    // Get the reconciliation record first (need date range for bulk-reconciled transactions)
+    const [reconciliation] = await db
+      .select()
+      .from(bankReconciliations)
+      .where(eq(bankReconciliations.id, id));
+
+    // Get all transaction IDs that were individually matched to this reconciliation
     const matches = await db
       .select({ transactionId: reconciliationMatches.transactionId })
       .from(reconciliationMatches)
       .where(eq(reconciliationMatches.reconciliationId, id));
     
-    const transactionIds = matches
+    const matchedIds = matches
       .map(m => m.transactionId)
-      .filter((id): id is number => id !== null);
+      .filter((tid): tid is number => tid !== null);
     
-    // Reset reconciliation status for affected transactions
-    if (transactionIds.length > 0) {
+    // Also unreconcile any transactions in the date range that were bulk-reconciled
+    // via "Reconcile All" (those don't have match entries but are still marked reconciled)
+    if (reconciliation) {
+      const startDate = reconciliation.statementStartDate
+        ? new Date(reconciliation.statementStartDate)
+        : new Date(0);
+      const endDate = new Date(reconciliation.statementEndDate);
+
+      const conditions = [
+        eq(transactions.organizationId, reconciliation.organizationId),
+        eq(transactions.reconciliationStatus, 'reconciled'),
+        gte(transactions.date, startDate.toISOString().split('T')[0]),
+        lte(transactions.date, endDate.toISOString().split('T')[0]),
+      ];
+
       await db
         .update(transactions)
         .set({
@@ -3269,7 +3288,19 @@ export class DatabaseStorage implements IStorage {
           reconciledDate: null,
           reconciledBy: null,
         })
-        .where(inArray(transactions.id, transactionIds));
+        .where(and(...conditions));
+    }
+    
+    // Also reset any individually matched transactions not covered by the date range
+    if (matchedIds.length > 0) {
+      await db
+        .update(transactions)
+        .set({
+          reconciliationStatus: 'unreconciled',
+          reconciledDate: null,
+          reconciledBy: null,
+        })
+        .where(inArray(transactions.id, matchedIds));
     }
     
     // Delete all related reconciliation matches
