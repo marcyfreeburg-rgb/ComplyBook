@@ -7716,92 +7716,108 @@ export class DatabaseStorage implements IStorage {
     ipAddress?: string | null;
     userAgent?: string | null;
   }): Promise<void> {
-    const { organizationId, userId, entityType, entityId, action, oldValues, newValues, ipAddress, userAgent } = params;
-    
-    // Extract human-readable identifier (invoice number, bill number, etc.)
-    let identifier = `#${entityId}`;
-    if (entityType === 'invoice' && newValues?.invoiceNumber) {
-      identifier = `${newValues.invoiceNumber} (ID: ${entityId})`;
-    } else if (entityType === 'bill' && newValues?.billNumber) {
-      identifier = `${newValues.billNumber} (ID: ${entityId})`;
-    } else if (entityType === 'invoice' && oldValues?.invoiceNumber) {
-      identifier = `${oldValues.invoiceNumber} (ID: ${entityId})`;
-    } else if (entityType === 'bill' && oldValues?.billNumber) {
-      identifier = `${oldValues.billNumber} (ID: ${entityId})`;
-    }
-    
-    // Generate human-readable changes summary
-    let changes = '';
-    if (action === 'create') {
-      changes = `Created ${entityType} ${identifier}`;
-    } else if (action === 'update' && oldValues && newValues) {
-      const changedFields = Object.keys(newValues).filter(key => 
-        JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])
-      );
-      changes = changedFields.length > 0 
-        ? `Updated ${entityType} ${identifier}: ${changedFields.join(', ')}`
-        : `Updated ${entityType} ${identifier}`;
-    } else if (action === 'delete') {
-      changes = `Deleted ${entityType} ${identifier}`;
-    }
+    try {
+      const { organizationId, userId, entityType, entityId, action, oldValues, newValues, ipAddress, userAgent } = params;
+      
+      // Extract human-readable identifier (invoice number, bill number, etc.)
+      let identifier = `#${entityId}`;
+      if (entityType === 'invoice' && newValues?.invoiceNumber) {
+        identifier = `${newValues.invoiceNumber} (ID: ${entityId})`;
+      } else if (entityType === 'bill' && newValues?.billNumber) {
+        identifier = `${newValues.billNumber} (ID: ${entityId})`;
+      } else if (entityType === 'invoice' && oldValues?.invoiceNumber) {
+        identifier = `${oldValues.invoiceNumber} (ID: ${entityId})`;
+      } else if (entityType === 'bill' && oldValues?.billNumber) {
+        identifier = `${oldValues.billNumber} (ID: ${entityId})`;
+      }
+      
+      // Generate human-readable changes summary
+      let changes = '';
+      if (action === 'create') {
+        changes = `Created ${entityType} ${identifier}`;
+      } else if (action === 'update' && oldValues && newValues) {
+        const changedFields = Object.keys(newValues).filter(key => 
+          JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])
+        );
+        changes = changedFields.length > 0 
+          ? `Updated ${entityType} ${identifier}: ${changedFields.join(', ')}`
+          : `Updated ${entityType} ${identifier}`;
+      } else if (action === 'delete') {
+        changes = `Deleted ${entityType} ${identifier}`;
+      }
 
-    await this.createAuditLog({
-      organizationId,
-      userId,
-      action,
-      entityType,
-      entityId: String(entityId),
-      oldValues: oldValues || null,
-      newValues: newValues || null,
-      changes,
-      ipAddress: ipAddress || null,
-      userAgent: userAgent || null,
-    });
+      await this.createAuditLog({
+        organizationId,
+        userId,
+        action,
+        entityType,
+        entityId: String(entityId),
+        oldValues: oldValues || null,
+        newValues: newValues || null,
+        changes,
+        ipAddress: ipAddress || null,
+        userAgent: userAgent || null,
+      });
+    } catch (auditErr) {
+      // Audit logging is a non-critical side effect — never let it kill the primary operation
+      console.error('[Audit] logAuditTrail failed (non-fatal):', auditErr);
+    }
   }
 
   async logCreate(organizationId: number, userId: string, entityType: string, entityId: string, newValues: any): Promise<void> {
-    await this.createAuditLog({
-      organizationId,
-      userId,
-      action: 'create',
-      entityType,
-      entityId: String(entityId),
-      newValues,
-      changes: `Created ${entityType} #${entityId}`,
-    });
+    try {
+      await this.createAuditLog({
+        organizationId,
+        userId,
+        action: 'create',
+        entityType,
+        entityId: String(entityId),
+        newValues,
+        changes: `Created ${entityType} #${entityId}`,
+      });
+    } catch (auditErr) {
+      console.error('[Audit] logCreate failed (non-fatal):', auditErr);
+    }
   }
 
   async logUpdate(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any, newValues: any): Promise<void> {
-    // Generate human-readable changes summary
-    const changedFields = Object.keys(newValues).filter(key => 
-      JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])
-    );
-    const changes = changedFields.length > 0 
-      ? `Updated ${entityType} #${entityId}: ${changedFields.join(', ')}`
-      : `Updated ${entityType} #${entityId}`;
+    try {
+      const changedFields = Object.keys(newValues).filter(key => 
+        JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])
+      );
+      const changes = changedFields.length > 0 
+        ? `Updated ${entityType} #${entityId}: ${changedFields.join(', ')}`
+        : `Updated ${entityType} #${entityId}`;
 
-    await this.createAuditLog({
-      organizationId,
-      userId,
-      action: 'update',
-      entityType,
-      entityId: String(entityId),
-      oldValues,
-      newValues,
-      changes,
-    });
+      await this.createAuditLog({
+        organizationId,
+        userId,
+        action: 'update',
+        entityType,
+        entityId: String(entityId),
+        oldValues,
+        newValues,
+        changes,
+      });
+    } catch (auditErr) {
+      console.error('[Audit] logUpdate failed (non-fatal):', auditErr);
+    }
   }
 
   async logDelete(organizationId: number, userId: string, entityType: string, entityId: string, oldValues: any): Promise<void> {
-    await this.createAuditLog({
-      organizationId,
-      userId,
-      action: 'delete',
-      entityType,
-      entityId: String(entityId),
-      oldValues,
-      changes: `Deleted ${entityType} #${entityId}`,
-    });
+    try {
+      await this.createAuditLog({
+        organizationId,
+        userId,
+        action: 'delete',
+        entityType,
+        entityId: String(entityId),
+        oldValues,
+        changes: `Deleted ${entityType} #${entityId}`,
+      });
+    } catch (auditErr) {
+      console.error('[Audit] logDelete failed (non-fatal):', auditErr);
+    }
   }
 
   // Team operations
